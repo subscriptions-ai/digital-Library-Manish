@@ -4,13 +4,13 @@ import {
   RefreshCw, ShieldCheck, Timer, UserPlus, Users,
 } from 'lucide-react';
 import {
-  DEPARTMENT_RATES, GST_RATE, MAX_INSTITUTION_USERS, STARTING_DEPARTMENT_RATE, TERM_MONTHS, formatRupees,
+  DEPARTMENT_RATES, GST_RATE, STARTING_DEPARTMENT_RATE, TERM_MONTHS, formatRupees,
 } from '../../lib/institutionPricing';
 import { SESSION_MS, SESSIONS_PER_DAY, HOLD_MS } from '../../lib/freeAllowance';
 import { usePricing } from './pricing/PricingContext';
 import { AnnualPricingBlock } from '../pricing/AnnualPricingBlock';
 import { getInstitutionPricingDisplay } from '../../lib/pricingDisplay';
-import { FROM_PRICE, seatsLabel, uniqueDepartments } from './pricing/PlanWidgets';
+import { FROM_PRICE, uniqueDepartments } from './pricing/PlanWidgets';
 import { Badge, EmptyState, Skeleton, StatusBadge, buttonClass } from '../ui';
 
 /**
@@ -18,7 +18,7 @@ import { Badge, EmptyState, Skeleton, StatusBadge, buttonClass } from '../ui';
  *
  * Laid out after Boss's prototype ("Final Price setup"): a hero and the free-beside-premium
  * comparison while the institution is still on the preview, then the plan it actually has —
- * departments with their end dates, seats used against capacity — and the benefits. Every
+ * departments with their end dates, the access and duration — and the benefits. Every
  * number comes from src/lib/institutionPricing.ts; what is charged comes from the server.
  */
 
@@ -30,7 +30,6 @@ const bestTier = DEPARTMENT_RATES[0];
 const footnote = `*${formatRupees(STARTING_DEPARTMENT_RATE)} per department/year applies when ${bestTier.minDepartments} or more departments are selected. ${gstPct}% GST extra.`;
 
 const btnPrimary = buttonClass('primary');
-const btnSoft = buttonClass('outline', 'md', 'whitespace-normal text-left h-auto min-h-10 py-2');
 const SUB_LABEL = 'text-xs font-semibold uppercase tracking-wider text-muted';
 
 function Feature({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
@@ -135,8 +134,8 @@ export function InstitutionSubscriptions() {
           </h2>
           <p className="mt-3 max-w-3xl text-sm leading-relaxed on-dark-2">
             Remove session limits, unlock full subscribed content, add your faculty, researchers and students, and follow
-            institutional usage through live analytics, user controls and statistical reports. Choose your departments
-            first — up to {MAX_INSTITUTION_USERS.toLocaleString('en-IN')} users come with it, at no extra charge.
+            institutional usage through live analytics, user controls and statistical reports. Choose the departments
+            your institution needs; pricing is based on the departments selected.
           </p>
           <div className="mt-5 flex flex-wrap gap-2.5">
             <button type="button" onClick={subscribe} className={buttonClass('highlight')}>
@@ -187,26 +186,15 @@ export function InstitutionSubscriptions() {
             )}
           </div>
           <div className="rounded-lg border border-rule p-4">
-            <p className={SUB_LABEL}>Full-access users</p>
-            {plan.unlimitedSeats ? (
-              <>
-                <p className="mt-1 text-[15px] font-semibold text-ink">Unlimited users (current plan)</p>
-                <p className="mt-1 text-[13px] text-muted">
-                  {plan.seats.used} in use. Your plan has no cap on users until it is renewed.
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="tnum mt-1 text-[15px] font-semibold text-ink">
-                  {premium ? `${seatsLabel(plan)} users` : `Up to ${MAX_INSTITUTION_USERS.toLocaleString('en-IN')} users with a subscription`}
-                </p>
-                <p className="mt-1 text-[13px] text-muted">
-                  {premium
-                    ? `No charge per user, up to ${MAX_INSTITUTION_USERS.toLocaleString('en-IN')}. You count as one.`
-                    : 'Users are not charged for. Subscribe to at least one department to add them.'}
-                </p>
-              </>
-            )}
+            <p className={SUB_LABEL}>Access</p>
+            <p className="mt-1 text-[15px] font-semibold text-ink">
+              {premium ? `${TERM_MONTHS}-month access` : 'Timed sessions'}
+            </p>
+            <p className="mt-1 text-[13px] text-muted">
+              {premium
+                ? 'Full subscribed access to the departments listed. Members you add inherit the same departments.'
+                : 'Subscribe to at least one department to add users and remove the session clock.'}
+            </p>
           </div>
         </div>
 
@@ -225,14 +213,10 @@ export function InstitutionSubscriptions() {
           <button type="button" onClick={subscribe} className={btnPrimary}>
             {premium ? <>Add departments <ArrowRight size={16} aria-hidden="true" /></> : <>Subscribe from {FROM_PRICE} <ArrowRight size={16} aria-hidden="true" /></>}
           </button>
-          {!plan.unlimitedSeats && premium && (
-            <button type="button" onClick={() => pricing.openUserLimit()} className={btnSoft}><Users size={16} className="shrink-0" aria-hidden="true" /> Need more than {MAX_INSTITUTION_USERS.toLocaleString('en-IN')} users?</button>
-          )}
         </div>
 
         <div className="mt-4 rounded-lg border border-caution/40 bg-caution-soft px-4 py-3 text-[13px] leading-relaxed text-ink-2">
-          Departments are priced by the year, and users are not charged for: up to {MAX_INSTITUTION_USERS.toLocaleString('en-IN')} per
-          institution. Every purchase runs {TERM_MONTHS} months from the day it is bought, and
+          Departments are priced by the year, based on the departments selected. Every purchase runs {TERM_MONTHS} months from the day it is bought, and
           the amount payable is shown before payment.{' '}
           <button type="button" onClick={pricing.openTerms} className="font-semibold text-accent underline underline-offset-2">View pricing terms</button>
         </div>
@@ -269,7 +253,7 @@ export function InstitutionSubscriptions() {
           <ul className="px-5 py-3">
             <Feature icon={<Check size={12} />}><strong className="text-ink">Full subscribed content</strong> for the departments you choose.</Feature>
             <Feature icon={<InfinityIcon size={12} />}><strong className="text-ink">No {sessionMin}-minute session limit</strong> and no waiting period.</Feature>
-            <Feature icon={<UserPlus size={12} />}><strong className="text-ink">Up to {MAX_INSTITUTION_USERS.toLocaleString('en-IN')} users</strong> — faculty, researchers or students, at no extra charge. Need more? Contact us.</Feature>
+            <Feature icon={<UserPlus size={12} />}><strong className="text-ink">Your own users</strong> — add faculty and researchers, and manage them from User Management.</Feature>
             <Feature icon={<ShieldCheck size={12} />}><strong className="text-ink">User Management</strong> — add, remove, suspend or restore access.</Feature>
             <Feature icon={<BarChart3 size={12} />}><strong className="text-ink">Live usage analytics</strong> — who used the platform, when and how much.</Feature>
             <Feature icon={<FileBarChart size={12} />}><strong className="text-ink">Statistical reports</strong>, reading timeline and most-read content.</Feature>
@@ -285,8 +269,8 @@ export function InstitutionSubscriptions() {
       {!premium && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rule bg-accent-soft/50 p-4">
           <div className="min-w-0">
-            <h3 className="text-[15px] font-semibold text-ink">Start with the department subscription. Add your people at no extra charge.</h3>
-            <p className="mt-0.5 text-[13px] text-muted">Up to 1,000 users are included; contact us for more.</p>
+            <h3 className="text-[15px] font-semibold text-ink">Start with the department subscription, then add your people.</h3>
+            <p className="mt-0.5 text-[13px] text-muted">Pricing is based on the departments you select. Manage your users from User Management.</p>
           </div>
           <button type="button" onClick={subscribe} className={btnPrimary}>Subscribe from {FROM_PRICE} <ArrowRight size={16} aria-hidden="true" /></button>
         </div>

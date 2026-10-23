@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Search, ShieldAlert, ShieldCheck, Mail, Calendar, CreditCard,
   ChevronDown, Pencil, Trash2, RefreshCw, X, Save, Loader2,
-  UserPlus, Filter, Building2, Download, BookOpen, LogOut
+  UserPlus, Filter, Building2, Download, BookOpen, LogOut, Undo2, Clock
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -11,6 +11,8 @@ import { UsersByInstitution } from './UsersByInstitution';
 import { LibrarianMembers } from './LibrarianMembers';
 import { REGISTRANT_TYPES, DOMAINS } from '../../constants';
 import { AccountSummary, ResetPasswordDialog, useReauth } from './AccountSecurity';
+import { useAuth } from '../../contexts/AuthContext';
+import { DEFAULT_SESSION_LIMIT, MAX_SESSION_LIMIT, MIN_SESSION_LIMIT } from '../../lib/sessionLimits';
 
 // The roles that exist on the server (STAFF_ROLES + reader roles). The server decides who may assign which.
 const ROLES = ['SuperAdmin', 'SubscriptionManager', 'ContentManager', 'SalesManager', 'SalesExecutive', 'Publisher', 'Institution', 'Student', 'Subscriber'];
@@ -23,7 +25,18 @@ const ROLE_COLORS: Record<string, string> = {
   Student: 'bg-accent-soft text-accent',
   Subscriber: 'bg-info-soft text-accent',
 };
-const ACCOUNT_LABEL: Record<string, string> = { blocked: 'Blocked', active: 'Active' };
+const ACCOUNT_LABEL: Record<string, string> = {
+  blocked: 'Blocked', active: 'Active', pending_deletion: 'Pending deletion', removed: 'Removed from institution', deleted: 'Deleted',
+};
+
+const isRemoved = (u: any) => u.status === 'PENDING_DELETION' || u.status === 'DELETED';
+const when = (iso?: string | null) => (iso ? new Date(iso).toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—');
+/** "47h 58m" until the purge. Display only: the server's clock decides when anything is deleted. */
+const timeLeft = (iso?: string | null) => {
+  if (!iso) return '—';
+  const m = Math.floor((new Date(iso).getTime() - Date.now()) / 60000);
+  return m <= 0 ? 'due now' : `${Math.floor(m / 60)}h ${m % 60}m`;
+};
 
 /** The filters, as the server's question. */
 function queryFor(f: Record<string, string>, search: string) {
@@ -69,17 +82,24 @@ export function UserManager() {
 
   // Edit modal
   const [editUser, setEditUser] = useState<any | null>(null);
-  const [editForm, setEditForm] = useState({ displayName: '', email: '', role: '', organization: '', contact: '', designation: '', branch: '', department: '' });
+  const [editForm, setEditForm] = useState({ displayName: '', email: '', role: '', organization: '', contact: '', designation: '', branch: '', department: '', sessionLimit: '' });
   const [editSaving, setEditSaving] = useState(false);
 
   // Delete confirm
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  // Cancel a scheduled deletion: the account only, or the account and its place at the institution it was removed from.
+  const [restoreTarget, setRestoreTarget] = useState<{ user: any; membership: boolean } | null>(null);
+  const [restoreLoading, setRestoreLoading] = useState(false);
+
   // Reset password (the dialog owns its fields; nothing typed outlives it)
   const [resetTarget, setResetTarget] = useState<any | null>(null);
   // Asks for the acting Super Admin's own password when the server requires it for another Super Admin.
   const reauth = useReauth();
+  // The simultaneous-login limit is a Super Admin's to change; the server refuses anyone else whatever this screen shows.
+  const { profile } = useAuth();
+  const isSuperAdmin = profile?.role === 'SuperAdmin';
   const [summaryKey, setSummaryKey] = useState(0);
 
   // A page at a time, counted on the server. The browser used to hold every
@@ -129,18 +149,33 @@ export function UserManager() {
       contact: user.contact || '',
       designation: user.designation || '',
       branch: user.institutionProfile?.branch || '',
-      department: user.institutionProfile?.department || ''
+      department: user.institutionProfile?.department || '',
+      // Empty is "use the system default"; the server stores that as null.
+      sessionLimit: user.maxConcurrentSessions ? String(user.maxConcurrentSessions) : ''
     });
+  };
+
+  /** The limit as the form holds it: null for the default, a whole number 1-10, or an error to show instead of saving. */
+  const parsedLimit = (): { value: number | null } | { error: string } => {
+    const t = editForm.sessionLimit.trim();
+    if (!t) return { value: null };
+    const n = Number(t);
+    return /^\d+$/.test(t) && n >= MIN_SESSION_LIMIT && n <= MAX_SESSION_LIMIT
+      ? { value: n } : { error: `Enter a whole number from ${MIN_SESSION_LIMIT} to ${MAX_SESSION_LIMIT}, or use the system default.` };
   };
 
   const handleSaveEdit = async () => {
     if (!editUser) return;
+    const limit = parsedLimit();
+    if ('error' in limit) { toast.error(limit.error); return; }
     setEditSaving(true);
     try {
+      const { sessionLimit: _unused, ...fields } = editForm;
       const out = await reauth.run(actorPassword => fetch(`/api/admin/users/${editUser.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...authHeader() },
-        body: JSON.stringify({ ...editForm, ...(actorPassword ? { actorPassword } : {}) }),
+        // The limit travels with the other fields, and only from a Super Admin: the server refuses anyone else's.
+        body: JSON.stringify({ ...fields, ...(isSuperAdmin ? { maxConcurrentSessions: limit.value } : {}), ...(actorPassword ? { actorPassword } : {}) }),
       }));
       if (!out) return;
       if (!out.res.ok) throw new Error(out.body?.error || 'Update failed');
@@ -176,6 +211,29 @@ export function UserManager() {
       toast.error(err.message);
     } finally {
       setDeleteLoading(false);
+    }
+  };
+
+  /* ── CANCEL A SCHEDULED DELETION ── */
+  const handleRestore = async () => {
+    if (!restoreTarget) return;
+    setRestoreLoading(true);
+    try {
+      const res = await fetch(`/api/admin/users/${restoreTarget.user.id}/cancel-deletion`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeader() },
+        body: JSON.stringify({ restoreMembership: restoreTarget.membership }),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(body?.error || 'Could not cancel the deletion');
+      toast.success(restoreTarget.membership ? 'Deletion cancelled and the user restored to their institution' : 'Deletion cancelled. The institution membership was not restored.');
+      setRestoreTarget(null);
+      fetchUsers();
+      setSummaryKey(k => k + 1);
+    } catch (err: any) {
+      toast.error(err?.message || 'Could not cancel the deletion');
+    } finally {
+      setRestoreLoading(false);
     }
   };
 
@@ -446,9 +504,22 @@ export function UserManager() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${ROLE_COLORS[user.role] || 'bg-surface-2 text-ink-2'}`}>
-                        {user.role}
-                      </span>
+                      {/* An institution's people are shown by what they are to the library (Faculty, Student…),
+                          not by the technical access class they all share. Staff and individuals keep theirs. */}
+                      {user.institutionId && user.role !== 'Institution' ? (
+                        <span title={user.accessRoleSource === 'designation' ? 'Settled from the designation; not yet saved on the account' : user.accessRole ? undefined : 'No role has been chosen, and the designation does not settle one'}
+                          className={`text-xs font-bold px-2.5 py-1 rounded-full ${user.accessRole ? 'bg-surface-2 text-ink-2' : 'bg-caution-soft text-caution'}`}>
+                          {user.accessRole || 'Needs review'}
+                        </span>
+                      ) : (
+                        <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${ROLE_COLORS[user.role] || 'bg-surface-2 text-ink-2'}`}>
+                          {user.role === 'Institution' ? 'Institution Admin' : user.role}
+                        </span>
+                      )}
+                      {user.sessionLimit > 1 && (
+                        <span title={`Allowed ${user.sessionLimit} simultaneous logins (${user.activeSessionCount ?? 0} now)`}
+                          className="ml-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-info-soft text-info whitespace-nowrap">{user.sessionLimit} logins</span>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-xs">
@@ -494,12 +565,38 @@ export function UserManager() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-center">
+                      {isRemoved(user) ? (
+                        <>
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
+                            user.status === 'DELETED' ? 'bg-surface-3 text-muted' : 'bg-caution-soft text-caution'
+                          }`}>
+                            <Clock size={11} /> {user.status === 'DELETED' ? 'Deleted' : 'Pending deletion'}
+                          </span>
+                          {user.removal && (
+                            <div className="mt-1.5 text-left text-[10px] leading-tight text-muted">
+                              <p>Removed from <b className="text-ink-2">{user.removal.removedByInstitution?.name || 'an institution'}</b></p>
+                              <p>by {user.removal.removedBy || 'unknown'}</p>
+                              <p>Removed {when(user.removal.removedAt)}</p>
+                              {user.status === 'DELETED'
+                                ? <p>Anonymised {when(user.removal.purgedAt)}</p>
+                                : <>
+                                    <p>Scheduled {when(user.removal.scheduledDeletionAt)}</p>
+                                    <p className="font-bold text-caution">{timeLeft(user.removal.scheduledDeletionAt)} remaining</p>
+                                  </>}
+                            </div>
+                          )}
+                        </>
+                      ) : (
                       <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
                         user.isBlocked ? 'bg-alarm-soft text-alarm' : 'bg-success-soft text-success'
                       }`}>
                         {user.isBlocked ? <ShieldAlert size={11} /> : <ShieldCheck size={11} />}
                         {user.isBlocked ? 'Blocked' : 'Active'}
                       </span>
+                      )}
+                      {!isRemoved(user) && user.removal && (
+                        <p className="mt-1.5 text-[10px] leading-tight text-muted">Removed from {user.removal.removedByInstitution?.name || 'an institution'} {when(user.removal.removedAt)}</p>
+                      )}
                       {user.activeSession && (
                         <div className="mt-1.5 text-[10px] leading-tight text-muted">
                           <p className="font-bold text-success">Signed in</p>
@@ -518,6 +615,23 @@ export function UserManager() {
                           title="Emails sent to this member">
                           <Mail size={15} />
                         </button>
+                        {/* A removed account can only be brought back (or left to run out); nothing else applies to it. */}
+                        {user.status === 'PENDING_DELETION' && (
+                          <>
+                            <button onClick={() => setRestoreTarget({ user, membership: false })}
+                              className="p-2 text-muted hover:text-success hover:bg-success-soft rounded-lg transition-colors" title="Cancel deletion">
+                              <Undo2 size={15} />
+                            </button>
+                            {user.removal?.removedByInstitution && (
+                              <button onClick={() => setRestoreTarget({ user, membership: true })}
+                                className="p-2 text-muted hover:text-accent hover:bg-accent-soft rounded-lg transition-colors"
+                                title={`Cancel deletion and restore to ${user.removal.removedByInstitution.name}`}>
+                                <Building2 size={15} />
+                              </button>
+                            )}
+                          </>
+                        )}
+                        {!isRemoved(user) && (<>
                         {/* Edit */}
                         <button onClick={() => openEdit(user)}
                           className="p-2 text-muted hover:text-accent hover:bg-accent-soft rounded-lg transition-colors"
@@ -544,6 +658,7 @@ export function UserManager() {
                           title="Reset password">
                           <RefreshCw size={15} />
                         </button>
+                        </>)}
                         {/* Delete */}
                         <button onClick={() => setDeleteTarget(user)}
                           className="p-2 text-muted hover:text-alarm hover:bg-alarm-soft rounded-lg transition-colors"
@@ -739,13 +854,14 @@ export function UserManager() {
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-surface rounded-2xl w-full max-w-md shadow-2xl overflow-hidden"
+              className="bg-surface rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[calc(100dvh-2rem)]"
             >
-              <div className="bg-accent-solid px-6 py-4 flex items-center justify-between">
+              <div className="bg-accent-solid px-6 py-4 flex items-center justify-between shrink-0">
                 <h2 className="text-white font-bold text-lg">Edit User</h2>
-                <button onClick={() => setEditUser(null)} className="text-white/80 hover:text-white"><X size={20} /></button>
+                <button onClick={() => setEditUser(null)} className="text-white/80 hover:text-white" aria-label="Close"><X size={20} /></button>
               </div>
-              <div className="p-6 space-y-4">
+              {/* The form scrolls; the header above and the buttons below stay in view, however short the screen. */}
+              <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-5 sm:p-6 space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-1.5">Full Name</label>
                   <input value={editForm.displayName} onChange={e => setEditForm(f => ({ ...f, displayName: e.target.value }))}
@@ -797,6 +913,40 @@ export function UserManager() {
                       className="w-full bg-surface-2 border border-rule px-4 py-2.5 rounded-xl text-sm focus:border-accent focus:ring-2 focus:ring-accent-soft outline-none" />
                   </div>
                 </div>
+                {/* Login access: how many sign-ins this account may hold at once. Nothing else about the account changes. */}
+                <div className="border-t border-rule pt-4">
+                  <p className="text-xs font-bold text-ink-2 uppercase tracking-widest mb-3">Login access</p>
+                  {(() => {
+                    const lim = parsedLimit();
+                    const n = 'value' in lim ? (lim.value ?? DEFAULT_SESSION_LIMIT) : null;
+                    return (
+                      <>
+                        <label htmlFor="session-limit" className="block text-xs font-bold text-muted uppercase tracking-wider mb-1.5">Simultaneous login limit</label>
+                        <div className="flex items-center gap-3">
+                          <input id="session-limit" type="number" inputMode="numeric" min={MIN_SESSION_LIMIT} max={MAX_SESSION_LIMIT} step={1}
+                            value={editForm.sessionLimit} disabled={!isSuperAdmin}
+                            onChange={e => setEditForm(f => ({ ...f, sessionLimit: e.target.value }))}
+                            placeholder={String(DEFAULT_SESSION_LIMIT)} aria-describedby="session-limit-help"
+                            className="w-24 bg-surface-2 border border-rule px-4 py-2.5 rounded-xl text-sm tabular-nums focus:border-accent focus:ring-2 focus:ring-accent-soft outline-none disabled:opacity-60" />
+                          {isSuperAdmin && editForm.sessionLimit !== '' && (
+                            <button type="button" onClick={() => setEditForm(f => ({ ...f, sessionLimit: '' }))}
+                              className="text-xs font-bold text-accent hover:underline">Use system default ({DEFAULT_SESSION_LIMIT})</button>
+                          )}
+                        </div>
+                        <p id="session-limit-help" className={`mt-1.5 text-xs ${n === null ? 'text-alarm' : 'text-ink-2'}`}>
+                          {n === null ? `Enter a whole number from ${MIN_SESSION_LIMIT} to ${MAX_SESSION_LIMIT}.`
+                            : n === 1 ? 'This account can be signed in on one device or session at a time.'
+                            : `This account can stay signed in on up to ${n} devices/sessions at the same time.`}
+                        </p>
+                        <p className="mt-0.5 text-xs text-muted">
+                          Maximum number of active login sessions this account may use at the same time. System default: {DEFAULT_SESSION_LIMIT}.
+                          {' '}Signed in now: {editUser.activeSessionCount ?? 0}.
+                          {!isSuperAdmin && ' Only a Super Admin can change this.'}
+                        </p>
+                      </>
+                    );
+                  })()}
+                </div>
                 {/* The password is not an editable field: it cannot be shown, only replaced. */}
                 <div className="rounded-xl border border-rule bg-surface-2 p-3 text-xs text-ink-2">
                   <p><b>Password:</b> {editUser.hasPassword ? 'Configured' : 'Not configured'}</p>
@@ -807,14 +957,46 @@ export function UserManager() {
                     <p className="mt-2 text-caution">Changing the email or role signs this user out; they sign in again with the new details{editForm.email.trim().toLowerCase() !== String(editUser.email).toLowerCase() ? ', and the new address must be verified again' : ''}.</p>
                   )}
                 </div>
-                <div className="flex justify-end gap-3 pt-2">
-                  <button onClick={() => setEditUser(null)} className="px-4 py-2 bg-surface-2 text-ink-2 rounded-xl font-bold hover:bg-surface-3">Cancel</button>
-                  <button onClick={handleSaveEdit} disabled={editSaving}
-                    className="flex items-center gap-2 px-5 py-2 bg-accent-solid text-white rounded-xl font-bold hover:opacity-90 disabled:opacity-50">
-                    {editSaving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
-                    {editSaving ? 'Saving…' : 'Save Changes'}
-                  </button>
+              </div>
+              <div className="shrink-0 flex justify-end gap-3 border-t border-rule bg-surface px-5 py-3 sm:px-6">
+                <button onClick={() => setEditUser(null)} className="px-4 py-2 bg-surface-2 text-ink-2 rounded-xl font-bold hover:bg-surface-3">Cancel</button>
+                <button onClick={handleSaveEdit} disabled={editSaving}
+                  className="flex items-center gap-2 px-5 py-2 bg-accent-solid text-white rounded-xl font-bold hover:opacity-90 disabled:opacity-50">
+                  {editSaving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+                  {editSaving ? 'Saving…' : 'Save Changes'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ── CANCEL DELETION CONFIRM ── */}
+      <AnimatePresence>
+        {restoreTarget && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-surface rounded-2xl w-full max-w-sm shadow-2xl p-6 space-y-4"
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-11 w-11 rounded-full bg-success-soft flex items-center justify-center"><Undo2 className="text-success" size={20} /></div>
+                <div>
+                  <h3 className="font-bold text-ink">Cancel this deletion?</h3>
+                  <p className="text-sm text-muted">
+                    {restoreTarget.membership
+                      ? `The account is restored and added back to ${restoreTarget.user.removal?.removedByInstitution?.name || 'its institution'}.`
+                      : 'The account is restored. It is not added back to the institution it was removed from.'}
+                  </p>
                 </div>
+              </div>
+              <div className="flex justify-end gap-3">
+                <button onClick={() => setRestoreTarget(null)} className="px-4 py-2 bg-surface-2 text-ink-2 rounded-xl font-bold hover:bg-surface-3">Keep scheduled</button>
+                <button onClick={handleRestore} disabled={restoreLoading}
+                  className="flex items-center gap-2 px-5 py-2 bg-accent-solid text-white rounded-xl font-bold hover:opacity-90 disabled:opacity-50">
+                  {restoreLoading ? <Loader2 size={15} className="animate-spin" /> : <Undo2 size={15} />}
+                  {restoreLoading ? 'Restoring…' : 'Cancel deletion'}
+                </button>
               </div>
             </motion.div>
           </div>

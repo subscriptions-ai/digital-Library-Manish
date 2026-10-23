@@ -222,7 +222,7 @@ export function StructuredLibrary({ viewerBasePath = '/dashboard/viewer' }: { vi
   };
   // Filter options: access-scoped AND only those that actually have content
   const isAll = !avail || avail.all;
-  const deptOptions: string[] = !avail ? deptNames : (mode === 'archived' ? avail.archived.departments : avail.neu.departments);
+  const deptOptions: string[] = !avail ? [] : (mode === 'archived' ? avail.archived.departments : avail.neu.departments);
   const allowedTypes = !avail ? CONTENT_TYPES : (CONTENT_TYPES as any[]).filter(c => avail.archived.contentTypes.includes(c.name));
   const showBooks = !avail ? true : avail.neu.hasBooks;
   const showArticles = !avail ? true : avail.neu.hasArticles;

@@ -1,7 +1,6 @@
 import {
   MAIL_BASE, esc, buildEmail, eBody, eH1, eP, eMuted, eBtn, eCard, eRows,
 } from './emailTemplates.js';
-import { MAX_INSTITUTION_USERS } from './institutionPricing.js';
 
 /**
  * The marketing and lifecycle mails: the five the product actually has a
@@ -208,7 +207,7 @@ export const TEMPLATES: Record<TemplateKey, Template> = {
   'librarian-add-users': {
     key: 'librarian-add-users',
     name: 'Add more of your faculty',
-    description: 'For librarians whose member list has stopped growing. Says how many they have and what it costs them.',
+    description: 'For librarians whose member list has stopped growing. Says how many they have and where to add more.',
     audience: 'Institution accounts with no new member added in the last 30 days',
     kind: 'lifecycle',
     subject: c => c.institution?.members
@@ -218,8 +217,8 @@ export const TEMPLATES: Record<TemplateKey, Template> = {
     body: c => eBody(
       eH1(`${firstName(c)}, who else should be reading?`)
       + eP(`${c.institution?.members ? `${n(c.institution.members)} people from your institution can open the library today. ` : ''}`
-        + `Adding the rest of your faculty and researchers takes a name and an email each, and `
-        + `a department subscription covers up to ${n(MAX_INSTITUTION_USERS)} users at no extra charge.`)
+        + `Adding the rest of your faculty and researchers takes a name and an email each, `
+        + `from the User Management dashboard.`)
       + (c.institution?.members
         ? eCard(eRows([
           ['People with access', n(c.institution.members)],

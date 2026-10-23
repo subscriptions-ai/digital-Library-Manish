@@ -34,7 +34,7 @@ const STATUS: Record<string, { label: string; tone: BadgeTone }> = {
   'access-not-assigned': { label: 'Access Not Assigned', tone: 'neutral' },
   'subscription-expired': { label: 'Subscription Expired', tone: 'caution' },
   'no-seat-assigned': { label: 'No Licensed Seat Assigned', tone: 'neutral' },
-  'all-seats-assigned': { label: 'All Licensed Seats Assigned', tone: 'caution' },
+  'all-seats-assigned': { label: 'No Further Access Available', tone: 'caution' },
   'free-preview': { label: 'Free Preview', tone: 'accent' },
   'session-ended': { label: 'Reading Session Ended', tone: 'neutral' },
   'user-addition-restricted': { label: 'User Addition Restricted', tone: 'caution' },

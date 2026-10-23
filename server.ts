@@ -38,6 +38,8 @@ import { loadBlogList, loadBlogPost } from "./src/server/blogData.js";
 import { installSeoPages } from "./src/server/seoPages.js";
 import { aiAssistantSwitchState, aiAssistantSwitchHistory, setAiAssistantEnabled } from "./src/server/aiAssistantSwitch.js";
 import { s3Configured, isProduction, deleteObject, keyFromUrl } from "./src/server/storage/s3Storage.js";
+import { removeFromInstitution, cancelDeletion, reactivateRemovedMember, purgeDueAccounts, RemovalError, isRemovedStatus, maskEmail, GRACE_HOURS, PENDING_DELETION, DELETED } from "./src/server/accountRemoval.js";
+import { loadEntitlement, loadInstitutionDepartments, entitlementAllows, scopeOf, narrowToEntitlement, subscriptionDepartments, type Entitlement } from "./src/server/entitlements.js";
 import { mediaStorageRoot, mediaDir as mediaDirPath, mediaDriver, mediaStorageStatus, ensureMediaDirs, assertUploadsPossible, uploadMedia, MediaStorageError } from "./src/server/storage/mediaStorage.js";
 import { aiConfig } from "./src/server/aiAssistantConfig.js";
 import { searchContent } from "./src/lib/catalogueSearch.js";
@@ -47,8 +49,10 @@ import { canonicalOrSelf, canonicalOrSelfList, canonicalDepartmentName, resolveC
 import { createDepartmentSpellings } from "./src/server/departmentSpellings.js";
 import { requireOfficialDepartments, requireOfficialDepartmentsOnEdit } from "./src/server/departmentInput.js";
 import { docToRow, nextQuoteNo, quoteNoPrefix, stateCodeOf, QUOTE_DEPARTMENTS, QUOTE_KIND, buildInstitutionPlanSnapshot, buildSoloPlanSnapshot, planSnapshotToRow, type QuoteDoc, type PlanSnapshot } from "./src/lib/quotation/quotationModel.js";
-import { DOMAINS, REGISTRANT_TYPES, DESIGNATIONS_BY_TYPE, ALL_DESIGNATIONS, opensInstitutionDashboard,
-  INSTITUTION_MEMBER_ROLES, PRO_ONLY_MEMBER_ROLES } from "./src/constants.js";
+import { DOMAINS, REGISTRANT_TYPES, DESIGNATIONS_BY_TYPE, ALL_DESIGNATIONS, opensInstitutionDashboard } from "./src/constants.js";
+import { ASSIGNABLE_MEMBER_ROLES, PRO_ONLY_ACCESS_ROLES, assignableRole, roleFromDesignation, resolveImportRole,
+  cleanDesignation, effectiveAccessRole } from "./src/lib/memberRoles.js";
+import { effectiveSessionLimit, parseSessionLimit, decideSignIn, LIMIT_REACHED } from "./src/lib/sessionLimits.js";
 import { getState as getIngestionState, normaliseIssn } from "./src/lib/ingestionWorker.js";
 import { runEnginePass, wakeEngine } from "./src/lib/ingestion/engine.js";
 import { importDoajCatalogue, checkDoajCatalogue, importCheckedJournals } from "./src/lib/doajCatalogue.js";
@@ -89,6 +93,12 @@ import {
 } from "./src/lib/emailTemplates.js";
 
 const prisma = new PrismaClient();
+
+/** What a person is to the library, as people say it (Faculty, Student…), and how it was settled. Display only; see src/lib/memberRoles.ts. */
+const withAccessRole = (u: { role?: string | null; memberRole?: string | null; designation?: string | null }) => {
+  const r = effectiveAccessRole(u);
+  return { accessRole: r.role, accessRoleSource: r.source };
+};
 // Which spellings of each department the stored records use, so a filter for "Medical Sciences" also finds rows kept as "Medical sciences".
 const deptSpellings = createDepartmentSpellings(prisma as any);
 
@@ -230,18 +240,24 @@ async function startServer() {
   const lastTouched = new Map<string, number>();
 
   /**
-   * Opens the member's one session, or reports that one is already open.
+   * Opens a session for the member, or says why it cannot.
    *
-   * The check and the insert run under a per-member advisory lock, so two
-   * sign-ins arriving together queue: the first creates the row, the second
-   * then sees it and is refused. `replaceExisting` is only ever passed by a
-   * sign-in whose password has just been verified.
+   * An account holds one session at a time unless a Super Admin has allowed it more
+   * (`User.maxConcurrentSessions`; see src/lib/sessionLimits.ts). Only valid sessions
+   * count: not revoked, not expired. The count, the limit and the insert run under a
+   * per-member advisory lock, so two sign-ins arriving together queue: the second sees
+   * the first and is held to the same limit.
+   *
+   * `replaceExisting` is only ever passed by a sign-in whose password has just been
+   * verified, and is honoured only on a one-login account: an account allowed several
+   * is never made to sign one of them out to make room. `revokeAll` ends every other
+   * session whatever the limit, for a change of email (old tokens carry the old email).
    */
   const startSession = async (
     userObj: { id: string; email: string; role: string; institutionId?: string | null },
     req: any,
-    opts: { replaceExisting?: boolean; claims?: Record<string, any> } = {},
-  ): Promise<{ token: string } | null> => {
+    opts: { replaceExisting?: boolean; revokeAll?: boolean; claims?: Record<string, any> } = {},
+  ): Promise<{ token: string } | { refused: 'ACTIVE_SESSION_EXISTS' | 'CONCURRENT_LOGIN_LIMIT_REACHED' }> => {
     const sessionId = crypto.randomBytes(32).toString('hex');
     const now = new Date();
     const expiresAt = new Date(now.getTime() + SESSION_TTL_SECONDS * 1000);
@@ -249,13 +265,14 @@ async function startServer() {
 
     const created = await prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'user-session:' + userObj.id}))`;
-      const live = await tx.userSession.findFirst({
-        where: { userId: userObj.id, revokedAt: null, expiresAt: { gt: now } },
-        select: { id: true },
-      });
-      if (live && !opts.replaceExisting) return false;
-      // Whatever is still open is either being replaced or already expired.
-      await tx.userSession.updateMany({ where: { userId: userObj.id, revokedAt: null }, data: { revokedAt: now } });
+      const owner = await tx.user.findUnique({ where: { id: userObj.id }, select: { maxConcurrentSessions: true } });
+      const limit = effectiveSessionLimit(owner?.maxConcurrentSessions);
+      const live = await tx.userSession.count({ where: { userId: userObj.id, revokedAt: null, expiresAt: { gt: now } } });
+      const decision = decideSignIn({ limit, live, replaceExisting: opts.replaceExisting, revokeAll: opts.revokeAll });
+      if (decision === 'refuse-existing') return 'ACTIVE_SESSION_EXISTS' as const;
+      if (decision === 'refuse-limit') return 'CONCURRENT_LOGIN_LIMIT_REACHED' as const;
+      // Replacing: whatever is still open is either being replaced or already expired. Otherwise the others are left alone.
+      if (decision === 'replace-all') await tx.userSession.updateMany({ where: { userId: userObj.id, revokedAt: null }, data: { revokedAt: now } });
       await tx.userSession.deleteMany({ where: { userId: userObj.id, expiresAt: { lt: new Date(now.getTime() - 7 * 864e5) } } });
       await tx.userSession.create({
         data: {
@@ -263,9 +280,9 @@ async function startServer() {
           ipAddress: req.ip ? String(req.ip).slice(0, 64) : null, deviceLabel: describeDevice(ua),
         },
       });
-      return true;
+      return 'created' as const;
     });
-    if (!created) return null;
+    if (created !== 'created') return { refused: created };
 
     // `exp` is set from the same instant as the row's expiresAt, so the two end together.
     const token = jwt.sign(
@@ -276,11 +293,14 @@ async function startServer() {
     return { token };
   };
 
-  const sendActiveSessionExists = (res: any) => res.status(409).json({
-    code: "ACTIVE_SESSION_EXISTS",
-    error: "This account is already signed in on another device or browser.",
-    message: "This account is already signed in on another device or browser.",
-  });
+  const sendSessionRefused = (res: any, r: { refused: 'ACTIVE_SESSION_EXISTS' | 'CONCURRENT_LOGIN_LIMIT_REACHED' }) =>
+    r.refused === 'CONCURRENT_LOGIN_LIMIT_REACHED'
+      ? res.status(409).json({ code: LIMIT_REACHED.code, error: LIMIT_REACHED.error, message: LIMIT_REACHED.error })
+      : res.status(409).json({
+          code: "ACTIVE_SESSION_EXISTS",
+          error: "This account is already signed in on another device or browser.",
+          message: "This account is already signed in on another device or browser.",
+        });
 
   /** True when the verified token's session is still live. Touches lastSeenAt at most every five minutes. */
   const sessionIsLive = async (claims: any): Promise<boolean> => {
@@ -288,10 +308,12 @@ async function startServer() {
     if (!claims?.sid || !claims?.uid) return false;
     const row = await prisma.userSession.findUnique({
       where: { sessionId: String(claims.sid) },
-      select: { userId: true, revokedAt: true, expiresAt: true },
+      select: { userId: true, revokedAt: true, expiresAt: true, user: { select: { status: true } } },
     });
     const now = Date.now();
     if (!row || row.userId !== claims.uid || row.revokedAt || row.expiresAt.getTime() <= now) return false;
+    // A removed account has no access during its 48-hour retention: the retention is for recovery, not for continued reading.
+    if (isRemovedStatus(row.user?.status)) return false;
     const last = lastTouched.get(claims.sid) || 0;
     if (now - last > SESSION_TOUCH_MS) {
       if (lastTouched.size > 20000) lastTouched.clear();
@@ -532,9 +554,12 @@ async function startServer() {
    * place, and nothing downstream gets to hold an opinion about it.
    */
   const collectionCounts = async (scope?: string[]) => {
+    // undefined is the whole catalogue (staff, or an explicit all-departments plan). An EMPTY list is no department at all, and counts nothing:
+    // it used to fall through to the whole catalogue, which is how a four-department account was shown 65,561 items.
+    if (scope && scope.length === 0) return { journals: 0, articles: 0, books: 0, total: 0 };
     // A department is every spelling of it the catalogue holds. Each row carries one department value, so the
     // rows found under all those spellings are each counted once.
-    const domains = scope?.length ? await deptSpellings.expand(scope) : undefined;
+    const domains = scope ? await deptSpellings.expand(scope) : undefined;
     const inDomains = domains?.length ? { domain: { in: domains } } : {};
     const live = { status: { not: "Draft" } };
 
@@ -580,7 +605,8 @@ async function startServer() {
    * claim more than there is.
    */
   const collectionByDepartment = async (scope?: string[]) => {
-    const domains = scope?.length ? await deptSpellings.expand(scope) : undefined;
+    if (scope && scope.length === 0) return [];
+    const domains = scope ? await deptSpellings.expand(scope) : undefined;
     const f = (t: string) => (domains?.length ? `and ${t}."domain" = any($1)` : '');
     const args: any[] = domains?.length ? [domains] : [];
     const rows: any[] = await (prisma as any).$queryRawUnsafe(
@@ -923,9 +949,8 @@ async function startServer() {
         }
       }
 
-      // Interests, not permissions. Kept to the departments we actually hold so
-      // the field stays answerable later, and capped so it cannot be used as
-      // somewhere to write whatever one likes.
+      // The departments this account opens on the free preview (and the institution's, until it subscribes): src/server/entitlements.ts.
+      // Kept to the departments we actually hold, and capped so it cannot be used as somewhere to write whatever one likes.
       const departmentNames = new Set(DOMAINS.map((d: any) => d.name));
       const interests: string[] = Array.isArray(interestedDomains)
         ? [...new Set(interestedDomains.map((d: any) => canonicalDepartmentName(d)).filter((d: any) => d && departmentNames.has(d)))].slice(0, 40) as string[]
@@ -1046,7 +1071,8 @@ async function startServer() {
       }
 
       // A brand-new account has no other session, so this cannot be refused.
-      const token = (await startSession({ id: userObj.id, email, role: userObj.role }, req))!.token;
+      // A new account has no session to count, so this cannot be refused.
+      const token = ((await startSession({ id: userObj.id, email, role: userObj.role }, req)) as { token: string }).token;
       
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
 
@@ -1060,7 +1086,7 @@ async function startServer() {
         html: buildEmail(
           `<tr><td style="padding:28px 40px 24px;">` +
           `<h3 style="margin:0 0 10px;font-size:17px;color:#1e3a6e;">Welcome, ${name} 🎓</h3>` +
-          `<p style="margin:0 0 18px;font-size:13px;color:#475569;line-height:1.7;">Your free membership is ready, and it opens the whole library — every subject we hold, journals, books and articles alike. Nothing is held back by subject; what a free membership limits is time.</p>` +
+          `<p style="margin:0 0 18px;font-size:13px;color:#475569;line-height:1.7;">Your free membership is ready, and it opens the departments you chose when you registered — journals, books and articles alike. A free membership is limited in time, in half-hour sessions; more departments can be added at any time.</p>` +
           `<div style="background:#f0f9ff;border-left:4px solid #0369a1;border-radius:0 10px 10px 0;padding:16px 20px;margin-bottom:18px;">` +
           `<p style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#0369a1;">How your reading time works</p>` +
           `<p style="margin:5px 0;font-size:13px;color:#334155;">You read in <strong>30-minute sessions</strong>, with a two-hour gap after each — <strong>four sessions, two hours, every day</strong>.</p>` +
@@ -1110,7 +1136,7 @@ async function startServer() {
           });
           await auditAccount(prisma, { uid: adminUser.id, email: adminUser.email, role: 'SuperAdmin' }, 'SUPER_ADMIN_CREATED', { targetUserId: adminUser.id, source: 'environment-bootstrap' });
           const started = await startSession({ id: adminUser.id, email: adminUser.email, role: 'SuperAdmin' }, req, { replaceExisting: !!req.body?.replaceExisting });
-          if (!started) return sendActiveSessionExists(res);
+          if ('refused' in started) return sendSessionRefused(res, started);
           prisma.user.update({ where: { id: adminUser.id }, data: { lastLoginAt: new Date() } }).catch(() => {});
           const { password: _, ...profile } = adminUser;
           return res.json({ token: started.token, user: profile });
@@ -1126,6 +1152,10 @@ async function startServer() {
 
       if (userObj.isBlocked) {
         return res.status(403).json({ error: "Your account has been blocked. Please contact support." });
+      }
+
+      if (isRemovedStatus((userObj as any).status)) {
+        return res.status(403).json({ error: "This account is no longer active. If you think this is a mistake, please contact support.", code: "ACCOUNT_REMOVED" });
       }
 
       if (userObj.isDemoAccount && userObj.demoExpiresAt && new Date() > userObj.demoExpiresAt) {
@@ -1146,7 +1176,7 @@ async function startServer() {
         req,
         { replaceExisting: req.body?.replaceExisting === true },
       );
-      if (!started) return sendActiveSessionExists(res);
+      if ('refused' in started) return sendSessionRefused(res, started);
       const token = started.token;
 
       // Recorded for the lifecycle mail rules. Not awaited, and its failure is
@@ -1181,8 +1211,14 @@ async function startServer() {
    * single-session sign-in the token simply outlived this call.)
    */
   app.post("/api/auth/logout", authenticateJWT, async (req: any, res) => {
-    try { await pauseFor(prisma, req.user.uid); }
-    catch (e) { console.error('logout: could not stop the clock', e); }
+    // The clock is the account's, and one account has one. Signing out of one of several sessions
+    // leaves it running for the others; it stops, and banks what is left, when the last one goes.
+    try {
+      const others = await prisma.userSession.count({
+        where: { userId: req.user.uid, revokedAt: null, expiresAt: { gt: new Date() }, ...(req.user.sid ? { sessionId: { not: req.user.sid } } : {}) },
+      });
+      if (others === 0) await pauseFor(prisma, req.user.uid);
+    } catch (e) { console.error('logout: could not stop the clock', e); }
     // Ends this token's own session — matched on both the session and the
     // member, so it can never reach anybody else's.
     try {
@@ -1410,9 +1446,9 @@ async function startServer() {
     const subs = await prisma.subscription.findMany({
       where: { userId, institutionId: null, status: 'Active', endDate: { gt: now } },
     });
-    // An active subscription with no departments listed is whole-library access, granted by
-    // staff; there is nothing left to sell to it.
-    const wholeLibrary = subs.some((s: any) => !Array.isArray(s.domains) || s.domains.length === 0);
+    // Whole-library access is only ever explicit ("All Domains", the entitlement resolver's rule). A subscription with no departments
+    // listed and no such name covers nothing.
+    const wholeLibrary = subscriptionDepartments(subs).all;
     const departments = subs.flatMap((s: any) =>
       (Array.isArray(s.domains) ? s.domains : [])
         // An older spelling in a subscription is the same department, so it still counts as held.
@@ -1732,20 +1768,18 @@ async function startServer() {
     'SalesExecutive', 'SalesManager', 'Publisher'];
 
   /**
-   * Whether this account sees the library whole, rather than a set of domains.
+   * Which departments this account may open — src/server/entitlements.ts, asked once per request.
    *
-   * The rule is now one sentence: no plan means the whole library, on the
-   * clock; a plan means what the plan covers, without one. Nothing is scoped by
-   * role any more, which is what let a member with the run of the library be
-   * shown an empty one — the code went looking for their domains, found none,
-   * and concluded they had nothing.
-   *
-   * It says nothing about how long they may read. That is the clock's business,
-   * and it is asked separately.
+   * This replaces "no plan means the whole library". A missing or empty list is no access, never all of it; the whole catalogue is
+   * only ever for staff and for a subscription that explicitly says so. Everything that scopes content asks here.
+   * It says nothing about how long they may read. That is the clock's business, and it is asked separately.
    */
-  const seesWholeLibrary = (role?: string, activeSubscriptions?: any[]) =>
-    ['SuperAdmin', 'Admin', 'ContentManager'].includes(String(role))
-    || (Array.isArray(activeSubscriptions) && activeSubscriptions.length === 0);
+  const entitlementFor = async (user: { uid: string; role: string; institutionId?: string | null }, req?: any): Promise<Entitlement> => {
+    if (req?._entitlement && req._entitlementUid === user.uid) return req._entitlement;
+    const e = await loadEntitlement(prisma as any, user);
+    if (req) { req._entitlement = e; req._entitlementUid = user.uid; }
+    return e;
+  };
 
   /**
    * Whether the free member's clock applies to whoever is asking.
@@ -1776,14 +1810,22 @@ async function startServer() {
    * going, the other being signing in. Asking how much time is left is not.
    */
   const passesFreeClock = async (req: any, res: any, resolved?: { kind: string; item: any; accessType?: string | null }): Promise<boolean> => {
+    // The department boundary comes first and applies to everyone who is not staff: an item filed under a department the account does not
+    // hold is refused outright — not read "on the clock", and not because it happens to be open access. (The proxies call this too, so
+    // asking them directly for another department's file gets the same answer.)
+    if (resolved && !STAFF_ROLES.includes(req.user.role)) {
+      const ent = await entitlementFor(req.user, req);
+      if (!entitlementAllows(ent, resolved.item?.domain)) {
+        res.status(403).json({ code: 'DEPARTMENT_NOT_ENTITLED', error: "This item is outside the departments included in your access." });
+        return false;
+      }
+    }
     if (!(await isFreeMember(req))) {
-      // A subscriber reads their own departments without a clock. Anything outside them —
-      // another department, on any shelf — is read the way a free member reads it: on the
-      // clock, rather than refused outright. Open-access items are never clocked for them.
+      // A subscriber reads their own departments without a clock.
       if (!resolved || STAFF_ROLES.includes(req.user.role)) return true;
       if (['OpenAccess', 'Free'].includes(resolved.accessType || '')) return true;
       const subs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
-      if (checkContentAccess(resolved.item, req.user.role, subs)) return true;
+      if (checkContentAccess(resolved.item, await entitlementFor(req.user, req), subs)) return true;
     }
     const a = await allowanceFor(prisma, req.user.uid, { start: true });
     if (a.allowed) return true;
@@ -3616,33 +3658,18 @@ async function startServer() {
 
       const expiredSubs = allSubscriptions.filter(sub => sub.status !== 'Active' || new Date(sub.endDate) < new Date());
 
-      // What they may read is a different question from what they have bought,
-      // and answering both from the subscription list is what made a member with
-      // the run of the library see "0 departments covered".
-      const allowedDomains: string[] = seesWholeLibrary(req.user.role, activeSubs)
-        ? DOMAINS.map((d: any) => d.name)
-        : Array.from(new Set(
-            activeSubs.flatMap(s => {
-              const d = Array.isArray(s.domains) ? s.domains : (s.domains ? JSON.parse(s.domains as string) : []);
-              return d as string[];
-            }).filter(Boolean).map(canonicalOrSelf)   // an older spelling in a subscription is read as its department
-          ));
+      // What they may read is a different question from what they have bought. One answer, from the entitlement resolver: the departments
+      // the account's plan covers, or — with no plan — the ones it chose at registration. Never the whole library by default.
+      const ent = await entitlementFor(req.user, req);
+      const allowedDomains: string[] = ent.all ? DOMAINS.map((d: any) => d.name) : ent.departments;
 
       const free = req.user.role === 'Subscriber' && activeSubs.length === 0;
 
-      // The departments the member chose themselves, which is what the
-      // dashboard's "Departments" figure means. Only names the library knows.
-      const me = await prisma.user.findUnique({ where: { id: req.user.uid }, select: { interestedDomains: true } });
-      const known = new Set(DOMAINS.map((d: any) => d.name));
-      const chosenDepartments: string[] = (Array.isArray(me?.interestedDomains) ? me!.interestedDomains as unknown[] : [])
-        .map(String).map(canonicalOrSelf).filter(n => known.has(n));
+      // The departments the member chose themselves.
+      const chosenDepartments: string[] = ent.selected;
 
-      // What the reader can actually open, counted the way every other screen
-      // counts it. The page used to headline "Accessible items" with the length
-      // of the page of results it had just fetched — twenty, forever, whatever
-      // the library held — and "Departments covered" with the list of
-      // departments the product has, including the ones holding nothing.
-      const scope = seesWholeLibrary(req.user.role, activeSubs) ? undefined : allowedDomains;
+      // What the reader can actually open, counted the way every other screen counts it, from their own departments only.
+      const scope = scopeOf(ent);
       const since12w = new Date(Date.now() - 84 * 864e5);
 
       const [counts, byDepartment, viewedItems, legacyRead, weekRows, deptRows, timeRow] = await Promise.all([
@@ -3695,8 +3722,10 @@ async function startServer() {
         collection: { ...counts, byDepartment },
         /** Departments that actually hold something, not departments that exist. */
         departmentsCovered: byDepartment.length,
-        /** What the member selected; empty when they never chose any. */
-        selectedDepartments: chosenDepartments.length,
+        /** How many departments the account may open (its plan's, or the ones it chose). Zero when the whole catalogue is open: see `entitlement.all`. */
+        selectedDepartments: ent.all ? 0 : ent.departments.length,
+        /** What the account may open, and why. `departments` is the list the department filters offer. */
+        entitlement: { all: ent.all, departments: ent.departments, source: ent.source, selected: chosenDepartments },
         itemsRead: readIds.size,
         readByWeek: (weekRows as any[]).map(r => Number(r.reads)),
         readByDepartment: (deptRows as any[])
@@ -3725,26 +3754,17 @@ async function startServer() {
    */
   app.get("/api/library/trending", authenticateJWT, async (req: any, res) => {
     try {
-      const subs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
-      const whole = seesWholeLibrary(req.user.role, subs);
-      const allowed: string[] = whole ? [] : Array.from(new Set(subs.flatMap(sb => {
-        const d = Array.isArray(sb.domains) ? sb.domains : (sb.domains ? JSON.parse(sb.domains as string) : []);
-        return d as string[];
-      }).filter(Boolean).map(canonicalOrSelf)));
-
-      const me = await prisma.user.findUnique({
-        where: { id: req.user.uid }, select: { interestedDomains: true },
-      });
-      const interested: string[] = Array.isArray(me?.interestedDomains) ? (me!.interestedDomains as string[]) : [];
+      const ent = await entitlementFor(req.user, req);
+      const interested = ent.selected;
       const asked = String(req.query.domains || '').split(',').map(x => x.trim()).filter(Boolean);
 
-      const permitted = (list: string[]) => (allowed.length ? list.filter(d => entitlementCovers(allowed, d)) : list);
+      // Only departments the account may open — whatever was asked for in the URL.
+      const permitted = (list: string[]) => list.filter(d => entitlementAllows(ent, d));
       let departments = permitted(asked.length ? asked : interested);
 
-      // Nothing chosen, or nothing chosen that we hold: fall back to the
-      // deepest departments rather than to an empty panel.
+      // Nothing chosen, or nothing chosen that they may open: fall back to the deepest of THEIR departments, never to the whole library.
       if (!departments.length) {
-        const deep = await collectionByDepartment(allowed.length ? allowed : undefined);
+        const deep = await collectionByDepartment(scopeOf(ent));
         departments = deep.slice(0, 4).map(d => d.name);
       }
       departments = departments.slice(0, 4);
@@ -4055,12 +4075,10 @@ async function startServer() {
   const getUserActiveSubscriptions = async (uid: string, role: string, institutionId?: string | null) => {
     const OR_clauses: any[] = [{ userId: uid }];
     
-    let resolvedInstId = institutionId;
-    if (!resolvedInstId) {
-      // Always look up from DB — JWT may not have institutionId for older tokens
-      const u = await prisma.user.findUnique({ where: { id: uid }, select: { institutionId: true } });
-      if (u?.institutionId) resolvedInstId = u.institutionId;
-    }
+    // The institution comes from the database, never from the token: a token issued before a person was removed from their institution
+    // still names it, and must not keep reaching what that institution subscribed to.
+    const u = await prisma.user.findUnique({ where: { id: uid }, select: { institutionId: true } });
+    const resolvedInstId = u ? u.institutionId : institutionId;
     
     if (resolvedInstId) {
       OR_clauses.push({ institutionId: resolvedInstId });
@@ -4090,60 +4108,62 @@ async function startServer() {
     return subs;
   };
 
-  // Helper to check if a specific content object is accessible based on subscriptions
-  const checkContentAccess = (content: any, userRole: string, activeSubscriptions: any[]) => {
-    // Admins, content managers, and institution librarians see everything they cover
-    if (userRole === 'SuperAdmin' || userRole === 'Admin' || userRole === 'ContentManager') return true;
+  // Narrows a legacy-content query to the account's departments, ANDed with whatever department was asked for. Returns false when
+  // nothing the account may open was asked for — the caller answers with an empty list. Anonymous visitors (ent null) are not narrowed:
+  // the public catalogue is browsable, and its files stay locked.
+  const applyEntitlementToWhere = async (where: any, ent: Entitlement | null, requested: string[]): Promise<boolean> => {
+    if (!ent || ent.all) return true;
+    const narrowed = narrowToEntitlement(ent, requested);
+    if (narrowed === null) return false;
+    where.domain = { in: await deptSpellings.expand(narrowed ?? []) };
+    return true;
+  };
+  // The signed-in account behind an optionally-authenticated request, or null for a visitor.
+  const optionalUser = (req: any): any => {
+    const h = req.headers.authorization;
+    if (!h) return null;
+    try { return jwt.verify(h.split(' ')[1], JWT_SECRET); } catch { return null; }
+  };
 
-    // As above: without a plan, anything may be opened. The clock decides for
-    // how long; this decides what, and the answer is everything.
+  // Whether one content object may be opened. The department is decided by the entitlement resolver (a canonical-name comparison, no
+  // substring guessing, unclassified content never open to a scoped account); a subscription's content-type limits are applied on top.
+  const checkContentAccess = (content: any, ent: Entitlement, activeSubscriptions: any[]) => {
+    if (ent.source === 'staff') return true;
+    if (!entitlementAllows(ent, content.domain)) return false;
+    // On the free preview there is no plan to limit content types: the department is the whole boundary.
     if (!activeSubscriptions.length) return true;
-
     return activeSubscriptions.some(sub => {
-      const d: string[] = Array.isArray(sub.domains)
-        ? sub.domains as string[]
-        : (sub.domains ? JSON.parse(sub.domains as string) : []);
-
-      // If both domains array is empty AND domainName is empty, it's a wildcard (Full Access)
-      // "All Domains" is what a converted quotation writes for a whole-library plan.
-      const hasWildcardDomain = d.length === 0 && (!sub.domainName || /^all domains?$/i.test(String(sub.domainName).trim()));
-      
-      let domainMatch = false;
-      if (hasWildcardDomain) {
-        // Only institutions get wildcard access from an empty subscription,
-        // OR if you want all users to get it, just set to true. Let's assume true for both.
-        domainMatch = true;
-      } else {
-        const safeContentDomain = content.domain ? content.domain.toLowerCase() : "";
-        // "Medical sciences" in a subscription grants "Medical Sciences" content and the other way round,
-        // and so does any listed alias. This only adds matches; the rules below are as they were.
-        domainMatch = entitlementCovers([...d, sub.domainName].filter(Boolean) as string[], content.domain) || d.some(subDomain => {
-          if (!subDomain) return false;
-          const safeSub = subDomain.toLowerCase();
-          return safeSub.includes(safeContentDomain) || safeContentDomain.includes(safeSub);
-        }) || (sub.domainName && (
-          sub.domainName.toLowerCase().includes(safeContentDomain) || 
-          safeContentDomain.includes(sub.domainName.toLowerCase())
-        ));
-      }
-
-      if (!domainMatch) return false;
-
-      // Parse contentTypes array
+      const sd = subscriptionDepartments([sub]);
+      // A plan that lists no departments applies to the account's own; the entitlement check above has already decided the department.
+      if (!sd.all && !sd.unlisted && !entitlementCovers(sd.departments, content.domain)) return false;
       const ct: string[] = Array.isArray(sub.contentTypes)
         ? sub.contentTypes as string[]
         : (sub.contentTypes ? JSON.parse(sub.contentTypes as string) : []);
-
-      // If no contentTypes specified, allow all types for this domain
-      if (ct.length === 0) return true;
-      return ct.includes(content.contentType);
+      // No content types listed means every type in the department.
+      return ct.length === 0 || ct.includes(content.contentType);
     });
   };
+
+  // What one account may open, and why: the departments it selected next to the ones that actually apply. For finding entitlement mismatches.
+  app.get("/api/admin/users/:id/entitlement", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const u = await prisma.user.findUnique({ where: { id: String(req.params.id) }, select: { id: true, role: true, institutionId: true } });
+      if (!u) return res.status(404).json({ error: "User not found" });
+      const e = await loadEntitlement(prisma as any, { uid: u.id, role: u.role, institutionId: u.institutionId });
+      res.json({
+        role: u.role, institutionId: u.institutionId,
+        selectedDepartments: e.selected, selectedCount: e.selected.length,
+        effectiveDepartments: e.all ? 'ALL_DEPARTMENTS' : e.departments, effectiveCount: e.all ? null : e.departments.length,
+        fullCatalogue: e.all, source: e.source, institutionCeiling: e.institutionCeiling,
+      });
+    } catch (err: any) { console.error("admin entitlement:", err?.message); res.status(500).json({ error: "Could not resolve entitlement" }); }
+  });
 
   app.get("/api/user/content-access", authenticateJWT, async (req: any, res) => {
     try {
       // 1. Get all active subscriptions for the user (including institution inheritance)
       const activeSubscriptions = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
+      const ent = await entitlementFor(req.user, req);
 
       // 2. Count what actually exists, across BOTH content datasets.
       //    Content holds the original library; Article/Book hold everything
@@ -4187,7 +4207,8 @@ async function startServer() {
       // Book rows carry no contentType — they are all Books by definition.
       for (const rc of bookCounts)    addTo(rc.domain, 'Books', rc._count.id, 'new');
 
-      const uniqueModules = Array.from(totals.values()).map(t => ({
+      // Only the departments this account may open are listed. The others belong on the subscription screen, not here as locked rows.
+      const uniqueModules = Array.from(totals.values()).filter(t => entitlementAllows(ent, t.domain)).map(t => ({
         id: `${t.domain}_${t.contentType}`,
         domain: t.domain,
         contentType: t.contentType,
@@ -4201,7 +4222,7 @@ async function startServer() {
         const mockContent = { domain: mod.domain, contentType: mod.contentType };
         return {
           ...mod,
-          hasAccess: checkContentAccess(mockContent, req.user.role, activeSubscriptions)
+          hasAccess: checkContentAccess(mockContent, ent, activeSubscriptions)
         };
       });
 
@@ -4223,20 +4244,18 @@ async function startServer() {
   app.get("/api/user/access-scope", authenticateJWT, async (req: any, res) => {
     try {
       const role = req.user.role;
-      const subs = await getUserActiveSubscriptions(req.user.uid, role, req.user.institutionId);
-      if (seesWholeLibrary(role, subs)) {
-        return res.json({ all: true, domains: [], contentTypes: [] });
+      const ent = await entitlementFor(req.user, req);
+      if (ent.all) {
+        return res.json({ all: true, domains: [], contentTypes: [], source: ent.source });
       }
-      const domains = new Set<string>();
+      const subs = await getUserActiveSubscriptions(req.user.uid, role, req.user.institutionId);
       const contentTypes = new Set<string>();
       for (const s of (subs || [])) {
-        const d = Array.isArray(s.domains) ? s.domains : (s.domains ? JSON.parse(s.domains as string) : []);
         const c = Array.isArray(s.contentTypes) ? s.contentTypes : (s.contentTypes ? JSON.parse(s.contentTypes as string) : []);
-        d.forEach((x: string) => x && domains.add(canonicalOrSelf(x)));
         c.forEach((x: string) => x && contentTypes.add(x));
-        if (s.domainName) domains.add(canonicalOrSelf(s.domainName));
       }
-      res.json({ all: false, domains: [...domains], contentTypes: [...contentTypes] });
+      // `domains` is exactly the list the department filters may offer: nothing outside the account's entitlement.
+      res.json({ all: false, domains: ent.departments, contentTypes: [...contentTypes], source: ent.source, selected: ent.selected });
     } catch (e: any) {
       console.error("access-scope error:", e);
       res.status(500).json({ error: "Failed to load access scope" });
@@ -4248,31 +4267,34 @@ async function startServer() {
   app.get("/api/user/available-facets", authenticateJWT, async (req: any, res) => {
     try {
       const role = req.user.role;
+      const ent = await entitlementFor(req.user, req);
       const held = (await getUserActiveSubscriptions(req.user.uid, role, req.user.institutionId)) || [];
-      const isAdmin = seesWholeLibrary(role, held);
+      const isAdmin = ent.all;
       const subs = isAdmin ? [] : held;
 
-      const scopeDomains = new Set<string>(); const scopeTypes = new Set<string>();
+      // Departments are the entitlement's, exactly; a subscription only adds its content-type limits on top.
+      const scopeDomains = new Set<string>(isAdmin ? [] : ent.departments);
+      const scopeTypes = new Set<string>();
       const subOr: any[] = [];
       for (const sub of subs) {
-        const d = Array.isArray(sub.domains) ? sub.domains : (sub.domains ? JSON.parse(sub.domains as string) : []);
         const ct = Array.isArray(sub.contentTypes) ? sub.contentTypes : (sub.contentTypes ? JSON.parse(sub.contentTypes as string) : []);
-        d.forEach((x: string) => x && scopeDomains.add(canonicalOrSelf(x)));
         ct.forEach((x: string) => x && scopeTypes.add(x));
-        if (sub.domainName) scopeDomains.add(canonicalOrSelf(sub.domainName));
-        const cond: any = {}; const dOr: any[] = [];
-        (await deptSpellings.expand(d.filter(Boolean))).forEach((s: string) => dOr.push({ domain: { contains: s, mode: 'insensitive' } }));
-        if (sub.domainName) dOr.push({ domain: { contains: sub.domainName, mode: 'insensitive' } });
-        if (dOr.length) cond.OR = dOr;
+        const sd = subscriptionDepartments([sub]);
+        const cond: any = {};
+        if (!sd.all && !sd.unlisted) cond.domain = { in: await deptSpellings.expand(sd.departments) };
         if (ct.length) cond.contentType = { in: ct };
-        if (Object.keys(cond).length) subOr.push(cond);
+        subOr.push(cond);
       }
 
       // LEGACY unlocked content (My Library) — only depts/types the user actually has content for
       let legacyDepts: string[] = []; let legacyTypes: string[] = [];
-      if (isAdmin || subs.length) {
+      const entSpellings = isAdmin ? [] : await deptSpellings.expand(ent.departments);
+      if (isAdmin || scopeDomains.size) {
         const legacyWhere: any = { status: { not: 'Draft' } };
-        if (!isAdmin && subOr.length) legacyWhere.AND = [{ OR: subOr }];
+        if (!isAdmin) {
+          legacyWhere.domain = { in: entSpellings };
+          if (subOr.length && !subOr.some(c => !c.contentType)) legacyWhere.AND = [{ OR: subOr }];
+        }
         const [dg, cg] = await Promise.all([
           prisma.content.groupBy({ by: ['domain'], where: legacyWhere }),
           prisma.content.groupBy({ by: ['contentType'], where: legacyWhere }),
@@ -4282,7 +4304,7 @@ async function startServer() {
       }
 
       // NEW structured dataset (Journals & Books "New") — Article/Book within the user's scope
-      const domFilter = isAdmin ? {} : { domain: { in: await deptSpellings.expand([...scopeDomains]) } };
+      const domFilter = isAdmin ? {} : { domain: { in: entSpellings } };
       const [aDepts, bDepts, aCount, bCount] = await Promise.all([
         (prisma as any).article.groupBy({ by: ['domain'], where: { status: 'Published', ...domFilter } }),
         (prisma as any).book.groupBy({ by: ['domain'], where: { status: 'Published', ...domFilter } }),
@@ -4293,16 +4315,18 @@ async function startServer() {
       const newDepts = canonicalOrSelfList([...aDepts.map((x: any) => x.domain), ...bDepts.map((x: any) => x.domain)].filter(Boolean));
 
       // ARCHIVED — all published legacy content (browse the whole archive)
+      // The archive is browsed within the account's departments too: its filters never list a department the account does not hold.
+      const archivedWhere: any = { status: { not: 'Draft' }, ...(isAdmin ? {} : { domain: { in: entSpellings } }) };
       const [adg, acg] = await Promise.all([
-        prisma.content.groupBy({ by: ['domain'], where: { status: { not: 'Draft' } } }),
-        prisma.content.groupBy({ by: ['contentType'], where: { status: { not: 'Draft' } } }),
+        prisma.content.groupBy({ by: ['domain'], where: archivedWhere }),
+        prisma.content.groupBy({ by: ['contentType'], where: archivedWhere }),
       ]);
 
       res.json({
         all: isAdmin,
         scope: { domains: [...scopeDomains], contentTypes: [...scopeTypes] },
         legacy: { departments: legacyDepts, contentTypes: legacyTypes },
-        neu: { departments: newDepts, hasArticles: aCount > 0, hasBooks: bCount > 0 && (isAdmin || scopeTypes.has('Books')) },
+        neu: { departments: newDepts, hasArticles: aCount > 0, hasBooks: bCount > 0 && (isAdmin || !subs.length || subs.some(sb => !(Array.isArray(sb.contentTypes) ? sb.contentTypes : []).length) || scopeTypes.has('Books')) },
         archived: { departments: canonicalOrSelfList(adg.map((x: any) => x.domain).filter(Boolean)), contentTypes: acg.map((x: any) => x.contentType).filter(Boolean) },
       });
     } catch (e: any) { console.error("available-facets error:", e); res.status(500).json({ error: "Failed to load facets" }); }
@@ -4330,25 +4354,20 @@ async function startServer() {
         ];
       }
 
-      // Optional subscription scoping: return facets ONLY from the user's UNLOCKED content,
-      // so every subject/tag shown actually yields results when clicked.
-      if (String(req.query.onlyUnlocked) === 'true') {
-        const authHeader = req.headers.authorization;
-        let ud: any = null;
-        if (authHeader) { try { ud = jwt.verify(authHeader.split(' ')[1], JWT_SECRET); } catch { /* ignore */ } }
-        const held = ud ? await getUserActiveSubscriptions(ud.uid, ud.role, ud.institutionId) : [];
-        if (ud && !seesWholeLibrary(ud.role, held)) {
-          const subs = held;
+      // A signed-in account is always held to its own departments, whether or not the page asked for "unlocked only": the server
+      // decides, so dropping the query string cannot widen it. A visitor sees the public catalogue's facets.
+      const ud = optionalUser(req);
+      if (ud) {
+        const ent = await entitlementFor(ud, req);
+        const requested = domain ? String(domain).split(',').map(d => d.trim()).filter(Boolean) : [];
+        if (!(await applyEntitlementToWhere(where, ent, requested))) return res.json({ domains: [], subjects: [], tags: [] });
+        if (String(req.query.onlyUnlocked) === 'true' && !ent.all) {
           const subOr: any[] = [];
-          for (const sub of subs) {
-            const d = Array.isArray(sub.domains) ? sub.domains : (sub.domains ? JSON.parse(sub.domains as string) : []);
+          for (const sub of await getUserActiveSubscriptions(ud.uid, ud.role, ud.institutionId)) {
             const ct = Array.isArray(sub.contentTypes) ? sub.contentTypes : (sub.contentTypes ? JSON.parse(sub.contentTypes as string) : []);
-            const cond: any = {}; const dOr: any[] = [];
-            (await deptSpellings.expand(d.filter(Boolean))).forEach((s: string) => dOr.push({ domain: { contains: s, mode: 'insensitive' } }));
-            if (sub.domainName) dOr.push({ domain: { contains: sub.domainName, mode: 'insensitive' } });
-            if (dOr.length) cond.OR = dOr;
-            if (ct.length) cond.contentType = { in: ct };
-            if (Object.keys(cond).length) subOr.push(cond);
+            if (!ct.length) { subOr.length = 0; break; }
+            const sd = subscriptionDepartments([sub]);
+            subOr.push({ ...(sd.all || sd.unlisted ? {} : { domain: { in: await deptSpellings.expand(sd.departments) } }), contentType: { in: ct } });
           }
           if (subOr.length) { where.AND = where.AND || []; where.AND.push({ OR: subOr }); }
         }
@@ -4454,61 +4473,36 @@ async function startServer() {
         ];
       }
 
-      const authHeader = req.headers.authorization;
-      let userDetails: any = null;
-      if (authHeader) {
-        const token = authHeader.split(' ')[1];
-        try { userDetails = jwt.verify(token, JWT_SECRET); } catch(e) { console.log("JWT Error:", e); }
+      const userDetails: any = optionalUser(req);
+      let ent: Entitlement | null = null;
+
+      if (userDetails) {
+        // A signed-in account is held to its own departments on every request, "unlocked only" or not. A department asked for in the URL
+        // that the account does not hold returns an empty list — it is ANDed with the entitlement, never used in place of it.
+        ent = await entitlementFor(userDetails, req);
+        const requested = domain ? String(domain).split(',').map(d => d.trim()).filter(Boolean) : [];
+        if (!(await applyEntitlementToWhere(where, ent, requested))) {
+          return res.json({ data: [], total: 0, page: parseInt(page as string), limit: take });
+        }
       }
 
-
       if (onlyUnlocked === "true" && userDetails) {
-        const held = await getUserActiveSubscriptions(userDetails.uid, userDetails.role, userDetails.institutionId);
-        if (!seesWholeLibrary(userDetails.role, held)) {
-          const activeSubs = held;
-
+        if (!ent!.all) {
+          // Content-type limits of a plan, within the departments above.
           const subOrConditions: any[] = [];
-          
-          for (const sub of activeSubs) {
-            const d = Array.isArray(sub.domains) ? sub.domains : (sub.domains ? JSON.parse(sub.domains as string) : []);
+          let unrestricted = false;
+          for (const sub of await getUserActiveSubscriptions(userDetails.uid, userDetails.role, userDetails.institutionId)) {
             const ct = Array.isArray(sub.contentTypes) ? sub.contentTypes : (sub.contentTypes ? JSON.parse(sub.contentTypes as string) : []);
-            
-            const condition: any = {};
-            const domainOr: any[] = [];
-            
-            if (d.length > 0) {
-              (await deptSpellings.expand(d.filter(Boolean))).forEach((domainStr: string) => {
-                if (domainStr) domainOr.push({ domain: { contains: domainStr, mode: 'insensitive' } });
-              });
-            }
-            if (sub.domainName) {
-               domainOr.push({ domain: { contains: sub.domainName, mode: 'insensitive' } });
-            }
-            
-            if (domainOr.length > 0) {
-              condition.OR = domainOr;
-            }
-            
-            if (ct.length > 0) {
-              condition.contentType = { in: ct };
-            }
-            
-            if (Object.keys(condition).length === 0) {
-              subOrConditions.push({}); 
-            } else {
-              subOrConditions.push(condition);
-            }
+            if (!ct.length) { unrestricted = true; break; }
+            const sd = subscriptionDepartments([sub]);
+            subOrConditions.push({ ...(sd.all || sd.unlisted ? {} : { domain: { in: await deptSpellings.expand(sd.departments) } }), contentType: { in: ct } });
           }
-          
-          if (subOrConditions.length > 0) {
-            const hasWildcard = subOrConditions.some(c => Object.keys(c).length === 0);
-            if (!hasWildcard) {
-               where.AND = where.AND || [];
-               where.AND.push({ OR: subOrConditions });
-            }
+          if (!unrestricted && subOrConditions.length) {
+            where.AND = where.AND || [];
+            where.AND.push({ OR: subOrConditions });
           }
         }
-        
+
         const [contents, total] = await Promise.all([
           prisma.content.findMany({ where, skip, take, orderBy: listOrder }),
           prisma.content.count({ where })
@@ -4558,7 +4552,7 @@ async function startServer() {
 
       // Map contents and strip URLs for locked items
       const protectedContents = contents.map(c => {
-        const hasAccess = checkContentAccess(c, userDetails.role, activeSubs);
+        const hasAccess = checkContentAccess(c, ent!, activeSubs);
         if (!hasAccess) {
           // Hide sensitive URL and mark locked
           return { ...c, fileUrl: null, locked: true };
@@ -5090,9 +5084,9 @@ async function startServer() {
       if (await emailTaken(prisma, email, me.id)) return res.status(409).json({ code: 'EMAIL_TAKEN', error: "Another account already uses this email address." });
       const updated = await prisma.user.update({ where: { id: me.id }, data: { email, emailVerifiedAt: null } });
       await auditAccount(prisma, req.user, 'EMAIL_CHANGED', { targetUserId: me.id, self: true, fromDomain: me.email.split('@')[1] ?? null, toDomain: email.split('@')[1] ?? null });
-      const started = await startSession({ id: updated.id, email: updated.email, role: updated.role, institutionId: updated.institutionId }, req, { replaceExisting: true });
+      const started = await startSession({ id: updated.id, email: updated.email, role: updated.role, institutionId: updated.institutionId }, req, { replaceExisting: true, revokeAll: true });
       const { password: _, ...profile } = updated;
-      res.json({ ok: true, token: started?.token ?? null, user: profile });
+      res.json({ ok: true, token: 'token' in started ? started.token : null, user: profile });
     } catch (error) {
       console.error("PUT /api/user/email error:", (error as any)?.name || 'error');
       res.status(500).json({ error: "Failed to change email" });
@@ -5524,12 +5518,13 @@ async function startServer() {
    */
   app.get("/api/admin/accounts/summary", authenticateJWT, requireSuperAdmin, async (_req: any, res) => {
     try {
-      const [total, blocked, verified, byRole, cred] = await Promise.all([
+      const [total, blocked, verified, byRole, cred, pendingDeletion] = await Promise.all([
         prisma.user.count(),
-        prisma.user.count({ where: { isBlocked: true } }),
+        prisma.user.count({ where: { isBlocked: true, status: { not: DELETED } } }),
         prisma.user.count({ where: { emailVerifiedAt: { not: null } } }),
         prisma.user.groupBy({ by: ['role'], _count: { _all: true } }),
         prisma.$queryRaw<{ configured: number }[]>`SELECT count(*) FILTER (WHERE password ~ '^\\$2[aby]\\$[0-9]{2}\\$')::int AS configured FROM "User"`,
+        prisma.user.count({ where: { status: PENDING_DELETION } }),
       ]);
       const roles = Object.fromEntries(byRole.map(r => [r.role, r._count._all]));
       const superAdmins = roles.SuperAdmin || 0;
@@ -5537,7 +5532,7 @@ async function startServer() {
       const otherStaff = STAFF_ROLES.filter(r => r !== 'SuperAdmin' && r !== 'Admin').reduce((n, r) => n + (roles[r] || 0), 0);
       res.set('Cache-Control', 'no-store');
       res.json({
-        users: { total, active: total - blocked, blocked, verified, unverified: total - verified },
+        users: { total, active: total - blocked, blocked, pendingDeletion, verified, unverified: total - verified },
         admins: { superAdmins, activeSuperAdmins, admins: roles.Admin || 0, otherStaff },
         roles,
         passwords: { configured: cred[0]?.configured ?? 0, notConfigured: total - (cred[0]?.configured ?? 0) },
@@ -5548,6 +5543,18 @@ async function startServer() {
     }
   });
 
+  /** The account-status filter of the Users screens, as a where clause. One definition, so Everyone and By institution agree. */
+  const accountStatusWhere = (accountStatus: string | null): any => {
+    const w: any = {};
+    if (accountStatus === 'blocked') { w.isBlocked = true; w.status = { not: DELETED }; }
+    if (accountStatus === 'active') { w.isBlocked = false; w.status = { notIn: [PENDING_DELETION, DELETED] }; }
+    // The 48-hour queue, and the people an institution has let go (whether or not their account was kept).
+    if (accountStatus === 'pending_deletion') w.status = PENDING_DELETION;
+    if (accountStatus === 'removed') w.removedByInstitutionId = { not: null };
+    if (accountStatus === 'deleted') w.status = DELETED;
+    return w;
+  };
+
   app.get("/api/admin/users", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
     try {
       const q = req.query;
@@ -5556,8 +5563,7 @@ async function startServer() {
       const where: any = {};
       const role = str(q.role); if (role) where.role = role;
       const accountStatus = str(q.accountStatus);
-      if (accountStatus === 'blocked') where.isBlocked = true;
-      if (accountStatus === 'active') where.isBlocked = false;
+      Object.assign(where, accountStatusWhere(accountStatus));
       const type = str(q.registrantType); if (type) where.registrantType = type;
       const designation = str(q.designation); if (designation) where.designation = designation;
       const state = str(q.state); if (state) where.state = state;
@@ -5594,6 +5600,15 @@ async function startServer() {
       // their college without ever being linked to it.
       const institutionId = str(q.institutionId);
       if (institutionId) where.institutionId = institutionId === 'none' ? null : institutionId;
+      // People an institution has let go, for the Super Admin's By institution view: an audit of who WAS a member. They are not
+      // members now (their institutionId is null, or another institution's), and asking for them restores nothing. Anonymised accounts
+      // are left out unless that status is asked for.
+      const formerOf = str(q.formerOf);
+      if (formerOf) {
+        where.removedByInstitutionId = formerOf;
+        if (!where.status) where.status = { not: DELETED };
+        where.AND = [...(where.AND || []), { OR: [{ institutionId: null }, { institutionId: { not: formerOf } }] }];
+      }
       const org = str(q.org);
       if (org) { where.institutionId = null; where.organization = { equals: org, mode: 'insensitive' }; }
 
@@ -5609,9 +5624,10 @@ async function startServer() {
       const columns = {
         id: true, email: true, displayName: true, organization: true, contact: true,
         whatsapp: true, designation: true, registrantType: true, state: true, country: true,
-        role: true, status: true, isBlocked: true, interestedDomains: true, lastLoginAt: true,
+        role: true, memberRole: true, maxConcurrentSessions: true, status: true, isBlocked: true, interestedDomains: true, lastLoginAt: true,
         signupSource: true, emailVerifiedAt: true, lastReadAt: true, createdAt: true,
         institutionId: true, isDemoAccount: true, demoExpiresAt: true, institutionProfile: true,
+        removedAt: true, deletionScheduledAt: true, removedBy: true, removedByInstitutionId: true, removalReason: true, purgedAt: true,
       };
 
       // The whole answer, not the page of it. Written out in batches so a file
@@ -5619,7 +5635,7 @@ async function startServer() {
       if (str(q.format) === 'csv') {
         const cols = ['Name', 'Email', 'Phone', 'WhatsApp', 'Organisation', 'Registering as',
           'Designation', 'State', 'Country', 'Departments', 'Came from', 'Verified',
-          'Last read', 'Role', 'Status', 'Joined'];
+          'Last read', 'Role', 'Access role', 'Status', 'Joined'];
         const cell = (v: any) => {
           const t = v === null || v === undefined ? '' : String(v);
           return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
@@ -5641,7 +5657,7 @@ async function startServer() {
               u.designation, u.state, u.country,
               Array.isArray(u.interestedDomains) ? (u.interestedDomains as string[]).join('; ') : '',
               u.signupSource || '', u.emailVerifiedAt ? 'yes' : 'no', date(u.lastReadAt),
-              u.role, u.isBlocked ? 'Blocked' : u.status, date(u.createdAt),
+              u.role, withAccessRole(u).accessRole || 'Needs review', u.isBlocked ? 'Blocked' : u.status, date(u.createdAt),
             ].map(cell).join(',') + '\n');
           }
           cursor = batch[batch.length - 1].id;
@@ -5701,17 +5717,35 @@ async function startServer() {
       const liveBy = new Map(liveRows.map(r => [r.userId, {
         loginAt: r.createdAt, lastActivity: r.lastSeenAt, expiresAt: r.expiresAt, device: r.deviceLabel,
       }]));
+      const liveCount = new Map<string, number>();
+      for (const r of liveRows) liveCount.set(r.userId, (liveCount.get(r.userId) || 0) + 1);
 
       // Whether each account has a password it can sign in with: a yes/no decided in the database, so no hash is ever read out.
       const withPassword = await withPasswordCredential(prisma, users.map((u: any) => u.id));
 
+      // Who removed whom, from where: names for the removal queue. Only this screen sees it; the institution never does.
+      const removedRows = users.filter((u: any) => u.removedAt);
+      const removalInst = new Map((await prisma.institution.findMany({ where: { id: { in: [...new Set(removedRows.map((u: any) => u.removedByInstitutionId).filter(Boolean))] as string[] } }, select: { id: true, name: true } })).map(i => [i.id, i.name]));
+      const removalActor = new Map((await prisma.user.findMany({ where: { id: { in: [...new Set(removedRows.map((u: any) => u.removedBy).filter(Boolean))] as string[] } }, select: { id: true, displayName: true, email: true } })).map(a => [a.id, a.displayName || maskEmail(a.email)]));
+
       res.json({
         data: users.map(u => ({
           ...u,
+          ...withAccessRole(u),
           hasPassword: withPassword.has(u.id),
           activeSession: liveBy.get(u.id) || null,
+          activeSessionCount: liveCount.get(u.id) || 0,
+          sessionLimit: effectiveSessionLimit((u as any).maxConcurrentSessions),
           isEmailVerified: !!u.emailVerifiedAt,
           campaign: u.signupSource ? byCode.get(u.signupSource) || null : null,
+          // An account in the removal queue is shown without its address or phone numbers: enough to recognise it, nothing more.
+          ...(isRemovedStatus(u.status) ? { email: maskEmail(u.email), contact: null, whatsapp: null } : {}),
+          removal: u.removedAt ? {
+            removedAt: u.removedAt, scheduledDeletionAt: u.deletionScheduledAt, purgedAt: u.purgedAt, reason: u.removalReason,
+            removedByInstitution: u.removedByInstitutionId ? { id: u.removedByInstitutionId, name: removalInst.get(u.removedByInstitutionId) || 'An institution that no longer exists' } : null,
+            removedBy: u.removedBy ? removalActor.get(u.removedBy) || 'Unknown' : null,
+            graceHours: GRACE_HOURS,
+          } : null,
         })),
         total, page, limit: take,
         counts: {
@@ -5746,7 +5780,7 @@ async function startServer() {
   });
 
   // ── Licensed seats: who in an institution holds its subscription access ──
-  const LICENSED_FULL = { code: "LICENSED_SEAT_LIMIT_REACHED", message: "All licensed user seats are currently assigned.", error: "All licensed user seats are currently assigned." };
+  const LICENSED_FULL = { code: "LICENSED_SEAT_LIMIT_REACHED", message: "No further access can be assigned right now.", error: "No further access can be assigned right now." };
 
   const memberAccessStatus = (seat: any, row: any, member: any) => {
     if (!seat.managed) return 'Not managed';
@@ -5810,7 +5844,7 @@ async function startServer() {
         throw { status: 409, body: {
           ...LICENSED_FULL, available: seat.available ?? 0, requested: toAssign.length,
           ...(toAssign.length > 1 && (seat.available ?? 0) > 0
-            ? { message: `Only ${seat.available} licensed seat${seat.available === 1 ? ' is' : 's are'} available. Reduce your selection or increase the user limit.` } : {}),
+            ? { message: 'Access cannot be assigned to all of the selected members right now. Reduce your selection or contact STM Digital Library support.' } : {}),
         } };
       }
       for (const userId of toAssign) {
@@ -5998,8 +6032,11 @@ async function startServer() {
    * the way in without ever being attached to it. The second kind is a real
    * state of the data, not a tidy one, so it is shown rather than hidden.
    */
-  app.get("/api/admin/users/by-institution", authenticateJWT, requireAdminOrManager, async (_req: any, res: any) => {
+  app.get("/api/admin/users/by-institution", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
     try {
+      const qs = (v: any) => (v === undefined || v === null || v === '' || v === 'all' ? null : String(v));
+      const search = qs(req.query.search)?.slice(0, 120) ?? null;
+      const statusFilter = qs(req.query.accountStatus);
       const counts = (rows: any[], key: string) => {
         const m = new Map<string, number>();
         for (const r of rows) if (r[key]) m.set(r[key], r._count._all);
@@ -6019,9 +6056,11 @@ async function startServer() {
           where: { institutionId: { not: null }, role: 'Institution' },
           select: { id: true, displayName: true, email: true, designation: true, institutionId: true, lastReadAt: true },
         }),
-        prisma.user.groupBy({ by: ['organization'], where: { institutionId: null, organization: { not: null } }, _count: { _all: true } }),
-        prisma.user.groupBy({ by: ['organization'], where: { institutionId: null, organization: { not: null }, emailVerifiedAt: { not: null } }, _count: { _all: true } }),
-        prisma.user.groupBy({ by: ['organization'], where: { institutionId: null, organization: { not: null }, lastReadAt: { not: null } }, _count: { _all: true } }),
+        // Someone an institution removed keeps the institution's name in `organization`, but is not a person who merely typed it:
+        // they are shown under that institution as a former member, so they are not counted here as unlinked.
+        prisma.user.groupBy({ by: ['organization'], where: { institutionId: null, removedAt: null, organization: { not: null } }, _count: { _all: true } }),
+        prisma.user.groupBy({ by: ['organization'], where: { institutionId: null, removedAt: null, organization: { not: null }, emailVerifiedAt: { not: null } }, _count: { _all: true } }),
+        prisma.user.groupBy({ by: ['organization'], where: { institutionId: null, removedAt: null, organization: { not: null }, lastReadAt: { not: null } }, _count: { _all: true } }),
         prisma.user.count({ where: { institutionId: null, OR: [{ organization: null }, { organization: '' }] } }),
       ]);
 
@@ -6055,6 +6094,34 @@ async function startServer() {
       const heldBy = new Map<string, number>();
       for (const h of heldRows) if (h.user.institutionId === h.institutionId) heldBy.set(h.institutionId, (heldBy.get(h.institutionId) || 0) + 1);
 
+      // People each institution removed, from the trail the removal wrote on the account (removedByInstitutionId). Pending deletion is
+      // the 48-hour window; "former" is a person whose membership ended and whose account was kept. Neither is a current member, so
+      // neither is in `members` above, and anyone the institution has since added back is not counted as removed.
+      const removedRows = await prisma.user.findMany({
+        where: { removedByInstitutionId: { not: null }, status: { not: DELETED } },
+        select: { removedByInstitutionId: true, status: true, institutionId: true },
+      });
+      const pendingBy = new Map<string, number>(), formerBy = new Map<string, number>();
+      for (const r of removedRows) {
+        const inst = r.removedByInstitutionId!;
+        if (r.institutionId === inst) continue;
+        const m = r.status === PENDING_DELETION ? pendingBy : formerBy;
+        m.set(inst, (m.get(inst) || 0) + 1);
+      }
+
+      // Searching or filtering by status: only the institutions that hold a match, counting both their members and the people they removed.
+      let matchingInstitutions: Set<string> | null = null;
+      if (search || statusFilter) {
+        const matchWhere: any = accountStatusWhere(statusFilter);
+        if (search) matchWhere.OR = [{ email: { contains: search, mode: 'insensitive' } }, { displayName: { contains: search, mode: 'insensitive' } }];
+        const hits = await prisma.user.findMany({ where: matchWhere, select: { institutionId: true, removedByInstitutionId: true, status: true }, take: 20000 });
+        matchingInstitutions = new Set<string>();
+        for (const h of hits) {
+          if (h.institutionId) matchingInstitutions.add(h.institutionId);
+          if (h.removedByInstitutionId && h.status !== DELETED) matchingInstitutions.add(h.removedByInstitutionId);
+        }
+      }
+
       const byIds = [...new Set(institutions.map((i: any) => i.userAdditionRestrictedBy).filter(Boolean))] as string[];
       const adminNames = new Map((byIds.length
         ? await prisma.user.findMany({ where: { id: { in: byIds } }, select: { id: true, displayName: true, email: true } })
@@ -6078,12 +6145,15 @@ async function startServer() {
           members: N.get(i.id) || 0,
           verified: V.get(i.id) || 0,
           readers: R.get(i.id) || 0,
+          pendingDeletion: pendingBy.get(i.id) || 0,
+          former: formerBy.get(i.id) || 0,
           librarians: (headsBy.get(i.id) || []).map((h: any) => ({
             id: h.id, name: h.displayName, email: h.email, designation: h.designation,
             hasRead: !!h.lastReadAt,
           })),
         }))
-        .filter(g => g.members > 0)
+        .filter(g => g.members > 0 || g.pendingDeletion > 0 || g.former > 0)
+        .filter(g => !matchingInstitutions || matchingInstitutions.has(g.id))
         .sort((a, b) => b.members - a.members || a.name.localeCompare(b.name));
 
       // The same name typed with different capitals is one college.
@@ -6099,12 +6169,13 @@ async function startServer() {
         }
       };
       add(byOrg, 'members'); add(verifiedByOrg, 'verified'); add(readByOrg, 'readers');
-      const typed = [...loose.values()].sort((a, b) => b.members - a.members || a.name.localeCompare(b.name));
+      // A search or a status filter is about institutions' people; the unlinked are left out rather than shown unfiltered.
+      const typed = matchingInstitutions ? [] : [...loose.values()].sort((a, b) => b.members - a.members || a.name.localeCompare(b.name));
 
       res.json({
         groups, typed, solo,
         totals: {
-          institutions: groups.length,
+          institutions: groups.filter(g => g.members > 0).length,
           inInstitutions: groups.reduce((n, g) => n + g.members, 0),
           typed: typed.reduce((n, g) => n + g.members, 0),
           solo,
@@ -6441,6 +6512,18 @@ async function startServer() {
       if (role && !ASSIGNABLE_ROLES.includes(role)) return res.status(400).json({ error: "Invalid role value" });
       if (email && !isValidEmail(email)) return res.status(400).json({ error: "Enter a valid email address." });
 
+      // The simultaneous-login limit: whole number 1-10, or null for the system default. Super Admin only, checked here
+      // and not by hiding the field. It is validated before anything is written, so a bad value changes nothing.
+      let nextSessionLimit: number | null | undefined;
+      if (req.body.maxConcurrentSessions !== undefined) {
+        const parsed = parseSessionLimit(req.body.maxConcurrentSessions);
+        if ('error' in parsed) return res.status(400).json({ code: 'INVALID_SESSION_LIMIT', error: parsed.error });
+        if (parsed.value !== ((existing as any).maxConcurrentSessions ?? null)) {
+          if (req.user?.role !== 'SuperAdmin') return res.status(403).json({ code: 'SUPER_ADMIN_ONLY', error: "Only a Super Admin can change the simultaneous login limit." });
+          nextSessionLimit = parsed.value;
+        }
+      }
+
       if (await guardAccountChange(req, res, existing, { newRole: roleChanged ? role : undefined, sensitive: emailChanged || roleChanged })) return;
       if (roleChanged && await removesLastSuperAdmin(prisma, existing, { role })) return res.status(409).json(LAST_SUPER_ADMIN);
 
@@ -6461,9 +6544,19 @@ async function startServer() {
           ...(organization !== undefined ? { organization } : {}),
           ...(contact !== undefined ? { contact } : {}),
           ...(designation !== undefined ? { designation } : {}),
+          ...(nextSessionLimit !== undefined ? { maxConcurrentSessions: nextSessionLimit } : {}),
           institutionProfile: newInstitutionProfile
         }
       });
+      // Lowering the limit below what is signed in ends nothing: the sessions run out or are signed out on their own,
+      // and nobody new gets in until there is room. Only the old and new values are recorded, never a token.
+      if (nextSessionLimit !== undefined) {
+        await auditAccount(prisma, req.user, 'USER_CONCURRENT_LOGIN_LIMIT_CHANGED', {
+          targetUserId: id, targetRole: existing.role,
+          from: (existing as any).maxConcurrentSessions ?? null, to: nextSessionLimit,
+          effectiveFrom: effectiveSessionLimit((existing as any).maxConcurrentSessions), effectiveTo: effectiveSessionLimit(nextSessionLimit),
+        });
+      }
       // The token carries the email and the role, so the account signs in again to pick the new ones up.
       if (emailChanged || roleChanged) await revokeSessions(prisma, id, id === req.user.uid ? req.user.sid : null);
       if (emailChanged) await auditAccount(prisma, req.user, 'EMAIL_CHANGED', { targetUserId: id, targetRole: existing.role, fromDomain: existing.email.split('@')[1] ?? null, toDomain: email!.split('@')[1] ?? null });
@@ -6750,6 +6843,7 @@ async function startServer() {
   app.get("/api/videos/grouped", authenticateJWT, async (req: any, res) => {
     try {
       const activeSubs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
+      const ent = await entitlementFor(req.user, req);
       
       const videos = await prisma.content.findMany({
         where: { 
@@ -6759,7 +6853,7 @@ async function startServer() {
       });
 
       // Filter by access (reusing existing checkContentAccess logic)
-      const accessibleVideos = videos.filter(v => checkContentAccess(v as any, req.user.role, activeSubs));
+      const accessibleVideos = videos.filter(v => checkContentAccess(v as any, ent, activeSubs));
 
       // Group by domain
       const grouped = accessibleVideos.reduce((acc: any, video: any) => {
@@ -6786,7 +6880,8 @@ async function startServer() {
       }
 
       const activeSubs = await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId);
-      if (!checkContentAccess(content, req.user.role, activeSubs)) {
+      const ent = await entitlementFor(req.user, req);
+      if (!checkContentAccess(content, ent, activeSubs)) {
         return res.status(403).json({ error: "Access denied." });
       }
 
@@ -6816,7 +6911,7 @@ async function startServer() {
           },
           take: 20
         });
-        related = allRelated.filter(v => checkContentAccess(v as any, req.user.role, activeSubs)).slice(0, 10);
+        related = allRelated.filter(v => checkContentAccess(v as any, ent, activeSubs)).slice(0, 10);
       }
 
       res.json({
@@ -6841,15 +6936,18 @@ async function startServer() {
   // ========================
 
   // GET /api/search?q=keyword&domain=X&contentType=Y&page=1&limit=20
-  app.get("/api/search", async (req, res) => {
+  app.get("/api/search", async (req: any, res) => {
     try {
       const { q, domain, contentType, page = "1", limit = "20" } = req.query as Record<string, string>;
+      // A signed-in account searches only its own departments, in the query itself — a keyword match elsewhere is never returned.
+      const scope = await libraryScopeDomains(req);
       const result = await searchContent(prisma, {
         q: q || "",
         domain,
         contentType,
         page: parseInt(page),
         limit: parseInt(limit),
+        allowedDomains: scope === null ? null : await deptSpellings.expand(scope),
       });
       res.json(result);
     } catch (err) {
@@ -9489,26 +9587,13 @@ async function startServer() {
   // Cascading filters: department -> journal -> year -> volume -> issue -> article
   // ==========================================
 
-  // Resolve the departments a request is allowed to see. null = all (admin or no user); [] = none.
+  // Resolve the departments a request is allowed to see. null = all (staff, an explicit all-departments plan, or a visitor browsing the public
+  // catalogue); [] = none. A signed-in account with no plan and no chosen departments gets [] — never "all".
   const libraryScopeDomains = async (req: any): Promise<string[] | null> => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return null;
-    let ud: any = null;
-    try { ud = jwt.verify(authHeader.split(' ')[1], JWT_SECRET); } catch { return null; }
-    if (['SuperAdmin', 'Admin', 'ContentManager'].includes(ud.role)) return null;
-
-    const subs = await getUserActiveSubscriptions(ud.uid, ud.role, ud.institutionId);
-
-    // No plan means the whole library — on the clock, but whole. A plan means
-    // what the plan covers. Nothing is scoped by role.
-    if (!subs.length) return null;
-    const domains = new Set<string>();
-    for (const s of subs) {
-      const d = Array.isArray(s.domains) ? s.domains : (s.domains ? JSON.parse(s.domains as string) : []);
-      d.forEach((x: string) => x && domains.add(canonicalOrSelf(x)));
-      if (s.domainName) domains.add(canonicalOrSelf(s.domainName));
-    }
-    return [...domains];
+    const ud = optionalUser(req);
+    if (!ud) return null;
+    const ent = await entitlementFor(ud, req);
+    return ent.all ? null : ent.departments;
   };
   // Narrows a catalogue query to a department and to what the plan covers. A department is every spelling of it
   // the catalogue holds, so a plan for "Medical sciences" opens "Medical Sciences" rows and the reverse.
@@ -9666,7 +9751,7 @@ async function startServer() {
 
       // Respect what the reader is entitled to see, exactly as the lists do.
       const scope = await libraryScopeDomains(req);
-      if (scope !== null && journal.domain && !entitlementCovers(scope, journal.domain)) {
+      if (scope !== null && !entitlementCovers(scope, journal.domain)) {
         return res.status(403).json({ error: "Not in your subscription" });
       }
 
@@ -9727,7 +9812,7 @@ async function startServer() {
       if (!journal) return res.status(404).json({ error: "Journal not found" });
 
       const scope = await libraryScopeDomains(req);
-      if (scope !== null && journal.domain && !entitlementCovers(scope, journal.domain)) {
+      if (scope !== null && !entitlementCovers(scope, journal.domain)) {
         return res.status(403).json({ error: "Not in your subscription" });
       }
 
@@ -9823,7 +9908,7 @@ async function startServer() {
       if (!article) return res.status(404).json({ error: "Article not found" });
 
       const scope = await libraryScopeDomains(req);
-      if (scope !== null && article.domain && !entitlementCovers(scope, article.domain)) {
+      if (scope !== null && !entitlementCovers(scope, article.domain)) {
         return res.status(403).json({ error: "Not in your subscription" });
       }
 
@@ -9865,7 +9950,7 @@ async function startServer() {
       if (!c) return res.status(404).json({ error: "Record not found" });
 
       const scope = await libraryScopeDomains(req);
-      if (scope !== null && c.domain && !entitlementCovers(scope, c.domain)) {
+      if (scope !== null && !entitlementCovers(scope, c.domain)) {
         return res.status(403).json({ error: "Not in your subscription" });
       }
 
@@ -10348,42 +10433,33 @@ async function startServer() {
         select: { id: true, displayName: true, email: true, createdAt: true },
       });
 
-      // What the subscription actually covers.
+      // What the institution may open: its active subscriptions' departments, or — before it has subscribed — the departments its
+      // administrator chose at registration. One resolver (src/server/entitlements.ts); a missing list is no departments, never all of them.
       const subs = await prisma.subscription.findMany({
         where: { OR: [{ institutionId }, { user: { institutionId } }], status: 'Active' },
         select: { domains: true, domainName: true, endDate: true, contentTypes: true },
       });
-      const domains = new Set<string>();
-      for (const s of subs) {
-        const d = Array.isArray(s.domains) ? s.domains : (s.domains ? JSON.parse(s.domains as string) : []);
-        (d as string[]).forEach(x => x && domains.add(canonicalOrSelf(x)));
-        if (s.domainName) domains.add(canonicalOrSelf(s.domainName));
-      }
-      const covered = [...domains];
+      const instDepts = await loadInstitutionDepartments(prisma as any, institutionId);
+      const covered = instDepts.departments;
+      const fullAccess = instDepts.all;
       const coveredSpellings = covered.length ? await deptSpellings.expand(covered) : [];
       const soonest = subs.map(s => s.endDate).filter(Boolean).sort()[0] ?? null;
       const daysLeft = soonest ? Math.ceil((new Date(soonest).getTime() - Date.now()) / 864e5) : null;
 
-      // The shelf they can reach. An empty domain list is a full-access
-      // subscription, not an empty one.
-      //
-      // Counted from the articles themselves rather than from Journal.articleCount,
-      // a denormalised counter filled by a backfill; where the backfill has not
-      // run it reads zero for every journal, which showed a college "0 journals"
-      // beside 28,748 articles.
-      //
-      // Keyed on journalId. Every published article has one; only 81% carry an
-      // ISSN, so counting distinct ISSNs drops 81 journals and 5,690 articles.
+      // The shelf they can reach, counted from the articles themselves rather than from Journal.articleCount (a denormalised counter
+      // filled by a backfill that reads zero where it has not run). Keyed on journalId: every published article has one, while only 81%
+      // carry an ISSN. Scope is `undefined` (whole catalogue) only for an explicit all-departments plan; an empty list counts nothing.
+      const scopeForCounts: string[] | undefined = fullAccess ? undefined : covered;
       const jWhere: any = {};
       const aWhere: any = { status: 'Published' };
-      if (covered.length) { jWhere.domain = { in: coveredSpellings }; aWhere.domain = { in: coveredSpellings }; }
+      if (!fullAccess) { jWhere.domain = { in: coveredSpellings }; aWhere.domain = { in: coveredSpellings }; }
 
       const since = new Date(Date.now() - 30 * 864e5);
       // The same count as everywhere else, narrowed to what this college covers.
       const [counts, byDeptRows, newJournals, recent, readSubjects, unanswered, readers, spark] = await Promise.all([
-        collectionCounts(covered.length ? covered : undefined),
+        collectionCounts(scopeForCounts),
         // The same breakdown the reader's dashboard draws, from one definition.
-        collectionByDepartment(covered.length ? covered : undefined),
+        collectionByDepartment(scopeForCounts),
         (prisma as any).journal.findMany({
           where: jWhere, orderBy: { createdAt: 'desc' }, take: 5,
           select: { id: true, title: true, issn: true, domain: true, articleCount: true },
@@ -10457,11 +10533,10 @@ async function startServer() {
         },
         subscription: {
           departments: covered,
-          // No plan is not no access — it is the whole library on the free
-          // clock, which is the rule everywhere else and was not the rule here.
-          // This page was telling a librarian that nothing was being held for
-          // their students while the library sat open behind it.
-          fullAccess: covered.length === 0,
+          // Full access only when the plan explicitly grants every department. No departments is not "all of them": it is none.
+          fullAccess,
+          source: instDepts.source,
+          // No plan yet: the departments chosen at registration, on the free preview.
           onFreeAllowance: subs.length === 0,
           endsOn: soonest,
           daysLeft,
@@ -13322,20 +13397,28 @@ async function startServer() {
   /**
    * What a librarian may add.
    *
-   * A closed list of roles, checked here rather than trusted from the form,
-   * because the form is not the only way in. No cap on how many. Students are
-   * the one exception: they belong to Pro, and a free institution is refused
-   * them here — in the single add, the import and an edit alike.
+   * The person's ROLE (Faculty, Researcher, Student) is chosen, never defaulted, and checked
+   * here rather than trusted from the form, because the form is not the only way in. Their
+   * DESIGNATION is a separate, free job title and grants nothing. Students belong to Pro, and
+   * a free institution is refused them here — in the single add, the import and an edit alike.
+   *
+   * `User.role` is a different thing: the technical access class every authorisation reads.
+   * Everyone a librarian adds shares one value of it ('Student'), which is why lists and
+   * entitlement look for it. It says nothing about who the person is, and is not touched here.
    */
   const institutionOnPro = async (req: any, institutionId: string) =>
     (await getUserActiveSubscriptions(req.user.uid, req.user.role, institutionId)).length > 0;
 
   const STUDENT_NEEDS_PRO = 'Students are not allowed to be added on this plan. Upgrade to Pro to add students.';
 
-  const memberRole = (given: any) => {
-    const wanted = String(given || '').trim();
-    return (INSTITUTION_MEMBER_ROLES as readonly string[]).includes(wanted) ? wanted : null;
+  const MEMBER_ROLE_ERROR = {
+    error: `Choose a role: ${ASSIGNABLE_MEMBER_ROLES.join(', ')}.`,
+    code: 'MEMBER_ROLE', allowed: ASSIGNABLE_MEMBER_ROLES,
   };
+
+  /** The role in a request: the one chosen, or, from an older client, the one its designation settles. Never a default. */
+  const requestedMemberRole = (body: any) =>
+    assignableRole(body?.memberRole) ?? (body?.memberRole ? null : assignableRole(roleFromDesignation(body?.designation)));
 
   /**
    * How many users an institution may have, and how many it has.
@@ -13395,10 +13478,8 @@ async function startServer() {
   const seatsFullResponse = (seats: Awaited<ReturnType<typeof institutionSeats>>) => ({
     code: seats.capacity ? 'SEATS_FULL' : 'NEEDS_SUBSCRIPTION',
     error: seats.capacity
-      ? `Your institution has reached its limit of ${seats.capacity.toLocaleString('en-IN')} users. Please contact us to add more.`
+      ? 'Your institution cannot add more users at this time. Please contact STM Digital Library support.'
       : 'Subscribe to at least one department before adding users.',
-    capacity: seats.capacity,
-    used: seats.used,
   });
 
   /** The institution the signed-in librarian runs, or null. */
@@ -13455,7 +13536,7 @@ async function startServer() {
     if (body?.kind === 'seats') {
       // Users are not sold any more. A paid subscription covers up to the limit, and beyond
       // it the answer is a conversation, not a price.
-      return { error: `A subscription covers up to ${MAX_INSTITUTION_USERS.toLocaleString('en-IN')} users. For more, please contact us.`, code: 'CONTACT_US' };
+      return { error: 'Users are not sold separately. Subscription pricing is based on the departments selected. Please contact us with any question.', code: 'CONTACT_US' };
     }
     return { error: 'Unknown purchase.' };
   };
@@ -13475,7 +13556,7 @@ async function startServer() {
         departments,
         seats: { capacity: seats.capacity, used: seats.used, available: seats.available, included: seats.included, extra: seats.extra },
         seatPurchases: seats.purchases.map((p: any) => ({ seats: p.seats, rate: p.rate, startDate: p.startDate, endDate: p.endDate })),
-        pricing: { maxUsers: MAX_INSTITUTION_USERS, gstRate: GST_RATE, departmentRates: DEPARTMENT_RATES },
+        pricing: { gstRate: GST_RATE, departmentRates: DEPARTMENT_RATES },
         allDepartments: DOMAINS.map((d: any) => d.name),
       });
     } catch (err: any) {
@@ -13689,7 +13770,8 @@ async function startServer() {
         include: { subscriptions: true, activities: { include: { content: true } } },
         orderBy: { createdAt: 'desc' }
       });
-      res.json(students);
+      // Never the password hash, and the role as the person would say it.
+      res.json(students.map(({ password: _pw, ...s }: any) => ({ ...s, ...withAccessRole(s) })));
     } catch(err) {
       res.status(500).json({ error: "Failed to fetch students" });
     }
@@ -13705,8 +13787,8 @@ async function startServer() {
         return res.status(400).json({ error: "Name, email and password are required" });
       }
 
-      const existing = await prisma.user.findUnique({ where: { email } });
-      if (existing) return res.status(409).json({ error: "A user with this email already exists" });
+      // Case-insensitively: "Raju@x.com" and "raju@x.com" are one person, and a second row for them is exactly what must never exist.
+      const existing: any = await prisma.user.findFirst({ where: { email: { equals: String(email).trim(), mode: 'insensitive' } } });
 
       const hashed = await bcrypt.hash(password, 10);
 
@@ -13714,16 +13796,15 @@ async function startServer() {
       if (target.error) return res.status(400).json({ error: target.error });
       const institutionName = target.name;
       const targetInstitutionId = target.id;
+      // The one exception to "already exists": this same institution removed them within the last 48 hours and is adding them back.
+      // Their account is still held, so it is reused rather than duplicated.
+      const reusable = !!existing && existing.status === PENDING_DELETION && existing.removedByInstitutionId === targetInstitutionId;
+      if (existing && !reusable) return res.status(409).json({ error: "A user with this email already exists" });
       if (!(await assertInstitutionCanAddUsers(req, res, targetInstitutionId))) return;
 
-      const role = memberRole(designation);
-      if (!role) {
-        return res.status(400).json({
-          error: `Choose a role from the list: ${INSTITUTION_MEMBER_ROLES.join(', ')}.`,
-          code: 'MEMBER_ROLE', allowed: INSTITUTION_MEMBER_ROLES,
-        });
-      }
-      if (PRO_ONLY_MEMBER_ROLES.includes(role) && !(await institutionOnPro(req, targetInstitutionId!))) {
+      const memberRole = requestedMemberRole(req.body);
+      if (!memberRole) return res.status(400).json(MEMBER_ROLE_ERROR);
+      if (PRO_ONLY_ACCESS_ROLES.includes(memberRole) && !(await institutionOnPro(req, targetInstitutionId!))) {
         return res.status(403).json({ error: STUDENT_NEEDS_PRO, code: 'STUDENT_NEEDS_PRO' });
       }
       if (req.user.role === 'Institution') {
@@ -13731,14 +13812,25 @@ async function startServer() {
         if (seats.available !== null && seats.available < 1) return res.status(403).json(seatsFullResponse(seats));
       }
 
+      if (reusable) {
+        const back: any = await reactivateRemovedMember(prisma, existing, {
+          institutionId: targetInstitutionId!, institutionName: institutionName || '', actor: { uid: req.user.uid, email: req.user.email, role: req.user.role },
+          data: { displayName: name, passwordHash: hashed, contact: mobile || null, designation: cleanDesignation(designation), memberRole,
+                  institutionProfile: { branch: branch || '', department: department || '' } },
+        });
+        const { password: _p, ...safeBack } = back;
+        return res.json(safeBack);
+      }
+
       const student = await (prisma as any).user.create({
         data: {
           email,
           password: hashed,
           displayName: name,
-          role: 'Student', // Preserve existing logic
+          role: 'Student', // the technical access class of an institution's member; see the note above memberRole
+          memberRole,
           contact: mobile || null,
-          designation: role,
+          designation: cleanDesignation(designation),
           organization: institutionName,
           institutionId: targetInstitutionId,
           institutionProfile: {
@@ -13783,7 +13875,10 @@ async function startServer() {
       let errorCount = 0;
       const errors = [];
 
-      for (const u of users) {
+      for (const raw of users) {
+        // Header spelling and case are the file's, not ours: "Role" and "role" are one column.
+        const row: any = Object.fromEntries(Object.entries(raw || {}).map(([k, v]) => [String(k).trim().toLowerCase(), v]));
+        const u = { ...row, email: row.email, name: row.name, password: row.password };
         try {
           if (!u.email || !u.name || !u.password) {
             errorCount++;
@@ -13791,20 +13886,24 @@ async function startServer() {
             continue;
           }
 
-          const existing = await prisma.user.findUnique({ where: { email: u.email } });
-          if (existing) {
+          const existing: any = await prisma.user.findFirst({ where: { email: { equals: String(u.email).trim(), mode: 'insensitive' } } });
+          const reusable = !!existing && existing.status === PENDING_DELETION && existing.removedByInstitutionId === targetInstitutionId;
+          if (existing && !reusable) {
             errorCount++;
             errors.push({ email: u.email, error: 'Email already exists' });
             continue;
           }
 
-          const uRole = memberRole(u.designation);
-          if (!uRole) {
+          // A Role column wins; without one the designation must settle it. Otherwise the row is
+          // refused and says why. It is never given a role nobody chose.
+          const resolved = resolveImportRole(row);
+          if ('error' in resolved) {
             errorCount++;
-            errors.push({ email: u.email, error: `Role must be one of: ${INSTITUTION_MEMBER_ROLES.join(', ')}` });
+            errors.push({ email: u.email, error: resolved.error });
             continue;
           }
-          if (PRO_ONLY_MEMBER_ROLES.includes(uRole) && !onPro) {
+          const uRole = resolved.role;
+          if (PRO_ONLY_ACCESS_ROLES.includes(uRole) && !onPro) {
             errorCount++;
             errors.push({ email: u.email, error: STUDENT_NEEDS_PRO });
             continue;
@@ -13812,19 +13911,30 @@ async function startServer() {
 
           if (seatsLeft !== null && seatsLeft < 1) {
             errorCount++;
-            errors.push({ email: u.email, error: 'No user seats left. Your institution has reached its user limit; contact us to add more.' });
+            errors.push({ email: u.email, error: 'Your institution cannot add more users at this time. Please contact STM Digital Library support.' });
             continue;
           }
 
           const hashed = await bcrypt.hash(u.password, 10);
+          if (reusable) {
+            await reactivateRemovedMember(prisma, existing, {
+              institutionId: targetInstitutionId!, institutionName: institutionName || '', actor: { uid: req.user.uid, email: req.user.email, role: req.user.role },
+              data: { displayName: u.name, passwordHash: hashed, contact: u.mobile || null, designation: cleanDesignation(row.designation), memberRole: uRole,
+                      institutionProfile: { branch: u.branch || '', department: u.department || '' } },
+            });
+            successCount++;
+            if (seatsLeft !== null) seatsLeft--;
+            continue;
+          }
           await (prisma as any).user.create({
             data: {
               email: u.email,
               password: hashed,
               displayName: u.name,
-              role: 'Student', // Preserve existing logic
+              role: 'Student', // the technical access class of an institution's member; see the note above memberRole
+              memberRole: uRole,
               contact: u.mobile || null,
-              designation: uRole,
+              designation: cleanDesignation(row.designation),
               organization: institutionName,
               institutionId: targetInstitutionId,
               institutionProfile: {
@@ -13888,6 +13998,7 @@ async function startServer() {
       }
       const { id } = req.params;
       const { displayName, email, contact, designation, branch, department, password } = req.body;
+      const memberRoleGiven = req.body.memberRole !== undefined;
 
       if (email) {
         const taken = await prisma.user.findFirst({ where: { email, id: { not: id } } });
@@ -13906,16 +14017,19 @@ async function startServer() {
         }
       }
 
-      // Only a real change of role is checked, so a member added before the
-      // list existed keeps whatever they were called when their record is saved.
-      if (designation !== undefined && designation !== existing.designation) {
-        const next = memberRole(designation);
-        if (!next) {
-          return res.status(400).json({ error: `Choose a role from the list: ${INSTITUTION_MEMBER_ROLES.join(', ')}.`, code: 'MEMBER_ROLE' });
-        }
-        if (PRO_ONLY_MEMBER_ROLES.includes(next) && existing.institutionId
-            && !(await institutionOnPro(req, existing.institutionId))) {
-          return res.status(403).json({ error: STUDENT_NEEDS_PRO, code: 'STUDENT_NEEDS_PRO' });
+      // Only a real change of role is checked, so a member added before the role existed keeps
+      // what they have when their record is saved. The designation is free text and is never
+      // checked against a list. An account that runs the institution has no role to change here.
+      let nextMemberRole: string | undefined;
+      if (memberRoleGiven && existing.role !== 'Institution') {
+        const next = assignableRole(req.body.memberRole);
+        if (!next) return res.status(400).json(MEMBER_ROLE_ERROR);
+        if (next !== (existing as any).memberRole) {
+          if (PRO_ONLY_ACCESS_ROLES.includes(next) && existing.institutionId
+              && !(await institutionOnPro(req, existing.institutionId))) {
+            return res.status(403).json({ error: STUDENT_NEEDS_PRO, code: 'STUDENT_NEEDS_PRO' });
+          }
+          nextMemberRole = next;
         }
       }
 
@@ -13927,7 +14041,8 @@ async function startServer() {
         ...(displayName ? { displayName } : {}),
         ...(email ? { email } : {}),
         ...(contact !== undefined ? { contact } : {}),
-        ...(designation !== undefined ? { designation } : {}),
+        ...(designation !== undefined ? { designation: cleanDesignation(designation) } : {}),
+        ...(nextMemberRole ? { memberRole: nextMemberRole } : {}),
         institutionProfile: newInstitutionProfile
       };
 
@@ -13946,31 +14061,61 @@ async function startServer() {
     }
   });
 
-  // DELETE /api/institution/students/:id — remove student
+  // DELETE /api/institution/students/:id — remove a user from the institution.
+  //
+  // This is NOT an account deletion. The membership ends at once (listing, seat, access, sessions). The account is scheduled for deletion
+  // in 48 hours only when nothing else keeps it, and a Super Admin can undo that; see src/server/accountRemoval.ts.
   app.delete("/api/institution/students/:id", authenticateJWT, async (req: any, res) => {
     try {
       if (req.user.role !== 'Institution' && req.user.role !== 'SuperAdmin') {
         return res.status(403).json({ error: "Unauthorized" });
       }
-      const { id } = req.params;
-
-      // An Institution may only delete students belonging to its own institution.
+      const target = await prisma.user.findUnique({ where: { id: req.params.id }, select: { id: true, institutionId: true } });
+      if (!target) return res.status(404).json({ error: "User not found" });
+      let institutionId = target.institutionId;
       if (req.user.role === 'Institution') {
-        const callerId = req.user.uid || req.user.id || req.user.userId;
-        const caller = await (prisma as any).user.findUnique({ where: { id: callerId } });
-        const target = await prisma.user.findUnique({ where: { id } });
-        if (!target) return res.status(404).json({ error: "Student not found" });
-        if (!caller?.institutionId || target.institutionId !== caller.institutionId) {
-          return res.status(403).json({ error: "Not your student" });
-        }
+        const caller = await prisma.user.findUnique({ where: { id: req.user.uid || req.user.id || req.user.userId }, select: { institutionId: true } });
+        if (!caller?.institutionId || target.institutionId !== caller.institutionId) return res.status(403).json({ error: "Not your user" });
+        institutionId = caller.institutionId;
       }
-
-      await prisma.user.delete({ where: { id } });
-      res.json({ message: "Student removed" });
-    } catch (err) {
-      res.status(500).json({ error: "Failed to delete student" });
+      if (!institutionId) return res.status(404).json({ error: "User not found" });
+      const r = await removeFromInstitution(prisma, { userId: target.id, institutionId, actor: { uid: req.user.uid, email: req.user.email, role: req.user.role } });
+      // Whether the account is also scheduled is the administrators' business; the institution is only told that its user is removed.
+      res.json({ message: "User removed from your institution.", institutionAccessEnded: true, sessionsEnded: r.sessionsEnded });
+    } catch (err: any) {
+      if (err instanceof RemovalError) return res.status(err.status).json({ error: err.message });
+      console.error('DELETE /api/institution/students error:', err?.message);
+      res.status(500).json({ error: "Could not remove this user" });
     }
   });
+
+  // POST /api/admin/users/:id/cancel-deletion — Super Admin only. Brings back an account that is pending deletion. The institution
+  // membership is restored only when `restoreMembership` is true: re-admitting someone is a separate decision.
+  app.post("/api/admin/users/:id/cancel-deletion", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const r = await cancelDeletion(prisma, { userId: req.params.id, actor: { uid: req.user.uid, email: req.user.email, role: req.user.role }, restoreMembership: req.body?.restoreMembership === true });
+      res.json({ ok: true, ...r });
+    } catch (err: any) {
+      if (err instanceof RemovalError) return res.status(err.status).json({ error: err.message });
+      console.error('cancel-deletion error:', err?.message);
+      res.status(500).json({ error: "Could not cancel the deletion" });
+    }
+  });
+
+  // The purge: every 15 minutes, and once shortly after start-up so a server that was down over the deadline catches up. It re-checks each
+  // account before touching it (a plan bought on day two, an institution that added them back), and reads the server's clock, not a browser's.
+  let purgeRunning = false;
+  const runAccountPurge = async () => {
+    if (purgeRunning) return;
+    purgeRunning = true;
+    try {
+      const r = await purgeDueAccounts(prisma);
+      if (r.examined) console.log(`[account purge] examined ${r.examined}: ${r.deleted} deleted, ${r.cancelled} kept, ${r.failed} failed`);
+    } catch (e: any) { console.error('[account purge] run failed:', e?.name || 'error'); }
+    finally { purgeRunning = false; }
+  };
+  cron.schedule('*/15 * * * *', () => { runAccountPurge(); });
+  setTimeout(() => { runAccountPurge(); }, Number(process.env.ACCOUNT_PURGE_FIRST_RUN_MS) || 90_000);
 
   // ==========================================
   // SYSTEM VALIDATOR (Data Hygiene)

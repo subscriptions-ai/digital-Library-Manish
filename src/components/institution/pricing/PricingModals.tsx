@@ -4,7 +4,7 @@ import { Check, Download, Loader2, Lock, X } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../../contexts/AuthContext';
 import {
-  DEPARTMENT_RATES, GST_RATE, MAX_INSTITUTION_USERS, TERM_MONTHS,
+  DEPARTMENT_RATES, GST_RATE, TERM_MONTHS,
   departmentRate, formatRupees,
 } from '../../../lib/institutionPricing';
 import { COMPANY_DETAILS } from '../../../config';
@@ -203,7 +203,7 @@ export function DepartmentModal({ plan, onClose, onTerms, onPurchased }: {
   return (
     <ModalShell
       title="Premium Institutional Subscription"
-      subtitle={`Choose the departments for full subscribed access. Your institution can add up to ${MAX_INSTITUTION_USERS.toLocaleString('en-IN')} users at no extra charge.`}
+      subtitle="Choose the departments your institution needs for full subscribed access."
       onClose={onClose}
       footer={<>
         <button type="button" onClick={download} disabled={!count || quoting} aria-busy={quoting || undefined} className={btnGhost}>
@@ -250,7 +250,7 @@ export function DepartmentModal({ plan, onClose, onTerms, onPurchased }: {
 
       <div className="mt-4 rounded-lg border border-rule bg-surface-2 px-4 py-3 text-[13px] leading-relaxed text-ink-2">
         This purchase gives your institution full access to the selected departments for {TERM_MONTHS} months.{' '}
-        Users are not charged for: your institution can have up to {MAX_INSTITUTION_USERS.toLocaleString('en-IN')} of them.
+        Pricing is based on the departments selected.
       </div>
       <Disclaimer onTerms={onTerms}>
         *Department rate: {departmentRateLine()}. {gstPct}% GST extra.
@@ -261,16 +261,15 @@ export function DepartmentModal({ plan, onClose, onTerms, onPurchased }: {
 
 /* ─────────────────────────────── User limit ─────────────────────────────── */
 
-/** Shown when an institution has reached its user limit: there is no price, only a conversation. */
+/** Shown when the institution cannot add more users just now: there is no price, only a conversation. */
 export function UserLimitModal({ onClose }: { onClose: () => void }) {
-  const limit = MAX_INSTITUTION_USERS.toLocaleString('en-IN');
   return (
-    <ModalShell title={`Need more than ${limit} users?`}
-      subtitle={`A paid subscription covers up to ${limit} users at no extra charge.`}
+    <ModalShell title="Add more users"
+      subtitle="Your institution cannot add more users at this time."
       onClose={onClose}
       footer={<button type="button" onClick={onClose} className={btnPrimary}>Close</button>}>
       <p className="text-sm leading-relaxed text-ink-2">
-        If your institution needs more than {limit} users, please contact us and we will arrange it with you.
+        Existing users and library access are not affected. Please contact us and we will help you add more.
       </p>
       <ul className="mt-4 space-y-2 rounded-lg border border-rule bg-surface-2 px-4 py-3 text-[13px] text-ink">
         <li>Email: <a className="font-semibold text-accent underline" href={`mailto:${COMPANY_DETAILS.email}`}>{COMPANY_DETAILS.email}</a></li>
@@ -300,13 +299,13 @@ export function TermsModal({ onClose }: { onClose: () => void }) {
           holds in total: {departmentRateLine()}. Adding departments later brings the new ones in at the rate for your
           new total. Applicable GST ({gstPct}%) is extra.</p>
         <H>2. Users</H>
-        <p>Users are not charged for. A paid subscription covers up to {MAX_INSTITUTION_USERS.toLocaleString('en-IN')} users in your
-          institution, you included. If you need more, please contact us at {COMPANY_DETAILS.email}.</p>
+        <p>Users are not priced. Subscription pricing is based on the departments selected. You can manage your
+          institution's users from the User Management dashboard, and write to {COMPANY_DETAILS.email} with any question.</p>
         <H>3. Term</H>
         <p>Every purchase runs {TERM_MONTHS} months from the day it is paid for.</p>
-        <H>4. Who counts as a user</H>
-        <p>Every active member of your institution, you included, counts towards the limit. Suspending a member frees their place;
-          restoring them takes one again.</p>
+        <H>4. Members</H>
+        <p>Members you add inherit access to the departments your institution has subscribed to, under the same rules as the
+          institution. Suspending a member stops their access; restoring them brings it back.</p>
         <H>5. Price before payment</H>
         <p>The rate, GST and total payable are shown before you pay, and the amount shown is the amount charged.
           Usage analytics describe platform activity and are not a measure of anyone's academic performance.</p>

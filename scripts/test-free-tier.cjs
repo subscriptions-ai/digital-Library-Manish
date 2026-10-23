@@ -31,6 +31,13 @@ const JOIN_EMAIL = 'free-join-test@example.invalid';
 const PASSWORD = 'Test-Clock-9f2a!';
 const MIN = 60_000;
 
+// The server binds every token to a session row (a token with no live session is refused), so a forged token needs one too.
+const sign = async (claims, exp = '1h') => {
+  const sid = 'sid-freetier-' + Math.random().toString(36).slice(2);
+  await p.userSession.create({ data: { userId: claims.uid, sessionId: sid, expiresAt: new Date(Date.now() + 3600_000) } });
+  return jwt.sign({ ...claims, sid }, SECRET, { expiresIn: exp });
+};
+
 const G = '\x1b[32m', R = '\x1b[31m', D = '\x1b[2m', O = '\x1b[0m';
 let pass = 0; const failures = [];
 const ok = (n, d = '') => { pass++; console.log(`  ${G}pass${O}  ${n}${d ? D + '  ' + d + O : ''}`); };
@@ -84,9 +91,11 @@ const completed = async (count, holdEndedMinutesAgo) => {
 (async () => {
   console.log(`\nThe free member's clock, against ${BASE}\n${'─'.repeat(64)}`);
 
-  const article = await p.article.findFirst({
-    where: { status: 'Published', pdfUrl: { not: null } }, select: { id: true },
+  // The test member chose Nursing and Law, and a member can only open what they chose — so the article it reads is filed under one of them.
+  let article = await p.article.findFirst({
+    where: { status: 'Published', pdfUrl: { not: null }, domain: { in: ['Nursing', 'Law'] } }, select: { id: true },
   });
+  if (!article) article = await p.article.create({ data: { title: '__free-clock-test__', domain: 'Law', status: 'Published', pdfUrl: '/free-clock-test.pdf' }, select: { id: true } });
   if (!article) { console.log('No readable article to open — nothing to test against.'); return; }
 
   await p.user.deleteMany({ where: { email: EMAIL } });
@@ -97,7 +106,7 @@ const completed = async (count, holdEndedMinutesAgo) => {
       interestedDomains: ['Nursing', 'Law'],
     },
   });
-  const token = jwt.sign({ uid: user.id, email: EMAIL, role: 'Subscriber' }, SECRET, { expiresIn: '1h' });
+  let token = await sign({ uid: user.id, email: EMAIL, role: 'Subscriber' });
   const view = () => get(`/api/content/${article.id}/view`, token);
 
   // ── joining ───────────────────────────────────────────────────────────────
@@ -178,9 +187,11 @@ const completed = async (count, holdEndedMinutesAgo) => {
     is('asking the time did not start it', after, 0);
   }
   {
+    await p.userSession.deleteMany({ where: { userId: user.id } });       // one live session at a time: the forged one gives way to the real sign-in
     const r = await post('/api/auth/login', null, { email: EMAIL, password: PASSWORD });
     if (r.status !== 200) bad('signing in works', `HTTP ${r.status}`);
     else {
+      token = r.body?.token || token;
       await new Promise(r2 => setTimeout(r2, 400));    // the clock starts alongside the reply
       const a = await get('/api/me/allowance', token);
       is('signing in starts the clock', a.body?.state, 'running');
@@ -244,13 +255,16 @@ const completed = async (count, holdEndedMinutesAgo) => {
     const row = await p.freeSession.findFirst({ where: { userId: user.id } });
     is('the clock is stopped', row.runningSince, null);
     is('and the ten minutes used are banked', Math.round(row.usedMs / MIN), 10);
+    // Signing out ends the session, so the old token is dead by design; signing back in resumes with what was left.
+    const back = await post('/api/auth/login', null, { email: EMAIL, password: PASSWORD });
+    token = back.body?.token || token;
     const a = await get('/api/me/allowance', token);
-    is('twenty are kept for them', [a.body?.state, Math.round(a.body?.remainingMs / MIN)], ['paused', 20]);
+    is('twenty are kept for them', Math.round(a.body?.remainingMs / MIN), 20);
   }
   {
     // Signing out must not become a way to read for nothing.
     const r = await view();
-    is('reading with a kept token starts it again', r.status, 200);
+    is('reading after signing back in starts it again', r.status, 200);
     const row = await p.freeSession.findFirst({ where: { userId: user.id } });
     row.runningSince ? ok('the clock is running again') : bad('the clock is running again', 'still stopped');
   }
@@ -281,7 +295,7 @@ const completed = async (count, holdEndedMinutesAgo) => {
     });
     if (!student) console.log(`  ${D}skip  institution members — none to test with${O}`);
     else {
-      const st = jwt.sign({ uid: student.id, email: student.email, role: 'Student', institutionId: student.institutionId }, SECRET, { expiresIn: '1h' });
+      const st = await sign({ uid: student.id, email: student.email, role: 'Student', institutionId: student.institutionId });
 
       // The rule is the plan, not the role. A college with a plan running keeps
       // its people off the clock; a college whose plan has lapsed does not
@@ -336,7 +350,7 @@ const completed = async (count, holdEndedMinutesAgo) => {
     });
     if (!salesUser) console.log(`  ${D}skip  the sales team sees it — no sales user to test with${O}`);
     else {
-      const st = jwt.sign({ uid: salesUser.id, email: salesUser.email, role: salesUser.role }, SECRET, { expiresIn: '1h' });
+      const st = await sign({ uid: salesUser.id, email: salesUser.email, role: salesUser.role });
       const list = await get('/api/sales/pro-applications?status=Pending', st);
       const found = (list.body?.applications || []).some(a => a.email === EMAIL);
       is('the sales team sees it without it being assigned', [list.status, found], [200, true]);
@@ -344,7 +358,7 @@ const completed = async (count, holdEndedMinutesAgo) => {
 
     // Approving is the existing flow untouched; what it produces must lift the clock.
     const admin = await p.user.findFirst({ where: { role: 'SuperAdmin' }, select: { id: true, email: true, role: true } });
-    const at = jwt.sign({ uid: admin.id, email: admin.email, role: 'SuperAdmin' }, SECRET, { expiresIn: '1h' });
+    const at = await sign({ uid: admin.id, email: admin.email, role: 'SuperAdmin' });
     await completed(4, 1);                               // out of time, if it applied
     const approved = await post(`/api/admin/subscription-requests/${req.id}/approve`, at, {});
     is('an administrator can approve it', approved.status, 200);
@@ -386,42 +400,46 @@ const completed = async (count, holdEndedMinutesAgo) => {
 
   console.log('\nWhat a member may see');
   {
-    // Every one of these scoped by the member's domains, and a free member has
-    // none — so each answered "nothing", and the dashboard of somebody with the
-    // run of the library read 0 accessible items, 0 departments, no content
-    // found. Asking each of them again is the only way that class stays fixed.
+    // A free member opens the departments they chose when they registered — Nursing and Law here — and nothing else. The clock limits time;
+    // the department list limits subject. (This used to assert the whole library for anyone without a plan.)
     await p.subscription.deleteMany({ where: { userId: user.id } });
-    const a = await get('/api/library/articles?limit=5', token);
-    const all = await get('/api/library/articles?limit=5', null);
-    is('the new catalogue is whole', a.body?.total, all.body?.total);
+    const mine = ['Law', 'Nursing'];
+    const all = await get('/api/library/articles?limit=50', null);
+    const a = await get('/api/library/articles?limit=50', token);
+    (a.body?.total > 0 && a.body.total < all.body?.total)
+      ? ok('the new catalogue is narrowed to their departments', `${a.body.total} of ${all.body.total}`)
+      : bad('the new catalogue is narrowed to their departments', `${a.body?.total} of ${all.body?.total}`);
+    is('and every article is in one of them',
+      (a.body?.data || a.body?.articles || []).every(x => mine.includes(x.domain)), true);
+
+    const other = await get('/api/library/articles?limit=5&domain=Computer%20%2F%20IT', token);
+    is('asking for a department they do not hold returns nothing', other.body?.total ?? 0, 0);
 
     const scope = await get('/api/user/access-scope', token);
-    is('their access is not a list of departments', scope.body?.all, true);
+    is('their access is exactly the departments they chose', [scope.body?.all, [...(scope.body?.domains || [])].sort()], [false, mine]);
 
     const dash = await get('/api/user/dashboard', token);
-    (dash.body?.allowedDomains?.length > 0)
-      ? ok('the dashboard covers departments', `${dash.body.allowedDomains.length}`)
-      : bad('the dashboard covers departments', 'none');
-    is('and names the membership', dash.body?.planName, 'Free membership');
+    is('the dashboard covers those departments and no others', [dash.body?.allowedDomains?.slice().sort(), dash.body?.selectedDepartments], [mine, 2]);
+    (dash.body?.collection?.total > 0 && dash.body.collection.byDepartment.every(r => mine.includes(r.name)))
+      ? ok('"open to you" counts only their departments', `${dash.body.collection.total}`)
+      : bad('"open to you" counts only their departments', JSON.stringify(dash.body?.collection).slice(0, 120));
+    is('and names the membership', dash.body?.planName, 'Free Subscription');
 
     const facets = await get('/api/user/available-facets', token);
-    ((facets.body?.archived?.departments?.length || facets.body?.neu?.departments?.length) > 0)
-      ? ok('the filters offer departments')
-      : bad('the filters offer departments', JSON.stringify(facets.body).slice(0, 120));
+    const offered = [...(facets.body?.archived?.departments || []), ...(facets.body?.neu?.departments || [])];
+    is('the filters offer only departments they hold', offered.every(d => mine.includes(d)), true);
 
-    const filters = await get('/api/content/filters?1=1&onlyUnlocked=true', token);
-    ((filters.body?.subjects?.length || 0) + (filters.body?.tags?.length || 0) > 0)
-      ? ok('the archived filters are not empty')
-      : bad('the archived filters are not empty', JSON.stringify(filters.body).slice(0, 120));
+    const filters = await get('/api/content/filters?1=1', token);
+    is('the archived filters list only their departments', (filters.body?.domains || []).every(d => mine.includes(d)), true);
 
-    const list = await get('/api/content/list?onlyUnlocked=true&limit=5', token);
-    (list.body?.total > 0)
-      ? ok('the archived shelf is not empty', `${list.body.total} items`)
-      : bad('the archived shelf is not empty', 'nothing returned');
+    const list = await get('/api/content/list?limit=50', token);
+    is('the archived shelf holds only their departments', (list.body?.data || []).every(c => mine.includes(c.domain)), true);
   }
 })()
   .catch(e => bad('the run itself', String(e?.message || e)))
   .finally(async () => {
+    await p.article.deleteMany({ where: { title: '__free-clock-test__' } }).catch(() => {});
+    await p.userSession.deleteMany({ where: { sessionId: { startsWith: 'sid-freetier-' } } }).catch(() => {});
     if (joined) {
       // A qualifying designation creates an institution to be the librarian of,
       // so the tidy-up has to take that with it.

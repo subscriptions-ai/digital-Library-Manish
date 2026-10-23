@@ -14,6 +14,7 @@ export function Login() {
   const [showPassword, setShowPassword] = useState(false);
   // Set when the server says this account is already signed in elsewhere.
   const [sessionElsewhere, setSessionElsewhere] = useState(false);
+  const [limitReached, setLimitReached] = useState(false);
 
   // Forgot password state
   const [showForgotModal, setShowForgotModal] = useState(false);
@@ -39,6 +40,7 @@ export function Login() {
   const handleLogin = async (e: React.FormEvent, replaceExisting = false) => {
     e.preventDefault();
     setSessionElsewhere(false);
+    setLimitReached(false);
     if (!email || !password) {
       toast.error('Please fill in all fields');
       return;
@@ -59,6 +61,7 @@ export function Login() {
       // and it will redirect if admin. Or better, check current profile if available.
     } catch (error: any) {
       if (error?.code === 'ACTIVE_SESSION_EXISTS') setSessionElsewhere(true);
+      else if (error?.code === 'CONCURRENT_LOGIN_LIMIT_REACHED') setLimitReached(true);
       else toast.error(friendlyError(error, 'We could not sign you in. Please check your email and password and try again.'));
     } finally {
       setLoading(false);
@@ -224,6 +227,15 @@ export function Login() {
                   Sign out the other session and sign in here
                 </Button>
                 <p className="mt-2 text-xs text-muted">Uses the password you entered above.</p>
+              </div>
+            )}
+            {limitReached && (
+              <div role="alert" className="rounded-lg border border-caution/30 bg-caution-soft p-4 text-sm text-ink-2">
+                <p className="flex items-center gap-2 font-semibold text-ink">
+                  <AlertTriangle size={16} className="shrink-0 text-caution" aria-hidden="true" />
+                  Login limit reached
+                </p>
+                <p className="mt-1">This account is already signed in on the maximum number of allowed devices. Please sign out from another device or contact the administrator.</p>
               </div>
             )}
             <Button type="submit" variant="brand" size="lg" block loading={loading}>

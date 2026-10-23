@@ -6,9 +6,8 @@ import {
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { INSTITUTION_MEMBER_ROLES, PRO_ONLY_MEMBER_ROLES } from '../../constants';
+import { ASSIGNABLE_MEMBER_ROLES, DESIGNATION_SUGGESTIONS, MAX_DESIGNATION_LENGTH, PRO_ONLY_ACCESS_ROLES } from '../../lib/memberRoles';
 import { usePricing } from './pricing/PricingContext';
-import { seatsLabel } from './pricing/PlanWidgets';
 import { LicensedAccessPanel } from '../LicensedAccessPanel';
 import { Button, ConfirmDialog, Dialog, EmptyState, Field, SkeletonRows, Spinner, StatusBadge, friendlyError } from '../ui';
 
@@ -32,8 +31,8 @@ function RolePicker({ value, onChange, onFree }: {
 }) {
   return (
     <div className="flex flex-wrap gap-1.5">
-      {INSTITUTION_MEMBER_ROLES.map(r => {
-        const locked = onFree && PRO_ONLY_MEMBER_ROLES.includes(r);
+      {ASSIGNABLE_MEMBER_ROLES.map(r => {
+        const locked = onFree && PRO_ONLY_ACCESS_ROLES.includes(r);
         const on = value === r;
         return (
           <span key={r} className="role-chip relative">
@@ -96,7 +95,7 @@ export function InstitutionStudentManager() {
 
   // Add modal
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newStudent, setNewStudent] = useState({ name: '', email: '', password: '', mobile: '', designation: '', branch: '', department: '' });
+  const [newStudent, setNewStudent] = useState({ name: '', email: '', password: '', mobile: '', memberRole: '', designation: '', branch: '', department: '' });
   const [addLoading, setAddLoading] = useState(false);
 
   // Bulk import
@@ -107,7 +106,7 @@ export function InstitutionStudentManager() {
 
   // Edit modal
   const [editStudent, setEditStudent] = useState<any | null>(null);
-  const [editForm, setEditForm] = useState({ displayName: '', email: '', contact: '', designation: '', branch: '', department: '', password: '' });
+  const [editForm, setEditForm] = useState({ displayName: '', email: '', contact: '', memberRole: '', designation: '', branch: '', department: '', password: '' });
   const [editSaving, setEditSaving] = useState(false);
 
   // Delete confirm
@@ -144,8 +143,8 @@ export function InstitutionStudentManager() {
 
   /**
    * Whether there is room for one more person, asked before a form opens rather than
-   * after it is filled in. No subscription opens the department window; a full house
-   * says so and shows who to contact.
+   * after it is filled in. No subscription opens the department window; if the account
+   * cannot take another user it says so, without a number, and shows who to contact.
    */
   const haveSeat = (_then?: () => void): boolean => {
     if (!plan || plan.unlimitedSeats || plan.seats.capacity == null) return true;
@@ -155,7 +154,7 @@ export function InstitutionStudentManager() {
       return false;
     }
     if ((plan.seats.available ?? 0) < 1) {
-      toast(`Your institution has reached its limit of ${plan.seats.capacity.toLocaleString('en-IN')} users.`);
+      toast('Your institution cannot add more users at this time. Please contact STM Digital Library support.');
       pricing?.openUserLimit();
       return false;
     }
@@ -175,7 +174,7 @@ export function InstitutionStudentManager() {
       return true;
     }
     if (data?.code === 'SEATS_FULL') {
-      toast.error(data.error || 'Your institution has reached its user limit.');
+      toast.error(data.error || 'Your institution cannot add more users at this time. Please contact STM Digital Library support.');
       pricing?.openUserLimit();
       return true;
     }
@@ -195,7 +194,7 @@ export function InstitutionStudentManager() {
   /* ── ADD STUDENT ── */
   const handleAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newStudent.designation) { toast.error('Choose a role'); return; }
+    if (!newStudent.memberRole) { toast.error('Choose a role'); return; }
     setAddLoading(true);
     try {
       const res = await fetch('/api/institution/students', {
@@ -212,7 +211,7 @@ export function InstitutionStudentManager() {
       }
       toast.success('User added');
       setShowAddModal(false);
-      setNewStudent({ name: '', email: '', password: '', mobile: '', designation: '', branch: '', department: '' });
+      setNewStudent({ name: '', email: '', password: '', mobile: '', memberRole: '', designation: '', branch: '', department: '' });
       fetchStudents();
       pricing?.reload();
     } catch (err: any) {
@@ -229,6 +228,7 @@ export function InstitutionStudentManager() {
       displayName: student.displayName || '', 
       email: student.email || '',
       contact: student.contact || '',
+      memberRole: (ASSIGNABLE_MEMBER_ROLES as readonly string[]).includes(student.accessRole) ? student.accessRole : '',
       designation: student.designation || '',
       branch: student.institutionProfile?.branch || '',
       department: student.institutionProfile?.department || '',
@@ -243,7 +243,8 @@ export function InstitutionStudentManager() {
       const res = await fetch(`/api/institution/students/${editStudent.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...authHeader() },
-        body: JSON.stringify(editForm),
+        // The role is sent only once there is one to send: an unclassified member stays unclassified until somebody chooses.
+        body: JSON.stringify({ ...editForm, memberRole: editForm.memberRole || undefined }),
       });
       let data: any = {};
       try { data = await res.json(); } catch {}
@@ -258,7 +259,7 @@ export function InstitutionStudentManager() {
     }
   };
 
-  /* ── DELETE STUDENT ── */
+  /* ── REMOVE FROM INSTITUTION (not an account deletion: see src/server/accountRemoval.ts) ── */
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setDeleteLoading(true);
@@ -267,13 +268,22 @@ export function InstitutionStudentManager() {
         method: 'DELETE',
         headers: authHeader(),
       });
-      if (!res.ok) throw new Error('Could not delete user');
-      toast.success(`"${deleteTarget.displayName || deleteTarget.email}" removed`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error || 'Could not remove this user');
+      }
+      toast.success(
+        <span>
+          <span className="block font-semibold">User removed from your institution.</span>
+          <span className="block text-xs opacity-80">Their institutional access has ended. Eligible account data is scheduled for deletion within 48 hours.</span>
+        </span>,
+        { duration: 7000 },
+      );
       setDeleteTarget(null);
       fetchStudents();
       pricing?.reload();
     } catch (err: any) {
-      toast.error(friendlyError(err, 'Could not delete user'));
+      toast.error(friendlyError(err, 'Could not remove this user'));
     } finally {
       setDeleteLoading(false);
     }
@@ -315,6 +325,9 @@ export function InstitutionStudentManager() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
+      <datalist id="designation-suggestions">
+        {DESIGNATION_SUGGESTIONS.map(d => <option key={d} value={d} />)}
+      </datalist>
       {/* User Addition Restriction: whether new users may be added. It is not
           the licensed-seat count below, and it never touches existing users. */}
       {addRestricted && (
@@ -343,26 +356,11 @@ export function InstitutionStudentManager() {
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2.5">
             <h1 className="type-page-title text-ink">User Directory</h1>
-            {plan && (plan.hasSubscription || plan.unlimitedSeats) && (
-              <button
-                type="button"
-                onClick={() => (plan.unlimitedSeats ? undefined : pricing?.openUserLimit())}
-                title={plan.unlimitedSeats ? 'Your current plan has no cap on users' : 'Every active member, you included, counts towards the limit. Click for more.'}
-                className={`badge tnum ${
-                  !plan.unlimitedSeats && (plan.seats.available ?? 0) < 1
-                    ? 'badge-caution'
-                    : 'badge-accent'} ${plan.unlimitedSeats ? 'cursor-default' : 'cursor-pointer hover:border-accent'}`}
-              >
-                {plan.unlimitedSeats ? 'Users: Unlimited' : `Users: ${seatsLabel(plan)}`}
-              </button>
-            )}
           </div>
           <p className="mt-1 text-sm text-muted">
-            {!plan ? 'Everyone you have added to this institution.'
-              : !plan.hasSubscription ? 'Subscribe to at least one Premium department before adding users.'
-              : plan.unlimitedSeats ? 'Everyone you have added to this institution.'
-              : (plan.seats.available ?? 0) < 1 ? 'You have reached your user limit. Suspend someone to free a place, or contact us for more.'
-              : `Everyone you have added to this institution — room for ${Number(plan.seats.available).toLocaleString('en-IN')} more.`}
+            {plan && !plan.hasSubscription
+              ? 'Subscribe to at least one Premium department before adding users.'
+              : 'Everyone you have added to this institution.'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -405,7 +403,7 @@ export function InstitutionStudentManager() {
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
           <span className="min-w-0">
             <span className="block text-sm font-semibold text-ink">Manage Subscription Access</span>
-            <span className="mt-0.5 block text-xs text-muted">Who holds a licensed seat and can read subscribed content</span>
+            <span className="mt-0.5 block text-xs text-muted">Who has access to read subscribed content</span>
           </span>
           <ChevronDown size={18} className="shrink-0 text-muted transition-transform duration-200 group-open:rotate-180" aria-hidden="true" />
         </summary>
@@ -419,6 +417,7 @@ export function InstitutionStudentManager() {
             <thead>
               <tr>
                 <th scope="col">User</th>
+                <th scope="col">Role</th>
                 <th scope="col">Designation</th>
                 <th scope="col">Status</th>
                 <th scope="col" className="text-right">Actions</th>
@@ -426,11 +425,11 @@ export function InstitutionStudentManager() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={4} className="py-6">
+                <tr><td colSpan={5} className="py-6">
                   <SkeletonRows rows={4} />
                 </td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={4} className="p-0">
+                <tr><td colSpan={5} className="p-0">
                   <EmptyState icon={Users} title="No users found"
                     description={search ? 'No one matches this search. Try another name or email.' : 'Users you add appear here.'}
                     action={!search && !addRestricted ? <Button size="sm" onClick={openAdd}><Plus size={16} aria-hidden="true" /> Add User</Button> : undefined} />
@@ -453,7 +452,12 @@ export function InstitutionStudentManager() {
                       </div>
                     </td>
                     <td>
-                      <span className="badge badge-neutral">{student.designation || 'Student'}</span>
+                      {student.accessRole
+                        ? <span className="badge badge-accent" title={student.accessRoleSource === 'designation' ? 'Settled from the designation. Edit the user to confirm it.' : undefined}>{student.accessRole}</span>
+                        : <span className="badge badge-caution" title="No role has been chosen. Edit the user to choose one.">Needs review</span>}
+                    </td>
+                    <td>
+                      <span className="text-sm text-ink-2">{student.designation || '—'}</span>
                     </td>
                     <td>
                       <StatusBadge status={student.isBlocked ? 'suspended' : 'active'} />
@@ -473,7 +477,7 @@ export function InstitutionStudentManager() {
                           {student.isBlocked ? <ShieldCheck size={16} aria-hidden="true" /> : <ShieldAlert size={16} aria-hidden="true" />}
                         </button>
                         <button type="button" onClick={() => setDeleteTarget(student)}
-                          className="btn btn-ghost btn-sm btn-icon hover:bg-alarm-soft hover:text-alarm" title="Delete" aria-label={`Delete ${name}`}>
+                          className="btn btn-ghost btn-sm btn-icon hover:bg-alarm-soft hover:text-alarm" title="Remove from institution" aria-label={`Remove ${name} from institution`}>
                           <Trash2 size={16} aria-hidden="true" />
                         </button>
                         <button type="button" onClick={() => setExpandedRow(open ? null : student.id)}
@@ -572,11 +576,16 @@ export function InstitutionStudentManager() {
               placeholder="+91 9876543210" />
           </Field>
 
-          <div role="group" aria-labelledby="add-designation-label" className="field">
-            <p id="add-designation-label" className="field-label">Designation<span className="req" aria-hidden="true">*</span></p>
-            <RolePicker value={newStudent.designation} onFree={onFree}
-              onChange={role => setNewStudent({ ...newStudent, designation: role })} />
+          <div role="group" aria-labelledby="add-role-label" className="field">
+            <p id="add-role-label" className="field-label">Role<span className="req" aria-hidden="true">*</span></p>
+            <RolePicker value={newStudent.memberRole} onFree={onFree}
+              onChange={role => setNewStudent({ ...newStudent, memberRole: role })} />
           </div>
+          <Field label="Designation" help="Their job title, for example Associate Professor. Optional; it does not change what they can access.">
+            <input type="text" className="input" list="designation-suggestions" maxLength={MAX_DESIGNATION_LENGTH}
+              value={newStudent.designation} onChange={e => setNewStudent({ ...newStudent, designation: e.target.value })}
+              placeholder="e.g. Associate Professor" />
+          </Field>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Branch">
@@ -618,10 +627,10 @@ export function InstitutionStudentManager() {
         footer={<Button variant="outline" onClick={closeImport}>Close</Button>}
       >
         <div className="space-y-4">
-          <p className="text-sm text-ink-2">The file must include the headers: <strong className="text-ink">name, email, password, designation</strong>. Optional headers: <strong className="text-ink">mobile, branch, department</strong>.</p>
-          <p className="text-xs text-muted">Designation must be one of: {INSTITUTION_MEMBER_ROLES.join(', ')}.{onFree ? ' Student rows are refused on this plan — upgrade to Pro to add students.' : ''}</p>
+          <p className="text-sm text-ink-2">The file must include the headers: <strong className="text-ink">name, email, password, role</strong>. Optional headers: <strong className="text-ink">designation, mobile, branch, department</strong>.</p>
+          <p className="text-xs text-muted">Role must be one of: {ASSIGNABLE_MEMBER_ROLES.join(', ')}. If a row has no role, its designation is used only where it settles one (Professor, Associate Professor, Assistant Professor, Lecturer, Research Scholar/Associate/Fellow, Student); any other row is refused, so you can add the role and import it again.{onFree ? ' Student rows are refused on this plan — upgrade to Pro to add students.' : ''}</p>
 
-          <a href="data:text/csv;charset=utf-8,name,email,password,mobile,designation,branch,department%0AJohn%20Doe,john@example.com,pass123,9876543210,Professor,CSE,Engineering"
+          <a href="data:text/csv;charset=utf-8,name,email,password,role,designation,mobile,branch,department%0AJohn%20Doe,john@example.com,pass123,Faculty,Associate%20Professor,9876543210,CSE,Engineering"
              download="sample_users.csv"
              className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent hover:underline">
             <Download size={16} aria-hidden="true" /> Download Sample CSV
@@ -661,9 +670,9 @@ export function InstitutionStudentManager() {
                         fetchStudents();
                         pricing?.reload();
                         // Rows refused for want of room: say how many, and say who to contact.
-                        const seatless = (data.errors || []).filter((x: any) => /no user seats left/i.test(x?.error || '')).length;
+                        const seatless = (data.errors || []).filter((x: any) => /cannot add more users/i.test(x?.error || '')).length;
                         if (seatless) {
-                          toast.error(`${seatless} user${seatless === 1 ? ' was' : 's were'} not added: your institution has reached its user limit. Contact us for more, then import them again.`, { duration: 7000 });
+                          toast.error(`${seatless} user${seatless === 1 ? ' was' : 's were'} not added because your institution cannot add more users at this time. Please contact support, then import them again.`, { duration: 7000 });
                           pricing?.openUserLimit();
                         }
                       } catch (err: any) {
@@ -718,18 +727,20 @@ export function InstitutionStudentManager() {
               <input type="tel" className="input" value={editForm.contact} onChange={e => setEditForm(f => ({ ...f, contact: e.target.value }))}
                 placeholder="+91 9876543210" />
             </Field>
-            <Field label="Designation">
-              <select className="input" value={editForm.designation} onChange={e => setEditForm(f => ({ ...f, designation: e.target.value }))}
+            <Field label="Role">
+              <select className="input" value={editForm.memberRole} onChange={e => setEditForm(f => ({ ...f, memberRole: e.target.value }))}
                 title={onFree ? STUDENT_NEEDS_PRO : undefined}>
-                <option value="">Select Role...</option>
-                {editStudent?.designation && !(INSTITUTION_MEMBER_ROLES as readonly string[]).includes(editStudent.designation) && (
-                  <option value={editStudent.designation}>{editStudent.designation}</option>
-                )}
-                {INSTITUTION_MEMBER_ROLES.map(r => {
-                  const locked = onFree && PRO_ONLY_MEMBER_ROLES.includes(r) && editStudent?.designation !== r;
+                <option value="">{editStudent?.role === 'Institution' ? 'Institution Admin' : 'Select role…'}</option>
+                {ASSIGNABLE_MEMBER_ROLES.map(r => {
+                  const locked = onFree && PRO_ONLY_ACCESS_ROLES.includes(r) && editStudent?.accessRole !== r;
                   return <option key={r} value={r} disabled={locked}>{locked ? `${r} — Pro only` : r}</option>;
                 })}
               </select>
+            </Field>
+            <Field label="Designation" help="Their job title. It does not change what they can access.">
+              <input type="text" className="input" list="designation-suggestions" maxLength={MAX_DESIGNATION_LENGTH}
+                value={editForm.designation} onChange={e => setEditForm(f => ({ ...f, designation: e.target.value }))}
+                placeholder="e.g. Associate Professor" />
             </Field>
           </div>
 
@@ -767,7 +778,7 @@ export function InstitutionStudentManager() {
         onClose={closeDelete}
         onConfirm={handleDelete}
         title="Remove this user?"
-        description={deleteTarget ? `This permanently deletes the account of ${deleteTarget.displayName || deleteTarget.email}. This cannot be undone.` : undefined}
+        description="This person will immediately lose access through your institution and will be removed from your User Directory. Where applicable, their account data will be scheduled for deletion after 48 hours."
         confirmLabel={deleteLoading ? 'Removing…' : 'Remove User'}
         danger
         loading={deleteLoading}

@@ -33,8 +33,6 @@ export type SubscriptionSummary = {
   daysLeft: number | null;
   /** When it last ended, for an expired one. */
   endedOn: string | null;
-  /** An institution's users: the number on the plan and its limit (null: no limit). */
-  users: { used: number; capacity: number | null } | null;
 };
 
 export type RunningDepartment = { name?: string; endDate: string };
@@ -52,7 +50,7 @@ export function daysUntil(date: string, now: Date = new Date()): number {
 
 export const emptySummary = (kind: SubscriptionKind, state: SubscriptionState = 'NO_SUBSCRIPTION'): SubscriptionSummary => ({
   kind, state, wholeLibrary: false, departmentCount: 0, validUntil: null, nextExpiry: null,
-  expiringCount: 0, daysLeft: null, endedOn: null, users: null,
+  expiringCount: 0, daysLeft: null, endedOn: null,
 });
 
 /**
@@ -67,7 +65,6 @@ export function summariseRunning(opts: {
   /** Set when the last subscription ran out, so "expired" is told apart from "never had one". */
   lapsedOn?: string | null;
   none: 'FREE' | 'NO_SUBSCRIPTION';
-  users?: SubscriptionSummary['users'];
   now?: Date;
 }): SubscriptionSummary {
   const now = opts.now ?? new Date();
@@ -78,7 +75,7 @@ export function summariseRunning(opts: {
 
   if (!running.length && !opts.wholeLibrary) {
     const lapsed = opts.lapsedOn && time(opts.lapsedOn) <= now.getTime() ? opts.lapsedOn : null;
-    return { ...emptySummary(opts.kind, lapsed ? 'EXPIRED' : opts.none), endedOn: lapsed, users: opts.users ?? null };
+    return { ...emptySummary(opts.kind, lapsed ? 'EXPIRED' : opts.none), endedOn: lapsed };
   }
 
   const ends = running.map(d => time(d.endDate));
@@ -97,18 +94,18 @@ export function summariseRunning(opts: {
     expiringCount,
     daysLeft,
     endedOn: null,
-    users: opts.users ?? null,
   };
 }
 
-/** What a subscription row from /api/user/subscriptions covers. A row with no department is the whole library. */
+/** What a subscription row from /api/user/subscriptions covers. Only a row that says "All Domains" is the whole library; a row with no department covers nothing. */
 export function departmentsOfRows(rows: any[], now: Date = new Date()): { departments: RunningDepartment[]; wholeLibrary: boolean; lapsedOn: string | null } {
   const live = rows.filter(r => r.status === 'Active' && r.endDate && time(r.endDate) > now.getTime());
   const departments: RunningDepartment[] = [];
   let wholeLibrary = false;
   for (const r of live) {
-    const names: string[] = Array.isArray(r.domains) && r.domains.length ? r.domains : r.domainName ? [r.domainName] : [];
-    if (!names.length) wholeLibrary = true;
+    const listed: string[] = Array.isArray(r.domains) ? r.domains.filter(Boolean) : [];
+    if (!listed.length && /^all domains?$/i.test(String(r.domainName || '').trim())) { wholeLibrary = true; continue; }
+    const names: string[] = listed.length ? listed : r.domainName ? [r.domainName] : [];
     names.forEach(name => departments.push({ name, endDate: r.endDate }));
   }
   const ended = rows.filter(r => r.endDate && time(r.endDate) <= now.getTime()).map(r => time(r.endDate));

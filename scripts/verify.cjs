@@ -79,8 +79,13 @@ const catalogueSize = async () => {
     select: { id: true, email: true, role: true, institutionId: true },
   });
   if (!admin) { console.log('No SuperAdmin in this database — cannot verify.'); process.exit(1); }
-  const tok = u => jwt.sign({ uid: u.id, email: u.email, role: u.role, institutionId: u.institutionId }, SECRET, { expiresIn: '15m' });
-  const A = tok(admin), S = student ? tok(student) : null, R = reader ? tok(reader) : null;
+  // The server binds every token to a session row, so a forged token needs one. They are removed when the run ends.
+  const tok = async u => {
+    const sid = 'sid-verify-' + Math.random().toString(36).slice(2);
+    await p.userSession.create({ data: { userId: u.id, sessionId: sid, expiresAt: new Date(Date.now() + 15 * 60_000) } });
+    return jwt.sign({ uid: u.id, email: u.email, role: u.role, institutionId: u.institutionId, sid }, SECRET, { expiresIn: '15m' });
+  };
+  const A = await tok(admin), S = student ? await tok(student) : null, R = reader ? await tok(reader) : null;
 
   // ── the rows the pages are built from ─────────────────────────────────────
   const [article, journal, author, inst, publisher, subjectJournal] = await Promise.all([
@@ -337,7 +342,7 @@ const catalogueSize = async () => {
           where: { id: sub.userId }, select: { id: true, email: true, role: true, institutionId: true },
         });
         if (!u) continue;
-        const a = (await get('/api/me/allowance', tok(u))).body || {};
+        const a = (await get('/api/me/allowance', await tok(u))).body || {};
         if (a.timed) timed.push(`${u.email} (${sub.planName || 'a plan'})`);
       }
       timed.length
@@ -397,8 +402,13 @@ const catalogueSize = async () => {
   console.log('\nDashboards');
   if (inst) {
     await check('institution overview', `/api/institution/overview?institutionId=${inst.id}`, A, b => {
-      if (b.collection?.journals === 0 && truth.journalsHoldingArticles > 0)
+      // Only an institution that may open every department is compared with the whole catalogue; one with four departments is told its own four.
+      if (b.collection?.journals === 0 && truth.journalsHoldingArticles > 0 && b.subscription?.fullAccess)
         return `"0 journals" while ${truth.journalsHoldingArticles} hold articles`;
+      if (!b.subscription?.fullAccess && b.collection?.journals > truth.journalsHoldingArticles)
+        return `${b.collection.journals} journals for a scoped institution, more than the ${truth.journalsHoldingArticles} that exist`;
+      if (!b.subscription?.fullAccess && !(b.subscription?.departments?.length) && b.collection?.total !== 0)
+        return `an institution with no departments is shown ${b.collection.total} items`;
       if (b.collection?.articles > 0 && b.collection?.journals === 0)
         return `${b.collection.articles} articles under 0 journals — these two cannot both be right`;
       const sum = (b.collection?.byDepartment || []).reduce((n, d) => n + d.articles, 0);
@@ -454,7 +464,8 @@ const catalogueSize = async () => {
       });
       !b.collection
         ? bad('the reader is told the size of the library', 'no collection block')
-        : b.collection.total !== pub.totalContent
+        // Only an account that may open every department is told the home page's figure; anyone else is told their own, which is smaller.
+        : (b.entitlement?.all ? b.collection.total !== pub.totalContent : b.collection.total > pub.totalContent)
           ? bad('the reader is told the size of the library',
               `the dashboard says ${n(b.collection.total)} and the home page says ${n(pub.totalContent)}`)
           : b.departmentsCovered !== rows.length
@@ -1041,7 +1052,7 @@ const catalogueSize = async () => {
   console.log('\nThe blog');
   {
     const editor = await p.user.findFirst({ where: { role: 'ContentManager' }, select: { id: true, email: true, role: true } });
-    const E = editor ? tok(editor) : null;
+    const E = editor ? await tok(editor) : null;
     const published = await p.blogPost.findFirst({ where: { status: 'Published' }, select: { slug: true, body: true } });
     const draft = await p.blogPost.findFirst({ where: { status: 'Draft' }, select: { slug: true } });
 
@@ -1139,5 +1150,6 @@ const catalogueSize = async () => {
     failures.forEach(f => console.log('  · ' + f));
   }
   await p.$disconnect();
+  await p.userSession.deleteMany({ where: { sessionId: { startsWith: "sid-verify-" } } }).catch(() => {});
   process.exit(fail ? 1 : 0);
 })().catch(async e => { console.error(e); await p.$disconnect(); process.exit(1); });

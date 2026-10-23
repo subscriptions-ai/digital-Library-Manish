@@ -8,7 +8,6 @@ import { buttonClass } from "./ui";
 
 
 import { DOMAINS } from "../constants";
-import { MAX_INSTITUTION_USERS } from "../lib/institutionPricing";
 
 const departments = DOMAINS.map(d => d.name);
 
@@ -135,7 +134,7 @@ export function InstitutionalAccess() {
               { icon: Globe, title: "Remote Access", desc: "Students and faculty can sign in remotely according to their account access permissions." },
               { icon: BarChart3, title: "Usage Statistics", desc: "Usage reports help librarians understand activity within their institution." },
               { icon: ShieldCheck, title: "Librarian Dashboard", desc: "Centralized control panel to manage access and view analytics." },
-              { icon: Users, title: "Users That Scale", desc: `Up to ${MAX_INSTITUTION_USERS.toLocaleString('en-IN')} users with every subscription, at no extra charge.` },
+              { icon: Users, title: "User Management", desc: "Manage institutional users through the User Management dashboard." },
               { icon: BookOpen, title: "Access Terms", desc: "Content availability and access duration depend on your subscription and the source terms." }
             ].map((feature, i) => (
               <div key={i} className="card card-pad">

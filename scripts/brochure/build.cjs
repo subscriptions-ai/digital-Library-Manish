@@ -126,7 +126,7 @@ const FEATURES = [
 const ADMIN = [
   ['dash', 'Institution Dashboard', 'A librarian’s overview of subscription status, members and activity.'],
   ['users', 'User Management', 'Add, import, edit and suspend members of your institution.'],
-  ['key', 'Licensed User Seats', 'Assign access within your approved licensed-user capacity.'],
+  ['key', 'Member Access', 'Choose which members hold subscription access to your subscribed departments.'],
   ['badge', 'Subscription Access Assignment', 'Choose which members hold subscription access, and change it when needed.'],
   ['chart', 'Usage Analytics', 'See reading activity and the content your members open.'],
   ['search', 'Content Discovery', 'Your members search and browse the full catalogue from their own accounts.'],
@@ -137,7 +137,7 @@ const AUDIENCES = [
   ['cap', 'For Students', ['Discover academic resources', 'Search by subject or topic', 'Secure reading access']],
   ['flask', 'For Researchers', ['Find relevant literature', 'Explore interdisciplinary resources', 'Research discovery across departments']],
   ['present', 'For Faculty', ['Support teaching and research', 'Subject-focused resources', 'Browse by academic department']],
-  ['library', 'For Librarians & Institutions', ['Manage users', 'Manage licensed access', 'Review usage', 'Institutional support']],
+  ['library', 'For Librarians & Institutions', ['Manage users', 'Manage member access', 'Review usage', 'Institutional support']],
 ];
 const DEPARTMENTS = ['Computer / IT', 'Management', 'Medical Sciences', 'Pharmacy', 'Electrical Engineering', 'Chemistry', 'Civil Engineering', 'Law', 'Architecture', 'Nursing', 'Life Sciences', 'Commerce'];
 
@@ -220,7 +220,7 @@ h3{font-size:13pt;font-weight:600;color:var(--navy);line-height:1.3}
 .seats{background:var(--navy);border-radius:3.5mm;color:#fff;padding:7mm 7mm 6mm;margin-top:8mm}
 .seats h3{color:#fff;font-size:12.5pt}
 .seats .sub{font-size:9.5pt;line-height:1.55;color:rgba(255,255,255,.78);margin-top:2mm;max-width:150mm}
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:3mm;margin-top:5mm}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:3mm;margin-top:5mm}
 .stat{background:rgba(255,255,255,.07);border:.3mm solid rgba(255,255,255,.16);border-radius:2.5mm;padding:3.5mm 4mm}
 .stat small{display:block;font-size:8pt;font-weight:500;color:rgba(255,255,255,.7)}
 .stat strong{display:block;font-size:22pt;line-height:1.1;font-weight:700;color:#fff;margin-top:1mm}
@@ -326,13 +326,11 @@ h3{font-size:13pt;font-weight:600;color:var(--navy);line-height:1.3}
     </div>
 
     <div class="seats">
-      <h3>Licensed seats, explained</h3>
-      <p class="sub">Institutions can maintain their member directory while assigning subscription access according to their approved licensed-user capacity.</p>
+      <h3>Member access, explained</h3>
+      <p class="sub">Institutions maintain their member directory and choose which members hold subscription access to the departments the institution has subscribed to.</p>
       <div class="stats">
-        <div class="stat"><small>Total Members</small><strong>138</strong><em>in the directory</em></div>
-        <div class="stat"><small>Licensed Seats</small><strong>25</strong><em>approved capacity</em></div>
-        <div class="stat"><small>Assigned</small><strong>22</strong><em>hold access</em></div>
-        <div class="stat"><small>Available</small><strong>3</strong><em>left to assign</em></div>
+        <div class="stat"><small>Total Members</small><strong>138</strong><em>currently added</em></div>
+        <div class="stat"><small>With Access</small><strong>22</strong><em>hold subscription access</em></div>
       </div>
       <p class="illus"><b>Illustration</b> Example figures to show how the dashboard reads. They are not platform data.</p>
     </div>
@@ -357,8 +355,8 @@ h3{font-size:13pt;font-weight:600;color:var(--navy);line-height:1.3}
     <div class="sec">
       <h3>How an institution gets started</h3>
       <ol class="steps">
-        <li><span class="n">1</span><div><b>Tell us about your institution</b><p>Who will read, and how many licensed users.</p></div></li>
-        <li><span class="n">2</span><div><b>Receive a quotation</b><p>Your licensed-user capacity and subscription.</p></div></li>
+        <li><span class="n">1</span><div><b>Tell us about your institution</b><p>Which departments you need, and who will read.</p></div></li>
+        <li><span class="n">2</span><div><b>Receive a quotation</b><p>Your subscribed departments, rate and duration.</p></div></li>
         <li><span class="n">3</span><div><b>Add members and assign access</b><p>Done by your librarian from the dashboard.</p></div></li>
       </ol>
     </div>
@@ -368,7 +366,7 @@ h3{font-size:13pt;font-weight:600;color:var(--navy);line-height:1.3}
     <div>
       <div class="eyebrow">Get started</div>
       <h3>Request Institutional Access</h3>
-      <p>Ask for access, or book a demo. Institutional subscriptions are arranged with our team, who will go through your licensed-user capacity with you.</p>
+      <p>Ask for access, or book a demo. Institutional subscriptions are arranged with our team, who will go through your department selection with you.</p>
       <div class="lines">
         <span>${icon('globe')}${SITE_HOST}/institutional-access</span>
         <span>${icon('mail')}${EMAIL}</span>
