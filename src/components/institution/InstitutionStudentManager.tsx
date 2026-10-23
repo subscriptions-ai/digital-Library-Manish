@@ -8,7 +8,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { ASSIGNABLE_MEMBER_ROLES, DESIGNATION_SUGGESTIONS, MAX_DESIGNATION_LENGTH, PRO_ONLY_ACCESS_ROLES } from '../../lib/memberRoles';
 import { usePricing } from './pricing/PricingContext';
-import { seatsLabel } from './pricing/PlanWidgets';
 import { LicensedAccessPanel } from '../LicensedAccessPanel';
 import { Button, ConfirmDialog, Dialog, EmptyState, Field, SkeletonRows, Spinner, StatusBadge, friendlyError } from '../ui';
 
@@ -144,8 +143,8 @@ export function InstitutionStudentManager() {
 
   /**
    * Whether there is room for one more person, asked before a form opens rather than
-   * after it is filled in. No subscription opens the department window; a full house
-   * says so and shows who to contact.
+   * after it is filled in. No subscription opens the department window; if the account
+   * cannot take another user it says so, without a number, and shows who to contact.
    */
   const haveSeat = (_then?: () => void): boolean => {
     if (!plan || plan.unlimitedSeats || plan.seats.capacity == null) return true;
@@ -155,7 +154,7 @@ export function InstitutionStudentManager() {
       return false;
     }
     if ((plan.seats.available ?? 0) < 1) {
-      toast(`Your institution has reached its limit of ${plan.seats.capacity.toLocaleString('en-IN')} users.`);
+      toast('Your institution cannot add more users at this time. Please contact STM Digital Library support.');
       pricing?.openUserLimit();
       return false;
     }
@@ -175,7 +174,7 @@ export function InstitutionStudentManager() {
       return true;
     }
     if (data?.code === 'SEATS_FULL') {
-      toast.error(data.error || 'Your institution has reached its user limit.');
+      toast.error(data.error || 'Your institution cannot add more users at this time. Please contact STM Digital Library support.');
       pricing?.openUserLimit();
       return true;
     }
@@ -357,26 +356,11 @@ export function InstitutionStudentManager() {
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2.5">
             <h1 className="type-page-title text-ink">User Directory</h1>
-            {plan && (plan.hasSubscription || plan.unlimitedSeats) && (
-              <button
-                type="button"
-                onClick={() => (plan.unlimitedSeats ? undefined : pricing?.openUserLimit())}
-                title={plan.unlimitedSeats ? 'Your current plan has no cap on users' : 'Every active member, you included, counts towards the limit. Click for more.'}
-                className={`badge tnum ${
-                  !plan.unlimitedSeats && (plan.seats.available ?? 0) < 1
-                    ? 'badge-caution'
-                    : 'badge-accent'} ${plan.unlimitedSeats ? 'cursor-default' : 'cursor-pointer hover:border-accent'}`}
-              >
-                {plan.unlimitedSeats ? 'Users: Unlimited' : `Users: ${seatsLabel(plan)}`}
-              </button>
-            )}
           </div>
           <p className="mt-1 text-sm text-muted">
-            {!plan ? 'Everyone you have added to this institution.'
-              : !plan.hasSubscription ? 'Subscribe to at least one Premium department before adding users.'
-              : plan.unlimitedSeats ? 'Everyone you have added to this institution.'
-              : (plan.seats.available ?? 0) < 1 ? 'You have reached your user limit. Suspend someone to free a place, or contact us for more.'
-              : `Everyone you have added to this institution — room for ${Number(plan.seats.available).toLocaleString('en-IN')} more.`}
+            {plan && !plan.hasSubscription
+              ? 'Subscribe to at least one Premium department before adding users.'
+              : 'Everyone you have added to this institution.'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -419,7 +403,7 @@ export function InstitutionStudentManager() {
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
           <span className="min-w-0">
             <span className="block text-sm font-semibold text-ink">Manage Subscription Access</span>
-            <span className="mt-0.5 block text-xs text-muted">Who holds a licensed seat and can read subscribed content</span>
+            <span className="mt-0.5 block text-xs text-muted">Who has access to read subscribed content</span>
           </span>
           <ChevronDown size={18} className="shrink-0 text-muted transition-transform duration-200 group-open:rotate-180" aria-hidden="true" />
         </summary>
@@ -686,9 +670,9 @@ export function InstitutionStudentManager() {
                         fetchStudents();
                         pricing?.reload();
                         // Rows refused for want of room: say how many, and say who to contact.
-                        const seatless = (data.errors || []).filter((x: any) => /no user seats left/i.test(x?.error || '')).length;
+                        const seatless = (data.errors || []).filter((x: any) => /cannot add more users/i.test(x?.error || '')).length;
                         if (seatless) {
-                          toast.error(`${seatless} user${seatless === 1 ? ' was' : 's were'} not added: your institution has reached its user limit. Contact us for more, then import them again.`, { duration: 7000 });
+                          toast.error(`${seatless} user${seatless === 1 ? ' was' : 's were'} not added because your institution cannot add more users at this time. Please contact support, then import them again.`, { duration: 7000 });
                           pricing?.openUserLimit();
                         }
                       } catch (err: any) {

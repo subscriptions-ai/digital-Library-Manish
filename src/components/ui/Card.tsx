@@ -25,7 +25,7 @@ export function CardHeader({ title, description, actions, className }: {
 
 /**
  * One metric, one shape: a label, the number, and a line of context.
- *   Licensed Seats / 25 / 22 assigned · 3 available
+ *   Total Members / 12 / Currently added
  * `value` of null shows a placeholder rather than a misleading 0.
  */
 export function MetricCard({ label, value, context, icon: Icon, loading, className }: {

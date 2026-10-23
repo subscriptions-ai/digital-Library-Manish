@@ -473,34 +473,6 @@ export function contentEditPath(contentType?: string | null, id?: string): strin
  * changing a line later reinterprets everyone already recorded under it, so
  * they are chosen to last rather than to be exhaustive.
  */
-/**
- * Who a librarian may add to their institution, and how many.
- *
- * Librarian is not on the list: this is the librarian's own dashboard, and there
- * is nothing to add. How many is set by the institution's seats: a department
- * subscription includes five (the librarian among them), and more can be bought —
- * see src/lib/institutionPricing.ts.
- *
- * Students are on the list but belong to Pro — see PRO_ONLY_MEMBER_ROLES.
- */
-export const INSTITUTION_MEMBER_ROLES = [
-  'Professor',
-  'Associate Professor',
-  'Assistant Professor',
-  'HOD / Dean',
-  'Faculty',
-  'Researcher',
-  'Research Scholar',
-  'Student',
-] as const;
-
-/**
- * Roles a free dashboard can see but not add. Shown rather than hidden, so a
- * librarian knows students are possible and what it takes — the server refuses
- * them on a free plan whatever the form does.
- */
-export const PRO_ONLY_MEMBER_ROLES: readonly string[] = ['Student'];
-
 export const REGISTRANT_TYPES = [
   // The id is what is stored and what the server checks; only the label is what a person reads.
   // Institution and Institute have never been two things, so the stored word stays as it was.

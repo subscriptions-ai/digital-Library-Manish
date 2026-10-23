@@ -11,6 +11,10 @@ import { Button, Dialog, EmptyState, Spinner, friendlyError } from './ui';
  * One panel for both sides: a Super Admin reaches it through Manage Access on
  * any institution, a librarian through their own User Directory. The server
  * decides what each may do — this only asks and shows.
+ *
+ * The seat limit and the seats left are internal. `internal` (the Super Admin side)
+ * shows them; the librarian's view shows who has access and nothing that reads as
+ * an allowance.
  */
 
 type Member = {
@@ -25,7 +29,7 @@ type Summary = {
 const authHeader = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
 const nf = (x: number | null | undefined) => Number(x ?? 0).toLocaleString('en-IN');
 
-export function LicensedAccessPanel({ base, institutionName, onChanged }: { base: string; institutionName: string; onChanged?: () => void }) {
+export function LicensedAccessPanel({ base, institutionName, onChanged, internal = false }: { base: string; institutionName: string; onChanged?: () => void; internal?: boolean }) {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const [summary, setSummary] = useState<Summary | null>(null);
@@ -63,7 +67,7 @@ export function LicensedAccessPanel({ base, institutionName, onChanged }: { base
 
   const contactAboutSeats = () => navigate('/contact', { state: { prefill: {
     fullName: profile?.displayName || '', email: profile?.email || '', organization: institutionName,
-    message: `Hello, all licensed user seats for ${institutionName} are currently assigned. We would like information about increasing our institutional user access.`,
+    message: `Hello, we would like to arrange additional user access for ${institutionName}.`,
   } } });
 
   // Stable, so the Dialog does not re-run its focus handling on every render.
@@ -73,7 +77,9 @@ export function LicensedAccessPanel({ base, institutionName, onChanged }: { base
   if (!summary) return null;
   if (!summary.managed) {
     return <p className="rounded-xl border border-rule bg-surface-2 p-4 text-sm text-ink-2">
-      Licensed seats have not been set up for this institution, so every member currently shares its subscription access.
+      {internal
+        ? 'Licensed seats have not been set up for this institution, so every member currently shares its subscription access.'
+        : 'Every member currently shares your institution\'s subscription access.'}
     </p>;
   }
 
@@ -86,8 +92,11 @@ export function LicensedAccessPanel({ base, institutionName, onChanged }: { base
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {[['Total members', summary.totalMembers], ['Licensed seats', summary.limit], ['Assigned', summary.assigned], ['Available', summary.available]].map(([l, v]) => (
+      <div className={`grid grid-cols-2 gap-3 ${internal ? 'sm:grid-cols-4' : 'sm:max-w-md'}`}>
+        {(internal
+          ? [['Total members', summary.totalMembers], ['Licensed seats (internal)', summary.limit], ['Assigned', summary.assigned], ['Available (internal)', summary.available]]
+          : [['Total members', summary.totalMembers], ['With subscription access', summary.assigned]]
+        ).map(([l, v]) => (
           <div key={l as string} className="rounded-xl border border-rule bg-surface p-3">
             <p className="metric-label">{l}</p>
             {/* A count that did not come back is a dash, not a misleading 0. */}
@@ -96,14 +105,16 @@ export function LicensedAccessPanel({ base, institutionName, onChanged }: { base
         ))}
       </div>
       {summary.overLimit && <p role="alert" className="rounded-xl border border-caution/40 bg-caution-soft p-3 text-sm text-ink">
-        Assigned users exceed the renewed subscription limit. Access is on hold until seats are removed or the limit is raised.</p>}
+        {internal
+          ? 'Assigned users exceed the renewed subscription limit. Access is on hold until seats are removed or the limit is raised.'
+          : 'Access for some members is on hold. Please contact STM Digital Library support.'}</p>}
       {!summary.subscriptionActive && <p className="rounded-xl border border-caution/40 bg-caution-soft p-3 text-sm text-ink">
         <span className="font-semibold">Subscription Expired. </span>
         The institutional subscription has expired. Assignments are kept and resume when it is renewed.</p>}
       {noSeats && summary.subscriptionActive && (
         <div className="rounded-xl border border-rule bg-surface-2 p-3 text-sm text-ink-2">
-          <p className="font-semibold text-ink">All Licensed Seats Assigned</p>
-          <p>All licensed user seats are currently assigned.</p>
+          <p className="font-semibold text-ink">{internal ? 'All Licensed Seats Assigned' : 'No further access can be assigned right now'}</p>
+          <p>{internal ? 'All licensed user seats are currently assigned.' : 'Remove access from a member to free it, or contact STM Digital Library to arrange more.'}</p>
           {profile?.role === 'Institution' && (
             <button type="button" onClick={contactAboutSeats} className="mt-1 text-sm font-semibold text-accent underline underline-offset-2 hover:text-accent-hover">Contact STM Digital Library to request additional access</button>
           )}
@@ -123,7 +134,9 @@ export function LicensedAccessPanel({ base, institutionName, onChanged }: { base
           Remove Access ({assignedPicked.length})</Button>
       </div>
       {unassignedPicked.length > (summary.available ?? 0) && unassignedPicked.length > 0 && (
-        <p className="text-sm text-caution">Only {nf(summary.available)} licensed seat{summary.available === 1 ? ' is' : 's are'} available. Reduce your selection or increase the user limit.</p>
+        <p className="text-sm text-caution">{internal
+          ? `Only ${nf(summary.available)} licensed seat${summary.available === 1 ? ' is' : 's are'} available. Reduce your selection or increase the user limit.`
+          : 'Access cannot be assigned to all of the selected members right now. Reduce your selection or contact STM Digital Library support.'}</p>
       )}
 
       <div className="table-wrap max-h-[50vh] overflow-y-auto rounded-xl border border-rule bg-surface">
@@ -153,7 +166,7 @@ export function LicensedAccessPanel({ base, institutionName, onChanged }: { base
                   {m.hasSeat
                     ? <button type="button" onClick={() => setConfirm({ mode: 'revoke', ids: [m.id] })} className="whitespace-nowrap text-xs font-semibold text-ink-2 underline underline-offset-2 hover:text-ink">Remove Access</button>
                     : <button type="button" disabled={m.isBlocked || noSeats || !summary.subscriptionActive}
-                        title={noSeats ? 'No licensed seats available' : undefined}
+                        title={noSeats ? 'No further access can be assigned right now' : undefined}
                         onClick={() => setConfirm({ mode: 'assign', ids: [m.id] })} className="whitespace-nowrap text-xs font-semibold text-accent underline underline-offset-2 hover:text-accent-hover disabled:cursor-not-allowed disabled:text-faint disabled:no-underline">Assign Access</button>}
                 </td>
               </tr>
@@ -183,7 +196,9 @@ export function LicensedAccessPanel({ base, institutionName, onChanged }: { base
             </p>
             <p className="text-muted">Institution: {institutionName}</p>
             {confirm.mode === 'assign'
-              ? <p className="text-ink-2">Current seat usage: {nf(summary.assigned)} of {nf(summary.limit)} → after assignment: {nf(summary.assigned + confirm.ids.length)} of {nf(summary.limit)}</p>
+              ? (internal
+                ? <p className="text-ink-2">Current seat usage: {nf(summary.assigned)} of {nf(summary.limit)} → after assignment: {nf(summary.assigned + confirm.ids.length)} of {nf(summary.limit)}</p>
+                : <p className="text-ink-2">The member will be able to read the institution's subscribed departments.</p>)
               : <p className="text-ink-2">The user will remain linked to the institution but will no longer have institutional subscription access.</p>}
           </div>
         )}

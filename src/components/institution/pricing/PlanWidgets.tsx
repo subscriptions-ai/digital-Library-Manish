@@ -9,12 +9,6 @@ import { buttonClass } from '../../ui';
 
 export const FROM_PRICE = `${formatRupees(STARTING_DEPARTMENT_RATE)}*`;
 
-/** "7 / 10", or "Unlimited" on a plan made before seats were priced. */
-export function seatsLabel(plan: InstitutionPlan): string {
-  if (plan.unlimitedSeats || plan.seats.capacity == null) return 'Unlimited';
-  return `${plan.seats.used} / ${plan.seats.capacity}`;
-}
-
 export function uniqueDepartments(plan: InstitutionPlan): string[] {
   return [...new Set(plan.departments.map((d) => d.name))];
 }

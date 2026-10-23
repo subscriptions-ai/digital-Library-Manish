@@ -7,7 +7,8 @@
  *
  * - A department costs less each the more are bought together: ₹9,990 for one, ₹7,990 each
  *   for five or more.
- * - Users are not priced. A paid subscription covers up to 1,000 users; beyond that, contact us.
+ * - Users are not priced; the subscription is priced by departments alone. A server-side safety
+ *   limit on members exists (MAX_INSTITUTION_USERS) but is internal: it is never shown to customers.
  * - Every purchase runs twelve months from the day it is bought.
  * - GST is 18% on top of everything.
  */
@@ -15,8 +16,9 @@
 export const GST_RATE = 0.18;
 
 /**
- * The most users one institution may have on a paid subscription. There is no charge per user
- * below it; beyond it the institution is asked to contact us.
+ * INTERNAL safety limit on the members one institution may have on a paid subscription. It is
+ * enforced on the server and must not be shown on any customer-facing page, quotation or email:
+ * the product is sold by departments, not by user count.
  */
 export const MAX_INSTITUTION_USERS = 1000;
 

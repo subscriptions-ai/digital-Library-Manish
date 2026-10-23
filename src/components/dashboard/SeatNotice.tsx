@@ -34,7 +34,7 @@ export function SeatNotice() {
         </div>
         <p className="mt-1 text-sm text-ink-2">
           {info.seatsFull
-            ? 'All licensed user seats are currently assigned. Please contact your institution administrator or STM Digital Library support if additional access is required.'
+            ? 'Your institution cannot give further access at this time. Please contact your institution administrator or STM Digital Library support if additional access is required.'
             : `Your account is linked to ${info.institutionName}, but a licensed subscription seat has not yet been assigned. Please contact your institution administrator for access.`}
         </p>
         <div className="mt-3 flex flex-wrap gap-2">

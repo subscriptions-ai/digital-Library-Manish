@@ -1,6 +1,6 @@
 import { COMPANY_DETAILS, issuerOf, type Issuer } from '../../config';
 import {
-  DEPARTMENT_RATES, GST_RATE as PLAN_GST_RATE, MAX_INSTITUTION_USERS, TERM_MONTHS,
+  DEPARTMENT_RATES, GST_RATE as PLAN_GST_RATE, TERM_MONTHS,
   departmentRate, departmentRateLadder, priceDepartments, slabLabel,
 } from '../institutionPricing';
 import { GROUPED_DEPARTMENTS } from '../institutionDepartmentGroups';
@@ -353,12 +353,12 @@ export function standardTerms(o: {
   return all.map(t => ({ ...t, group: t.group ?? (t.lead && groupOf[t.lead]) ?? G4 }));
 }
 
-/** The user-entitlement terms for an institutional quotation, from its own inputs. */
+/** The full-access-user licence terms for a builder quotation, which prices those licences as line items. */
 function institutionalEntitlement(doc: QuoteDoc): QuoteTerm[] {
   return [
     doc.includeFive
-      ? { lead: 'User Entitlement:', text: `This quotation includes up to **${FREE_USERS} full-access users** with the Premium subscription.` }
-      : { lead: 'User Entitlement:', text: 'No complimentary users are included; full-access users are billed separately as shown above.' },
+      ? { lead: 'Full-Access Users:', text: `This quotation includes up to **${FREE_USERS} full-access users** with the Premium subscription.` }
+      : { lead: 'Full-Access Users:', text: 'No complimentary users are included; full-access users are billed separately as shown above.' },
     { lead: 'Additional Users:', text: 'User pricing, if applicable, is charged at the rate and quantity shown in this quotation.' },
   ];
 }
@@ -383,9 +383,6 @@ export function docToRender(doc: QuoteDoc, issuer: Issuer = issuerOf(null)): Quo
   }
   const validity = Math.max(1, Math.floor(num(doc.validityDays)) || 15);
   const validTill = addDaysIso(doc.quoteDate, validity);
-  const userSummary = doc.includeFive
-    ? `${p.included} included${p.extra ? ` + ${p.extra.toLocaleString('en-IN')} additional` : ''}`
-    : `${p.users.toLocaleString('en-IN')} chargeable`;
   return {
     quoteNo: doc.quoteNo,
     date: doc.quoteDate,
@@ -409,7 +406,6 @@ export function docToRender(doc: QuoteDoc, issuer: Issuer = issuerOf(null)): Quo
       { label: 'Access scope', value: 'Subscribed departments listed above' },
       { label: 'Department rate', value: `${moneyAuto(p.deptRate)} / dept / year${doc.deptMode === 'custom' ? ' (special)' : ''}` },
       { label: 'Duration', value: 'Annual (calendar year)' },
-      { label: 'User entitlement', value: userSummary },
       { label: 'Valid until', value: dateDisplay(validTill) },
     ] : [],
     // An older quotation may carry an old spelling; it is shown as the department's official name. The stored value is untouched.
@@ -584,7 +580,6 @@ export type InstitutionPlanSnapshot = {
   /** Empty when the names are unknown; the count still stands. */
   existingDepartmentNames: string[];
   termMonths: number;
-  maxUsers: number;
   subtotal: number;
   gst: number;
   grandTotal: number;
@@ -642,7 +637,6 @@ export function buildInstitutionPlanSnapshot(o: {
     newDepartmentNames: fresh,
     existingDepartmentNames: existing,
     termMonths: TERM_MONTHS,
-    maxUsers: MAX_INSTITUTION_USERS,
     subtotal: base,
     gst,
     grandTotal: round2(base + gst),
@@ -743,7 +737,6 @@ export function institutionPlanToRender(s: InstitutionPlanSnapshot, issuer: Issu
   const validTill = addDaysIso(s.date, s.validityDays);
   const rate = moneyAuto(s.ratePerNewDepartment);
   const benefitEach = Math.max(0, s.standardRate - s.ratePerNewDepartment);
-  const users = `Up to ${s.maxUsers.toLocaleString('en-IN')} users, no extra charge`;
   const slab = s.appliedPricingSlab.replace(/^./, c => c.toUpperCase());
 
   const summary: QuoteRender['summary'] = existing > 0 ? [
@@ -756,7 +749,6 @@ export function institutionPlanToRender(s: InstitutionPlanSnapshot, issuer: Issu
     { label: 'Amount charged for', value: `${plural(fresh, 'new department')} only` },
     ...(benefitEach > 0 ? [{ label: 'Pricing slab benefit', value: `${moneyAuto(benefitEach * fresh)} (${moneyAuto(benefitEach)} x ${plural(fresh, 'new department')})` }] : []),
     { label: 'Duration', value: `${s.termMonths} months from activation (new departments)` },
-    { label: 'User entitlement', value: users },
     { label: 'Valid until', value: dateDisplay(validTill) },
   ] : [
     { label: 'Subscription', value: 'Premium Institutional' },
@@ -765,7 +757,6 @@ export function institutionPlanToRender(s: InstitutionPlanSnapshot, issuer: Issu
     { label: 'Applied pricing slab', value: slab },
     { label: 'Department rate', value: `${rate} / department / year` },
     { label: 'Duration', value: `${s.termMonths} months from activation` },
-    { label: 'User entitlement', value: users },
     { label: 'Valid until', value: dateDisplay(validTill) },
   ];
 
@@ -813,8 +804,8 @@ export function institutionPlanToRender(s: InstitutionPlanSnapshot, issuer: Issu
         ? `The ${s.termMonths}-month subscription term applies to the departments added under this quotation, from their date of activation. Existing active departments keep their current expiry dates; this quotation does not renew or extend them.`
         : `The subscription runs for ${s.termMonths} months from the date of activation.`,
       entitlement: [{
-        lead: 'User Entitlement:',
-        text: `Up to ${s.maxUsers.toLocaleString('en-IN')} users on the institution's account, at no extra charge. For more, please contact ${COMPANY_DETAILS.email}.`,
+        lead: 'Access Scope:',
+        text: 'The subscription gives full access to each subscribed department listed in this quotation. Members added by the institution inherit access to those departments only.',
       }],
       pricing,
       extra: planClosingTerms(tax.state, s.validityDays).slice(0, 2),
@@ -846,7 +837,7 @@ export function soloPlanToRender(s: SoloPlanSnapshot, issuer: Issuer = issuerOf(
     { lead: 'Subscription Period:', text: `The subscription runs for ${s.termMonths} months from the date of activation.`, group: G1 },
     { ...C.advance, group: G1 },
     { ...C.nonRefundable, group: G1 },
-    { lead: 'User Entitlement:', text: 'Your own account (1 user). The subscription gives full access to each subscribed department for the period above.', group: G1 },
+    { lead: 'Access Scope:', text: 'The subscription gives full access to each subscribed department for the period above, on your own account.', group: G1 },
     {
       lead: 'Pricing Slab:',
       text: `${inr(SOLO_RATE_STANDARD)} per department per year for 1-${SOLO_BULK_THRESHOLD - 1} departments; ${inr(SOLO_RATE_BULK)} per department per year for ${SOLO_BULK_THRESHOLD} or more departments, applicable to every selected department in that purchase. Applied here: ${bulk ? `${SOLO_BULK_THRESHOLD}+ department rate` : 'standard rate'}.`,
@@ -901,7 +892,6 @@ export function soloPlanToRender(s: SoloPlanSnapshot, issuer: Issuer = issuerOf(
       { label: 'Pricing slab', value: s.pricingSlab.replace(/^./, c => c.toUpperCase()).replace('departments', 'Departments') },
       { label: 'Department rate', value: `${moneyAuto(s.ratePerDepartment)} / department / year` },
       { label: 'Duration', value: `${s.termMonths} months from activation` },
-      { label: 'User entitlement', value: 'Your own account (1 user)' },
       { label: 'Valid until', value: dateDisplay(validTill) },
     ],
     departments: s.departmentNames.map(canonicalOrSelf),

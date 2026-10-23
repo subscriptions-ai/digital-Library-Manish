@@ -83,7 +83,6 @@ export function useSubscriptionCard(): { summary: SubscriptionSummary | null; to
       // A plan with no departments listed is an older, institution-wide subscription.
       wholeLibrary: plan.hasSubscription && !departments.length,
       none: 'NO_SUBSCRIPTION',
-      users: plan.hasSubscription ? { used: plan.seats.used, capacity: plan.unlimitedSeats ? null : plan.seats.capacity } : null,
     });
     return { summary, to: '/institution/subscriptions', failed: false };
   }
@@ -113,14 +112,10 @@ export function cardContent(s: SubscriptionSummary): { eyebrow: string; headline
   switch (s.state) {
     case 'ACTIVE': {
       const lines: string[] = [];
-      let hint: string | undefined;
-      if (s.kind === 'institution' && s.users) {
-        lines.push(s.users.capacity == null ? 'Unlimited users (current plan)' : `${s.users.used.toLocaleString('en-IN')} / ${s.users.capacity.toLocaleString('en-IN')} users`);
-        hint = 'Includes your librarian account';
-      } else if (s.validUntil) {
+      if (s.validUntil) {
         lines.push(`Valid until ${shortDate(s.validUntil)}`);
       }
-      return { eyebrow: 'Premium active', headline: subscribed, lines, button: 'View subscription', hint };
+      return { eyebrow: 'Premium active', headline: subscribed, lines, button: 'View subscription' };
     }
     case 'EXPIRING': {
       const when = s.daysLeft === null ? '' : inDays(s.daysLeft);

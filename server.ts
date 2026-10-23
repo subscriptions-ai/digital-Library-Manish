@@ -5771,7 +5771,7 @@ async function startServer() {
   });
 
   // ── Licensed seats: who in an institution holds its subscription access ──
-  const LICENSED_FULL = { code: "LICENSED_SEAT_LIMIT_REACHED", message: "All licensed user seats are currently assigned.", error: "All licensed user seats are currently assigned." };
+  const LICENSED_FULL = { code: "LICENSED_SEAT_LIMIT_REACHED", message: "No further access can be assigned right now.", error: "No further access can be assigned right now." };
 
   const memberAccessStatus = (seat: any, row: any, member: any) => {
     if (!seat.managed) return 'Not managed';
@@ -5835,7 +5835,7 @@ async function startServer() {
         throw { status: 409, body: {
           ...LICENSED_FULL, available: seat.available ?? 0, requested: toAssign.length,
           ...(toAssign.length > 1 && (seat.available ?? 0) > 0
-            ? { message: `Only ${seat.available} licensed seat${seat.available === 1 ? ' is' : 's are'} available. Reduce your selection or increase the user limit.` } : {}),
+            ? { message: 'Access cannot be assigned to all of the selected members right now. Reduce your selection or contact STM Digital Library support.' } : {}),
         } };
       }
       for (const userId of toAssign) {
@@ -13432,10 +13432,8 @@ async function startServer() {
   const seatsFullResponse = (seats: Awaited<ReturnType<typeof institutionSeats>>) => ({
     code: seats.capacity ? 'SEATS_FULL' : 'NEEDS_SUBSCRIPTION',
     error: seats.capacity
-      ? `Your institution has reached its limit of ${seats.capacity.toLocaleString('en-IN')} users. Please contact us to add more.`
+      ? 'Your institution cannot add more users at this time. Please contact STM Digital Library support.'
       : 'Subscribe to at least one department before adding users.',
-    capacity: seats.capacity,
-    used: seats.used,
   });
 
   /** The institution the signed-in librarian runs, or null. */
@@ -13492,7 +13490,7 @@ async function startServer() {
     if (body?.kind === 'seats') {
       // Users are not sold any more. A paid subscription covers up to the limit, and beyond
       // it the answer is a conversation, not a price.
-      return { error: `A subscription covers up to ${MAX_INSTITUTION_USERS.toLocaleString('en-IN')} users. For more, please contact us.`, code: 'CONTACT_US' };
+      return { error: 'Users are not sold separately. Subscription pricing is based on the departments selected. Please contact us with any question.', code: 'CONTACT_US' };
     }
     return { error: 'Unknown purchase.' };
   };
@@ -13512,7 +13510,7 @@ async function startServer() {
         departments,
         seats: { capacity: seats.capacity, used: seats.used, available: seats.available, included: seats.included, extra: seats.extra },
         seatPurchases: seats.purchases.map((p: any) => ({ seats: p.seats, rate: p.rate, startDate: p.startDate, endDate: p.endDate })),
-        pricing: { maxUsers: MAX_INSTITUTION_USERS, gstRate: GST_RATE, departmentRates: DEPARTMENT_RATES },
+        pricing: { gstRate: GST_RATE, departmentRates: DEPARTMENT_RATES },
         allDepartments: DOMAINS.map((d: any) => d.name),
       });
     } catch (err: any) {

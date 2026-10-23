@@ -4,7 +4,6 @@ import { COMPANY_DETAILS } from '../config.js';
 import { DOMAINS } from '../constants.js';
 import {
   GST_RATE,
-  MAX_INSTITUTION_USERS,
   TERM_MONTHS,
   departmentRate,
   departmentRateLadder,
@@ -119,8 +118,7 @@ function toolSubscriptionPricing(args: Record<string, unknown>): Record<string, 
   if (plan !== 'solo') {
     const institutional: Record<string, unknown> = {
       termMonths: TERM_MONTHS,
-      maxUsersPerSubscription: MAX_INSTITUTION_USERS,
-      perUserCharge: 'none up to the user limit',
+      pricedBy: 'departments only; users are not priced and no user count is quoted',
       rateLadder: departmentRateLadder(),
     };
     if (departments !== null) {

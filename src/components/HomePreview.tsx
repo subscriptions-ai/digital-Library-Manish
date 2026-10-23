@@ -1087,7 +1087,7 @@ const FAQS: [string, string][] = [
   ['Why does some of it open elsewhere?',
     'Most of the library opens in the reader here, page by page. A small part is held as a catalogue record with a link to where the full text lives — and the page says so plainly, rather than letting you find out after a click.'],
   ['Can my college add its own people?',
-    'Yes. A librarian adds faculty and researchers themselves, as many as they like, at no extra cost and without waiting for us to approve anyone. Students can be added on Pro.'],
+    'Yes. A librarian adds faculty and researchers themselves from the User Management dashboard, without waiting for us to approve anyone. Students can be added on Pro.'],
   ['How current is the library?',
     'New work arrives every day and is catalogued the same way as the rest — department, journal, volume, issue. Most of what you will find was published in the last few years, and the oldest reaches back decades.'],
   ['What do you do with my reading history?',

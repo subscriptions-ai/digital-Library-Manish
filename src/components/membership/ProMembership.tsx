@@ -10,7 +10,6 @@ import { fetchSoloPlan, type SoloPlan } from '../solo/soloPlanApi';
 import { SoloPurchaseDialog } from '../solo/SoloPurchase';
 import { getSoloPricingDisplay } from '../../lib/pricingDisplay';
 import { useAllowance, countdown, clockTime } from './ReadingClock';
-import { MAX_INSTITUTION_USERS } from '../../lib/institutionPricing';
 import { Badge, Button, Field, PageHeader, Skeleton, StatusBadge, buttonClass, friendlyError } from '../ui';
 
 /**
@@ -108,7 +107,7 @@ function PlanComparison({ pro, institution, sessionsPerDay, canBuy, onChoose }: 
     { freeHas: false, free: 'Two hours between one session and the next', proText: 'Come and go as you please, all day' },
     { freeHas: true, free: 'The clock stops when you sign out; what is left is kept', proText: 'Nothing to keep — there is no clock' },
     ...(institution ? [
-      { freeHas: false, free: 'Adding users needs a department subscription', proText: `Up to ${MAX_INSTITUTION_USERS.toLocaleString('en-IN')} users, at no extra charge` },
+      { freeHas: false, free: 'Adding users needs a department subscription', proText: 'Add faculty and researchers from User Management' },
       { freeHas: false, free: 'Students cannot be added on this plan', proText: 'Students can be added to your account too' },
       { freeHas: false, free: 'Everyone you add reads in half-hour sessions', proText: 'Everyone you add reads without the clock' },
     ] as Row[] : []),
