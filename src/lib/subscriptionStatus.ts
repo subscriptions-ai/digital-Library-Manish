@@ -101,14 +101,15 @@ export function summariseRunning(opts: {
   };
 }
 
-/** What a subscription row from /api/user/subscriptions covers. A row with no department is the whole library. */
+/** What a subscription row from /api/user/subscriptions covers. Only a row that says "All Domains" is the whole library; a row with no department covers nothing. */
 export function departmentsOfRows(rows: any[], now: Date = new Date()): { departments: RunningDepartment[]; wholeLibrary: boolean; lapsedOn: string | null } {
   const live = rows.filter(r => r.status === 'Active' && r.endDate && time(r.endDate) > now.getTime());
   const departments: RunningDepartment[] = [];
   let wholeLibrary = false;
   for (const r of live) {
-    const names: string[] = Array.isArray(r.domains) && r.domains.length ? r.domains : r.domainName ? [r.domainName] : [];
-    if (!names.length) wholeLibrary = true;
+    const listed: string[] = Array.isArray(r.domains) ? r.domains.filter(Boolean) : [];
+    if (!listed.length && /^all domains?$/i.test(String(r.domainName || '').trim())) { wholeLibrary = true; continue; }
+    const names: string[] = listed.length ? listed : r.domainName ? [r.domainName] : [];
     names.forEach(name => departments.push({ name, endDate: r.endDate }));
   }
   const ended = rows.filter(r => r.endDate && time(r.endDate) <= now.getTime()).map(r => time(r.endDate));

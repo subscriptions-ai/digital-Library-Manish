@@ -80,9 +80,9 @@ export function SoloSubscribe() {
             <Clock size={16} className="text-muted" aria-hidden="true" />
             <h2 className="text-base font-semibold text-ink">Free Subscription</h2>
           </div>
-          <p className="mt-1 text-sm text-muted">The whole library, in half-hour sessions.</p>
+          <p className="mt-1 text-sm text-muted">The departments you choose, in half-hour sessions.</p>
           <ul className="mt-4 flex-1 space-y-2.5 text-sm text-ink-2">
-            <li className="flex gap-2.5"><Check size={16} className="mt-0.5 shrink-0 text-accent" aria-hidden="true" /> Read every department</li>
+            <li className="flex gap-2.5"><Check size={16} className="mt-0.5 shrink-0 text-accent" aria-hidden="true" /> Read the departments you choose</li>
             <li className="flex gap-2.5"><Check size={16} className="mt-0.5 shrink-0 text-accent" aria-hidden="true" /> No payment, no request forms</li>
             <li className="flex gap-2.5"><Clock size={16} className="mt-0.5 shrink-0 text-faint" aria-hidden="true" /> Timed: half an hour at a time</li>
           </ul>

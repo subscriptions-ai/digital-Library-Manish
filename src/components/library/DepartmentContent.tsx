@@ -36,7 +36,7 @@ export type DepartmentAccess = {
 
 /**
  * The same two questions the library asks: what is this member's scope (`available-facets`) and what is their clock (`allowance`).
- * A member with no plan sees the whole library, on the Free Preview clock; a member with a plan sees what the plan covers.
+ * A member with no plan sees the departments they chose, on the Free Preview clock; a member with a plan sees what the plan covers.
  */
 export function useDepartmentAccess(domainName: string, enabled: boolean): DepartmentAccess {
   const { allowance, msLeft, msUntil } = useAllowance(30_000, enabled);

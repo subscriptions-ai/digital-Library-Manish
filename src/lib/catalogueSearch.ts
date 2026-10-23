@@ -6,6 +6,11 @@ export type CatalogueSearchParams = {
   contentType?: string;
   page?: number;
   limit?: number;
+  /**
+   * The department spellings the caller may see. Absent = the whole catalogue (a visitor browsing the public search, staff). An EMPTY list
+   * is an account with no departments and finds nothing — it is ANDed with the query, so a keyword match in another department is never returned.
+   */
+  allowedDomains?: string[] | null;
 };
 
 /**
@@ -33,6 +38,7 @@ export async function searchContent(prisma: PrismaClient, params: CatalogueSearc
       { subjectArea: { contains: q, mode: 'insensitive' } },
     ],
   };
+  if (params.allowedDomains) where.AND = [{ domain: { in: params.allowedDomains } }];
   if (params.domain)      where.domain      = params.domain;
   if (params.contentType) where.contentType = params.contentType;
 

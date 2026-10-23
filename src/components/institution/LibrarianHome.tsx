@@ -286,8 +286,10 @@ export function LibrarianHome() {
         <p className="mt-3 max-w-3xl text-[15px] leading-relaxed text-ink-2">
           {/* The whole of it, counted once — articles, books and everything on
               the archived shelf — rather than two of its parts. */}
-          {sub.onFreeAllowance
-            ? <>The whole library — <b className="text-ink">{n(col.total)} items</b> — open to you and everyone you add, half an hour at a time.</>
+          {sub.onFreeAllowance && !sub.fullAccess
+            ? (depts.length
+                ? <>Access to <b className="text-ink">{n(col.total)} items</b> across {depts.length} {depts.length === 1 ? 'department' : 'departments'}.</>
+                : <>No departments are selected for your institution yet.</>)
             : sub.fullAccess
             ? <>Full access to <b className="text-ink">{n(col.total)} items</b>.</>
             : depts.length
@@ -331,7 +333,7 @@ export function LibrarianHome() {
             ? <StatusTile label="Subscription Status" status={subStatus} context={subContext} />
             : <Stat label="Subscription Status" value="None" context="No department is subscribed yet" to="/institution/subscriptions" />}
           <Stat label="Departments" value={n(depts.length)}
-            context={sub.fullAccess ? 'Full access' : depts.length ? 'Covered by your subscription' : undefined}
+            context={sub.fullAccess ? 'Full catalogue access' : depts.length ? 'Included in your access' : 'None selected yet'}
             to="/institution/access" />
           <Stat label="Total Members" value={n(st.total)}
             context={st.total ? `${n(st.activeLast30)} read this month · ${n(st.neverSignedIn)} never signed in` : 'No users added yet'}
@@ -369,8 +371,8 @@ export function LibrarianHome() {
               <Sparkles size={18} />
             </span>
             <p className="min-w-0 flex-1 text-sm leading-snug text-ink-2">
-              All of it is open to you now, in <b className="text-ink">half-hour sessions — four a day</b>.
-              Pro removes the sessions, for you and for everyone you add.
+              {depts.length ? `The ${depts.length} ${depts.length === 1 ? 'department' : 'departments'} you chose ${depts.length === 1 ? 'is' : 'are'} available during your Free Preview sessions` : 'No departments are available yet. Once they are, they open during your Free Preview sessions'}
+              {' '}— <b className="text-ink">half an hour at a time, four a day</b>. Pro removes the sessions, for you and for everyone you add.
             </p>
             <Link to="/institution/membership" className={buttonClass('primary', 'sm', 'shrink-0')}>
               Explore Subscription Options <ArrowRight size={14} aria-hidden="true" />

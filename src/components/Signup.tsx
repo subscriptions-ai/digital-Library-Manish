@@ -402,7 +402,7 @@ function SignupForm() {
             </div>
           </Link>
           <h1 className="type-page-title text-ink">Create Your Account</h1>
-          <p className="mt-2 text-sm text-muted">Free Subscription — the whole library, half an hour at a time.</p>
+          <p className="mt-2 text-sm text-muted">Free Subscription — the departments you choose, half an hour at a time.</p>
         </div>
 
         <div className="card p-5 sm:p-8">

@@ -47,6 +47,7 @@ interface DashboardData {
   };
   departmentsCovered?: number;
   selectedDepartments?: number;
+  entitlement?: { all: boolean; departments: string[]; source: string; selected: string[] };
   itemsRead?: number;
   readByWeek?: number[];
   readByDepartment?: { name: string; reads: number }[];
@@ -519,7 +520,7 @@ export function LMSDashboard() {
             : undefined}
         />
         {dashData?.selectedDepartments
-          ? <MetricCard label="Your departments" loading={loadingDash} value={fmt(dashData.selectedDepartments)} context="The ones you selected" />
+          ? <MetricCard label="Your departments" loading={loadingDash} value={fmt(dashData.selectedDepartments)} context={dashData.entitlement?.source === 'selected' || dashData.entitlement?.source === 'institution-selected' ? 'The ones you selected' : 'Included in your access'} />
           : <MetricCard label="Departments" loading={loadingDash} value={fmt(dashData?.departmentsCovered)} context="Holding something you can open" />}
         <MetricCard
           label="Items you have read"
