@@ -5,6 +5,8 @@ import { useAuth } from "../contexts/AuthContext";
 import { toast } from "react-hot-toast";
 import { Button, Dialog, friendlyError } from "./ui";
 import { getDashboardRoute } from "../lib/dashboardRoute";
+import { GOOGLE_CLIENT_ID } from "../lib/google";
+import { GoogleSignInButton } from "./auth/GoogleSignInButton";
 
 export function Login() {
   const navigate = useNavigate();
@@ -15,6 +17,9 @@ export function Login() {
   // Set when the server says this account is already signed in elsewhere.
   const [sessionElsewhere, setSessionElsewhere] = useState(false);
   const [limitReached, setLimitReached] = useState(false);
+  // Google: the credential is held in memory only, to try again if the member chooses to end their other session.
+  const [pendingGoogle, setPendingGoogle] = useState<string | null>(null);
+  const [googleBusy, setGoogleBusy] = useState(false);
 
   // Forgot password state
   const [showForgotModal, setShowForgotModal] = useState(false);
@@ -25,7 +30,7 @@ export function Login() {
   const [showForgotNewPassword, setShowForgotNewPassword] = useState(false);
   const [forgotLoading, setForgotLoading] = useState(false);
 
-  const { login, profile } = useAuth();
+  const { login, profile, loginWithGoogle } = useAuth();
 
   // Left by the global fetch guard when a revoked or expired session sent us here.
   React.useEffect(() => {
@@ -41,6 +46,7 @@ export function Login() {
     e.preventDefault();
     setSessionElsewhere(false);
     setLimitReached(false);
+    setPendingGoogle(null);
     if (!email || !password) {
       toast.error('Please fill in all fields');
       return;
@@ -65,6 +71,29 @@ export function Login() {
       else toast.error(friendlyError(error, 'We could not sign you in. Please check your email and password and try again.'));
     } finally {
       setLoading(false);
+    }
+  };
+
+  /**
+   * Google answered. The server decides what that means: a returning member is signed in (and the effect below takes them to their
+   * dashboard); a newcomer, or an address that already has an account, carries on at /signup, which asks the rest and keeps the proof.
+   */
+  const onGoogleCredential = async (credential: string, replaceExisting = false) => {
+    setSessionElsewhere(false); setLimitReached(false); setPendingGoogle(null); setGoogleBusy(true);
+    try {
+      const r = await loginWithGoogle(credential, replaceExisting);
+      if (r.status === 'AUTHENTICATED') { toast.success('Logged in successfully!'); return; }
+      if (r.status === 'PROFILE_REQUIRED') {
+        navigate('/signup', { state: { googleOnboarding: { ...r.google, onboardingToken: r.onboardingToken } } });
+      } else {
+        navigate('/signup', { state: { googleLink: { linkToken: r.linkToken, email: r.email, hasPassword: r.hasPassword, name: r.google.name, picture: r.google.picture } } });
+      }
+    } catch (error: any) {
+      if (error?.code === 'ACTIVE_SESSION_EXISTS') { setPendingGoogle(credential); setSessionElsewhere(true); }
+      else if (error?.code === 'CONCURRENT_LOGIN_LIMIT_REACHED') setLimitReached(true);
+      else toast.error(friendlyError(error, 'Google sign-in could not be completed. You can sign in with email instead.'));
+    } finally {
+      setGoogleBusy(false);
     }
   };
 
@@ -159,6 +188,15 @@ export function Login() {
         </div>
 
         <div className="card card-pad sm:p-8">
+          {GOOGLE_CLIENT_ID && (
+            <div className="mb-5 space-y-4">
+              <GoogleSignInButton onCredential={c => onGoogleCredential(c)} disabled={googleBusy || loading} />
+              {googleBusy && <p role="status" className="text-center text-sm text-muted">Checking your Google account…</p>}
+              <div className="flex items-center gap-3" aria-hidden="true">
+                <span className="h-px flex-1 bg-rule" /><span className="text-xs font-semibold uppercase tracking-widest text-muted">or</span><span className="h-px flex-1 bg-rule" />
+              </div>
+            </div>
+          )}
           <form className="space-y-5" onSubmit={handleLogin}>
             <div className="field">
               <label htmlFor="login-email" className="field-label">Email Address</label>
@@ -221,12 +259,12 @@ export function Login() {
                   variant="outline"
                   size="sm"
                   className="mt-3"
-                  loading={loading}
-                  onClick={(e) => handleLogin(e as any, true)}
+                  loading={loading || googleBusy}
+                  onClick={(e) => (pendingGoogle ? onGoogleCredential(pendingGoogle, true) : handleLogin(e as any, true))}
                 >
                   Sign out the other session and sign in here
                 </Button>
-                <p className="mt-2 text-xs text-muted">Uses the password you entered above.</p>
+                <p className="mt-2 text-xs text-muted">{pendingGoogle ? 'Uses the Google account you just chose.' : 'Uses the password you entered above.'}</p>
               </div>
             )}
             {limitReached && (

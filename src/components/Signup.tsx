@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
-import { Lock, ArrowRight, Eye, EyeOff, User, Building, Building2, Briefcase, GraduationCap, MapPin, Check, ChevronDown, Search } from "lucide-react";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Lock, ArrowRight, ArrowLeft, Eye, EyeOff, User, Building, Building2, Briefcase, GraduationCap, MapPin, Check, ChevronDown, Search, Mail, ShieldCheck } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { toast } from "react-hot-toast";
 import { Button, friendlyError } from "./ui";
@@ -9,6 +9,10 @@ import { EmailVerificationInput } from "./EmailVerificationInput";
 import { DOMAINS, REGISTRANT_TYPES, DESIGNATION_GROUPS, DESIGNATIONS_BY_TYPE, POPULAR_DESIGNATIONS, COUNTRIES, COUNTRY_DIAL_CODES } from "../constants";
 import { INDIAN_STATES } from "../lib/gstUtils";
 import { libraryUrl } from "../lib/libraryRoute";
+import { getDashboardRoute } from "../lib/dashboardRoute";
+import { GOOGLE_CLIENT_ID } from "../lib/google";
+import { GoogleSignInButton } from "./auth/GoogleSignInButton";
+import type { GoogleResult } from "../lib/authApi";
 
 /**
  * A small heading with a rule, so the form reads as four short questions.
@@ -244,15 +248,224 @@ export function Signup() {
   const { profile } = useAuth();
   const arrivedSignedIn = useRef(!!profile);
   if (arrivedSignedIn.current) return <Navigate to={libraryUrl(profile)} replace />;
-  return <SignupForm />;
+  return <SignupFlow />;
 }
 
-function SignupForm() {
+/** The page around every step: the logo and the heading, then the card. */
+function SignupShell({ narrow, children }: { narrow?: boolean; children: React.ReactNode }) {
+  return (
+    // Inside the public layout, which already has a header and footer — so
+    // top padding only, never a min-h-screen of its own.
+    <div className="bg-ground px-4 pt-6 pb-12 sm:pt-12 lg:pt-16">
+      <div className={`mx-auto w-full ${narrow ? 'max-w-md' : 'max-w-3xl'}`}>
+        <div className="mb-6 text-center">
+          <Link to="/" className="mb-6 inline-flex items-center gap-3">
+            <img src="/logo.png" alt="STM Digital Library Logo" className="h-10 w-10 object-contain" />
+            <div className="flex flex-col text-left leading-none">
+              <span className="text-lg font-bold tracking-tight text-ink">STM Library</span>
+              <span className="mt-1 text-[11px] font-bold uppercase tracking-widest text-accent">Digital Access</span>
+            </div>
+          </Link>
+          <h1 className="type-page-title text-ink">Create Your Account</h1>
+          <p className="mt-2 text-sm text-muted">Free Subscription — the departments you choose, half an hour at a time.</p>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/** What Google told us about the person, once the server has verified it. Display only: the server has the proof. */
+type GoogleIdentityInfo = { email: string; name: string | null; picture: string | null; onboardingToken: string };
+type LinkInfo = { linkToken: string; email: string; hasPassword: boolean; name: string | null; picture: string | null };
+
+/**
+ * Where a signup is. One step at a time, named, so no step can be reached by accident:
+ *   AUTH_METHOD              choose Google or email (nothing else is shown yet)
+ *   EMAIL_SIGNUP             the registration form, as it has always been
+ *   GOOGLE_AUTHENTICATING    Google answered; the server is checking it
+ *   GOOGLE_PROFILE_REQUIRED  a new person: the same questions, minus the password
+ *   GOOGLE_LINK_REQUIRED     the address already has an account: prove it is theirs first
+ * (A finished signup leaves the page.) The sign-in page can hand a Google result here through the router's state.
+ */
+type Step = 'AUTH_METHOD' | 'EMAIL_SIGNUP' | 'GOOGLE_AUTHENTICATING' | 'GOOGLE_PROFILE_REQUIRED' | 'GOOGLE_LINK_REQUIRED';
+
+function SignupFlow() {
   const navigate = useNavigate();
-  const { signup } = useAuth();
+  const location = useLocation();
+  const { loginWithGoogle } = useAuth();
+  const handed = (location.state as any) || {};
+  const [step, setStep] = useState<Step>(handed.googleOnboarding ? 'GOOGLE_PROFILE_REQUIRED' : handed.googleLink ? 'GOOGLE_LINK_REQUIRED' : 'AUTH_METHOD');
+  const [google, setGoogle] = useState<GoogleIdentityInfo | null>(handed.googleOnboarding || null);
+  const [link, setLink] = useState<LinkInfo | null>(handed.googleLink || null);
+  const [notice, setNotice] = useState('');
+  // The credential is kept in memory only, to try again if the account is already signed in elsewhere and the member says to replace that.
+  const [pendingCredential, setPendingCredential] = useState<string | null>(null);
+  const [sessionElsewhere, setSessionElsewhere] = useState(false);
+
+  const restart = (message = '') => { setGoogle(null); setLink(null); setPendingCredential(null); setSessionElsewhere(false); setNotice(message); setStep('AUTH_METHOD'); };
+
+  const arrived = (result: Extract<GoogleResult, { status: 'AUTHENTICATED' }>, isNew: boolean) => {
+    toast.success(isNew ? 'Account created successfully!' : 'Signed in with Google');
+    navigate(isNew && result.user?.registrantType === 'Solo' ? '/dashboard/subscribe' : isNew ? '/dashboard' : getDashboardRoute(result.user));
+  };
+
+  const onCredential = async (credential: string, replaceExisting = false) => {
+    setNotice(''); setSessionElsewhere(false); setStep('GOOGLE_AUTHENTICATING');
+    try {
+      const r = await loginWithGoogle(credential, replaceExisting);
+      if (r.status === 'AUTHENTICATED') return arrived(r, false);
+      if (r.status === 'PROFILE_REQUIRED') { setGoogle({ ...r.google, onboardingToken: r.onboardingToken }); setStep('GOOGLE_PROFILE_REQUIRED'); return; }
+      setLink({ linkToken: r.linkToken, email: r.email, hasPassword: r.hasPassword, name: r.google.name, picture: r.google.picture });
+      setStep('GOOGLE_LINK_REQUIRED');
+    } catch (e: any) {
+      setStep('AUTH_METHOD');
+      if (e?.code === 'ACTIVE_SESSION_EXISTS') { setPendingCredential(credential); setSessionElsewhere(true); return; }
+      setNotice(e?.code === 'CONCURRENT_LOGIN_LIMIT_REACHED' ? e.message : friendlyError(e, 'Google sign-in could not be completed. You can continue with email.'));
+    }
+  };
+
+  if (step === 'EMAIL_SIGNUP') return <SignupShell><SignupForm mode="email" onBack={() => restart()} /></SignupShell>;
+  if (step === 'GOOGLE_PROFILE_REQUIRED' && google) {
+    return <SignupShell><SignupForm mode="google" google={google} onBack={() => restart()} onExpired={() => restart('Your Google sign-up expired. Please continue with Google again.')} onExists={m => restart(m)} /></SignupShell>;
+  }
+  if (step === 'GOOGLE_LINK_REQUIRED' && link) {
+    return <SignupShell narrow><GoogleLinkPanel link={link} onCancel={() => restart()} onExpired={() => restart('That step expired. Please continue with Google again.')} /></SignupShell>;
+  }
+
+  const busy = step === 'GOOGLE_AUTHENTICATING';
+  return (
+    <SignupShell narrow>
+      <div className="card p-5 sm:p-8">
+        <div className="space-y-4">
+          {GOOGLE_CLIENT_ID && (
+            <>
+              <GoogleSignInButton onCredential={c => onCredential(c)} disabled={busy} />
+              {busy && <p role="status" className="text-center text-sm text-muted">Checking your Google account…</p>}
+              <div className="flex items-center gap-3" aria-hidden="true">
+                <span className="h-px flex-1 bg-rule" /><span className="text-xs font-semibold uppercase tracking-widest text-muted">or</span><span className="h-px flex-1 bg-rule" />
+              </div>
+            </>
+          )}
+          <Button type="button" variant="outline" size="lg" block disabled={busy} onClick={() => setStep('EMAIL_SIGNUP')}>
+            <Mail size={18} aria-hidden="true" /> Continue with Email
+          </Button>
+        </div>
+
+        {sessionElsewhere && pendingCredential && (
+          <div role="alert" className="mt-5 rounded-lg border border-caution/30 bg-caution-soft p-4 text-sm text-ink-2">
+            <p className="font-semibold text-ink">Already signed in elsewhere</p>
+            <p className="mt-1">This account is already signed in on another device or browser. Sign out there first, or end that session and continue here.</p>
+            <Button variant="outline" size="sm" className="mt-3" onClick={() => onCredential(pendingCredential, true)}>
+              Sign out the other session and continue with Google
+            </Button>
+          </div>
+        )}
+        {notice && <p role="alert" className="mt-5 rounded-lg border border-alarm/40 bg-alarm/10 px-3 py-2.5 text-sm font-medium text-alarm">{notice}</p>}
+
+        <div className="mt-8 border-t border-rule pt-6 text-center">
+          <p className="text-sm text-muted">
+            Already have an account? <Link to="/login" className="font-semibold text-accent hover:underline">Log in</Link>
+          </p>
+        </div>
+      </div>
+    </SignupShell>
+  );
+}
+
+/**
+ * An STM account already uses the address Google verified. Nothing is merged on the address alone: the person proves the account is
+ * theirs with its password, and only then is Google connected to that same account (same history, plan, institution and departments).
+ */
+function GoogleLinkPanel({ link, onCancel, onExpired }: { link: LinkInfo; onCancel: () => void; onExpired: () => void }) {
+  const navigate = useNavigate();
+  const { linkGoogle } = useAuth();
+  const [password, setPassword] = useState('');
+  const [show, setShow] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [elsewhere, setElsewhere] = useState(false);
+  const submitting = useRef(false);
+
+  const submit = async (replaceExisting = false, e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (submitting.current || !password) { if (!password) setError('Please enter your password.'); return; }
+    submitting.current = true; setBusy(true); setError(''); setElsewhere(false);
+    try {
+      const r = await linkGoogle(link.linkToken, password, replaceExisting);
+      if (r.status === 'AUTHENTICATED') {
+        toast.success('Google account connected.');
+        navigate(getDashboardRoute(r.user));
+      }
+    } catch (err: any) {
+      if (err?.code === 'LINK_EXPIRED') return onExpired();
+      if (err?.code === 'ACTIVE_SESSION_EXISTS') setElsewhere(true);
+      else setError(err?.code === 'INVALID_CREDENTIALS' ? 'That password is not correct.' : friendlyError(err, 'We could not connect Google. Please try again.'));
+    } finally { setBusy(false); submitting.current = false; }
+  };
+
+  return (
+    <div className="card p-5 sm:p-8">
+      <div className="flex items-start gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent" aria-hidden="true"><ShieldCheck size={20} /></span>
+        <div className="min-w-0">
+          <h2 className="text-lg font-bold text-ink">Account already exists</h2>
+          <p className="mt-1 text-sm text-ink-2">
+            An STM Digital Library account already uses <strong className="break-all font-semibold">{link.email}</strong>.
+            Verify your existing account to connect Google.
+          </p>
+        </div>
+      </div>
+
+      {link.hasPassword ? (
+        <form className="mt-5 space-y-4" onSubmit={e => submit(false, e)} noValidate>
+          <FieldShell id="link-password" label="Current password" required error={error || undefined}>
+            <div className="relative">
+              <Lock className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" size={18} aria-hidden="true" />
+              <input id="link-password" type={show ? 'text' : 'password'} autoComplete="current-password" aria-required="true"
+                value={password} onChange={e => setPassword(e.target.value)} placeholder="Your STM password" disabled={busy}
+                aria-invalid={error ? true : undefined} aria-describedby={error ? 'link-password-error' : undefined}
+                className="input h-11 pl-10 pr-11" />
+              <button type="button" onClick={() => setShow(v => !v)} aria-label={show ? 'Hide password' : 'Show password'} aria-pressed={show}
+                className="btn btn-ghost btn-sm btn-icon absolute right-1.5 top-1/2 -translate-y-1/2 text-muted">
+                {show ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+              </button>
+            </div>
+          </FieldShell>
+          {elsewhere && (
+            <div role="alert" className="rounded-lg border border-caution/30 bg-caution-soft p-3 text-sm text-ink-2">
+              <p>This account is already signed in on another device or browser.</p>
+              <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => submit(true)} loading={busy}>Sign out the other session and connect Google</Button>
+            </div>
+          )}
+          <Button type="submit" variant="brand" size="lg" block loading={busy}>Verify and connect Google</Button>
+          <p className="text-center text-xs text-muted">
+            <Link to="/login" className="font-semibold text-accent hover:underline">Forgot your password?</Link> Reset it from the sign-in page, then come back and continue with Google.
+          </p>
+        </form>
+      ) : (
+        <p className="mt-5 rounded-lg border border-rule bg-surface-2 p-3 text-sm text-ink-2">
+          This account does not have a password yet, so it cannot be verified here. Use <Link to="/login" className="font-semibold text-accent hover:underline">Forgot password</Link> on the sign-in page to set one, then continue with Google again.
+        </p>
+      )}
+      <Button type="button" variant="ghost" size="md" block className="mt-3" onClick={onCancel} disabled={busy}>Cancel</Button>
+    </div>
+  );
+}
+
+function SignupForm({ mode, google, onBack, onExpired, onExists }: {
+  mode: 'email' | 'google';
+  google?: GoogleIdentityInfo;
+  onBack: () => void;
+  onExpired?: () => void;
+  onExists?: (message: string) => void;
+}) {
+  const navigate = useNavigate();
+  const { signup, completeGoogleSignup } = useAuth();
+  const isGoogle = mode === 'google';
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
+    name: google?.name || '',
+    email: google?.email || '',
     organization: '',
     contact: '',
     designation: '',
@@ -274,7 +487,8 @@ function SignupForm() {
   const [whatsappOptIn, setWhatsappOptIn] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  // Google has verified the address already; for email it is verified by the code below.
+  const [isEmailVerified, setIsEmailVerified] = useState(isGoogle);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
   // A field shows its problem once it has been left, or once Create Account has been pressed.
@@ -303,7 +517,8 @@ function SignupForm() {
   const phoneErr = phoneProblem(dial, formData.contact);
   if (phoneErr) errors.contact = phoneErr;
   if (!formData.interestedDomains.length) errors.departments = 'Please select at least one department relevant to your institution.';
-  if (!formData.password) errors.password = 'Please choose a password.';
+  // A Google account has no local password to choose: Google is how they sign in.
+  if (!isGoogle && !formData.password) errors.password = 'Please choose a password.';
 
   const show = (k: string) => (touched[k] || submitted) && errors[k] ? errors[k] : undefined;
   const touch = (k: string) => () => setTouched(t => (t[k] ? t : { ...t, [k]: true }));
@@ -341,7 +556,7 @@ function SignupForm() {
     const order: [string, string][] = [
       ['type', 'signup-type-' + (REGISTRANT_TYPES[0]?.id || '')], ['name', 'signup-name'], ['organization', 'signup-organization'],
       ['role', 'signup-role-search'], ['customRole', 'signup-custom-role'], ['country', 'signup-country'], ['state', 'signup-state'],
-      ['contact', 'signup-contact'], ['departments', 'signup-departments'], ['password', 'signup-password'],
+      ['contact', 'signup-contact'], ['departments', 'signup-departments'], ...(isGoogle ? [] : [['password', 'signup-password'] as [string, string]]),
     ];
     const first = order.find(([k]) => errors[k]);
     if (first) {
@@ -364,6 +579,26 @@ function SignupForm() {
     setLoading(true);
     try {
       const contact = buildContact(dial, formData.contact);
+      if (isGoogle && google) {
+        // The address and who Google says they are come from the token the server issued; only the answers to the registration questions are sent.
+        const r = await completeGoogleSignup({
+          onboardingToken: google.onboardingToken,
+          name: formData.name.trim(),
+          organization: formData.organization.trim(),
+          contact,
+          designation: roleIsOther ? customRole.trim() : formData.designation,
+          interestedDomains: formData.interestedDomains,
+          registrantType: formData.registrantType,
+          state: formData.state.trim(),
+          country: formData.country,
+          whatsapp: whatsappOptIn ? contact : '',
+        });
+        if (r.status === 'AUTHENTICATED') {
+          toast.success('Account created successfully!');
+          navigate(formData.registrantType === 'Solo' ? '/dashboard/subscribe' : '/dashboard');
+        }
+        return;
+      }
       await signup(formData.email, formData.password, formData.name.trim(), formData.organization.trim(), contact, roleIsOther ? customRole.trim() : formData.designation, formData.interestedDomains, {
         registrantType: formData.registrantType,
         state: formData.state.trim(),
@@ -376,6 +611,9 @@ function SignupForm() {
       // A Solo Learner picks Free or Premium straight away; everyone else goes to the dashboard.
       navigate(formData.registrantType === 'Solo' ? '/dashboard/subscribe' : '/dashboard');
     } catch (error: any) {
+      // The Google sign-up outlived its proof, or someone registered this Google account or address meanwhile: start the choice again.
+      if (error?.code === 'ONBOARDING_EXPIRED') { onExpired?.(); return; }
+      if (error?.code === 'ALREADY_REGISTERED' || error?.code === 'ACCOUNT_EXISTS') { onExists?.(error.message); return; }
       // Everything they typed is still in state; only the message changes.
       setServerError(friendlyError(error, 'We could not create your account. Please try again.'));
     } finally {
@@ -389,35 +627,43 @@ function SignupForm() {
   const off = !isEmailVerified;
 
   return (
-    // Inside the public layout, which already has a header and footer — so
-    // top padding only, never a min-h-screen of its own.
-    <div className="bg-ground px-4 pt-6 pb-12 sm:pt-12 lg:pt-16">
-      <div className="mx-auto w-full max-w-3xl">
-        <div className="mb-6 text-center">
-          <Link to="/" className="mb-6 inline-flex items-center gap-3">
-            <img src="/logo.png" alt="STM Digital Library Logo" className="h-10 w-10 object-contain" />
-            <div className="flex flex-col text-left leading-none">
-              <span className="text-lg font-bold tracking-tight text-ink">STM Library</span>
-              <span className="mt-1 text-[11px] font-bold uppercase tracking-widest text-accent">Digital Access</span>
-            </div>
-          </Link>
-          <h1 className="type-page-title text-ink">Create Your Account</h1>
-          <p className="mt-2 text-sm text-muted">Free Subscription — the departments you choose, half an hour at a time.</p>
-        </div>
-
+    <>
+      <div>
         <div className="card p-5 sm:p-8">
+          <button type="button" onClick={onBack}
+            className="mb-5 inline-flex min-h-[36px] items-center gap-1.5 rounded-md text-sm font-semibold text-accent hover:text-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+            <ArrowLeft size={16} aria-hidden="true" /> {isGoogle ? 'Use another Google account' : 'Choose another way to sign up'}
+          </button>
           {/* noValidate: the browser's one-at-a-time tooltip would pre-empt the
               inline messages, which say what is wrong beside each field at once. */}
           <form id="signup-form" className="space-y-8" onSubmit={handleSignup} noValidate>
 
-            {/* The address gates everything after it, so it stands alone. */}
-            <div className="rounded-xl border border-rule bg-surface-2 p-4">
-              <EmailVerificationInput
-                value={formData.email}
-                onChange={(email) => setFormData({ ...formData, email })}
-                onVerified={setIsEmailVerified}
-              />
-            </div>
+            {isGoogle && google ? (
+              /* Google has verified the address, so it is shown, not asked for, and cannot be changed here:
+                 another address means another Google account. */
+              <div className="rounded-xl border border-success/30 bg-success-soft p-4">
+                <p className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-success"><Check size={16} strokeWidth={3} aria-hidden="true" /> Google account verified</p>
+                <div className="flex items-center gap-3">
+                  {google.picture
+                    ? <img src={google.picture} alt="" referrerPolicy="no-referrer" className="h-11 w-11 shrink-0 rounded-full object-cover" />
+                    : <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface text-ink-2" aria-hidden="true"><User size={20} /></span>}
+                  <div className="min-w-0">
+                    {google.name && <p className="truncate text-sm font-semibold text-ink">{google.name}</p>}
+                    <p className="break-all text-sm text-ink-2">{google.email}</p>
+                    <p className="text-xs text-success">Verified with Google</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* The address gates everything after it, so it stands alone. */
+              <div className="rounded-xl border border-rule bg-surface-2 p-4">
+                <EmailVerificationInput
+                  value={formData.email}
+                  onChange={(email) => setFormData({ ...formData, email })}
+                  onVerified={setIsEmailVerified}
+                />
+              </div>
+            )}
 
             <div className={`space-y-8 transition-opacity duration-300 ${isEmailVerified ? 'opacity-100' : 'pointer-events-none opacity-50'}`}>
 
@@ -685,7 +931,7 @@ function SignupForm() {
                 )}
               </Section>
 
-              <Section title="Account details">
+              {!isGoogle && <Section title="Account details">
                 <div className="grid gap-4">
                   <FieldShell id="signup-password" label="Password" required error={show('password')}>
                     <div className="relative">
@@ -716,7 +962,7 @@ function SignupForm() {
                     </div>
                   </FieldShell>
                 </div>
-              </Section>
+              </Section>}
             </div>
 
             <div className={`transition-opacity duration-300 ${isEmailVerified ? 'opacity-100' : 'pointer-events-none opacity-50'}`}>
@@ -772,6 +1018,6 @@ function SignupForm() {
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

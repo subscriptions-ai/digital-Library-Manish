@@ -461,7 +461,9 @@ model Chapter {
 model User {
   id             String  @id @default(uuid())
   email          String  @unique
-  password       String
+  /// The bcrypt hash of a local password. Null for an account that signs in only with Google (or another provider)
+  /// and has never set one: there is nothing to check, and nothing is invented to stand in for it.
+  password       String?
   displayName    String?
   organization   String?
   contact        String?
@@ -595,6 +597,8 @@ model User {
   @@index([status, deletionScheduledAt])
 
   sessions UserSession[]
+  /// How this account can sign in besides a password: a Google account, today. See AuthIdentity.
+  authIdentities AuthIdentity[]
   institutionAccess InstitutionMemberAccess[]
 }
 
@@ -618,6 +622,30 @@ model InstitutionMemberAccess {
 
   @@unique([userId, institutionId])
   @@index([institutionId, revokedAt])
+}
+
+/// An external sign-in tied to one STM account: "this Google account is that member".
+///
+/// Identified by the provider's stable subject (Google's `sub`), never by email: an address can change hands or
+/// change spelling, the subject cannot. One provider account belongs to one member, and one member holds at most one
+/// account per provider, both enforced here rather than trusted to the code that writes the row. Signing in this way
+/// ends in the same session as a password does (`startSession`), so every account rule still applies. No provider
+/// token, and no credential of any kind, is stored.
+model AuthIdentity {
+  id              String   @id @default(uuid())
+  userId          String
+  provider        String
+  providerSubject String
+  /// The address the provider reported when it was linked; for audit. Not used to find the member.
+  emailAtLink     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerSubject])
+  @@unique([userId, provider])
+  @@index([userId])
 }
 
 /// One row per sign-in. A member may hold at most ONE row that is neither
