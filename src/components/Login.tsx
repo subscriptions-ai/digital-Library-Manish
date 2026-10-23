@@ -5,8 +5,8 @@ import { useAuth } from "../contexts/AuthContext";
 import { toast } from "react-hot-toast";
 import { Button, Dialog, friendlyError } from "./ui";
 import { getDashboardRoute } from "../lib/dashboardRoute";
-import { GOOGLE_CLIENT_ID } from "../lib/google";
 import { GoogleSignInButton } from "./auth/GoogleSignInButton";
+import { useGoogleConfig } from "./auth/useGoogleConfig";
 
 export function Login() {
   const navigate = useNavigate();
@@ -31,6 +31,7 @@ export function Login() {
   const [forgotLoading, setForgotLoading] = useState(false);
 
   const { login, profile, loginWithGoogle } = useAuth();
+  const google = useGoogleConfig();
 
   // Left by the global fetch guard when a revoked or expired session sent us here.
   React.useEffect(() => {
@@ -188,7 +189,7 @@ export function Login() {
         </div>
 
         <div className="card card-pad sm:p-8">
-          {GOOGLE_CLIENT_ID && (
+          {google.state === 'on' && (
             <div className="mb-5 space-y-4">
               <GoogleSignInButton onCredential={c => onGoogleCredential(c)} disabled={googleBusy || loading} />
               {googleBusy && <p role="status" className="text-center text-sm text-muted">Checking your Google account…</p>}

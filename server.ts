@@ -44,6 +44,7 @@ import { mediaStorageRoot, mediaDir as mediaDirPath, mediaDriver, mediaStorageSt
 import { aiConfig } from "./src/server/aiAssistantConfig.js";
 import { searchContent } from "./src/lib/catalogueSearch.js";
 import { contentTypeCounts } from "./src/lib/publicCounts.js";
+import { publicJournalCount, publicJournalStatusSql, publicJournalStatusWhere, PUBLIC_JOURNAL_STATUSES } from "./src/lib/publicJournals.js";
 import { COMPANY_DETAILS, currentIssuer } from "./src/config.js";
 import { canonicalOrSelf, canonicalOrSelfList, canonicalDepartmentName, resolveCanonicalDepartment, entitlementCovers, foldCounts, departmentFromSlug, spellingsOfAll } from "./src/lib/departmentRegistry.js";
 import { createDepartmentSpellings } from "./src/server/departmentSpellings.js";
@@ -53,7 +54,7 @@ import { DOMAINS, REGISTRANT_TYPES, DESIGNATIONS_BY_TYPE, ALL_DESIGNATIONS, open
 import { ASSIGNABLE_MEMBER_ROLES, PRO_ONLY_ACCESS_ROLES, assignableRole, roleFromDesignation, resolveImportRole,
   cleanDesignation, effectiveAccessRole } from "./src/lib/memberRoles.js";
 import { effectiveSessionLimit, parseSessionLimit, decideSignIn, LIMIT_REACHED } from "./src/lib/sessionLimits.js";
-import { GOOGLE, googleConfigured, verifyGoogleCredential, GoogleAuthError, signGoogleToken, readGoogleToken, type LinkClaims, type OnboardingClaims } from "./src/server/googleAuth.js";
+import { GOOGLE, googleConfigured, googleClientIdForBrowser, googleStatus, verifyGoogleCredential, GoogleAuthError, signGoogleToken, readGoogleToken, type LinkClaims, type OnboardingClaims } from "./src/server/googleAuth.js";
 import { getState as getIngestionState, normaliseIssn } from "./src/lib/ingestionWorker.js";
 import { runEnginePass, wakeEngine } from "./src/lib/ingestion/engine.js";
 import { importDoajCatalogue, checkDoajCatalogue, importCheckedJournals } from "./src/lib/doajCatalogue.js";
@@ -591,14 +592,8 @@ async function startServer() {
     // Everything else on the archived shelf — theses, magazines, case reports,
     // proceedings, videos, newsletters. A reader opens those too, so a figure
     // called "the whole library" has to count them.
-    const [journalRows, newArticles, legacyPeriodicals, newBooks, legacyBooks, legacyOther] = await Promise.all([
-      (prisma as any).$queryRawUnsafe(
-        domains?.length
-          ? `select count(distinct a."journalId")::int as n from "Article" a
-             where a.status = 'Published' and a."journalId" is not null and a.domain = any($1)`
-          : `select count(distinct "journalId")::int as n from "Article"
-             where status = 'Published' and "journalId" is not null`,
-        ...(domains?.length ? [domains] : [])),
+    const [journalTitles, newArticles, legacyPeriodicals, newBooks, legacyBooks, legacyOther] = await Promise.all([
+      publicJournalCount(prisma, { articleDomains: domains }),
       (prisma as any).article.count({ where: { status: 'Published', ...inDomains } }),
       prisma.content.count({ where: { contentType: "Periodicals", ...live, ...inDomains } }),
       (prisma as any).book.count({ where: { status: 'Published', ...inDomains } }),
@@ -611,7 +606,7 @@ async function startServer() {
     const articles = newArticles + legacyPeriodicals;
     const books = newBooks + legacyBooks;
     return {
-      journals: Number(journalRows?.[0]?.n || 0),
+      journals: journalTitles,
       articles,
       books,
       /** Everything a reader can open, counted once. */
@@ -1293,6 +1288,19 @@ async function startServer() {
       return null;
     }
   };
+
+  /**
+   * The client ID the browser must use for Google Identity Services: the SAME value this server verifies credentials against, read from the
+   * runtime environment. The page used to carry its own copy baked in at build time; the two could differ (and did: a build kept an old,
+   * mistyped ID while the server had the right one), and the only fix was a rebuild. Now there is one source and changing it needs only a
+   * restart. The ID is public by design; this answers with nothing else. It sits outside /api/auth/google so that every page load does not
+   * spend that route's sign-in rate limit.
+   */
+  app.get("/api/public/google-config", (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+    const clientId = googleClientIdForBrowser();
+    res.json({ enabled: !!clientId, clientId });
+  });
 
   app.post("/api/auth/google", async (req, res) => {
     try {
@@ -2015,6 +2023,12 @@ async function startServer() {
     if (req.user?.role !== "SuperAdmin") return res.status(403).json({ error: "Access denied" });
     next();
   };
+
+  // Super Admin only: whether Google sign-in is configured, with the ID masked and the reason when it is not. Never a secret.
+  app.get("/api/admin/auth/google-status", authenticateJWT, requireSuperAdmin, (_req: any, res: any) => {
+    res.set('Cache-Control', 'no-store');
+    res.json(googleStatus());
+  });
 
   /** Nobody on the staff side is ever on a reader's clock or scope. */
   const STAFF_ROLES = ['SuperAdmin', 'Admin', 'ContentManager', 'SubscriptionManager',
@@ -7242,16 +7256,14 @@ async function startServer() {
         }),
         (prisma as any).article.count({ where: { domain: { in: spelled }, status: 'Published' } }),
         (prisma as any).book.count({ where: { domain: { in: spelled }, status: 'Published' } }),
-        (prisma as any).$queryRawUnsafe(
-          `select count(distinct "journalId")::int as n from "Article"
-           where status = 'Published' and "domain" = any($1) and "journalId" is not null`, spelled),
+        publicJournalCount(prisma, { articleDomains: spelled }),
       ]);
 
       const byType: Record<string, number> = {};
       for (const g of contentGroups as any[]) {
         if (g.contentType) byType[g.contentType] = g._count.id;
       }
-      byType['Journals'] = Number(deptJournalRows?.[0]?.n || 0);
+      byType['Journals'] = deptJournalRows;
       byType['Articles'] = deptArticles + (byType['Periodicals'] || 0);
       byType['Books'] = (byType['Books'] || 0) + deptBooks;
       delete byType['Periodicals'];
@@ -7878,17 +7890,20 @@ async function startServer() {
       // "__none" is the journals no department was ever given.
       const domainWhere: any = domain ? { domain: domain === '__none' ? null : { in: await deptSpellings.expand([domain]) } } : {};
       const statusWhere: any = status ? { status } : {};
-      const articlesWhere: any = articles === 'with' ? { articleCount: { gt: 0 } }
-        : articles === 'without' ? { articleCount: 0 } : {};
+      // "Has articles" means has PUBLISHED articles, read from the articles themselves. Journal.articleCount is a denormalised counter that
+      // lags the real rows, so it is not used to decide anything here.
+      const articlesWhere: any = articles === 'with' ? { articles: { some: { status: 'Published' } } }
+        : articles === 'without' ? { articles: { none: { status: 'Published' } } } : {};
 
       const where = { AND: [searchWhere, domainWhere, statusWhere, articlesWhere] };
-      const orderBy: any = sort === 'articles' ? [{ articleCount: 'desc' }, { title: 'asc' }]
+      const orderBy: any = sort === 'articles' ? [{ articles: { _count: 'desc' } }, { title: 'asc' }]
         : sort === 'newest' ? [{ createdAt: 'desc' }]
         : [{ title: 'asc' }];
       const select = {
         id: true, title: true, issn: true, eissn: true, publisherName: true, domain: true,
         status: true, licence: true, articleCount: true, firstYear: true, lastYear: true,
         homepage: true, createdAt: true,
+        _count: { select: { articles: { where: { status: 'Published' } } } },
       };
 
       if (str(req.query.format) === 'csv') {
@@ -7904,7 +7919,7 @@ async function startServer() {
           const batch: any[] = await prisma.journal.findMany({ where, select, orderBy, skip, take: 1000 });
           for (const j of batch) {
             res.write([j.title, j.issn, j.eissn, j.publisherName, j.domain, j.status === 'Accepted' ? 'Yes' : 'Metadata only',
-              j.licence, j.articleCount, j.firstYear, j.lastYear, j.homepage].map(cell).join(',') + '\n');
+              j.licence, j._count?.articles ?? 0, j.firstYear, j.lastYear, j.homepage].map(cell).join(',') + '\n');
           }
           if (batch.length < 1000) break;
           skip += 1000;
@@ -7912,17 +7927,21 @@ async function startServer() {
         return res.end();
       }
 
-      const [journals, total, byDomain, byStatus, catalogue] = await Promise.all([
+      const [journals, total, byDomain, byStatus, catalogue, publicTitles] = await Promise.all([
         prisma.journal.findMany({ where, select, orderBy, skip: (page - 1) * limit, take: limit }),
         prisma.journal.count({ where }),
         prisma.journal.groupBy({ by: ['domain'], where: { AND: [searchWhere, statusWhere, articlesWhere] }, _count: { _all: true } }),
         prisma.journal.groupBy({ by: ['status'], where: { AND: [searchWhere, domainWhere, articlesWhere] }, _count: { _all: true } }),
         prisma.journal.count(),
+        // What a visitor is offered, by the one public definition (src/lib/publicJournals.ts). Not narrowed by the filters set here.
+        publicJournalCount(prisma),
       ]);
-      const withArticles = await prisma.journal.count({ where: { AND: [where, { articleCount: { gt: 0 } }] } });
+      const withArticles = await prisma.journal.count({ where: { AND: [where, { articles: { some: { status: 'Published' } } }] } });
 
       res.json({
-        journals, total, page, limit, catalogue, withArticles,
+        // `catalogue` is every journal row, whatever its status: an operations figure. `publicTitles` is the figure the public site shows.
+        journals: journals.map(({ _count, ...j }: any) => ({ ...j, publishedArticles: _count?.articles ?? 0 })),
+        total, page, limit, catalogue, publicTitles, withArticles,
         // One line per department; `spellings` lists the stored values folded into it, so an admin can see them.
         departments: [
           ...foldCounts(byDomain.map((g: any) => ({ name: g.domain as string | null, count: g._count._all as number }))),
@@ -9908,6 +9927,8 @@ async function startServer() {
         groups.filter((g: any) => g.journalId).map((g: any) => [g.journalId, g._count._all]));
       if (!countBy.size) return res.json([]);
       where.id = { in: [...countBy.keys()] };
+      // Only journals the catalogue offers: see src/lib/publicJournals.ts.
+      Object.assign(where, publicJournalStatusWhere);
 
       const journals = await (prisma as any).journal.findMany({ where, orderBy: { title: 'asc' }, take: 500 });
       res.json(journals.map((j: any) => ({
@@ -10283,7 +10304,7 @@ async function startServer() {
                max(a."year")::int as "lastYear"
         from "Journal" j
         join "Article" a on a."journalId" = j.id and a.status = 'Published'
-        where ${clause}
+        where ${publicJournalStatusSql('j')} and ${clause}
         group by j.id
         order by "articleCount" desc`;
 
@@ -10307,7 +10328,7 @@ async function startServer() {
           `select j."publisherName" as name, count(distinct j.id)::int as journals
            from "Journal" j
            join "Article" a on a."journalId" = j.id and a.status = 'Published'
-           where j.domain = any($1) and j."publisherName" is not null
+           where ${publicJournalStatusSql('j')} and j.domain = any($1) and j."publisherName" is not null
            group by 1 order by 2 desc`, spelled),
         (prisma as any).$queryRawUnsafe(authorsSql, spelled),
       ]);
@@ -10359,7 +10380,7 @@ async function startServer() {
                 min(a."year")::int as "firstYear", max(a."year")::int as "lastYear"
          from "Journal" j
          join "Article" a on a."journalId" = j.id and a.status = 'Published'
-         where j."publisherName" = $1 ${scope !== null ? 'and j.domain = any($2)' : ''}
+         where ${publicJournalStatusSql('j')} and j."publisherName" = $1 ${scope !== null ? 'and j.domain = any($2)' : ''}
          group by j.id
          order by "articleCount" desc`,
         ...(scope !== null ? [publisherName, scope] : [publisherName]));
@@ -10399,7 +10420,7 @@ async function startServer() {
         `select j.subjects, count(a.id)::int as "articleCount"
          from "Journal" j
          join "Article" a on a."journalId" = j.id and a.status = 'Published'
-         ${scope !== null ? 'where j.domain = any($1)' : ''}
+         where ${publicJournalStatusSql('j')} ${scope !== null ? 'and j.domain = any($1)' : ''}
          group by j.id`,
         ...(scope !== null ? [scope] : []));
       const m = new Map<string, { journals: number; articles: number }>();
@@ -10434,7 +10455,7 @@ async function startServer() {
       if (scope !== null) where.domain = { in: scope };
 
       const all = await (prisma as any).$queryRawUnsafe(
-        `select j.id, j.title, j.issn, j.domain, j."publisherName", j.subjects,
+        `select j.id, j.title, j.issn, j.domain, j."publisherName", j.subjects, j.status,
                 j.licence, j."licenceIsNC",
                 count(a.id)::int as "articleCount",
                 count(distinct nullif(a."volume",''))::int as "volumeCount",
@@ -10456,6 +10477,11 @@ async function startServer() {
         return !!hit;
       });
       if (!subject) return res.status(404).json({ error: "Subject not found" });
+      // The page exists for any subject we hold, but it lists only journals the catalogue offers (see src/lib/publicJournals.ts):
+      // a candidate waiting for review, or a journal with no published article, is not an entry a visitor can use.
+      for (let i = journals.length - 1; i >= 0; i--) {
+        if (!(PUBLIC_JOURNAL_STATUSES as readonly string[]).includes(journals[i].status) || !(journals[i].articleCount > 0)) journals.splice(i, 1);
+      }
 
       journals.sort((a: any, b: any) => (b.articleCount || 0) - (a.articleCount || 0));
       const years = journals.flatMap((j: any) => [j.firstYear, j.lastYear]).filter(Boolean) as number[];
@@ -16651,7 +16677,11 @@ async function startServer() {
   });
 
   // One line at start-up, so a missing client ID is noticed here rather than as a button that does nothing. Nothing else depends on it.
-  console.log(googleConfigured() ? 'Google sign-in: enabled' : 'Google sign-in: disabled (GOOGLE_CLIENT_ID is not set); email sign-in is unaffected');
+  {
+    const g = googleStatus();
+    console.log(g.enabled ? `Google sign-in: enabled (client ${g.clientIdMasked})` : `Google sign-in: DISABLED: ${g.problem}. Email sign-in is unaffected.`);
+    if (g.buildVariablePresent) console.warn(`VITE_GOOGLE_CLIENT_ID is set but is no longer read: the page takes its client ID from GOOGLE_CLIENT_ID at runtime${g.buildVariableMatches === false ? ' (and the two values DIFFER; only GOOGLE_CLIENT_ID matters)' : ''}.`);
+  }
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT} (Mode: ${process.env.NODE_ENV || 'development'})`);

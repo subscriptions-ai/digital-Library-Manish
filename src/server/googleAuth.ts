@@ -24,8 +24,44 @@ export class GoogleAuthError extends Error {
 }
 
 /** The OAuth client ID the credential must have been issued to. Read each time, so a missing one only disables Google. */
-const audience = () => (process.env.GOOGLE_CLIENT_ID || '').trim();
-export const googleConfigured = () => !!audience();
+const audience = () => String(process.env.GOOGLE_CLIENT_ID || '').trim();
+
+/**
+ * Why an ID cannot be a real Google client ID, or null. A real one is a project number, a hyphen, then lower-case letters and digits, then
+ * `.apps.googleusercontent.com`. One with a capital letter, a space or another suffix (a `0` typed as `O` is the classic) names no client at
+ * Google, so every sign-in with it ends in "The OAuth client was not found": it is refused here instead of being handed to a browser.
+ */
+export function googleClientIdProblem(id: string): string | null {
+  if (!id) return 'GOOGLE_CLIENT_ID is not set';
+  if (/\s/.test(id)) return 'it contains whitespace';
+  if (!id.endsWith('.apps.googleusercontent.com')) return 'it does not end in .apps.googleusercontent.com';
+  const [project, ...rest] = id.slice(0, -'.apps.googleusercontent.com'.length).split('-');
+  if (!/^\d{6,}$/.test(project) || rest.length !== 1) return 'it is not <project number>-<id>';
+  if (/[^a-z0-9]/.test(rest[0])) return `it has a character a Google client ID never has ("${rest[0].replace(/[a-z0-9]/g, '')}": letters are lower-case, so a capital O is not a zero)`;
+  if (rest[0].length < 20) return 'it is too short';
+  return null;
+}
+
+/** Google sign-in is on only for a client ID that could exist. */
+export const googleConfigured = () => !googleClientIdProblem(audience());
+
+/** The client ID the browser must use: the very one credentials are verified against. Public by design; null when sign-in is off. */
+export const googleClientIdForBrowser = (): string | null => (googleConfigured() ? audience() : null);
+
+/** For the Super Admin's diagnostic and the start-up log: what is configured, masked, and what is wrong with it. Never a secret. */
+export function googleStatus() {
+  const id = audience();
+  const problem = googleClientIdProblem(id);
+  const legacy = String(process.env.VITE_GOOGLE_CLIENT_ID || '').trim();
+  return {
+    enabled: !problem,
+    problem,
+    clientIdMasked: id ? `${id.slice(0, 12)}…${id.slice(-34)}` : null,
+    // The browser no longer reads a build-time ID. If one is still set in the environment it is ignored, and a difference is worth knowing.
+    buildVariablePresent: !!legacy,
+    buildVariableMatches: legacy ? legacy === id : null,
+  };
+}
 
 let client: OAuth2Client | null = null;
 

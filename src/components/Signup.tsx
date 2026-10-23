@@ -10,8 +10,8 @@ import { DOMAINS, REGISTRANT_TYPES, DESIGNATION_GROUPS, DESIGNATIONS_BY_TYPE, PO
 import { INDIAN_STATES } from "../lib/gstUtils";
 import { libraryUrl } from "../lib/libraryRoute";
 import { getDashboardRoute } from "../lib/dashboardRoute";
-import { GOOGLE_CLIENT_ID } from "../lib/google";
 import { GoogleSignInButton } from "./auth/GoogleSignInButton";
+import { useGoogleConfig } from "./auth/useGoogleConfig";
 import type { GoogleResult } from "../lib/authApi";
 
 /**
@@ -294,6 +294,7 @@ function SignupFlow() {
   const navigate = useNavigate();
   const location = useLocation();
   const { loginWithGoogle } = useAuth();
+  const googleConfig = useGoogleConfig();
   const handed = (location.state as any) || {};
   const [step, setStep] = useState<Step>(handed.googleOnboarding ? 'GOOGLE_PROFILE_REQUIRED' : handed.googleLink ? 'GOOGLE_LINK_REQUIRED' : 'AUTH_METHOD');
   const [google, setGoogle] = useState<GoogleIdentityInfo | null>(handed.googleOnboarding || null);
@@ -338,7 +339,7 @@ function SignupFlow() {
     <SignupShell narrow>
       <div className="card p-5 sm:p-8">
         <div className="space-y-4">
-          {GOOGLE_CLIENT_ID && (
+          {googleConfig.state === 'on' && (
             <>
               <GoogleSignInButton onCredential={c => onCredential(c)} disabled={busy} />
               {busy && <p role="status" className="text-center text-sm text-muted">Checking your Google account…</p>}

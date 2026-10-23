@@ -13,10 +13,10 @@ import { toast } from 'react-hot-toast';
 type Journal = {
   id: string; title: string; issn: string | null; eissn: string | null;
   publisherName: string | null; domain: string | null; status: string;
-  licence: string | null; articleCount: number; firstYear: number | null; lastYear: number | null;
+  licence: string | null; articleCount: number; publishedArticles: number; firstYear: number | null; lastYear: number | null;
 };
 type Answer = {
-  journals: Journal[]; total: number; page: number; limit: number; catalogue: number; withArticles: number;
+  journals: Journal[]; total: number; page: number; limit: number; catalogue: number; publicTitles: number; withArticles: number;
   departments: { name: string | null; count: number }[];
   statuses: Record<string, number>;
 };
@@ -101,7 +101,7 @@ export function AdminJournalDirectory() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Journals</h1>
-          <p className="mt-1 text-sm text-slate-500">Every journal in the database, and how many each department holds.</p>
+          <p className="mt-1 text-sm text-slate-500">Every journal record in the database, and how many each department holds. The public site shows only the journals that have a published article.</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => setReload(r => r + 1)} title="Refresh"
@@ -117,11 +117,13 @@ export function AdminJournalDirectory() {
       </div>
 
       {/* The figures, for the filters that are set */}
-      <div className="grid grid-cols-2 divide-x divide-slate-200 rounded-xl border border-slate-200 bg-white sm:grid-cols-4">
+      <div className="grid grid-cols-2 divide-x divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white sm:grid-cols-3 lg:grid-cols-5 lg:divide-y-0">
         {[
-          { label: 'In the database', value: data?.catalogue, hint: 'every journal' },
+          // Two different counts, named so they cannot be mistaken for one: every row we hold, and what the public site offers.
+          { label: 'Journal records in database', value: data?.catalogue, hint: 'every row, whatever its status' },
+          { label: 'Public journal titles', value: data?.publicTitles, hint: 'shown on the public site' },
           { label: 'Matching', value: data?.total, hint: filtered ? 'these filters' : 'no filter set' },
-          { label: 'With articles', value: data?.withArticles, hint: 'of those matching' },
+          { label: 'With published articles', value: data?.withArticles, hint: 'of those matching' },
           { label: 'Full text allowed', value: data?.statuses?.Accepted, hint: 'licence checked' },
         ].map(c => (
           <div key={c.label} className="p-4">
@@ -231,7 +233,7 @@ export function AdminJournalDirectory() {
                         </span>
                         {j.licence && <p className="mt-0.5 text-[11px] text-slate-400">{j.licence}</p>}
                       </td>
-                      <td className="px-5 py-3 text-right text-sm tabular-nums text-slate-700">{n(j.articleCount)}</td>
+                      <td className="px-5 py-3 text-right text-sm tabular-nums text-slate-700">{n(j.publishedArticles ?? j.articleCount)}</td>
                       <td className="whitespace-nowrap px-5 py-3 text-[13px] tabular-nums text-slate-500">
                         {j.firstYear ? (j.lastYear && j.lastYear !== j.firstYear ? `${j.firstYear}–${j.lastYear}` : j.firstYear) : '—'}
                       </td>

@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { GOOGLE_CLIENT_ID, loadGoogleIdentity } from '../../lib/google';
+import { loadGoogleIdentity, initializeGoogleOnce } from '../../lib/google';
+import { useGoogleConfig } from './useGoogleConfig';
 
 /**
  * Google's own "Continue with Google" button, rendered by Google Identity Services.
  *
  * It hands back a credential and nothing more; the page sends that to the server, which verifies it. No scope beyond sign-in is asked
- * for. With no client ID configured the button is simply absent, and if Google's script cannot be loaded the page says so and carries
- * on: email stays available either way.
+ * for. With no usable client ID on the server the button is simply absent, and if Google's script cannot be loaded the page says so and
+ * carries on: email stays available either way. The client ID comes from the server at runtime (see src/lib/google.ts).
  */
 export function GoogleSignInButton({ onCredential, disabled, text = 'continue_with' }: {
   onCredential: (credential: string) => void;
@@ -17,21 +18,18 @@ export function GoogleSignInButton({ onCredential, disabled, text = 'continue_wi
   const handler = useRef(onCredential);
   handler.current = onCredential;
   const [state, setState] = useState<'loading' | 'ready' | 'failed'>('loading');
+  const config = useGoogleConfig();
 
   useEffect(() => {
-    if (!GOOGLE_CLIENT_ID) return;
+    if (config.state !== 'on') return;
     let live = true;
     let observer: ResizeObserver | undefined;
+    let stopListening = () => {};
     loadGoogleIdentity()
       .then(id => {
         if (!live || !box.current) return;
-        id.initialize({
-          client_id: GOOGLE_CLIENT_ID,
-          callback: (r: { credential?: string }) => { if (r?.credential) handler.current(r.credential); },
-          auto_select: false,
-          cancel_on_tap_outside: true,
-          ux_mode: 'popup',
-        });
+        // Initialized once for the whole page; this only says who should hear about a credential.
+        stopListening = initializeGoogleOnce(id, config.clientId, c => handler.current(c));
         // Google draws the button at a fixed pixel width (200–400), so it is drawn again whenever the space changes.
         let drawnAt = 0;
         const draw = () => {
@@ -47,10 +45,10 @@ export function GoogleSignInButton({ onCredential, disabled, text = 'continue_wi
         if (typeof ResizeObserver !== 'undefined') { observer = new ResizeObserver(draw); observer.observe(box.current); }
       })
       .catch(() => { if (live) setState('failed'); });
-    return () => { live = false; observer?.disconnect(); };
-  }, [text]);
+    return () => { live = false; observer?.disconnect(); stopListening(); };
+  }, [text, config.state, config.clientId]);
 
-  if (!GOOGLE_CLIENT_ID) return null;
+  if (config.state !== 'on') return null;
   if (state === 'failed') {
     return <p role="status" className="rounded-lg border border-rule bg-surface-2 px-3 py-2.5 text-center text-sm text-muted">
       Google sign-in is temporarily unavailable. You can continue with email.
