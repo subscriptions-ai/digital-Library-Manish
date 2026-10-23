@@ -58,6 +58,8 @@ export const COMPANY_DETAILS = {
   // the contact page, emails) and do not add it to new trust or company blocks until
   // the official replacement is confirmed. Do not guess one.
   email: "info@celnet.in",
+  /** Subscription and institutional-access enquiries. Shown beside `email` in the footer and on the contact page. */
+  subscriptionsEmail: "subscriptions@celnet.in",
 
   /** Public profiles. An icon renders only when its URL is set here. */
   social: {

@@ -309,6 +309,7 @@ export function ContactUs() {
                     <div className="min-w-0">
                       <div className="on-dark-3 mb-1 text-xs font-semibold uppercase tracking-wider">General Support</div>
                       <a href={`mailto:${COMPANY_DETAILS.email}`} className="on-dark break-all text-base font-medium hover:underline">{COMPANY_DETAILS.email}</a>
+                      <a href={`mailto:${COMPANY_DETAILS.subscriptionsEmail}`} className="on-dark mt-1 block break-all text-base font-medium hover:underline">{COMPANY_DETAILS.subscriptionsEmail}</a>
                       <p className="on-dark-2 mt-2 text-sm">For institutional / subscription enquiries and privacy / data protection requests, use this same official email and include the topic in your subject line.</p>
                       <div className="on-dark-3 mt-1 text-sm">Response within 24 hours</div>
                     </div>
@@ -320,6 +321,7 @@ export function ContactUs() {
                     <div className="min-w-0">
                       <div className="on-dark-3 mb-1 text-xs font-semibold uppercase tracking-wider">Call Us</div>
                       <a href={`tel:${COMPANY_DETAILS.tel[0].replace(/[^\d+]/g, "")}`} className="on-dark text-base font-medium hover:underline">{COMPANY_DETAILS.tel[0]}</a>
+                      <a href={`tel:${COMPANY_DETAILS.mobile.replace(/[^\d+]/g, "")}`} className="on-dark mt-1 block text-base font-medium hover:underline">{COMPANY_DETAILS.mobile}</a>
                       <div className="on-dark-3 mt-1 text-sm">Mon-Fri, 9am - 6pm IST</div>
                     </div>
                   </div>
