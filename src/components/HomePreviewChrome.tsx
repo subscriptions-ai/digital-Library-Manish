@@ -455,7 +455,7 @@ export function PreviewFooter() {
             <li className="flex gap-3">
               <Phone className={`${rowIcon} mt-2`} aria-hidden="true" />
               <span className="flex flex-wrap gap-x-3 gap-y-0">
-                {COMPANY_DETAILS.tel.map((t: string) => (
+                {[...COMPANY_DETAILS.tel, COMPANY_DETAILS.mobile].map((t: string) => (
                   <a
                     key={t}
                     href={`tel:${t.replace(/[^\d+]/g, '')}`}
@@ -475,6 +475,15 @@ export function PreviewFooter() {
                 className={`inline-flex min-h-8 items-center break-all rounded hover:text-accent focus-visible:text-accent ${focus}`}
               >
                 {COMPANY_DETAILS.email}
+              </a>
+            </li>
+            <li className="flex gap-3">
+              <Mail className={`${rowIcon} mt-2`} aria-hidden="true" />
+              <a
+                href={`mailto:${COMPANY_DETAILS.subscriptionsEmail}`}
+                className={`inline-flex min-h-8 items-center break-all rounded hover:text-accent focus-visible:text-accent ${focus}`}
+              >
+                {COMPANY_DETAILS.subscriptionsEmail}
               </a>
             </li>
           </ul>
