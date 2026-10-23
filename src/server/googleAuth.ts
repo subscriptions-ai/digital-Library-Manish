@@ -24,7 +24,7 @@ export class GoogleAuthError extends Error {
 }
 
 /** The OAuth client ID the credential must have been issued to. Read each time, so a missing one only disables Google. */
-const audience = () => String(process.env.GOOGLE_CLIENT_ID || '').trim();
+const audience = () => { const raw = process.env.GOOGLE_CLIENT_ID; return String(raw || '').trim(); };
 
 /**
  * Why an ID cannot be a real Google client ID, or null. A real one is a project number, a hyphen, then lower-case letters and digits, then
@@ -32,12 +32,15 @@ const audience = () => String(process.env.GOOGLE_CLIENT_ID || '').trim();
  * Google, so every sign-in with it ends in "The OAuth client was not found": it is refused here instead of being handed to a browser.
  */
 export function googleClientIdProblem(id: string): string | null {
-  if (!id) return 'GOOGLE_CLIENT_ID is not set';
-  if (/\s/.test(id)) return 'it contains whitespace';
+  if (!id) return 'GOOGLE_CLIENT_ID is not set, or is empty, in this process\'s environment';
+  // Said precisely, because these are the ones that cannot be seen in a settings screen.
+  if (/^["'`]|["'`]$/.test(id)) return 'the value is wrapped in quotation marks; the variable must be the bare ID without them';
+  const odd = [...id].find(ch => { const c = ch.codePointAt(0)!; return c < 33 || c > 126; });
+  if (odd) return `it contains an invisible or non-ASCII character (U+${odd.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')}), which usually comes from pasting; retype the value`;
   if (!id.endsWith('.apps.googleusercontent.com')) return 'it does not end in .apps.googleusercontent.com';
   const [project, ...rest] = id.slice(0, -'.apps.googleusercontent.com'.length).split('-');
   if (!/^\d{6,}$/.test(project) || rest.length !== 1) return 'it is not <project number>-<id>';
-  if (/[^a-z0-9]/.test(rest[0])) return `it has a character a Google client ID never has ("${rest[0].replace(/[a-z0-9]/g, '')}": letters are lower-case, so a capital O is not a zero)`;
+  if (/[^a-z0-9]/.test(rest[0])) return `it has a character a Google client ID never has ("${rest[0].replace(/[a-z0-9]/g, '')}": a real ID is lower-case letters and digits only, so a capital O is not a zero)`;
   if (rest[0].length < 20) return 'it is too short';
   return null;
 }
@@ -55,8 +58,13 @@ export function googleStatus() {
   const legacy = String(process.env.VITE_GOOGLE_CLIENT_ID || '').trim();
   return {
     enabled: !problem,
-    problem,
-    clientIdMasked: id ? `${id.slice(0, 12)}…${id.slice(-34)}` : null,
+    /** The variable is present and not blank in THIS process, whatever its value. */
+    runtimeConfigured: id.length > 0,
+    trimmedLength: id.length,
+    /** The value could be a real Google client ID. */
+    formatValid: !problem,
+    maskedClientId: id ? `${id.slice(0, 12)}…${id.slice(-34)}` : null,
+    validationReason: problem,
     // The browser no longer reads a build-time ID. If one is still set in the environment it is ignored, and a difference is worth knowing.
     buildVariablePresent: !!legacy,
     buildVariableMatches: legacy ? legacy === id : null,

@@ -24985,11 +24985,11 @@ var require_papaparse = __commonJS({
           if (!input)
             return returnable();
           if (fastMode || fastMode !== false && input.indexOf(quoteChar) === -1) {
-            var rows = input.split(newline);
-            for (var i2 = 0; i2 < rows.length; i2++) {
-              row = rows[i2];
+            var rows2 = input.split(newline);
+            for (var i2 = 0; i2 < rows2.length; i2++) {
+              row = rows2[i2];
               cursor += row.length;
-              if (i2 !== rows.length - 1)
+              if (i2 !== rows2.length - 1)
                 cursor += newline.length;
               else if (ignoreLastRow)
                 return returnable();
@@ -33085,16 +33085,16 @@ var require_source_map_consumer = __commonJS({
       var sectionIndex = binarySearch.search(
         needle,
         this._sections,
-        function(needle2, section2) {
-          var cmp = needle2.generatedLine - section2.generatedOffset.generatedLine;
+        function(needle2, section3) {
+          var cmp = needle2.generatedLine - section3.generatedOffset.generatedLine;
           if (cmp) {
             return cmp;
           }
-          return needle2.generatedColumn - section2.generatedOffset.generatedColumn;
+          return needle2.generatedColumn - section3.generatedOffset.generatedColumn;
         }
       );
-      var section = this._sections[sectionIndex];
-      if (!section) {
+      var section2 = this._sections[sectionIndex];
+      if (!section2) {
         return {
           source: null,
           line: null,
@@ -33102,9 +33102,9 @@ var require_source_map_consumer = __commonJS({
           name: null
         };
       }
-      return section.consumer.originalPositionFor({
-        line: needle.generatedLine - (section.generatedOffset.generatedLine - 1),
-        column: needle.generatedColumn - (section.generatedOffset.generatedLine === needle.generatedLine ? section.generatedOffset.generatedColumn - 1 : 0),
+      return section2.consumer.originalPositionFor({
+        line: needle.generatedLine - (section2.generatedOffset.generatedLine - 1),
+        column: needle.generatedColumn - (section2.generatedOffset.generatedLine === needle.generatedLine ? section2.generatedOffset.generatedColumn - 1 : 0),
         bias: aArgs.bias
       });
     };
@@ -33115,8 +33115,8 @@ var require_source_map_consumer = __commonJS({
     };
     IndexedSourceMapConsumer.prototype.sourceContentFor = function IndexedSourceMapConsumer_sourceContentFor(aSource, nullOnMissing) {
       for (var i2 = 0; i2 < this._sections.length; i2++) {
-        var section = this._sections[i2];
-        var content = section.consumer.sourceContentFor(aSource, true);
+        var section2 = this._sections[i2];
+        var content = section2.consumer.sourceContentFor(aSource, true);
         if (content || content === "") {
           return content;
         }
@@ -33129,15 +33129,15 @@ var require_source_map_consumer = __commonJS({
     };
     IndexedSourceMapConsumer.prototype.generatedPositionFor = function IndexedSourceMapConsumer_generatedPositionFor(aArgs) {
       for (var i2 = 0; i2 < this._sections.length; i2++) {
-        var section = this._sections[i2];
-        if (section.consumer._findSourceIndex(util.getArg(aArgs, "source")) === -1) {
+        var section2 = this._sections[i2];
+        if (section2.consumer._findSourceIndex(util.getArg(aArgs, "source")) === -1) {
           continue;
         }
-        var generatedPosition = section.consumer.generatedPositionFor(aArgs);
+        var generatedPosition = section2.consumer.generatedPositionFor(aArgs);
         if (generatedPosition) {
           var ret = {
-            line: generatedPosition.line + (section.generatedOffset.generatedLine - 1),
-            column: generatedPosition.column + (section.generatedOffset.generatedLine === generatedPosition.line ? section.generatedOffset.generatedColumn - 1 : 0)
+            line: generatedPosition.line + (section2.generatedOffset.generatedLine - 1),
+            column: generatedPosition.column + (section2.generatedOffset.generatedLine === generatedPosition.line ? section2.generatedOffset.generatedColumn - 1 : 0)
           };
           return ret;
         }
@@ -33151,26 +33151,26 @@ var require_source_map_consumer = __commonJS({
       this.__generatedMappings = [];
       this.__originalMappings = [];
       for (var i2 = 0; i2 < this._sections.length; i2++) {
-        var section = this._sections[i2];
-        var sectionMappings = section.consumer._generatedMappings;
+        var section2 = this._sections[i2];
+        var sectionMappings = section2.consumer._generatedMappings;
         for (var j = 0; j < sectionMappings.length; j++) {
           var mapping = sectionMappings[j];
-          var source = section.consumer._sources.at(mapping.source);
+          var source = section2.consumer._sources.at(mapping.source);
           if (source !== null) {
-            source = util.computeSourceURL(section.consumer.sourceRoot, source, this._sourceMapURL);
+            source = util.computeSourceURL(section2.consumer.sourceRoot, source, this._sourceMapURL);
           }
           this._sources.add(source);
           source = this._sources.indexOf(source);
           var name = null;
           if (mapping.name) {
-            name = section.consumer._names.at(mapping.name);
+            name = section2.consumer._names.at(mapping.name);
             this._names.add(name);
             name = this._names.indexOf(name);
           }
           var adjustedMapping = {
             source,
-            generatedLine: mapping.generatedLine + (section.generatedOffset.generatedLine - 1),
-            generatedColumn: mapping.generatedColumn + (section.generatedOffset.generatedLine === mapping.generatedLine ? section.generatedOffset.generatedColumn - 1 : 0),
+            generatedLine: mapping.generatedLine + (section2.generatedOffset.generatedLine - 1),
+            generatedColumn: mapping.generatedColumn + (section2.generatedOffset.generatedLine === mapping.generatedLine ? section2.generatedOffset.generatedColumn - 1 : 0),
             originalLine: mapping.originalLine,
             originalColumn: mapping.originalColumn,
             name
@@ -38504,8 +38504,8 @@ var REAUTH_REQUIRED = { code: "REAUTH_REQUIRED", error: "Confirm your own passwo
 var REAUTH_FAILED = { code: "REAUTH_FAILED", error: "Your password was not correct." };
 async function withPasswordCredential(prisma4, ids) {
   if (!ids.length) return /* @__PURE__ */ new Set();
-  const rows = await prisma4.$queryRaw`SELECT id FROM "User" WHERE id = ANY(${ids}::text[]) AND password ~ '^\\$2[aby]\\$[0-9]{2}\\$'`;
-  return new Set(rows.map((r2) => r2.id));
+  const rows2 = await prisma4.$queryRaw`SELECT id FROM "User" WHERE id = ANY(${ids}::text[]) AND password ~ '^\\$2[aby]\\$[0-9]{2}\\$'`;
+  return new Set(rows2.map((r2) => r2.id));
 }
 async function auditAccount(prisma4, actor, action, meta) {
   try {
@@ -38609,9 +38609,9 @@ function entitlementCovers(entitled, department) {
     return want && have ? want === have : e2.trim().toLowerCase() === department.trim().toLowerCase();
   });
 }
-function foldCounts(rows) {
+function foldCounts(rows2) {
   const out = /* @__PURE__ */ new Map();
-  for (const { name, count } of rows) {
+  for (const { name, count } of rows2) {
     if (!name) continue;
     const key = canonicalDepartmentName(name) ?? name;
     const row = out.get(key) ?? { name: key, count: 0, spellings: [] };
@@ -39674,8 +39674,8 @@ function slabLabel(count) {
 function departmentRateLadder() {
   const tiers = [...DEPARTMENT_RATES].reverse();
   const top = tiers[tiers.length - 1].minDepartments;
-  const money = (n3) => "INR " + n3.toLocaleString("en-IN");
-  return tiers.map((t2) => t2.minDepartments === 1 ? `${money(t2.rate)} for 1 department` : t2.minDepartments === top ? `${money(t2.rate)} each for ${t2.minDepartments} or more` : `${money(t2.rate)} each for ${t2.minDepartments}`).join("; ");
+  const money2 = (n3) => "INR " + n3.toLocaleString("en-IN");
+  return tiers.map((t2) => t2.minDepartments === 1 ? `${money2(t2.rate)} for 1 department` : t2.minDepartments === top ? `${money2(t2.rate)} each for ${t2.minDepartments} or more` : `${money2(t2.rate)} each for ${t2.minDepartments}`).join("; ");
 }
 var round2 = (value) => Math.round(value * 100) / 100;
 function withGst(quantity, rate) {
@@ -39789,7 +39789,7 @@ var publicJournalStatusSql = (alias = "j") => `${alias}.status in ('Accepted', '
 var publicJournalStatusWhere = { status: { in: [...PUBLIC_JOURNAL_STATUSES] } };
 async function publicJournalCount(db2, o = {}) {
   const scoped = !!o.articleDomains?.length;
-  const rows = await db2.$queryRawUnsafe(
+  const rows2 = await db2.$queryRawUnsafe(
     `select count(distinct a."journalId")::int as n
        from "Article" a
        join "Journal" j on j.id = a."journalId"
@@ -39797,7 +39797,7 @@ async function publicJournalCount(db2, o = {}) {
         ${scoped ? "and a.domain = any($1)" : ""}`,
     ...scoped ? [o.articleDomains] : []
   );
-  return Number(rows?.[0]?.n || 0);
+  return Number(rows2?.[0]?.n || 0);
 }
 
 // src/lib/publicCounts.ts
@@ -58764,9 +58764,9 @@ async function saveFailover(prisma4, admin, input) {
   return { ok: true, changed: true };
 }
 async function recentAiEvents(prisma4, limit = 20) {
-  const rows = await prisma4.adminAuditLog.findMany({ where: { action: { startsWith: "AI_PROVIDER_" } }, orderBy: { at: "desc" }, take: limit });
+  const rows2 = await prisma4.adminAuditLog.findMany({ where: { action: { startsWith: "AI_PROVIDER_" } }, orderBy: { at: "desc" }, take: limit });
   const more = await prisma4.adminAuditLog.findMany({ where: { action: { in: ["AI_PRIMARY_PROVIDER_CHANGED", "AI_FALLBACK_ENABLED", "AI_FALLBACK_DISABLED", "AI_ASSISTANT_ENABLED", "AI_ASSISTANT_DISABLED"] } }, orderBy: { at: "desc" }, take: limit });
-  return [...rows, ...more].sort((a, b) => b.at.getTime() - a.at.getTime()).slice(0, limit).map((r2) => ({
+  return [...rows2, ...more].sort((a, b) => b.at.getTime() - a.at.getTime()).slice(0, limit).map((r2) => ({
     at: r2.at.toISOString(),
     action: r2.action,
     by: r2.adminEmail ?? null,
@@ -59150,11 +59150,11 @@ async function recordEvent(prisma4, sessionId, code) {
 }
 async function usageSummary(prisma4, days2 = 7) {
   const since = new Date(Date.now() - days2 * 864e5);
-  const rows = await prisma4.$queryRawUnsafe(
+  const rows2 = await prisma4.$queryRawUnsafe(
     `SELECT role, content, count(*)::int AS n FROM "AIMessage" WHERE "createdAt" >= $1 AND role IN ('user','event') GROUP BY 1, 2`,
     since
   );
-  const by = (role, content) => rows.filter((r2) => r2.role === role && (content === void 0 || r2.content === content)).reduce((a, r2) => a + r2.n, 0);
+  const by = (role, content) => rows2.filter((r2) => r2.role === role && (content === void 0 || r2.content === content)).reduce((a, r2) => a + r2.n, 0);
   const conv = await prisma4.$queryRawUnsafe(
     `SELECT
        (SELECT count(*) FROM "AIConversation" WHERE "startedAt" >= $1)::int AS conversations,
@@ -59222,12 +59222,12 @@ async function setAiAssistantEnabled(prisma4, enabled, admin) {
   return aiAssistantSwitchState(prisma4);
 }
 async function aiAssistantSwitchHistory(prisma4, take = 10) {
-  const rows = await prisma4.adminAuditLog.findMany({
+  const rows2 = await prisma4.adminAuditLog.findMany({
     where: { action: { in: ["AI_ASSISTANT_ENABLED", "AI_ASSISTANT_DISABLED"] } },
     orderBy: { at: "desc" },
     take
   });
-  return rows.map((r2) => ({ at: r2.at.toISOString(), action: r2.action, by: r2.adminEmail || r2.adminId || null }));
+  return rows2.map((r2) => ({ at: r2.at.toISOString(), action: r2.action, by: r2.adminEmail || r2.adminId || null }));
 }
 
 // src/lib/visitorDetails.ts
@@ -59415,18 +59415,18 @@ function quoteStatus(v, lead) {
 async function leadsById(prisma4, ids) {
   const want = [...new Set(ids.filter(Boolean))];
   if (!want.length) return /* @__PURE__ */ new Map();
-  const rows = await prisma4.lead.findMany({ where: { id: { in: want } }, select: { id: true, name: true, status: true, source: true } });
-  return new Map(rows.map((r2) => [r2.id, r2]));
+  const rows2 = await prisma4.lead.findMany({ where: { id: { in: want } }, select: { id: true, name: true, status: true, source: true } });
+  return new Map(rows2.map((r2) => [r2.id, r2]));
 }
 async function countsByVisitor(prisma4, ids) {
   if (!ids.length) return /* @__PURE__ */ new Map();
-  const rows = await prisma4.aIConversation.groupBy({
+  const rows2 = await prisma4.aIConversation.groupBy({
     by: ["visitorId"],
     where: { visitorId: { in: ids } },
     _sum: { questionsAsked: true, successfulAnswers: true, failedAnswers: true },
     _count: { _all: true }
   });
-  return new Map(rows.map((r2) => [r2.visitorId, {
+  return new Map(rows2.map((r2) => [r2.visitorId, {
     conversations: r2._count._all,
     questions: r2._sum.questionsAsked ?? 0,
     answers: r2._sum.successfulAnswers ?? 0,
@@ -59453,16 +59453,16 @@ async function listVisitors(prisma4, opts) {
     ] });
   }
   const where = and.length ? { AND: and } : {};
-  const [total, rows] = await Promise.all([
+  const [total, rows2] = await Promise.all([
     prisma4.aIVisitor.count({ where }),
     prisma4.aIVisitor.findMany({ where, orderBy: { lastActiveAt: "desc" }, skip: (page - 1) * pageSize, take: pageSize })
   ]);
-  const [counts, leads] = await Promise.all([countsByVisitor(prisma4, rows.map((r2) => r2.id)), leadsById(prisma4, rows.map((r2) => r2.leadId))]);
+  const [counts, leads] = await Promise.all([countsByVisitor(prisma4, rows2.map((r2) => r2.id)), leadsById(prisma4, rows2.map((r2) => r2.leadId))]);
   return {
     total,
     page,
     pageSize,
-    rows: rows.map((v) => {
+    rows: rows2.map((v) => {
       const c = counts.get(v.id);
       const lead = v.leadId ? leads.get(v.leadId) ?? null : null;
       return {
@@ -59521,7 +59521,7 @@ async function listConversations(prisma4, opts) {
   const start = rangeStart(opts.range);
   const where = { OR: [{ visitorId: { not: null } }, { questionsAsked: { gt: 0 } }, { messages: { some: { role: { in: [...QUESTION_ROLES] } } } }] };
   if (start) where.lastActivityAt = { gte: start };
-  const [total, rows] = await Promise.all([
+  const [total, rows2] = await Promise.all([
     prisma4.aIConversation.count({ where }),
     prisma4.aIConversation.findMany({
       where,
@@ -59540,7 +59540,7 @@ async function listConversations(prisma4, opts) {
       }
     })
   ]);
-  return { total, page, pageSize, rows };
+  return { total, page, pageSize, rows: rows2 };
 }
 async function conversationDetail(prisma4, id) {
   const c = await prisma4.aIConversation.findUnique({
@@ -59647,7 +59647,7 @@ async function findExistingLead(email, phone) {
   }
   const digits = phone.replace(/\D/g, "");
   if (digits.length >= 7) {
-    const rows = await prisma2.$queryRawUnsafe(
+    const rows2 = await prisma2.$queryRawUnsafe(
       `SELECT id FROM "Lead"
        WHERE (
          regexp_replace("phone", '[^0-9]', '', 'g') = $1
@@ -59658,8 +59658,8 @@ async function findExistingLead(email, phone) {
        ORDER BY "createdAt" DESC LIMIT 1`,
       digits
     );
-    if (rows && rows.length) {
-      return await prisma2.lead.findUnique({ where: { id: rows[0].id } });
+    if (rows2 && rows2.length) {
+      return await prisma2.lead.findUnique({ where: { id: rows2[0].id } });
     }
   }
   return null;
@@ -60783,6 +60783,136 @@ async function uploadMedia(opts) {
 }
 var getMediaUrl = (storedName) => `/uploads/media/${storedName}`;
 
+// src/lib/quotation/quotationEmail.ts
+var INK = "#0F172B";
+var BLUE = "#1B5DFC";
+var TEXT = "#334155";
+var MUTED = "#64748B";
+var RULE = "#E2E8F0";
+var SURFACE = "#F8FAFC";
+var TINT = "#EEF3FF";
+var TINT_RULE = "#CBDAFE";
+var PAGE = "#F1F5F9";
+var FONT = "'Segoe UI',Helvetica,Arial,sans-serif";
+var esc2 = (v) => String(v ?? "").replace(/[&<>"']/g, (m2) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[m2]);
+var money = (n3) => Number(n3).toLocaleString("en-IN", { minimumFractionDigits: 2 });
+var section = (label, inner) => `<tr><td class="px" style="padding:0 40px 24px;"><p style="margin:0 0 10px;font-size:11px;line-height:16px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:${BLUE};">${label}</p><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${SURFACE};border:1px solid ${RULE};border-radius:10px;"><tr><td style="padding:6px 20px;">${inner}</td></tr></table></td></tr>`;
+var rows = (pairs) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">` + pairs.map(
+  ([k, v, bold], i2) => `<tr><td style="padding:11px 0;font-size:13px;line-height:18px;color:${MUTED};width:42%;vertical-align:top;${i2 ? `border-top:1px solid ${RULE};` : ""}">${k}</td><td style="padding:11px 0;font-size:13px;line-height:18px;color:${INK};font-weight:${bold ? 700 : 600};text-align:right;vertical-align:top;${i2 ? `border-top:1px solid ${RULE};` : ""}">${v}</td></tr>`
+).join("") + `</table>`;
+function buildQuotationEmailHtml(p3) {
+  const co = COMPANY_DETAILS;
+  const year = (/* @__PURE__ */ new Date()).getFullYear();
+  const logo = p3.hasLogo ? `<img src="cid:stm-logo" alt="STM Digital Library" width="56" height="56" style="display:block;width:56px;height:56px;border:0;border-radius:50%;" />` : `<table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="width:56px;height:56px;background:${BLUE};border-radius:50%;text-align:center;font-size:16px;font-weight:800;letter-spacing:1px;color:#FFFFFF;">STM</td></tr></table>`;
+  const depts = p3.departments.length ? p3.departments : ["\u2014"];
+  const deptCells = (list) => list.map((d) => `<td style="padding:5px 8px 5px 0;font-size:13px;line-height:18px;color:${INK};vertical-align:top;width:50%;"><span style="color:${BLUE};font-weight:700;">&#10003;</span>&nbsp; ${esc2(d)}</td>`).join("");
+  const deptRows = [];
+  for (let i2 = 0; i2 < depts.length; i2 += 2) {
+    const pair = depts.slice(i2, i2 + 2);
+    if (pair.length === 1) pair.push("");
+    deptRows.push(`<tr>${pair.map((d) => d ? deptCells([d]) : `<td style="width:50%;"></td>`).join("")}</tr>`);
+  }
+  const departmentBlock = `<p style="margin:0 0 6px;font-size:13px;line-height:18px;color:${MUTED};">Selected department${p3.departments.length === 1 ? "" : "s"}${p3.departments.length > 1 ? ` &middot; ${p3.departments.length}` : ""}</p><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 8px;">${deptRows.join("")}</table>`;
+  const details = rows([
+    ["Quotation number", esc2(p3.quotationNumber), true],
+    ["Quotation date", esc2(p3.issuedDate)],
+    ["Valid for", `${esc2(p3.validityDays)} days from issue`],
+    ["Subscription duration", esc2(p3.duration)]
+  ]) + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid ${RULE};"><tr><td style="padding-top:12px;">${departmentBlock}</td></tr></table>` + (p3.discount > 0 ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid ${RULE};"><tr><td style="padding:11px 0;font-size:13px;line-height:18px;color:${MUTED};">Special discount / adjustment</td><td style="padding:11px 0;font-size:13px;line-height:18px;color:${INK};font-weight:600;text-align:right;">&minus;&#8377;${money(p3.discount)}</td></tr></table>` : "");
+  const total = `<tr><td class="px" style="padding:0 40px 28px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${TINT};border:1px solid ${TINT_RULE};border-radius:10px;"><tr><td style="padding:16px 20px;font-size:13px;line-height:18px;font-weight:600;color:${INK};vertical-align:middle;">Total amount<br/><span style="font-weight:400;color:${MUTED};font-size:12px;">including GST</span></td><td style="padding:16px 20px;text-align:right;vertical-align:middle;font-size:26px;line-height:30px;font-weight:800;color:${INK};white-space:nowrap;">&#8377;${money(p3.total)}</td></tr></table></td></tr>`;
+  const about = `<p style="margin:12px 0 6px;font-size:13px;line-height:20px;color:${TEXT};">STM Digital Library is a curated academic platform providing access to:</p><table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 10px;">` + ["Academic journals", "Conference proceedings", "Educational videos", "E-books &amp; reference materials", "Theses &amp; research content", "Legally sourced open-access academic resources"].map((t2) => `<tr><td style="padding:3px 10px 3px 0;font-size:13px;line-height:18px;color:${BLUE};vertical-align:top;">&bull;</td><td style="padding:3px 0;font-size:13px;line-height:18px;color:${INK};">${t2}</td></tr>`).join("") + `</table>`;
+  const bank = co.bank;
+  const payment = `<p style="margin:12px 0 0;font-size:13px;line-height:20px;font-weight:600;color:${INK};">Payments must be made only to:</p>` + rows([
+    ["Account name", esc2(co.legalName), true],
+    ["Account number", esc2(bank.accountNumber), true],
+    ["Bank", esc2(bank.bankName)],
+    ["Branch", esc2(bank.branch)],
+    ["IFSC code", esc2(bank.ifscCode), true]
+  ]);
+  const link2 = (href, text) => `<a href="${href}" style="color:${BLUE};text-decoration:none;font-weight:600;">${text}</a>`;
+  const contact5 = `<p style="margin:12px 0 0;font-size:13px;line-height:20px;color:${TEXT};">For any assistance regarding subscription, quotation or payment:</p>` + rows([
+    ["Email", link2(`mailto:${esc2(co.email)}`, esc2(co.email))],
+    ["Phone", link2("tel:+919810078958", "+91-9810078958")],
+    ["Website", link2("https://journalslibrary.com/", "journalslibrary.com")]
+  ]);
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="color-scheme" content="light" />
+<title>Quotation ${esc2(p3.quotationNumber)} \u2014 STM Digital Library</title>
+<style>
+  @media only screen and (max-width:640px) {
+    .container { width:100% !important; border-radius:0 !important; }
+    .px { padding-left:20px !important; padding-right:20px !important; }
+    .hdr-right { display:none !important; }
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background:${PAGE};font-family:${FONT};-webkit-text-size-adjust:100%;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">Quotation ${esc2(p3.quotationNumber)} for the selected department(s): &#8377;${money(p3.total)} including GST.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${PAGE};">
+<tr><td align="center" style="padding:24px 12px;">
+<table role="presentation" class="container" width="640" cellpadding="0" cellspacing="0" style="width:640px;max-width:640px;background:#FFFFFF;border:1px solid ${RULE};border-radius:12px;">
+
+  <!-- Header: logo on the left, the name beside it -->
+  <tr><td class="px" style="background:${INK};border-radius:12px 12px 0 0;padding:20px 40px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+      <td width="56" style="width:56px;vertical-align:middle;">${logo}</td>
+      <td style="padding-left:16px;vertical-align:middle;">
+        <p style="margin:0;font-size:20px;line-height:24px;font-weight:700;color:#FFFFFF;">STM Digital Library</p>
+        <p style="margin:2px 0 0;font-size:13px;line-height:18px;color:#93B4FF;">Subscription quotation</p>
+      </td>
+      <td class="hdr-right" align="right" style="vertical-align:middle;font-size:12px;line-height:18px;color:#93B4FF;white-space:nowrap;">${esc2(p3.quotationNumber)}</td>
+    </tr></table>
+  </td></tr>
+  <tr><td style="height:3px;line-height:3px;font-size:0;background:${BLUE};">&nbsp;</td></tr>
+
+  <!-- Introduction -->
+  <tr><td class="px" style="padding:32px 40px 24px;">
+    <p style="margin:0 0 12px;font-size:16px;line-height:24px;font-weight:700;color:${INK};">Dear ${esc2(p3.recipientName)},</p>
+    <p style="margin:0 0 10px;font-size:14px;line-height:22px;color:${TEXT};">Thank you for your interest in <strong style="color:${INK};">STM Digital Library</strong> and its subscription services.</p>
+    <p style="margin:0;font-size:14px;line-height:22px;color:${TEXT};">Please find attached the quotation for the selected department(s) and subscription duration.</p>
+  </td></tr>
+
+  ${section("Quotation details", details)}
+  ${total}
+  ${section("About STM Digital Library", about)}
+  ${section("Payment information", payment)}
+  ${section("Contact information", contact5)}
+
+  <!-- Signature -->
+  <tr><td class="px" style="padding:4px 40px 28px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid ${RULE};"><tr>
+      <td style="padding-top:20px;vertical-align:top;">
+        <p style="margin:0 0 4px;font-size:14px;line-height:20px;color:${TEXT};">Warm regards,</p>
+        <p style="margin:0 0 2px;font-size:15px;line-height:20px;font-weight:700;color:${INK};">STM Digital Library Team</p>
+        <p style="margin:0;font-size:12px;line-height:18px;color:${MUTED};">${esc2(co.legalName)}</p>
+        <p style="margin:2px 0 0;font-size:12px;line-height:18px;color:${MUTED};">A-118, 1st Floor, Sector-63, Noida - 201301, U.P., India</p>
+      </td>
+      <td align="right" style="padding-top:20px;vertical-align:bottom;">
+        <p style="margin:0 0 3px;font-size:10px;line-height:14px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:${MUTED};">For Publisher</p>
+        <p style="margin:0 0 3px;font-size:13px;line-height:18px;font-weight:700;color:${INK};">STM Digital Library</p>
+        <p style="margin:0;font-size:10px;line-height:14px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:${MUTED};">Authorized Signatory</p>
+      </td>
+    </tr></table>
+  </td></tr>
+
+  <!-- Footer: quiet -->
+  <tr><td class="px" style="background:${SURFACE};border-top:1px solid ${RULE};border-radius:0 0 12px 12px;padding:20px 40px;text-align:center;">
+    <p style="margin:0 0 6px;font-size:12px;line-height:18px;font-weight:600;color:${INK};">21 Years of Trusted Excellence in Education &amp; Academic Publishing</p>
+    <p style="margin:0 0 2px;font-size:11px;line-height:16px;color:${MUTED};">&copy; ${year} ${esc2(co.legalName)} All rights reserved.</p>
+    <p style="margin:0;font-size:11px;line-height:16px;color:${MUTED};">GSTIN: ${esc2(co.gstin)} &nbsp;|&nbsp; PAN: ${esc2(co.pan)} &nbsp;|&nbsp; CIN: ${esc2(co.cin)}</p>
+  </td></tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>`;
+}
+
 // src/server/departmentSpellings.ts
 var SOURCES = [
   `select distinct "domain" as v from "Journal" where "domain" is not null`,
@@ -60799,8 +60929,8 @@ function createDepartmentSpellings(db2, ttlMs = 5 * 60 * 1e3) {
     if (!inflight2) {
       inflight2 = (async () => {
         try {
-          const rows = await db2.$queryRawUnsafe(SOURCES.join(" union "));
-          const values = rows.map((r2) => String(r2.v)).filter(Boolean);
+          const rows2 = await db2.$queryRawUnsafe(SOURCES.join(" union "));
+          const values = rows2.map((r2) => String(r2.v)).filter(Boolean);
           cached2 = { at: Date.now(), values };
           return values;
         } catch (e2) {
@@ -61280,14 +61410,22 @@ var GoogleAuthError = class extends Error {
     this.code = code;
   }
 };
-var audience = () => String(process.env.GOOGLE_CLIENT_ID || "").trim();
+var audience = () => {
+  const raw = process.env.GOOGLE_CLIENT_ID;
+  return String(raw || "").trim();
+};
 function googleClientIdProblem(id) {
-  if (!id) return "GOOGLE_CLIENT_ID is not set";
-  if (/\s/.test(id)) return "it contains whitespace";
+  if (!id) return "GOOGLE_CLIENT_ID is not set, or is empty, in this process's environment";
+  if (/^["'`]|["'`]$/.test(id)) return "the value is wrapped in quotation marks; the variable must be the bare ID without them";
+  const odd = [...id].find((ch) => {
+    const c = ch.codePointAt(0);
+    return c < 33 || c > 126;
+  });
+  if (odd) return `it contains an invisible or non-ASCII character (U+${odd.codePointAt(0).toString(16).toUpperCase().padStart(4, "0")}), which usually comes from pasting; retype the value`;
   if (!id.endsWith(".apps.googleusercontent.com")) return "it does not end in .apps.googleusercontent.com";
   const [project, ...rest] = id.slice(0, -".apps.googleusercontent.com".length).split("-");
   if (!/^\d{6,}$/.test(project) || rest.length !== 1) return "it is not <project number>-<id>";
-  if (/[^a-z0-9]/.test(rest[0])) return `it has a character a Google client ID never has ("${rest[0].replace(/[a-z0-9]/g, "")}": letters are lower-case, so a capital O is not a zero)`;
+  if (/[^a-z0-9]/.test(rest[0])) return `it has a character a Google client ID never has ("${rest[0].replace(/[a-z0-9]/g, "")}": a real ID is lower-case letters and digits only, so a capital O is not a zero)`;
   if (rest[0].length < 20) return "it is too short";
   return null;
 }
@@ -61299,8 +61437,13 @@ function googleStatus() {
   const legacy = String(process.env.VITE_GOOGLE_CLIENT_ID || "").trim();
   return {
     enabled: !problem,
-    problem,
-    clientIdMasked: id ? `${id.slice(0, 12)}\u2026${id.slice(-34)}` : null,
+    /** The variable is present and not blank in THIS process, whatever its value. */
+    runtimeConfigured: id.length > 0,
+    trimmedLength: id.length,
+    /** The value could be a real Google client ID. */
+    formatValid: !problem,
+    maskedClientId: id ? `${id.slice(0, 12)}\u2026${id.slice(-34)}` : null,
+    validationReason: problem,
     // The browser no longer reads a build-time ID. If one is still set in the environment it is ignored, and a difference is worth knowing.
     buildVariablePresent: !!legacy,
     buildVariableMatches: legacy ? legacy === id : null
@@ -61829,11 +61972,11 @@ async function findHeldArticles(works) {
     if (!found.has(i2)) found.set(i2, h2);
   });
   for (const part of chunks([...byFp.keys(), ...byLegacy.keys()])) {
-    const rows = await ingestionDb.article.findMany({
+    const rows2 = await ingestionDb.article.findMany({
       where: { fingerprint: { in: part } },
       select: { id: true, fingerprint: true, journalId: true }
     });
-    for (const r2 of rows) {
+    for (const r2 of rows2) {
       mark(byFp.get(r2.fingerprint), { articleId: r2.id, via: "fingerprint", journalId: r2.journalId });
       mark(byLegacy.get(r2.fingerprint), { articleId: r2.id, via: "legacyFingerprint", journalId: r2.journalId });
     }
@@ -61845,11 +61988,11 @@ async function findHeldArticles(works) {
       (bySource.get(s2) || bySource.set(s2, []).get(s2)).push(id);
     }
     for (const [source, ids] of bySource) for (const part of chunks(ids)) {
-      const rows = await ingestionDb.article.findMany({
+      const rows2 = await ingestionDb.article.findMany({
         where: { source, sourceRecordId: { in: part } },
         select: { id: true, sourceRecordId: true, journalId: true }
       });
-      for (const r2 of rows) mark(bySrc.get(`${source}\0${r2.sourceRecordId}`), { articleId: r2.id, via: "sourceRecordId", journalId: r2.journalId });
+      for (const r2 of rows2) mark(bySrc.get(`${source}\0${r2.sourceRecordId}`), { articleId: r2.id, via: "sourceRecordId", journalId: r2.journalId });
     }
   }
   return found;
@@ -61861,12 +62004,12 @@ async function findPossibleDuplicates(journalId, works) {
   if (!idx.length) return out;
   const titles = [...new Set(idx.map(({ w: w2 }) => String(w2.title).trim()))];
   for (const part of chunks(titles)) {
-    const rows = await ingestionDb.article.findMany({
+    const rows2 = await ingestionDb.article.findMany({
       where: { journalId, OR: part.map((t2) => ({ title: { equals: t2, mode: "insensitive" } })) },
       select: { id: true, title: true, year: true }
     });
     for (const { w: w2, i: i2 } of idx) {
-      const hit = rows.find((r2) => r2.year === w2.year && String(r2.title).trim().toLowerCase() === String(w2.title).trim().toLowerCase());
+      const hit = rows2.find((r2) => r2.year === w2.year && String(r2.title).trim().toLowerCase() === String(w2.title).trim().toLowerCase());
       if (hit) out.set(i2, hit.id);
     }
   }
@@ -62191,7 +62334,7 @@ function normaliseOtlBook(provider, it) {
 
 // src/lib/ingestion/books/openLibrary.ts
 var OPENLIBRARY_SEARCH = "https://openlibrary.org/search.json";
-var PAGE = 20;
+var PAGE2 = 20;
 var FIELDS2 = "key,title,author_name,first_publish_year,isbn,publisher,subject,ebook_access,language,lcc,ddc,number_of_pages_median,cover_i,edition_count";
 var contact = () => process.env.OPENALEX_CONTACT || "info@celnet.in";
 var openLibraryHeaders = () => ({ "User-Agent": `STM Digital Library (mailto:${contact()})` });
@@ -62242,9 +62385,9 @@ function normaliseOpenLibraryDoc(provider, d) {
     extra: { ebookAccess: d.ebook_access ?? null, editionCount: d.edition_count ?? null, ddc: Array.isArray(d.ddc) ? d.ddc.slice(0, 4) : [] }
   };
 }
-async function fetchOpenLibraryPage(query, page, size = PAGE, minYear) {
+async function fetchOpenLibraryPage(query, page, size = PAGE2, minYear) {
   const q = `subject:"${query}"${minYear ? ` first_publish_year:[${minYear} TO *]` : ""}`;
-  const url = `${OPENLIBRARY_SEARCH}?q=${encodeURIComponent(q)}&language=eng&limit=${size ?? PAGE}&page=${page}&fields=${FIELDS2}`;
+  const url = `${OPENLIBRARY_SEARCH}?q=${encodeURIComponent(q)}&language=eng&limit=${size ?? PAGE2}&page=${page}&fields=${FIELDS2}`;
   const r2 = await fetchSourceJson(url, {
     source: "OpenLibrary",
     timeoutMs: 45e3,
@@ -62757,10 +62900,10 @@ function shortlistTitle(row) {
 function departmentOrder(coverage = {}) {
   return [...NCBI_RULES].sort((a, b) => a.tier - b.tier || (coverage[a.department] ?? 0) - (coverage[b.department] ?? 0) || a.department.localeCompare(b.department)).map((r2) => r2.department);
 }
-function buildQueue(rows, order = departmentOrder()) {
+function buildQueue(rows2, order = departmentOrder()) {
   const rank = new Map(order.map((d, i2) => [d, i2]));
   const out = [];
-  for (const r2 of rows) {
+  for (const r2 of rows2) {
     const s2 = shortlistTitle(r2);
     if (s2) out.push(s2);
   }
@@ -62773,8 +62916,8 @@ function interleave(queue, order = departmentOrder()) {
   return out;
 }
 async function departmentCoverage(db2 = ingestionDb) {
-  const rows = await db2.book.groupBy({ by: ["domain"], where: { status: "Published", domain: { in: NCBI_TARGET_DEPARTMENTS } }, _count: { _all: true } }).catch(() => []);
-  return Object.fromEntries(rows.map((r2) => [r2.domain, r2._count._all]));
+  const rows2 = await db2.book.groupBy({ by: ["domain"], where: { status: "Published", domain: { in: NCBI_TARGET_DEPARTMENTS } }, _count: { _all: true } }).catch(() => []);
+  return Object.fromEntries(rows2.map((r2) => [r2.domain, r2._count._all]));
 }
 function ncbiLimits() {
   const n3 = (k, d) => {
@@ -62794,9 +62937,9 @@ function ncbiLimits() {
 var NAMED = { reg: "\xAE", copy: "\xA9", trade: "\u2122", nbsp: " ", ndash: "\u2013", mdash: "\u2014", lsquo: "\u2018", rsquo: "\u2019", ldquo: "\u201C", rdquo: "\u201D", hellip: "\u2026", deg: "\xB0", micro: "\xB5", plusmn: "\xB1" };
 var entities = (s2) => decode(s2).replace(/&([a-z]+);/gi, (m2, n3) => NAMED[n3.toLowerCase()] ?? m2);
 function parseNcbiList(csv2) {
-  const rows = import_papaparse.default.parse(csv2, { header: true, skipEmptyLines: true }).data;
+  const rows2 = import_papaparse.default.parse(csv2, { header: true, skipEmptyLines: true }).data;
   const out = [];
-  for (const r2 of rows) {
+  for (const r2 of rows2) {
     const file = (r2["File"] || "").trim(), accession = (r2["Accession ID"] || "").trim(), title = entities(r2["Title"] || "").replace(/\s+/g, " ").trim();
     if (!file || !/^NBK\d+$/.test(accession) || !title) continue;
     out.push({ file, title, publisher: entities(r2["Publisher"] || "").trim(), year: Number(r2["Publication Year"]) || null, accession, updated: (r2["Last Updated (YYYY-MM-DD HH:MM:SS)"] || "").trim() || null });
@@ -62903,11 +63046,11 @@ var inflight = 0;
 async function usedToday(db2 = ingestionDb) {
   const start = /* @__PURE__ */ new Date();
   start.setUTCHours(0, 0, 0, 0);
-  const rows = await db2.$queryRawUnsafe(
+  const rows2 = await db2.$queryRawUnsafe(
     `select count(*)::int as n, coalesce(sum((meta->>'bytes')::bigint), 0)::float8 as b from "IngestionAudit" where action = 'NCBI_ARCHIVE_DOWNLOADED' and at >= $1`,
     start
   );
-  return { archives: rows[0]?.n ?? 0, bytes: rows[0]?.b ?? 0 };
+  return { archives: rows2[0]?.n ?? 0, bytes: rows2[0]?.b ?? 0 };
 }
 async function fetchArchive(row, db2 = ingestionDb, lim = ncbiLimits()) {
   const used2 = await usedToday(db2);
@@ -63099,11 +63242,11 @@ async function findHeldBooks(books, db2 = ingestionDb) {
   };
   const byDoi = idx((b) => b.doi ? [b.doi] : []);
   for (const part of chunks2([...byDoi.keys()])) {
-    const rows = await db2.$queryRawUnsafe(
+    const rows2 = await db2.$queryRawUnsafe(
       `select id, lower(regexp_replace(trim(doi), '^https?://(dx\\.)?doi\\.org/', '', 'i')) as k from "Book" where doi is not null and lower(regexp_replace(trim(doi), '^https?://(dx\\.)?doi\\.org/', '', 'i')) = any($1::text[])`,
       part
     );
-    for (const r2 of rows) byDoi.get(r2.k)?.forEach((i2) => mark(i2, { bookId: r2.id, via: "doi" }));
+    for (const r2 of rows2) byDoi.get(r2.k)?.forEach((i2) => mark(i2, { bookId: r2.id, via: "doi" }));
   }
   const byIsbn = idx((b) => b.isbns);
   const wanted = /* @__PURE__ */ new Set();
@@ -63113,35 +63256,35 @@ async function findHeldBooks(books, db2 = ingestionDb) {
     if (i2?.isbn10) wanted.add(i2.isbn10);
   }
   for (const part of chunks2([...wanted])) {
-    const rows = await db2.$queryRawUnsafe(
+    const rows2 = await db2.$queryRawUnsafe(
       `select id, isbn from "Book" where isbn is not null and upper(regexp_replace(isbn, '[^0-9Xx]', '', 'g')) = any($1::text[])`,
       part
     );
-    for (const r2 of rows) {
+    for (const r2 of rows2) {
       const k = normaliseIsbn(r2.isbn)?.isbn13;
       if (k) byIsbn.get(k)?.forEach((i2) => mark(i2, { bookId: r2.id, via: "isbn" }));
     }
   }
   const prints = idx((b) => [bookFingerprint(b), ...b.sourceRecordId ? [`${b.provider.toLowerCase()}:${/^(doab|oapen)$/i.test(b.provider) ? "handle" : "id"}:${b.sourceRecordId}`] : []]);
   for (const part of chunks2([...prints.keys()])) {
-    const rows = await db2.book.findMany({ where: { fingerprint: { in: part } }, select: { id: true, fingerprint: true } });
-    for (const r2 of rows) prints.get(r2.fingerprint)?.forEach((i2) => mark(i2, { bookId: r2.id, via: "fingerprint" }));
+    const rows2 = await db2.book.findMany({ where: { fingerprint: { in: part } }, select: { id: true, fingerprint: true } });
+    for (const r2 of rows2) prints.get(r2.fingerprint)?.forEach((i2) => mark(i2, { bookId: r2.id, via: "fingerprint" }));
   }
   const byRecord = idx((b) => b.sourceRecordId ? [b.sourceRecordId] : []);
   for (const part of chunks2([...byRecord.keys()])) {
-    const rows = await db2.book.findMany({ where: { sourceRecordId: { in: part }, source: books[0]?.provider }, select: { id: true, sourceRecordId: true } });
-    for (const r2 of rows) byRecord.get(r2.sourceRecordId)?.forEach((i2) => mark(i2, { bookId: r2.id, via: "sourceRecordId" }));
+    const rows2 = await db2.book.findMany({ where: { sourceRecordId: { in: part }, source: books[0]?.provider }, select: { id: true, sourceRecordId: true } });
+    for (const r2 of rows2) byRecord.get(r2.sourceRecordId)?.forEach((i2) => mark(i2, { bookId: r2.id, via: "sourceRecordId" }));
   }
   const rest = books.map((b, i2) => ({ b, i: i2 })).filter(({ i: i2, b }) => !found.has(i2) && titleKey(b.title));
   const titles = [...new Set(rest.map(({ b }) => String(b.title).trim().toLowerCase()))];
   for (const part of chunks2(titles)) {
-    const rows = await db2.$queryRawUnsafe(
+    const rows2 = await db2.$queryRawUnsafe(
       `select id, title, authors, year, isbn from "Book" where lower(trim(title)) = any($1::text[])`,
       part
     );
     for (const { b, i: i2 } of rest) {
       const mine = titleKey(b.title);
-      const hit = rows.find((r2) => {
+      const hit = rows2.find((r2) => {
         if (titleKey(r2.title) !== mine) return false;
         const theirIsbn = normaliseIsbn(r2.isbn)?.isbn13;
         if (theirIsbn && b.isbns.length && !b.isbns.includes(theirIsbn)) return false;
@@ -63299,11 +63442,11 @@ async function createRunWithStats(row, stats, contentType = "Books", db2 = inges
       console.error(`[ingest] ${row.source ?? "Books"}: ${r2.message}`);
     }
   }
-  const rows = Object.entries(stats || {}).filter(([, c]) => Object.values(c).some((n3) => n3 > 0));
+  const rows2 = Object.entries(stats || {}).filter(([, c]) => Object.values(c).some((n3) => n3 > 0));
   try {
     await db2.$transaction(async (tx) => {
       await tx.ingestionRun.create({ data: { ...row, id } });
-      if (rows.length) await tx.ingestionRunDepartmentStat.createMany({ data: rows.map(([department, c]) => ({ runId: id, department, contentType, ...c })) });
+      if (rows2.length) await tx.ingestionRunDepartmentStat.createMany({ data: rows2.map(([department, c]) => ({ runId: id, department, contentType, ...c })) });
     });
     return id;
   } catch (e2) {
@@ -63368,9 +63511,9 @@ function normaliseCrossrefBook(provider, it) {
     extra: { crossrefType: it.type, tdmLicenceUrl: Array.isArray(it.license) ? it.license[0]?.URL ?? null : null }
   };
 }
-async function fetchCrossrefBooksPage(token, from, rows = 100) {
+async function fetchCrossrefBooksPage(token, from, rows2 = 100) {
   const filters = [...CROSSREF_BOOK_TYPES.map((t2) => `type:${t2}`), ...from ? [`from-index-date:${from.slice(0, 10)}`] : []].join(",");
-  const url = `${CROSSREF_WORKS}?filter=${encodeURIComponent(filters)}&rows=${rows}&select=${encodeURIComponent(SELECT)}&cursor=${encodeURIComponent(token || "*")}&mailto=${encodeURIComponent(contact2())}`;
+  const url = `${CROSSREF_WORKS}?filter=${encodeURIComponent(filters)}&rows=${rows2}&select=${encodeURIComponent(SELECT)}&cursor=${encodeURIComponent(token || "*")}&mailto=${encodeURIComponent(contact2())}`;
   return fetchSourceJson(url, {
     source: "Crossref",
     timeoutMs: 6e4,
@@ -63396,7 +63539,7 @@ var NLM_QUERIES = [
   { department: "Bio Technology", term: "biotechnology[Subject]" }
 ];
 var NLM_TARGET_DEPARTMENTS = NLM_QUERIES.map((q) => q.department);
-var PAGE2 = 50;
+var PAGE3 = 50;
 var contact3 = () => process.env.OPENALEX_CONTACT || "info@celnet.in";
 var nlmHeaders = () => ({ "User-Agent": `STM Digital Library (mailto:${contact3()})` });
 var keyParam = () => process.env.NCBI_API_KEY ? `&api_key=${encodeURIComponent(process.env.NCBI_API_KEY)}` : "";
@@ -63459,7 +63602,7 @@ function normaliseNlmRecord(provider, rec) {
     extra: { nlmClass: classes.slice(0, 4), nlmId: id, lccn: one(rec, "LCCN") }
   };
 }
-async function fetchNlmPage(qIndex, start, size = PAGE2, pause2 = (ms) => new Promise((r2) => setTimeout(r2, ms))) {
+async function fetchNlmPage(qIndex, start, size = PAGE3, pause2 = (ms) => new Promise((r2) => setTimeout(r2, ms))) {
   const q = NLM_QUERIES[qIndex];
   if (!q) return { ok: true, ids: [], records: [], total: 0 };
   const term = `${q.term} AND books[Filter] AND eng[Language]`;
@@ -63829,7 +63972,7 @@ async function extraBatch(cfg, token, from, ctx) {
     case "nlm": {
       const { q, start } = parseNlmToken(token);
       if (q >= NLM_QUERIES.length) return { books: [], count: 0, deleted: 0, unusable: 0, next: null, total: null, error: null };
-      const r2 = await fetchNlmPage(q, start, PAGE2, (ms) => ctx?.pauseMs === 0 ? Promise.resolve() : sleep2(ctx?.pauseMs ?? ms));
+      const r2 = await fetchNlmPage(q, start, PAGE3, (ms) => ctx?.pauseMs === 0 ? Promise.resolve() : sleep2(ctx?.pauseMs ?? ms));
       if (!r2.ok) return failed2(r2.error);
       const books = [];
       for (const rec of r2.records) {
@@ -63837,7 +63980,7 @@ async function extraBatch(cfg, token, from, ctx) {
         if (b) books.push(b);
       }
       const consumed = start + r2.ids.length;
-      const more = r2.ids.length >= PAGE2 && consumed < r2.total && consumed < 9900;
+      const more = r2.ids.length >= PAGE3 && consumed < r2.total && consumed < 9900;
       const next = more ? `${q}|${consumed}` : q + 1 < NLM_QUERIES.length ? `${q + 1}|0` : null;
       return { books, count: r2.ids.length, deleted: 0, unusable: r2.ids.length - books.length, next, total: r2.total, error: null };
     }
@@ -64174,8 +64317,8 @@ async function heldDepartments(db2, judged) {
   const ids = [...new Set(judged.filter((j) => j.match).map((j) => j.match.bookId))];
   const out = /* @__PURE__ */ new Map();
   if (!ids.length) return out;
-  const rows = await db2.book.findMany({ where: { id: { in: ids } }, select: { id: true, status: true, domain: true } });
-  for (const r2 of rows) out.set(r2.id, r2.status === "Published" && r2.domain ? r2.domain : "");
+  const rows2 = await db2.book.findMany({ where: { id: { in: ids } }, select: { id: true, status: true, domain: true } });
+  for (const r2 of rows2) out.set(r2.id, r2.status === "Published" && r2.domain ? r2.domain : "");
   return out;
 }
 async function fetchPage(cfg, token, from) {
@@ -64218,20 +64361,20 @@ async function ncbiBatch(cfg, token, ctx) {
     ncbiList = { at: Date.now(), rows: parseNcbiList(String(r2.json)) };
     ncbiPlan = null;
   }
-  const rows = ncbiList.rows, lim = ncbiLimits();
+  const rows2 = ncbiList.rows, lim = ncbiLimits();
   const { idx: start, order: savedOrder } = ncbiToken(token);
   const coverage = await departmentCoverage(ctx.db);
   const order = savedOrder ?? departmentOrder(coverage);
   const key = `${ncbiList.at}|${order.join("|")}`;
   if (!ncbiPlan || ncbiPlan.key !== key) {
-    const queue = buildQueue(rows, order);
+    const queue = buildQueue(rows2, order);
     ncbiPlan = { key, queue, sample: interleave(queue, order) };
   }
   const bounded = ctx.maxArchives != null;
   const seq = bounded ? ncbiPlan.sample : ncbiPlan.queue;
   const st = ctx.report.ncbi ||= { rows: 0, candidates: 0, existing: 0, archives: 0, bytes: 0, oversize: 0, parseFailures: 0, explicitLicences: 0, publicDomain: 0, unknownRights: 0, ambiguousRights: 0, notSampled: 0, failureReasons: {}, byDepartment: {}, byTier: {}, archivesByDepartment: {}, coverage: {}, order: [], sampled: false };
   if (!st.rows) {
-    st.rows = rows.length;
+    st.rows = rows2.length;
     st.candidates = ncbiPlan.queue.length;
     st.coverage = coverage;
     st.order = order;
@@ -64240,7 +64383,7 @@ async function ncbiBatch(cfg, token, ctx) {
       st.byDepartment[q.department] = (st.byDepartment[q.department] || 0) + 1;
       st.byTier[`tier ${q.tier}`] = (st.byTier[`tier ${q.tier}`] || 0) + 1;
     }
-    ctx.report.outsideScope += rows.length - ncbiPlan.queue.length;
+    ctx.report.outsideScope += rows2.length - ncbiPlan.queue.length;
   }
   const books = [];
   let i2 = start, thisBatch = 0, deferred = null, stop = null;
@@ -65610,15 +65753,15 @@ async function readHeld() {
   return { issns, titles };
 }
 async function checkDoajCatalogue(opts = {}) {
-  const rows = await readCsv(opts.csvText);
+  const rows2 = await readCsv(opts.csvText);
   const { issns: held2, titles: heldTitles } = await readHeld();
   const out = {
-    summary: { inFile: rows.length, alreadyHeld: 0, new: 0, fullTextEligible: 0, metadataOnly: 0, rejected: 0, needsReview: 0, noDepartment: 0, byDepartment: {} },
+    summary: { inFile: rows2.length, alreadyHeld: 0, new: 0, fullTextEligible: 0, metadataOnly: 0, rejected: 0, needsReview: 0, noDepartment: 0, byDepartment: {} },
     newIssns: [],
     reviewSample: []
   };
   const s2 = out.summary;
-  for (const row of rows) {
+  for (const row of rows2) {
     const j = doajRowToJournal(row);
     if (!j) {
       s2.rejected++;
@@ -65656,12 +65799,12 @@ async function checkDoajCatalogue(opts = {}) {
 }
 async function importCheckedJournals(allowedIssns, opts = {}) {
   const allowed = new Set(allowedIssns);
-  const rows = await readCsv(opts.csvText);
+  const rows2 = await readCsv(opts.csvText);
   const { issns: held2 } = await readHeld();
   const fresh = [];
   let alreadyHeldNow = 0, accepted = 0, metadataOnly = 0;
   const seen = /* @__PURE__ */ new Set();
-  for (const row of rows) {
+  for (const row of rows2) {
     const j = doajRowToJournal(row);
     if (!j || !allowed.has(j.issn)) continue;
     if (seen.has(j.issn)) continue;
@@ -65757,7 +65900,7 @@ var heldBooksJob = {
     const fp = await heldBooksFingerprint();
     const js = jobState(s2, "held-books", fp);
     const minYear = bookMinYear(await ingestionDb.ingestionState.findUnique({ where: { id: "singleton" }, select: { bookMinYear: true } }).catch(() => null));
-    const rows = await ingestionDb.book.findMany({
+    const rows2 = await ingestionDb.book.findMany({
       where: { ...heldBookWhere(), ...after(js.cursor) },
       orderBy: ORDER,
       take: limit,
@@ -65765,7 +65908,7 @@ var heldBooksJob = {
     });
     const o = blank3();
     const byDept = {};
-    for (const b of rows) {
+    for (const b of rows2) {
       o.checked++;
       js.cursor = { at: b.createdAt.toISOString(), id: b.id };
       const meta = obj(b.metadata);
@@ -65831,9 +65974,9 @@ var journalDepartmentsJob = {
   run: async (limit) => {
     const s2 = await loadLocal();
     const js = jobState(s2, "journal-departments", journalFingerprint());
-    const rows = await ingestionDb.journal.findMany({ where: { ...unplacedJournalWhere(), ...after(js.cursor) }, orderBy: ORDER, take: limit, select: { id: true, title: true, subjects: true, createdAt: true } });
+    const rows2 = await ingestionDb.journal.findMany({ where: { ...unplacedJournalWhere(), ...after(js.cursor) }, orderBy: ORDER, take: limit, select: { id: true, title: true, subjects: true, createdAt: true } });
     const o = blank3();
-    for (const j of rows) {
+    for (const j of rows2) {
       o.checked++;
       js.cursor = { at: j.createdAt.toISOString(), id: j.id };
       const dep = journalDepartment(j.title, Array.isArray(j.subjects) ? j.subjects.map((x2) => String(x2)) : []);
@@ -65880,9 +66023,9 @@ var licenceFillJob = {
   run: async (limit) => {
     const s2 = await loadLocal();
     const js = jobState(s2, "licence-fill", "licence-fill:1");
-    const rows = await ingestionDb.book.findMany({ where: { ...licenceFillWhere(), ...after(js.cursor) }, orderBy: ORDER, take: limit, select: { id: true, metadata: true, createdAt: true } });
+    const rows2 = await ingestionDb.book.findMany({ where: { ...licenceFillWhere(), ...after(js.cursor) }, orderBy: ORDER, take: limit, select: { id: true, metadata: true, createdAt: true } });
     const o = blank3();
-    for (const b of rows) {
+    for (const b of rows2) {
       js.cursor = { at: b.createdAt.toISOString(), id: b.id };
       const meta = obj(b.metadata);
       if (!meta.sources) continue;
@@ -65912,8 +66055,8 @@ var licenceFillJob = {
   }
 };
 async function nonCanonicalLicences() {
-  const rows = await ingestionDb.$queryRawUnsafe(`select distinct licence from "Book" where licence is not null and licence <> ''`);
-  return rows.map((r2) => r2.licence).filter((l) => {
+  const rows2 = await ingestionDb.$queryRawUnsafe(`select distinct licence from "Book" where licence is not null and licence <> ''`);
+  return rows2.map((r2) => r2.licence).filter((l) => {
     const c = canonicalLicence(l);
     return !!c && c !== l;
   });
@@ -65933,9 +66076,9 @@ var licenceSpellingJob = {
     const s2 = await loadLocal();
     const js = jobState(s2, "licence-spelling", "licence-spelling:1");
     const odd = await nonCanonicalLicences();
-    const rows = odd.length ? await ingestionDb.book.findMany({ where: { licence: { in: odd }, ...after(js.cursor) }, orderBy: ORDER, take: limit, select: { id: true, licence: true, licenceIsNC: true, createdAt: true } }) : [];
+    const rows2 = odd.length ? await ingestionDb.book.findMany({ where: { licence: { in: odd }, ...after(js.cursor) }, orderBy: ORDER, take: limit, select: { id: true, licence: true, licenceIsNC: true, createdAt: true } }) : [];
     const o = blank3();
-    for (const b of rows) {
+    for (const b of rows2) {
       js.cursor = { at: b.createdAt.toISOString(), id: b.id };
       const canon = canonicalLicence(b.licence);
       o.checked++;
@@ -66610,7 +66753,7 @@ var blank4 = (department) => ({
   phase2Met: false
 });
 async function bookCoverageByDepartment(db2 = ingestionDb) {
-  const rows = await db2.$queryRawUnsafe(`
+  const rows2 = await db2.$queryRawUnsafe(`
     select coalesce(domain, '') d,
            (count(*) filter (where status = 'Published'))::int published,
            (count(*) filter (where status = 'Published' and "accessStatus" = 'ViewableHere'))::int readable,
@@ -66624,7 +66767,7 @@ async function bookCoverageByDepartment(db2 = ingestionDb) {
   const by = new Map(CANONICAL_NAMES.map((n3) => [n3, blank4(n3)]));
   const other = /* @__PURE__ */ new Map();
   const strayOf = (label) => other.get(label) ?? other.set(label, { label, published: 0, review: 0 }).get(label);
-  for (const r2 of rows) {
+  for (const r2 of rows2) {
     const name = r2.d ? canonicalDepartmentName(r2.d) : null;
     const target = name ? by.get(name) : null;
     if (!target) {
@@ -66654,7 +66797,7 @@ function belowTarget(coverage, target = TARGETS.phase1) {
 }
 var LOW_JOURNALS = 100;
 async function journalCoverageByDepartment(db2 = ingestionDb) {
-  const rows = await db2.$queryRawUnsafe(`
+  const rows2 = await db2.$queryRawUnsafe(`
     select coalesce(domain, '') d, count(*)::int total,
            (count(*) filter (where status = 'Accepted'))::int "verifiedOa",
            (count(*) filter (where status = 'NeedsReview' and coalesce("rightsBasis", '') ilike '%OA unverified%'))::int "oaUnverified",
@@ -66664,7 +66807,7 @@ async function journalCoverageByDepartment(db2 = ingestionDb) {
   const by = new Map(CANONICAL_NAMES.map((n3) => [n3, { department: n3, total: 0, verifiedOa: 0, oaUnverified: 0, metadataOnly: 0, reviewRequired: 0, low: true }]));
   const other = [];
   let total = 0;
-  for (const r2 of rows) {
+  for (const r2 of rows2) {
     total += r2.total;
     const name = r2.d ? canonicalDepartmentName(r2.d) : null;
     const t2 = name ? by.get(name) : null;
@@ -67197,8 +67340,8 @@ async function fetchOpenAlexByDepartment(department, perDept, trustedOnly = fals
   }
   return { items: out.slice(0, perDept), fetched, skipped: fetched - Math.min(out.length, perDept) };
 }
-async function fetchOpenAlexForJournal(journal, fromYear, rows) {
-  const r2 = await fetchSourceJson(openAlexJournalUrl(journal.issn, fromYear, rows), { source: "OpenAlex", headers: OPENALEX_HEADERS, attempts: 3 });
+async function fetchOpenAlexForJournal(journal, fromYear, rows2) {
+  const r2 = await fetchSourceJson(openAlexJournalUrl(journal.issn, fromYear, rows2), { source: "OpenAlex", headers: OPENALEX_HEADERS, attempts: 3 });
   if (!r2.ok) fail2("OpenAlex", r2);
   if (!Array.isArray(r2.json?.results)) invalid("OpenAlex", "no results list");
   const items = [];
@@ -67226,9 +67369,9 @@ async function fetchOpenAlexForJournal(journal, fromYear, rows) {
   return { items, fetched: r2.json.results.length, skipped: 0 };
 }
 var CROSSREF_SELECT = "DOI,title,author,issued,container-title,ISSN,volume,issue,license,link,publisher,subject,type";
-async function fetchCrossrefForJournal(journal, fromYear, rows, offset = 0) {
+async function fetchCrossrefForJournal(journal, fromYear, rows2, offset = 0) {
   const filter = `from-pub-date:${fromYear}-01-01,type:journal-article`;
-  const url = `https://api.crossref.org/journals/${encodeURIComponent(journal.issn)}/works?filter=${encodeURIComponent(filter)}&rows=${rows}&offset=${offset}&sort=published&order=desc&select=${encodeURIComponent(CROSSREF_SELECT)}&mailto=${encodeURIComponent(CONTACT2)}`;
+  const url = `https://api.crossref.org/journals/${encodeURIComponent(journal.issn)}/works?filter=${encodeURIComponent(filter)}&rows=${rows2}&offset=${offset}&sort=published&order=desc&select=${encodeURIComponent(CROSSREF_SELECT)}&mailto=${encodeURIComponent(CONTACT2)}`;
   const r2 = await fetchSourceJson(url, { source: "Crossref", headers: UA2, attempts: 3 });
   if (!r2.ok && r2.status === 404) return { items: [], fetched: 0, skipped: 0 };
   if (!r2.ok) fail2("Crossref", r2);
@@ -67638,12 +67781,12 @@ async function commitOneOff(previewId, admin, opts = {}) {
 }
 function previewToCsv(items) {
   const headers = ["outcome", "reason", "access", "title", "authors", "journalName", "issn", "publisherName", "volume", "issue", "year", "doi", "pdfUrl", "licence", "department", "source", "sourceRecordId", "result"];
-  const esc3 = (v) => {
+  const esc4 = (v) => {
     let t2 = String(v ?? "").replace(/"/g, '""');
     if (/^[=+\-@]/.test(t2)) t2 = "'" + t2;
     return `"${t2}"`;
   };
-  const row = (it) => headers.map((h2) => esc3(h2 === "reason" ? (it.reasons || []).join("; ") : h2 === "outcome" ? it.outcome : it[h2])).join(",");
+  const row = (it) => headers.map((h2) => esc4(h2 === "reason" ? (it.reasons || []).join("; ") : h2 === "outcome" ? it.outcome : it[h2])).join(",");
   return [headers.join(","), ...items.map(row)].join("\n");
 }
 
@@ -67724,8 +67867,8 @@ function bad(source, why) {
 function fail3(source, r2) {
   throw new SourceError(source, r2.error || `${source} did not answer`, r2.paused || r2.status === 429 ? "rate_limited" : "unavailable", r2.status ?? null);
 }
-async function fetchCrossrefJournals(term, offset, rows) {
-  const url = `https://api.crossref.org/journals?query=${encodeURIComponent(term)}&rows=${rows}&offset=${offset}&mailto=${encodeURIComponent(crossrefContact())}`;
+async function fetchCrossrefJournals(term, offset, rows2) {
+  const url = `https://api.crossref.org/journals?query=${encodeURIComponent(term)}&rows=${rows2}&offset=${offset}&mailto=${encodeURIComponent(crossrefContact())}`;
   const r2 = await fetchSourceJson(url, { source: "Crossref", headers: crossrefHeaders(), attempts: 3 });
   if (!r2.ok) fail3("Crossref", r2);
   const msg = r2.json?.message;
@@ -67818,11 +67961,11 @@ async function writeJournalCandidates(source, department, cands, fetchedCount = 
   const byTitle = /* @__PURE__ */ new Map();
   const unknownByIssn = cands.filter((c) => !keysOf(c).some((k) => byIssn.has(k)) && titleKey2(c.title, c.publisherName));
   if (unknownByIssn.length) {
-    const rows = await ingestionDb.$queryRawUnsafe(
+    const rows2 = await ingestionDb.$queryRawUnsafe(
       `select * from "Journal" where lower(btrim(title)) = any($1::text[])`,
       [...new Set(unknownByIssn.map((c) => String(c.title).toLowerCase().trim()))]
     );
-    for (const j of rows) {
+    for (const j of rows2) {
       const k = titleKey2(j.title, j.publisherName);
       if (k && !byTitle.has(k)) byTitle.set(k, j);
     }
@@ -68717,12 +68860,12 @@ var sourceLabel = { openalex: "OpenAlex", crossref: "Crossref" };
 async function visitJournalCrossref(journal, state, cap, v2, recovered, rowsBudget) {
   const fromYear = articleMinYear(state);
   const remaining = cap > 0 ? Math.max(0, cap - (journal.articleCount || 0)) : Number.POSITIVE_INFINITY;
-  const rows = Math.max(10, Math.min(INGESTION_POLICY.articles.pageMax, cap > 0 ? Math.max(remaining, INGESTION_POLICY.articles.pageMin) : state.batchSize, rowsBudget));
+  const rows2 = Math.max(10, Math.min(INGESTION_POLICY.articles.pageMax, cap > 0 ? Math.max(remaining, INGESTION_POLICY.articles.pageMin) : state.batchSize, rowsBudget));
   const offset = Number(readCursor(journal.fetchCursor, "crossref")) || 0;
   const base = { journal: journal.title, journalId: journal.id, department: journal.domain };
   let got;
   try {
-    got = await fetchCrossrefForJournal(journal, fromYear, rows, offset);
+    got = await fetchCrossrefForJournal(journal, fromYear, rows2, offset);
   } catch (e2) {
     const msg = String(e2?.message || e2);
     if (e2 instanceof SourceError && e2.kind === "invalid") await recordSourceFailure("Crossref", msg).catch(() => {
@@ -68758,7 +68901,7 @@ async function visitJournalCrossref(journal, state, cap, v2, recovered, rowsBudg
   }
   const cands = got.items.map((i2) => ({ ...i2, department: journal.domain || "", extra: i2.extra ?? null }));
   const pipe = await judgeVerifyWrite(cands, null, { maxWrites: v2 ? remaining : void 0, skippedAtFetch: got.skipped });
-  const next = got.fetched >= rows ? String(offset + got.fetched) : null;
+  const next = got.fetched >= rows2 ? String(offset + got.fetched) : null;
   const fin = await finishJournalVisit(journal, cap, v2, { added: pipe.sum.added, needsReview: pipe.sum.reviewWritten, next, provider: "crossref" });
   return {
     ...base,
@@ -68778,7 +68921,7 @@ async function journalTurn(kind, ctx) {
   const v2 = schedulerV2();
   const cap = Math.max(0, state.articlesPerJournal ?? 0);
   const started = Date.now();
-  const rows = [];
+  const rows2 = [];
   const t2 = { checked: 0, added: 0, held: 0, review: 0, skipped: 0, failed: 0 };
   let visited = 0, stoppedBy = null, firstError = null;
   while (t2.checked < ctx.batch && visited < MAX_JOURNALS_PER_TURN && Date.now() - started < TURN_BUDGET_MS) {
@@ -68804,7 +68947,7 @@ async function journalTurn(kind, ctx) {
       t2.review += r2.needsReview;
       t2.skipped += r2.skippedRejected;
       t2.failed += r2.skippedFailed;
-      rows.push({
+      rows2.push({
         journalId: r2.journalId ?? null,
         journalTitle: r2.journal,
         added: r2.added,
@@ -68833,7 +68976,7 @@ async function journalTurn(kind, ctx) {
     recordFailures: t2.failed,
     useful: t2.added + t2.review,
     more: true,
-    rows,
+    rows: rows2,
     note: stoppedBy ? `${sourceLabel[kind]} stopped answering part-way (${stoppedBy.error}); what was read before that was kept` : null,
     ledger: { articlesAdded: t2.added, articlesSkipped: t2.held + t2.failed }
   };
@@ -69507,7 +69650,7 @@ async function last24Hours() {
 async function repeatedNoChangeAlerts() {
   const hours = INGESTION_POLICY.alert.windowHours;
   const min = INGESTION_POLICY.alert.repeatedNoChangeVisits;
-  const rows = await ingestionDb.$queryRawUnsafe(
+  const rows2 = await ingestionDb.$queryRawUnsafe(
     `select r."journalId" id, max(r."journalTitle") title, count(*)::int visits, sum(r."skippedHeld")::int held
        from "IngestionRun" r
       where r.phase = 'Articles' and r."journalId" is not null and r."at" > now() - ($1 || ' hours')::interval
@@ -69517,10 +69660,10 @@ async function repeatedNoChangeAlerts() {
     String(hours),
     min
   );
-  if (!rows.length) return [];
-  const js = await ingestionDb.journal.findMany({ where: { id: { in: rows.map((r2) => r2.id) } }, select: { id: true, nextEligibleAt: true, noChangeCount: true } });
+  if (!rows2.length) return [];
+  const js = await ingestionDb.journal.findMany({ where: { id: { in: rows2.map((r2) => r2.id) } }, select: { id: true, nextEligibleAt: true, noChangeCount: true } });
   const by = new Map(js.map((j) => [j.id, j]));
-  return rows.map((r2) => {
+  return rows2.map((r2) => {
     const j = by.get(r2.id);
     const cooling = !!j?.nextEligibleAt && j.nextEligibleAt.getTime() > Date.now();
     return {
@@ -69546,14 +69689,14 @@ async function metrics(state, period) {
     };
   }
   const since = new Date(Date.now() - (period === "24h" ? 24 : 24 * 7) * 36e5);
-  const rows = await ingestionDb.$queryRawUnsafe(
+  const rows2 = await ingestionDb.$queryRawUnsafe(
     `select coalesce(sum("journalsSeen"),0)::int js, coalesce(sum("journalsAccepted"),0)::int ja, coalesce(sum("journalsRefused"),0)::int jr,
             coalesce(sum(added) filter (where phase='Articles'),0)::int aa, coalesce(sum(added) filter (where phase='Books'),0)::int ba,
             coalesce(sum("skippedHeld") + sum("skippedFailed"),0)::int held
        from "IngestionRun" where "at" >= $1`,
     since
   );
-  const r2 = rows[0];
+  const r2 = rows2[0];
   return { period, journalsSeen: r2.js, accepted: r2.ja, refused: r2.jr, articlesAdded: r2.aa, booksAdded: r2.ba, alreadyHeld: r2.held };
 }
 async function runHistory(q) {
@@ -69561,21 +69704,21 @@ async function runHistory(q) {
   const params = [];
   const where = runConditions({ result: q.result, phase: q.phase, department: q.department, source: q.source, start: q.start, end: q.end, before: q.before }, params);
   params.push(take + 1);
-  const rows = await ingestionDb.$queryRawUnsafe(
+  const rows2 = await ingestionDb.$queryRawUnsafe(
     // With a department chosen the rows are that department's: a run that spans departments shows what it did FOR it.
     `select r.* from ${q.department ? RUN_BY_DEPARTMENT : RUN_LEVEL} ${where.length ? `where ${where.join(" and ")}` : ""}
       order by r."at" desc, r.id desc limit $${params.length}`,
     ...params
   );
-  const more = rows.length > take;
-  const runs = more ? rows.slice(0, take) : rows;
+  const more = rows2.length > take;
+  const runs = more ? rows2.slice(0, take) : rows2;
   return { runs, hasMore: more, nextBefore: more ? `${runs[runs.length - 1].at.toISOString()}|${runs[runs.length - 1].id}` : null };
 }
 var sourcesCache = null;
 async function runSources() {
   if (sourcesCache && Date.now() - sourcesCache.at < 6e4) return sourcesCache.list;
-  const rows = await ingestionDb.$queryRawUnsafe(`select distinct source from "IngestionRun" where source is not null order by 1`);
-  sourcesCache = { at: Date.now(), list: rows.map((r2) => r2.source) };
+  const rows2 = await ingestionDb.$queryRawUnsafe(`select distinct source from "IngestionRun" where source is not null order by 1`);
+  sourcesCache = { at: Date.now(), list: rows2.map((r2) => r2.source) };
   return sourcesCache.list;
 }
 
@@ -69958,7 +70101,7 @@ async function enrichFromGoogleBooks(db2, opts = {}) {
   out.budgetLeft = left;
   if (left <= 0) return { ...out, reason: `today's budget of ${googleBooksDailyLimit()} lookups is used; it resets at midnight UTC` };
   const take = Math.min(opts.limit ?? 25, left, 100);
-  const rows = await db2.$queryRawUnsafe(`
+  const rows2 = await db2.$queryRawUnsafe(`
     select id, isbn from "Book"
      where isbn is not null and isbn <> '' and status = 'Published'
        and (description is null or description = '' or "coverUrl" is null or "publisherName" is null or year is null or pages is null)
@@ -69966,7 +70109,7 @@ async function enrichFromGoogleBooks(db2, opts = {}) {
      order by "updatedAt" asc limit ${take}`);
   out.ran = true;
   const key = encodeURIComponent(process.env.GOOGLE_BOOKS_API_KEY);
-  for (const r2 of rows) {
+  for (const r2 of rows2) {
     const isbn = String(r2.isbn).replace(/[^0-9Xx]/g, "");
     const res = await fetchSourceJson(`${GOOGLE_BOOKS_API}?q=${encodeURIComponent(`isbn:${isbn}`)}&maxResults=1&projection=lite&key=${key}`, {
       source: GOOGLE_BOOKS_SOURCE,
@@ -70130,8 +70273,8 @@ async function loadCatalogue() {
   const byDepartment = new Map(DEPARTMENT_NAMES.map((n3) => [n3, zero2()]));
   const noDepartment = zero2();
   let unplacedReview = 0;
-  const add = (rows, key) => {
-    for (const r2 of rows) {
+  const add = (rows2, key) => {
+    for (const r2 of rows2) {
       const raw = typeof r2.domain === "string" ? r2.domain.trim() : "";
       const name = raw ? canonicalOrSelf(raw) : "";
       if (name && !byDepartment.has(name)) byDepartment.set(name, zero2());
@@ -70179,20 +70322,20 @@ async function filteredCells(f3) {
   const query = async (from, withDept) => {
     const params = [];
     const where = runConditions({ ...f3, department: null }, params);
-    const rows = await ingestionDb.$queryRawUnsafe(
+    const rows2 = await ingestionDb.$queryRawUnsafe(
       `select ${withDept ? "r.dept" : "null::text"} dept, ${DAY2} as day, ${AGGREGATES}
          from ${from} ${where.length ? `where ${where.join(" and ")}` : ""}
         group by ${withDept ? "1, 2" : "2"}`,
       ...params
     );
-    return rows.map(({ dept, day: day3, first_at, ...vals }) => ({ dept: dept ?? null, day: day3, row: vals, firstAt: first_at ?? null }));
+    return rows2.map(({ dept, day: day3, first_at, ...vals }) => ({ dept: dept ?? null, day: day3, row: vals, firstAt: first_at ?? null }));
   };
   const [byDepartment, perRun] = await Promise.all([query(RUN_BY_DEPARTMENT, true), query(RUN_LEVEL, false)]);
   return { byDepartment, perRun };
 }
-var sumRows = (rows) => {
+var sumRows = (rows2) => {
   const t2 = zeroIngestion();
-  for (const r2 of rows) for (const k of Object.keys(t2)) t2[k] += r2[k] || 0;
+  for (const r2 of rows2) for (const k of Object.keys(t2)) t2[k] += r2[k] || 0;
   return t2;
 };
 function dayRows(cells, range) {
@@ -70273,9 +70416,9 @@ function publicBase2(raw = process.env.APP_URL) {
   return unreachable ? PUBLIC_SITE : value;
 }
 var MAIL_BASE = publicBase2();
-var esc2 = (s2) => String(s2 ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-var escLines = (s2) => esc2(s2).replace(/\r?\n/g, "<br/>");
-var buildEmail = (bodyRows, preheader = "") => `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><meta name="color-scheme" content="light"/></head><body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif;">` + (preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">${esc2(preheader)}</div>` : "") + `<table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:32px 0;"><tr><td align="center"><table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);"><tr><td style="border-top:4px solid #1e3a6e;padding:28px 40px 20px;text-align:center;"><img src="cid:stm-logo-email" alt="STM Digital Library" width="80" height="80" style="border-radius:50%;display:block;margin:0 auto 14px;border:3px solid #e2e8f0;"/><h2 style="margin:0 0 6px;font-size:20px;font-weight:800;color:#1e3a6e;">STM Digital Library</h2><p style="margin:0;font-size:12px;color:#64748b;">${COMPANY_DETAILS.positioning}</p><div style="margin-top:16px;border-top:1px solid #f1f5f9;"></div></td></tr>` + bodyRows + `<tr><td style="background:#1e3a6e;padding:24px 40px;text-align:center;"><p style="margin:0 0 12px;font-size:11px;color:#f59e0b;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;">\u{1F3C6} 21 Years of Trusted Excellence in Education &amp; Academic Publishing</p><p style="margin:0 0 2px;font-size:13px;color:#cbd5e1;">Regards,</p><p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#ffffff;">STM Digital Library Team</p><p style="margin:0 0 16px;font-size:12px;color:#94a3b8;">${COMPANY_DETAILS.positioning}</p><div style="border-top:1px solid rgba(255,255,255,0.15);padding-top:14px;"><p style="margin:0;font-size:11px;color:#94a3b8;">\xA9 ${(/* @__PURE__ */ new Date()).getFullYear()} STM Digital Library. All rights reserved.&nbsp;&nbsp;|&nbsp;&nbsp;<a href="${MAIL_BASE}/privacy-policy" style="color:#93c5fd;text-decoration:none;">Privacy Policy</a>&nbsp;&nbsp;|&nbsp;&nbsp;<a href="${MAIL_BASE}/terms-and-conditions" style="color:#93c5fd;text-decoration:none;">Terms &amp; Conditions</a></p></div></td></tr><tr><td style="height:4px;background:linear-gradient(90deg,#1e3a6e,#2563eb,#1e3a6e);"></td></tr></table></td></tr></table></body></html>`;
+var esc3 = (s2) => String(s2 ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+var escLines = (s2) => esc3(s2).replace(/\r?\n/g, "<br/>");
+var buildEmail = (bodyRows, preheader = "") => `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><meta name="color-scheme" content="light"/></head><body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif;">` + (preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">${esc3(preheader)}</div>` : "") + `<table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:32px 0;"><tr><td align="center"><table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);"><tr><td style="border-top:4px solid #1e3a6e;padding:28px 40px 20px;text-align:center;"><img src="cid:stm-logo-email" alt="STM Digital Library" width="80" height="80" style="border-radius:50%;display:block;margin:0 auto 14px;border:3px solid #e2e8f0;"/><h2 style="margin:0 0 6px;font-size:20px;font-weight:800;color:#1e3a6e;">STM Digital Library</h2><p style="margin:0;font-size:12px;color:#64748b;">${COMPANY_DETAILS.positioning}</p><div style="margin-top:16px;border-top:1px solid #f1f5f9;"></div></td></tr>` + bodyRows + `<tr><td style="background:#1e3a6e;padding:24px 40px;text-align:center;"><p style="margin:0 0 12px;font-size:11px;color:#f59e0b;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;">\u{1F3C6} 21 Years of Trusted Excellence in Education &amp; Academic Publishing</p><p style="margin:0 0 2px;font-size:13px;color:#cbd5e1;">Regards,</p><p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#ffffff;">STM Digital Library Team</p><p style="margin:0 0 16px;font-size:12px;color:#94a3b8;">${COMPANY_DETAILS.positioning}</p><div style="border-top:1px solid rgba(255,255,255,0.15);padding-top:14px;"><p style="margin:0;font-size:11px;color:#94a3b8;">\xA9 ${(/* @__PURE__ */ new Date()).getFullYear()} STM Digital Library. All rights reserved.&nbsp;&nbsp;|&nbsp;&nbsp;<a href="${MAIL_BASE}/privacy-policy" style="color:#93c5fd;text-decoration:none;">Privacy Policy</a>&nbsp;&nbsp;|&nbsp;&nbsp;<a href="${MAIL_BASE}/terms-and-conditions" style="color:#93c5fd;text-decoration:none;">Terms &amp; Conditions</a></p></div></td></tr><tr><td style="height:4px;background:linear-gradient(90deg,#1e3a6e,#2563eb,#1e3a6e);"></td></tr></table></td></tr></table></body></html>`;
 var eBody = (inner) => `<tr><td style="padding:30px 40px 34px;">${inner}</td></tr>`;
 var eH1 = (t2) => `<h1 style="margin:0 0 14px;font-size:19px;line-height:1.35;font-weight:800;color:#0f172a;">${t2}</h1>`;
 var eP = (t2) => `<p style="margin:0 0 14px;font-size:14px;line-height:1.65;color:#334155;">${t2}</p>`;
@@ -70293,19 +70436,19 @@ var eCard = (inner, tone = "neutral") => {
   return `<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;background:${t2.bg};border-left:4px solid ${t2.bar};border-radius:8px;"><tr><td style="padding:16px 18px;font-size:14px;line-height:1.6;color:#334155;">${inner}</td></tr></table>`;
 };
 var eRows = (pairs) => `<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;border:1px solid #e2e8f0;border-radius:8px;">` + pairs.map(
-  ([k, v], i2) => `<tr><td style="padding:11px 16px;font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.4px;width:38%;${i2 ? "border-top:1px solid #f1f5f9;" : ""}">${esc2(k)}</td><td style="padding:11px 16px;font-size:14px;color:#0f172a;${i2 ? "border-top:1px solid #f1f5f9;" : ""}">${v}</td></tr>`
+  ([k, v], i2) => `<tr><td style="padding:11px 16px;font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.4px;width:38%;${i2 ? "border-top:1px solid #f1f5f9;" : ""}">${esc3(k)}</td><td style="padding:11px 16px;font-size:14px;color:#0f172a;${i2 ? "border-top:1px solid #f1f5f9;" : ""}">${v}</td></tr>`
 ).join("") + `</table>`;
-var eQuote = (author, text) => `<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;"><tr><td style="padding:16px 18px;"><p style="margin:0 0 8px;font-size:12px;font-weight:700;color:#1e3a6e;">${esc2(author)}</p><div style="font-size:14px;line-height:1.65;color:#334155;">${escLines(text)}</div></td></tr></table>`;
+var eQuote = (author, text) => `<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;"><tr><td style="padding:16px 18px;"><p style="margin:0 0 8px;font-size:12px;font-weight:700;color:#1e3a6e;">${esc3(author)}</p><div style="font-size:14px;line-height:1.65;color:#334155;">${escLines(text)}</div></td></tr></table>`;
 
 // src/lib/marketingEmails.ts
 var n2 = (x2) => typeof x2 === "number" ? x2.toLocaleString("en-IN") : "";
-var firstName2 = (c) => esc2((c.user.displayName || "").trim().split(/\s+/)[0] || "there");
+var firstName2 = (c) => esc3((c.user.displayName || "").trim().split(/\s+/)[0] || "there");
 var link = (path5, c) => {
   const url = `${MAIL_BASE}${path5}`;
   if (!c.ref) return url;
   return url + (url.includes("?") ? "&" : "?") + `ref=${encodeURIComponent(c.ref)}`;
 };
-var footer = (c) => c.unsubscribeUrl ? eMuted(`You are receiving this because you have an account at STM Digital Library. <a href="${esc2(c.unsubscribeUrl)}" style="color:#64748b;">Unsubscribe from updates</a> \u2014 your OTP, receipt and other essential account mails will still reach you.`) : "";
+var footer = (c) => c.unsubscribeUrl ? eMuted(`You are receiving this because you have an account at STM Digital Library. <a href="${esc3(c.unsubscribeUrl)}" style="color:#64748b;">Unsubscribe from updates</a> \u2014 your OTP, receipt and other essential account mails will still reach you.`) : "";
 var TEMPLATES = {
   // ── 1. The librarian's profile is still half empty ───────────────────────
   "profile-incomplete": {
@@ -70319,7 +70462,7 @@ var TEMPLATES = {
     body: (c) => {
       const missing = c.missingFields || [];
       return eBody(
-        eH1(`Hello ${firstName2(c)}, your profile is nearly there`) + eP("Your institution is set up and your people can read today. A few details on the profile are still blank, and they are the ones that make your dashboard useful \u2014 the contact we reach you on, and the size and courses that let us tell you which departments your library is thin in.") + (missing.length ? eCard(`<p style="margin:0 0 10px;font-size:13px;font-weight:700;color:#1e3a6e;">Still blank</p><p style="margin:0;font-size:14px;line-height:24px;color:#334155;">` + missing.map((f3) => `\u2022 ${esc2(f3)}`).join("<br/>") + `</p>`, "warning") : "") + eBtn("Complete the profile", link("/institution/profile", c)) + eMuted("Nothing about your members changes while it is blank \u2014 this only improves what we can show you.") + footer(c)
+        eH1(`Hello ${firstName2(c)}, your profile is nearly there`) + eP("Your institution is set up and your people can read today. A few details on the profile are still blank, and they are the ones that make your dashboard useful \u2014 the contact we reach you on, and the size and courses that let us tell you which departments your library is thin in.") + (missing.length ? eCard(`<p style="margin:0 0 10px;font-size:13px;font-weight:700;color:#1e3a6e;">Still blank</p><p style="margin:0;font-size:14px;line-height:24px;color:#334155;">` + missing.map((f3) => `\u2022 ${esc3(f3)}`).join("<br/>") + `</p>`, "warning") : "") + eBtn("Complete the profile", link("/institution/profile", c)) + eMuted("Nothing about your members changes while it is blank \u2014 this only improves what we can show you.") + footer(c)
       );
     }
   },
@@ -70330,10 +70473,10 @@ var TEMPLATES = {
     description: "For members who registered and never read. Shows what is waiting in their departments.",
     audience: "Members registered 3+ days ago who have never opened an item",
     kind: "lifecycle",
-    subject: (c) => c.departments?.length ? `${n2(c.library?.total)} items are waiting \u2014 starting with ${esc2(c.departments[0])}` : `Your library is open \u2014 ${n2(c.library?.total)} items are waiting`,
+    subject: (c) => c.departments?.length ? `${n2(c.library?.total)} items are waiting \u2014 starting with ${esc3(c.departments[0])}` : `Your library is open \u2014 ${n2(c.library?.total)} items are waiting`,
     preheader: () => "Sign in and open the first one. Free, no request form, nothing to install.",
     body: (c) => eBody(
-      eH1(`${firstName2(c)}, your library is open`) + eP(`You registered, and since then nothing has been opened. There is no approval to wait for and nothing to install \u2014 ${n2(c.library?.total)} items across ${n2(c.library?.departments)} departments are already available to you, and they open in the browser.`) + (c.departments?.length ? eCard(`<p style="margin:0 0 10px;font-size:13px;font-weight:700;color:#1e3a6e;">Your departments</p><p style="margin:0;font-size:14px;line-height:24px;color:#334155;">` + c.departments.slice(0, 4).map((d) => `\u2022 ${esc2(d)}`).join("<br/>") + `</p>`) : "") + eBtn("Open the library", link("/dashboard/library", c)) + eMuted("Free membership reads in half-hour sessions. Nothing is charged, and nothing is asked for.") + footer(c)
+      eH1(`${firstName2(c)}, your library is open`) + eP(`You registered, and since then nothing has been opened. There is no approval to wait for and nothing to install \u2014 ${n2(c.library?.total)} items across ${n2(c.library?.departments)} departments are already available to you, and they open in the browser.`) + (c.departments?.length ? eCard(`<p style="margin:0 0 10px;font-size:13px;font-weight:700;color:#1e3a6e;">Your departments</p><p style="margin:0;font-size:14px;line-height:24px;color:#334155;">` + c.departments.slice(0, 4).map((d) => `\u2022 ${esc3(d)}`).join("<br/>") + `</p>`) : "") + eBtn("Open the library", link("/dashboard/library", c)) + eMuted("Free membership reads in half-hour sessions. Nothing is charged, and nothing is asked for.") + footer(c)
     )
   },
   // ── 3. What is new ───────────────────────────────────────────────────────
@@ -70346,7 +70489,7 @@ var TEMPLATES = {
     subject: () => "What's new in your digital library",
     preheader: (c) => (c.note || "New in the library this month.").slice(0, 120),
     body: (c) => eBody(
-      eH1("New in the library") + (c.note ? `<p style="margin:0 0 18px;font-size:15px;line-height:24px;color:#334155;">${esc2(c.note).replace(/\n/g, "<br/>")}</p>` : eP("The library has grown and a few things work better than they did. Sign in and have a look.")) + (c.library?.total ? eCard(eRows([
+      eH1("New in the library") + (c.note ? `<p style="margin:0 0 18px;font-size:15px;line-height:24px;color:#334155;">${esc3(c.note).replace(/\n/g, "<br/>")}</p>` : eP("The library has grown and a few things work better than they did. Sign in and have a look.")) + (c.library?.total ? eCard(eRows([
         ["Items in the library", n2(c.library.total)],
         ["Research articles", n2(c.library.articles)],
         ["Books", n2(c.library.books)],
@@ -70420,7 +70563,7 @@ var TEMPLATES = {
     subject: () => "Where would you like to start?",
     preheader: () => "Search by title, author, DOI or keyword \u2014 or browse your departments.",
     body: (c) => eBody(
-      eH1(`${firstName2(c)}, what are you researching?`) + eP("You signed in, but have not searched or opened anything yet. The quickest way in is to type what you are looking for \u2014 a title, an author, a DOI or a keyword \u2014 into the search box.") + (c.departments?.length ? eCard(`<p style="margin:0 0 10px;font-size:13px;font-weight:700;color:#1e3a6e;">Your departments</p><p style="margin:0;font-size:14px;line-height:24px;color:#334155;">` + c.departments.slice(0, 4).map((d) => `\u2022 ${esc2(d)}`).join("<br/>") + `</p>`) : "") + eBtn("Search the library", link("/dashboard/library", c)) + footer(c)
+      eH1(`${firstName2(c)}, what are you researching?`) + eP("You signed in, but have not searched or opened anything yet. The quickest way in is to type what you are looking for \u2014 a title, an author, a DOI or a keyword \u2014 into the search box.") + (c.departments?.length ? eCard(`<p style="margin:0 0 10px;font-size:13px;font-weight:700;color:#1e3a6e;">Your departments</p><p style="margin:0;font-size:14px;line-height:24px;color:#334155;">` + c.departments.slice(0, 4).map((d) => `\u2022 ${esc3(d)}`).join("<br/>") + `</p>`) : "") + eBtn("Search the library", link("/dashboard/library", c)) + footer(c)
     )
   },
   // ── 9. Used to read, then stopped ────────────────────────────────────────
@@ -70593,13 +70736,13 @@ function decidePause(sessions, nowAt) {
 async function allowanceFor(p3, userId, opts = {}) {
   return p3.$transaction(async (tx) => {
     await tx.$executeRawUnsafe("select pg_advisory_xact_lock(hashtext($1))", userId);
-    const rows = await tx.freeSession.findMany({
+    const rows2 = await tx.freeSession.findMany({
       where: { userId },
       orderBy: [{ day: "desc" }, { number: "desc" }],
       take: 8
       // today's four at most, plus last night's
     });
-    const { allowance, writes } = decide(rows, /* @__PURE__ */ new Date(), opts);
+    const { allowance, writes } = decide(rows2, /* @__PURE__ */ new Date(), opts);
     await applyWrites(tx, userId, writes);
     return allowance;
   });
@@ -70607,12 +70750,12 @@ async function allowanceFor(p3, userId, opts = {}) {
 async function pauseFor(p3, userId) {
   await p3.$transaction(async (tx) => {
     await tx.$executeRawUnsafe("select pg_advisory_xact_lock(hashtext($1))", userId);
-    const rows = await tx.freeSession.findMany({
+    const rows2 = await tx.freeSession.findMany({
       where: { userId },
       orderBy: [{ day: "desc" }, { number: "desc" }],
       take: 8
     });
-    await applyWrites(tx, userId, decidePause(rows, /* @__PURE__ */ new Date()));
+    await applyWrites(tx, userId, decidePause(rows2, /* @__PURE__ */ new Date()));
   });
 }
 async function applyWrites(tx, userId, writes) {
@@ -70676,19 +70819,19 @@ var formatIst = (d) => {
 };
 function buildDailyUserDigest(win, total, users) {
   const subject = `STM Digital Library \u2014 ${total.total} New User${total.total === 1 ? "" : "s"} Registered on ${win.label}`;
-  const stat4 = (label, n3) => `<td style="padding:10px 14px;text-align:center;background:#f8fafc;border:1px solid #e2e8f0;"><div style="font-size:20px;font-weight:800;color:#1e3a6e;">${n3}</div><div style="font-size:10.5px;color:#64748b;text-transform:uppercase;letter-spacing:.8px;">${esc2(label)}</div></td>`;
+  const stat4 = (label, n3) => `<td style="padding:10px 14px;text-align:center;background:#f8fafc;border:1px solid #e2e8f0;"><div style="font-size:20px;font-weight:800;color:#1e3a6e;">${n3}</div><div style="font-size:10.5px;color:#64748b;text-transform:uppercase;letter-spacing:.8px;">${esc3(label)}</div></td>`;
   const th = (t2) => `<td style="padding:8px 10px;font-size:10.5px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.8px;">${t2}</td>`;
   const td = (t2, color = "#475569") => `<td style="padding:8px 10px;font-size:12px;color:${color};vertical-align:top;">${t2}</td>`;
   const hasOrg = users.some((u) => u.organization);
   const hasType = users.some((u) => u.registrantType);
   const hasSource = users.some((u) => u.signupSource);
-  const rows = users.slice(0, DIGEST_ROW_LIMIT).map(
-    (u, i2) => `<tr style="background:${i2 % 2 ? "#fafbfc" : "#fff"};">` + td(esc2(u.displayName || "\u2014"), "#1e293b") + td(esc2(u.email), "#1e3a6e") + (hasOrg ? td(esc2(u.organization || "\u2014")) : "") + (hasType ? td(esc2(u.registrantType || "\u2014")) : "") + (hasSource ? td(esc2(u.signupSource || "\u2014")) : "") + td(esc2(formatIst(u.createdAt))) + `</tr>`
+  const rows2 = users.slice(0, DIGEST_ROW_LIMIT).map(
+    (u, i2) => `<tr style="background:${i2 % 2 ? "#fafbfc" : "#fff"};">` + td(esc3(u.displayName || "\u2014"), "#1e293b") + td(esc3(u.email), "#1e3a6e") + (hasOrg ? td(esc3(u.organization || "\u2014")) : "") + (hasType ? td(esc3(u.registrantType || "\u2014")) : "") + (hasSource ? td(esc3(u.signupSource || "\u2014")) : "") + td(esc3(formatIst(u.createdAt))) + `</tr>`
   ).join("");
   const more = total.total - Math.min(users.length, DIGEST_ROW_LIMIT);
   const html = buildEmail(
     eBody(
-      eH1("Daily New User Registration Summary") + eP(`<b>Date:</b> ${esc2(win.label)}<br/><b>New users registered:</b> ${total.total}`) + `<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;border-collapse:collapse;"><tr>` + stat4("Individual", total.individual) + stat4("Institution-linked", total.institutionLinked) + stat4("Verified", total.verified) + stat4("Unverified", total.unverified) + `</tr></table><table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;"><tr style="background:#f8fafc;">${th("Name")}${th("Email")}${hasOrg ? th("Institution / Organization") : ""}${hasType ? th("Role / Type") : ""}${hasSource ? th("Signup Source") : ""}${th("Registered At")}</tr>${rows}</table>` + (more > 0 ? eMuted(`+ ${more} more user${more === 1 ? "" : "s"}`) : "") + eBtn("View All Users", `${MAIL_BASE}/admin/users`)
+      eH1("Daily New User Registration Summary") + eP(`<b>Date:</b> ${esc3(win.label)}<br/><b>New users registered:</b> ${total.total}`) + `<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;border-collapse:collapse;"><tr>` + stat4("Individual", total.individual) + stat4("Institution-linked", total.institutionLinked) + stat4("Verified", total.verified) + stat4("Unverified", total.unverified) + `</tr></table><table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;"><tr style="background:#f8fafc;">${th("Name")}${th("Email")}${hasOrg ? th("Institution / Organization") : ""}${hasType ? th("Role / Type") : ""}${hasSource ? th("Signup Source") : ""}${th("Registered At")}</tr>${rows2}</table>` + (more > 0 ? eMuted(`+ ${more} more user${more === 1 ? "" : "s"}`) : "") + eBtn("View All Users", `${MAIL_BASE}/admin/users`)
     ),
     `${total.total} new user${total.total === 1 ? "" : "s"} registered on ${win.label}`
   );
@@ -71070,7 +71213,7 @@ async function startServer() {
     const domains = scope ? await deptSpellings.expand(scope) : void 0;
     const f3 = (t2) => domains?.length ? `and ${t2}."domain" = any($1)` : "";
     const args = domains?.length ? [domains] : [];
-    const rows = await prisma3.$queryRawUnsafe(
+    const rows2 = await prisma3.$queryRawUnsafe(
       `select domain,
               sum(articles)::int as articles,
               sum(books)::int as books,
@@ -71099,7 +71242,7 @@ async function startServer() {
       ...args
     );
     const byName = /* @__PURE__ */ new Map();
-    for (const d of rows) {
+    for (const d of rows2) {
       const name = canonicalOrSelf(String(d.domain));
       const row = byName.get(name) ?? { name, articles: 0, books: 0, other: 0, total: 0 };
       row.articles += Number(d.articles);
@@ -73128,7 +73271,7 @@ async function startServer() {
       }) : [];
       const lastById = new Map(lastAuto.map((g) => [g.userId, g._max.createdAt]));
       const q = String(req.query.search || "").trim().toLowerCase();
-      let rows = due.map((d) => ({
+      let rows2 = due.map((d) => ({
         id: d.user.id,
         displayName: d.user.displayName || null,
         email: d.user.email,
@@ -73142,7 +73285,7 @@ async function startServer() {
         lastReadAt: d.user.lastReadAt || null,
         lastAutomationAt: lastById.get(d.user.id) || null
       }));
-      if (q) rows = rows.filter((r2) => `${r2.displayName || ""} ${r2.email} ${r2.organization || ""}`.toLowerCase().includes(q));
+      if (q) rows2 = rows2.filter((r2) => `${r2.displayName || ""} ${r2.email} ${r2.organization || ""}`.toLowerCase().includes(q));
       const pageSize = Math.min(100, Math.max(1, parseInt(String(req.query.pageSize || "25")) || 25));
       const page = Math.max(1, parseInt(String(req.query.page || "1")) || 1);
       res.json({
@@ -73150,10 +73293,10 @@ async function startServer() {
         name: TEMPLATES[key]?.name || key,
         dueCount: due.length,
         capped: due.length >= LIMIT,
-        matching: rows.length,
+        matching: rows2.length,
         page,
         pageSize,
-        users: rows.slice((page - 1) * pageSize, page * pageSize)
+        users: rows2.slice((page - 1) * pageSize, page * pageSize)
       });
     } catch (e2) {
       console.error("due users failed", e2?.message);
@@ -73460,7 +73603,7 @@ async function startServer() {
       if (str2(req.query.q)) where.email = { contains: str2(req.query.q), mode: "insensitive" };
       const page = Math.max(1, parseInt(str2(req.query.page)) || 1);
       const limit = Math.min(200, Math.max(10, parseInt(str2(req.query.limit)) || 50));
-      const [rows, total, byStatus] = await Promise.all([
+      const [rows2, total, byStatus] = await Promise.all([
         prisma3.emailSend.findMany({
           where,
           orderBy: { createdAt: "desc" },
@@ -73472,7 +73615,7 @@ async function startServer() {
         prisma3.emailSend.groupBy({ by: ["status"], where, _count: { _all: true } })
       ]);
       res.json({
-        sends: rows,
+        sends: rows2,
         total,
         page,
         limit,
@@ -73514,7 +73657,7 @@ async function startServer() {
         prisma3.emailSend.groupBy({ by: ["status"], where, _count: { _all: true } })
       ]);
       const byId = new Map(members.map((m2) => [m2.id, m2]));
-      const rows = groups.map((g) => {
+      const rows2 = groups.map((g) => {
         const mine = sends.filter((s2) => s2.userId === g.userId);
         return {
           member: byId.get(g.userId) || { id: g.userId, email: mine[0]?.email, displayName: null, role: "\u2014" },
@@ -73536,7 +73679,7 @@ async function startServer() {
         };
       });
       res.json({
-        members: rows,
+        members: rows2,
         memberCount: allGroups.length,
         total: allGroups.reduce((n3, g) => n3 + g._count._all, 0),
         page,
@@ -73943,11 +74086,11 @@ async function startServer() {
         since: since.toISOString(),
         chosenBy: asked.length ? "asked" : interested.length ? "registration" : "collection",
         departments: departments.map((name) => {
-          const rows = (picked.get(name) || []).filter((r2) => meta.has(r2.itemId));
-          return rows.length ? {
+          const rows2 = (picked.get(name) || []).filter((r2) => meta.has(r2.itemId));
+          return rows2.length ? {
             name,
             basis: "read",
-            items: rows.map((r2) => ({
+            items: rows2.map((r2) => ({
               id: r2.itemId,
               type: r2.itemType,
               title: meta.get(r2.itemId).title,
@@ -75545,7 +75688,7 @@ async function startServer() {
         prisma3.user.count({ where: { AND: [where, { emailVerifiedAt: { not: null } }] } }),
         prisma3.user.count({ where: { AND: [where, { lastReadAt: { not: null } }] } })
       ]);
-      const facet = (rows, key) => rows.map((r2) => ({ value: r2[key] || null, count: r2._count._all })).sort((a, b) => b.count - a.count);
+      const facet = (rows2, key) => rows2.map((r2) => ({ value: r2[key] || null, count: r2._count._all })).sort((a, b) => b.count - a.count);
       const codes = [...new Set(users.map((u) => u.signupSource).filter(Boolean))];
       const named = codes.length ? await prisma3.campaign.findMany({
         where: { code: { in: codes } },
@@ -75646,8 +75789,8 @@ async function startServer() {
       take: 500,
       select: { id: true, displayName: true, email: true, role: true, designation: true, lastReadAt: true, isBlocked: true }
     });
-    const rows = await prisma3.institutionMemberAccess.findMany({ where: { institutionId, userId: { in: users.map((u) => u.id) } } });
-    const byUser = new Map(rows.map((r2) => [r2.userId, r2]));
+    const rows2 = await prisma3.institutionMemberAccess.findMany({ where: { institutionId, userId: { in: users.map((u) => u.id) } } });
+    const byUser = new Map(rows2.map((r2) => [r2.userId, r2]));
     return {
       summary: seat,
       members: users.map((u) => {
@@ -75887,9 +76030,9 @@ async function startServer() {
       const qs = (v) => v === void 0 || v === null || v === "" || v === "all" ? null : String(v);
       const search = qs(req.query.search)?.slice(0, 120) ?? null;
       const statusFilter = qs(req.query.accountStatus);
-      const counts = (rows, key) => {
+      const counts = (rows2, key) => {
         const m2 = /* @__PURE__ */ new Map();
-        for (const r2 of rows) if (r2[key]) m2.set(r2[key], r2._count._all);
+        for (const r2 of rows2) if (r2[key]) m2.set(r2[key], r2._count._all);
         return m2;
       };
       const [
@@ -76010,8 +76153,8 @@ async function startServer() {
         }))
       })).filter((g) => g.members > 0 || g.pendingDeletion > 0 || g.former > 0).filter((g) => !matchingInstitutions || matchingInstitutions.has(g.id)).sort((a, b) => b.members - a.members || a.name.localeCompare(b.name));
       const loose = /* @__PURE__ */ new Map();
-      const add = (rows, field) => {
-        for (const r2 of rows) {
+      const add = (rows2, field) => {
+        for (const r2 of rows2) {
           const name = String(r2.organization || "").trim();
           if (!name) continue;
           const key = name.toLowerCase().replace(/\s+/g, " ");
@@ -76070,13 +76213,13 @@ async function startServer() {
       prisma3.user.groupBy({ by: ["signupSource"], where: { ...MEMBERS, lastReadAt: { not: null } }, _count: { _all: true } }),
       prisma3.user.groupBy({ by: ["signupSource"], where: { ...MEMBERS, createdAt: { gte: since30 } }, _count: { _all: true } })
     ]);
-    const tally = (rows2) => {
+    const tally = (rows3) => {
       const m2 = /* @__PURE__ */ new Map();
-      for (const r2 of rows2) if (r2.signupSource) m2.set(r2.signupSource, r2._count._all);
+      for (const r2 of rows3) if (r2.signupSource) m2.set(r2.signupSource, r2._count._all);
       return m2;
     };
     const [A2, V, R, N] = [tally(all2), tally(verified), tally(read), tally(recent)];
-    const rows = campaigns.map((c) => ({
+    const rows2 = campaigns.map((c) => ({
       ...c,
       signups: A2.get(c.code) || 0,
       verified: V.get(c.code) || 0,
@@ -76087,7 +76230,7 @@ async function startServer() {
     const loose = [...A2.entries()].filter(([code]) => !known.has(code)).map(([code, signups]) => ({ code, signups, verified: V.get(code) || 0, readers: R.get(code) || 0 })).sort((a, b) => b.signups - a.signups);
     const group = (key) => {
       const m2 = /* @__PURE__ */ new Map();
-      for (const r2 of rows) {
+      for (const r2 of rows2) {
         const k = r2[key] || "\u2014";
         const held2 = m2.get(k) || { name: k, campaigns: 0, signups: 0, verified: 0, readers: 0, last30: 0 };
         held2.campaigns++;
@@ -76101,13 +76244,13 @@ async function startServer() {
     };
     const untaggedCount = all2.find((r2) => !r2.signupSource)?._count?._all || 0;
     return {
-      campaigns: rows,
+      campaigns: rows2,
       byOwner: group("ownerName"),
       byChannel: group("channel"),
       loose,
       channels: CHANNELS,
       untagged: untaggedCount,
-      tagged: rows.reduce((n3, r2) => n3 + r2.signups, 0) + loose.reduce((n3, r2) => n3 + r2.signups, 0)
+      tagged: rows2.reduce((n3, r2) => n3 + r2.signups, 0) + loose.reduce((n3, r2) => n3 + r2.signups, 0)
     };
   };
   app.get("/api/admin/campaigns", authenticateJWT, requireAdminOrManager, async (_req, res) => {
@@ -76782,8 +76925,8 @@ async function startServer() {
   });
   const nextQuotationNumber = async () => {
     const prefix2 = quoteNoPrefix();
-    const rows = await prisma3.quotation.findMany({ where: { id: { startsWith: prefix2 } }, select: { id: true } });
-    return nextQuoteNo(rows.map((r2) => r2.id));
+    const rows2 = await prisma3.quotation.findMany({ where: { id: { startsWith: prefix2 } }, select: { id: true } });
+    return nextQuoteNo(rows2.map((r2) => r2.id));
   };
   app.get("/api/quotation/next-number", authenticateJWT, requireSalesRole, async (_req, res) => {
     try {
@@ -77390,11 +77533,11 @@ async function startServer() {
       try {
         const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || COMPANY_DETAILS.email).trim();
         const credsBlock = generatedPassword ? eRows([
-          ["Login email", esc2(loginEmail)],
-          ["Temporary password", `<span style="font-family:Consolas,Menlo,monospace;font-size:15px;font-weight:700;letter-spacing:0.5px;color:#1e3a6e;">${esc2(generatedPassword)}</span>`]
-        ]) + eCard(`Please change this password the first time you sign in.`, "warning") : eCard(`Sign in with your existing account \u2014 <b>${esc2(loginEmail)}</b>.`, "info");
+          ["Login email", esc3(loginEmail)],
+          ["Temporary password", `<span style="font-family:Consolas,Menlo,monospace;font-size:15px;font-weight:700;letter-spacing:0.5px;color:#1e3a6e;">${esc3(generatedPassword)}</span>`]
+        ]) + eCard(`Please change this password the first time you sign in.`, "warning") : eCard(`Sign in with your existing account \u2014 <b>${esc3(loginEmail)}</b>.`, "info");
         const html = buildEmail(eBody(
-          eH1(`You're invited to partner with STM Digital Library`) + eP(`Dear ${esc2(publisher.name)},`) + eP(`We would be glad to have ${esc2(publisher.name)} on STM Digital Library. Sharing your open-access content puts your journals in front of the institutions and researchers already searching our platform \u2014 which means more readership, and more citations.`) + eP(`Your publisher account is ready:`) + credsBlock + eBtn("Sign in to your dashboard", `${MAIL_BASE}/publisher`) + eP(`From your dashboard you can submit and manage your catalogue, correct metadata, see readership analytics for your own titles, and withdraw any item at any time without going through us.`) + eMuted(`Have a question before you begin? Simply reply to this email \u2014 it reaches our team directly.`)
+          eH1(`You're invited to partner with STM Digital Library`) + eP(`Dear ${esc3(publisher.name)},`) + eP(`We would be glad to have ${esc3(publisher.name)} on STM Digital Library. Sharing your open-access content puts your journals in front of the institutions and researchers already searching our platform \u2014 which means more readership, and more citations.`) + eP(`Your publisher account is ready:`) + credsBlock + eBtn("Sign in to your dashboard", `${MAIL_BASE}/publisher`) + eP(`From your dashboard you can submit and manage your catalogue, correct metadata, see readership analytics for your own titles, and withdraw any item at any time without going through us.`) + eMuted(`Have a question before you begin? Simply reply to this email \u2014 it reaches our team directly.`)
         ), `Your publisher account for ${publisher.name} is ready`);
         await sendMail({
           from: `"STM Digital Library" <${emailFrom}>`,
@@ -77475,7 +77618,7 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
       const page = Math.max(1, parseInt(req.query.page) || 1);
       const where = { status: "Draft", ownershipSource: "Ingested" };
       if (req.query.source) where.source = String(req.query.source);
-      const [rows, total] = await Promise.all([
+      const [rows2, total] = await Promise.all([
         prisma3.book.findMany({
           where,
           orderBy: { createdAt: "desc" },
@@ -77502,7 +77645,7 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
         }),
         prisma3.book.count({ where })
       ]);
-      res.json({ total, page, take, departments: ALL_DEPARTMENTS2, books: rows.map((b) => ({
+      res.json({ total, page, take, departments: ALL_DEPARTMENTS2, books: rows2.map((b) => ({
         ...b,
         metadata: void 0,
         suggested: b.metadata?.harvest?.department?.suggested ?? null,
@@ -78137,10 +78280,10 @@ From your dashboard you can manage your catalogue, correct metadata, see analyti
           to,
           subject: `Agreement for your signature \u2014 ${ag.title}`,
           html: buildEmail(eBody(
-            eH1(`An agreement is ready for your signature`) + eP(`Dear ${esc2(name)},`) + eP(`We have prepared the agreement below for your review. You can read it in full, and sign or decline it, from your publisher dashboard \u2014 no printing, scanning or posting required.`) + eRows([
-              ["Agreement", esc2(ag.title)],
-              ["Version", esc2(ag.version || "1.0")],
-              ["Prepared for", esc2(name)]
+            eH1(`An agreement is ready for your signature`) + eP(`Dear ${esc3(name)},`) + eP(`We have prepared the agreement below for your review. You can read it in full, and sign or decline it, from your publisher dashboard \u2014 no printing, scanning or posting required.`) + eRows([
+              ["Agreement", esc3(ag.title)],
+              ["Version", esc3(ag.version || "1.0")],
+              ["Prepared for", esc3(name)]
             ]) + eBtn("Review &amp; sign the agreement", `${MAIL_BASE}/publisher`) + (ag.documentUrl ? eCard(`A signed copy of the contract PDF is attached to this agreement in your dashboard.`, "info") : "") + eCard(`Signing is entirely your choice. If anything in the agreement does not suit you, decline it and tell us why \u2014 we will revise it. You may also simply reply to this email.`, "neutral") + eMuted(`This link opens your publisher dashboard. If you cannot sign in, reply to this email and we will help.`)
           ), `${ag.title} \u2014 ready for your review and signature`),
           text: `Dear ${name},
@@ -78210,15 +78353,15 @@ Signing is your choice. If anything does not suit you, decline it and tell us wh
         to: ADMIN_INBOX,
         subject: `\u2705 Agreement signed \u2014 ${publisher.name}`,
         html: buildEmail(eBody(
-          eH1(`${esc2(publisher.name)} signed the agreement`) + eCard(`<b>${esc2(ag.title)}</b> was accepted and is now legally on record with a full audit trail.`, "success") + eRows([
-            ["Publisher", esc2(publisher.name)],
-            ["Agreement", esc2(ag.title)],
-            ["Version", esc2(ag.version || "1.0")],
-            ["Signed by", esc2(name)],
-            ["Signer email", esc2(email || "\u2014")],
-            ["Signature", esc2(signatureType === "drawn" ? "Drawn" : "Typed")],
-            ["Signed at", esc2((/* @__PURE__ */ new Date()).toLocaleString("en-IN"))],
-            ["IP address", esc2(req.ip || "\u2014")]
+          eH1(`${esc3(publisher.name)} signed the agreement`) + eCard(`<b>${esc3(ag.title)}</b> was accepted and is now legally on record with a full audit trail.`, "success") + eRows([
+            ["Publisher", esc3(publisher.name)],
+            ["Agreement", esc3(ag.title)],
+            ["Version", esc3(ag.version || "1.0")],
+            ["Signed by", esc3(name)],
+            ["Signer email", esc3(email || "\u2014")],
+            ["Signature", esc3(signatureType === "drawn" ? "Drawn" : "Typed")],
+            ["Signed at", esc3((/* @__PURE__ */ new Date()).toLocaleString("en-IN"))],
+            ["IP address", esc3(req.ip || "\u2014")]
           ]) + eBtn("Open the publisher record", `${MAIL_BASE}/admin/publishers`)
         ), `${publisher.name} accepted ${ag.title}`),
         text: `${publisher.name} signed the agreement "${ag.title}" (v${ag.version || "1.0"}).
@@ -78246,11 +78389,11 @@ ${MAIL_BASE}/admin/publishers`
         to: ADMIN_INBOX,
         subject: `Agreement declined \u2014 ${publisher.name}`,
         html: buildEmail(eBody(
-          eH1(`${esc2(publisher.name)} declined the agreement`) + eRows([
-            ["Publisher", esc2(publisher.name)],
-            ["Agreement", esc2(ag.title)],
-            ["Version", esc2(ag.version || "1.0")],
-            ["Declined at", esc2((/* @__PURE__ */ new Date()).toLocaleString("en-IN"))]
+          eH1(`${esc3(publisher.name)} declined the agreement`) + eRows([
+            ["Publisher", esc3(publisher.name)],
+            ["Agreement", esc3(ag.title)],
+            ["Version", esc3(ag.version || "1.0")],
+            ["Declined at", esc3((/* @__PURE__ */ new Date()).toLocaleString("en-IN"))]
           ]) + (req.body.reason ? eCard(`<b>Reason given</b><br/>${escLines(req.body.reason)}`, "warning") : eCard(`No reason was given. It may be worth asking what would need to change.`, "neutral")) + eP(`Nothing further happens automatically. You can revise the terms and send a fresh agreement whenever you are ready.`) + eBtn("Open the publisher record", `${MAIL_BASE}/admin/publishers`)
         ), `${publisher.name} declined ${ag.title}`),
         text: `${publisher.name} declined the agreement "${ag.title}" (v${ag.version || "1.0"}).
@@ -78359,7 +78502,7 @@ ${MAIL_BASE}/admin/publishers`
           to,
           subject: `New message from STM Digital Library`,
           html: buildEmail(eBody(
-            eH1(`You have a new message`) + eP(`Dear ${esc2(publisher?.name || "there")},`) + eP(`The STM Digital Library team has sent you a message on your publisher dashboard:`) + eQuote("STM Digital Library Team", body || "(attachment only)") + (attachmentUrl ? eCard(`\u{1F4CE} A file is attached to this message in your dashboard.`, "info") : "") + eBtn("Read and reply", `${MAIL_BASE}/publisher`) + eMuted(`Replying in the dashboard keeps the whole conversation in one place.`)
+            eH1(`You have a new message`) + eP(`Dear ${esc3(publisher?.name || "there")},`) + eP(`The STM Digital Library team has sent you a message on your publisher dashboard:`) + eQuote("STM Digital Library Team", body || "(attachment only)") + (attachmentUrl ? eCard(`\u{1F4CE} A file is attached to this message in your dashboard.`, "info") : "") + eBtn("Read and reply", `${MAIL_BASE}/publisher`) + eMuted(`Replying in the dashboard keeps the whole conversation in one place.`)
           ), (body || "New message from STM Digital Library").slice(0, 120)),
           text: `Dear ${publisher?.name || "there"},
 
@@ -78398,7 +78541,7 @@ Read and reply: ${MAIL_BASE}/publisher`
         to: ADMIN_INBOX,
         subject: `New message from ${publisher.name}`,
         html: buildEmail(eBody(
-          eH1(`${esc2(publisher.name)} sent you a message`) + eQuote(publisher.name, body || "(attachment only)") + (attachmentUrl ? eCard(`\u{1F4CE} They attached a file \u2014 open the thread to download it.`, "info") : "") + eBtn("Open the conversation", `${MAIL_BASE}/admin/publishers`)
+          eH1(`${esc3(publisher.name)} sent you a message`) + eQuote(publisher.name, body || "(attachment only)") + (attachmentUrl ? eCard(`\u{1F4CE} They attached a file \u2014 open the thread to download it.`, "info") : "") + eBtn("Open the conversation", `${MAIL_BASE}/admin/publishers`)
         ), `${publisher.name}: ${(body || "sent an attachment").slice(0, 100)}`),
         text: `${publisher.name} sent a message:
 
@@ -78623,7 +78766,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         prisma3.$queryRawUnsafe(`select domain, count(*)::int n from "Journal" where domain is not null group by 1`),
         prisma3.$queryRawUnsafe(`select domain, count(*)::int n from "Book" where status = 'Published' and domain is not null group by 1`)
       ]);
-      const held2 = (rows) => new Map(rows.map((r2) => [r2.domain, r2.n]));
+      const held2 = (rows2) => new Map(rows2.map((r2) => [r2.domain, r2.n]));
       const jHeld = held2(journalsHeld);
       const bHeld = held2(booksHeld);
       const byDept = /* @__PURE__ */ new Map();
@@ -80269,14 +80412,14 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.get("/api/library/institutions", async (_req, res) => {
     try {
       if (institutionCache && Date.now() - institutionCache.at < 10 * 6e4) return res.json(institutionCache.value);
-      const rows = await prisma3.institution.findMany({
+      const rows2 = await prisma3.institution.findMany({
         where: { status: "Active" },
         select: { id: true, name: true, createdAt: true, _count: { select: { users: true } } },
         orderBy: { createdAt: "asc" }
       });
       const pretend = /\b(demo|test|testing|sample|dummy|example)\b/i;
       const seen = /* @__PURE__ */ new Map();
-      for (const r2 of rows) {
+      for (const r2 of rows2) {
         const key = String(r2.name || "").trim().toLowerCase().replace(/\s+/g, " ");
         if (!key || pretend.test(key)) continue;
         const held2 = seen.get(key);
@@ -80350,7 +80493,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         res.set("Cache-Control", "public, max-age=300");
         return res.json(institutionStatsCache.value);
       }
-      const rows = await prisma3.$queryRawUnsafe(`
+      const rows2 = await prisma3.$queryRawUnsafe(`
           select i."name" as name, count(u."id")::int as members,
                  coalesce(
                    max(case when u."role" = 'Institution' then nullif(trim(u."country"), '') end),
@@ -80363,7 +80506,7 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
           group by i."id", i."name"`);
       const pretend = /\b(demo|test|testing|sample|dummy|example)\b/i;
       const seen = /* @__PURE__ */ new Map();
-      for (const r2 of rows) {
+      for (const r2 of rows2) {
         const key = String(r2.name || "").trim().toLowerCase().replace(/\s+/g, " ");
         if (!key || pretend.test(key)) continue;
         const held2 = seen.get(key);
@@ -80533,11 +80676,11 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       if (status) where.status = status;
       if (search) where.OR = [{ title: { contains: search, mode: "insensitive" } }, { authors: { contains: search, mode: "insensitive" } }];
       const model = prisma3[kind];
-      const [rows, total] = await Promise.all([
+      const [rows2, total] = await Promise.all([
         model.findMany({ where, orderBy: { createdAt: "desc" }, skip, take }),
         model.count({ where })
       ]);
-      res.json({ data: rows.map(aliasItem), total, page: parseInt(page) || 1, limit: take });
+      res.json({ data: rows2.map(aliasItem), total, page: parseInt(page) || 1, limit: take });
     } catch (e2) {
       console.error("admin library list:", e2);
       res.status(500).json({ error: "Failed to load items" });
@@ -80589,8 +80732,8 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
     try {
       const by = req.user?.email || "Admin";
       const kind = kindFor(req.body.contentType);
-      const rows = Array.isArray(req.body.items) ? req.body.items : [];
-      if (!rows.length) return res.status(400).json({ error: "No rows to import" });
+      const rows2 = Array.isArray(req.body.items) ? req.body.items : [];
+      if (!rows2.length) return res.status(400).json({ error: "No rows to import" });
       let success = 0, failed3 = 0;
       const errors = [];
       const pubCache = /* @__PURE__ */ new Map();
@@ -80609,8 +80752,8 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
         jrnCache.set(issn, j);
         return j;
       };
-      for (let i2 = 0; i2 < rows.length; i2++) {
-        const b = { ...rows[i2], contentType: req.body.contentType };
+      for (let i2 = 0; i2 < rows2.length; i2++) {
+        const b = { ...rows2[i2], contentType: req.body.contentType };
         try {
           if (!b.title || !String(b.title).trim()) throw new Error("Title is required");
           if (kind === "book") {
@@ -81939,244 +82082,27 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
       if (out.error) return res.status(out.status).json({ error: out.error });
       const row = out.row;
       const saved = row.pricingBreakdown?.doc;
-      const esc3 = (v) => String(v ?? "").replace(/[&<>"']/g, (m2) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[m2]);
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       const quotationNumber = row.id;
       const userName = saved.contactName || saved.instName;
       const discountAmount = Number(row.discountAmount) || 0;
       const validityDays = saved.validityDays;
-      const totalAmount = Number(row.total).toLocaleString("en-IN", { minimumFractionDigits: 2 });
       const subscriptionDuration = "Annual";
       const logoPath = import_path2.default.join(process.cwd(), "public", "assets", "stm-logo.png");
       const logoExists = import_fs3.default.existsSync(logoPath);
-      const departmentsHtml = saved.departments.length ? saved.departments.map((d) => `<li style="padding:4px 0;color:#1e293b;font-size:14px;">\u2705 &nbsp;${esc3(d)}</li>`).join("") : '<li style="color:#94a3b8;font-size:14px;">\u2014</li>';
       const [yy, mm, dd] = saved.quoteDate.split("-").map(Number);
       const issuedDate = new Date(yy, mm - 1, dd).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
-      const htmlBody = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Quotation \u2014 STM Digital Library</title>
-</head>
-<body style="margin:0;padding:0;background-color:#eef2f7;font-family:'Segoe UI',Arial,sans-serif;">
-
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#eef2f7;padding:32px 0;">
-    <tr><td align="center">
-      <table width="620" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);max-width:620px;">
-
-        <!-- \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 HEADER \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 -->
-        <tr>
-          <td style="background:linear-gradient(135deg,#0f172a 0%,#1e3a6e 100%);padding:32px 48px 28px;text-align:center;">
-            ${logoExists ? `<img src="cid:stm-logo" alt="STM Digital Library" width="110" height="110" style="display:block;margin:0 auto 16px;border-radius:12px;" />` : `<div style="display:inline-block;background:#2563eb;border-radius:12px;padding:10px 22px;margin-bottom:16px;"><span style="color:#ffffff;font-size:18px;font-weight:900;letter-spacing:3px;">STM</span></div>`}
-            <h1 style="color:#ffffff;margin:0 0 6px;font-size:26px;font-weight:900;letter-spacing:1px;line-height:1.2;">STM DIGITAL LIBRARY</h1>
-            <p style="color:#93c5fd;margin:0 0 16px;font-size:13px;font-weight:500;letter-spacing:0.5px;">${COMPANY_DETAILS.positioning}</p>
-            <span style="display:inline-block;background:#15803d;color:#ffffff;font-size:11px;font-weight:700;border-radius:30px;padding:6px 20px;letter-spacing:1px;">
-              \u{1F3C6} &nbsp;21 Years of Trusted Excellence in Education &amp; Academic Publishing
-            </span>
-          </td>
-        </tr>
-
-        <!-- \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 GREETING \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 -->
-        <tr>
-          <td style="padding:36px 48px 0;">
-            <p style="font-size:16px;color:#1e293b;margin:0 0 6px;font-weight:600;">Dear ${esc3(userName)},</p>
-            <p style="font-size:14px;color:#475569;line-height:1.75;margin:0 0 20px;">
-              Greetings from <strong>STM Digital Library</strong>!<br/>
-              Thank you for your interest in our digital library subscription services.<br/>
-              Please find attached the quotation for the selected department(s) and subscription duration.
-            </p>
-            <hr style="border:none;border-top:1px solid #e2e8f0;margin:0 0 28px;"/>
-          </td>
-        </tr>
-
-        <!-- \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 QUOTATION DETAILS \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 -->
-        <tr>
-          <td style="padding:0 48px 28px;">
-            <table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#1d4ed8,#1e40af);border-radius:14px;overflow:hidden;">
-              <tr>
-                <td style="padding:20px 28px 10px;">
-                  <p style="color:#bfdbfe;font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;margin:0 0 18px;">\u{1F4C4} &nbsp;Quotation Details</p>
-
-                  <!-- Row -->
-                  <table width="100%" cellpadding="0" cellspacing="0">
-                    <tr>
-                      <td style="color:#93c5fd;font-size:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);width:55%;">Quotation Number</td>
-                      <td style="color:#ffffff;font-size:13px;font-weight:700;text-align:right;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">${esc3(quotationNumber)}</td>
-                    </tr>
-                    <tr>
-                      <td style="color:#93c5fd;font-size:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">Quotation Date</td>
-                      <td style="color:#ffffff;font-size:13px;font-weight:600;text-align:right;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">${issuedDate}</td>
-                    </tr>
-                    <tr>
-                      <td style="color:#93c5fd;font-size:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">Subscription Validity</td>
-                      <td style="color:#86efac;font-size:13px;font-weight:600;text-align:right;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">${validityDays} Days from Issue</td>
-                    </tr>
-                    <tr>
-                      <td style="color:#93c5fd;font-size:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">Subscription Duration</td>
-                      <td style="color:#ffffff;font-size:13px;font-weight:600;text-align:right;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">${subscriptionDuration}</td>
-                    </tr>
-                  </table>
-
-                  <!-- Departments -->
-                  <p style="color:#93c5fd;font-size:12px;margin:14px 0 6px;">Selected Department(s)</p>
-                  <ul style="margin:0 0 14px;padding-left:4px;list-style:none;">
-                    ${departmentsHtml}
-                  </ul>
-                  ${discountAmount ? `
-                  <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:14px;">
-                    <tr>
-                      <td style="color:#86efac;font-size:13px;font-weight:600;padding-bottom:6px;">Special Discount / Adjustment</td>
-                      <td style="text-align:right;color:#86efac;font-size:13px;font-weight:700;padding-bottom:6px;">-\u20B9${discountAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
-                    </tr>
-                  </table>
-                  ` : ""}
-
-                  <!-- Grand Total -->
-                  <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid rgba(255,255,255,0.25);padding-top:14px;margin-top:4px;">
-                    <tr>
-                      <td style="color:#bfdbfe;font-size:13px;font-weight:600;padding-top:14px;">Total Amount (Including GST)</td>
-                      <td style="text-align:right;padding-top:14px;">
-                        <span style="color:#ffffff;font-size:22px;font-weight:900;">\u20B9${totalAmount}</span>
-                      </td>
-                    </tr>
-                  </table>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-
-        <!-- \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 ABOUT STM \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 -->
-        <tr>
-          <td style="padding:0 48px 28px;">
-            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f9ff;border-radius:14px;border:1px solid #bae6fd;">
-              <tr>
-                <td style="padding:22px 28px;">
-                  <p style="color:#0369a1;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 14px;">\u{1F4DA} &nbsp;About STM Digital Library</p>
-                  <p style="color:#475569;font-size:13px;margin:0 0 12px;line-height:1.7;">STM Digital Library is a curated academic platform providing access to:</p>
-                  <table cellpadding="0" cellspacing="0">
-                    <tr><td style="padding:3px 0;color:#1e293b;font-size:13px;">\u2726 &nbsp;Academic Journals</td></tr>
-                    <tr><td style="padding:3px 0;color:#1e293b;font-size:13px;">\u2726 &nbsp;Conference Proceedings</td></tr>
-                    <tr><td style="padding:3px 0;color:#1e293b;font-size:13px;">\u2726 &nbsp;Educational Videos</td></tr>
-                    <tr><td style="padding:3px 0;color:#1e293b;font-size:13px;">\u2726 &nbsp;E-books &amp; Reference Materials</td></tr>
-                    <tr><td style="padding:3px 0;color:#1e293b;font-size:13px;">\u2726 &nbsp;Theses &amp; Research Content</td></tr>
-                    <tr><td style="padding:3px 0;color:#1e293b;font-size:13px;">\u2726 &nbsp;Legally sourced open-access academic resources</td></tr>
-                  </table>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-
-        <!-- \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 PAYMENT INFO \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 -->
-        <tr>
-          <td style="padding:0 48px 28px;">
-            <table width="100%" cellpadding="0" cellspacing="0" style="background:#fefce8;border-radius:14px;border:1px solid #fde68a;">
-              <tr>
-                <td style="padding:22px 28px;">
-                  <p style="color:#92400e;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 14px;">\u{1F4B3} &nbsp;Payment Information</p>
-                  <p style="color:#78350f;font-size:13px;font-weight:600;margin:0 0 12px;">Payments must be made only to:</p>
-                  <table width="100%" cellpadding="0" cellspacing="0">
-                    <tr>
-                      <td style="color:#92400e;font-size:12px;padding:5px 0;border-bottom:1px solid #fde68a;width:45%;">Account Name</td>
-                      <td style="color:#1e293b;font-size:13px;font-weight:700;padding:5px 0;border-bottom:1px solid #fde68a;">${COMPANY_DETAILS.legalName}</td>
-                    </tr>
-                    <tr>
-                      <td style="color:#92400e;font-size:12px;padding:5px 0;border-bottom:1px solid #fde68a;">Account Number</td>
-                      <td style="color:#1e293b;font-size:13px;font-weight:700;padding:5px 0;border-bottom:1px solid #fde68a;">${COMPANY_DETAILS.bank.accountNumber}</td>
-                    </tr>
-                    <tr>
-                      <td style="color:#92400e;font-size:12px;padding:5px 0;border-bottom:1px solid #fde68a;">Bank Name</td>
-                      <td style="color:#1e293b;font-size:13px;font-weight:700;padding:5px 0;border-bottom:1px solid #fde68a;">${COMPANY_DETAILS.bank.bankName}</td>
-                    </tr>
-                    <tr>
-                      <td style="color:#92400e;font-size:12px;padding:5px 0;border-bottom:1px solid #fde68a;">Branch</td>
-                      <td style="color:#1e293b;font-size:13px;font-weight:600;padding:5px 0;border-bottom:1px solid #fde68a;">${COMPANY_DETAILS.bank.branch}</td>
-                    </tr>
-                    <tr>
-                      <td style="color:#92400e;font-size:12px;padding:5px 0;">IFSC Code</td>
-                      <td style="color:#1e293b;font-size:13px;font-weight:700;padding:5px 0;">${COMPANY_DETAILS.bank.ifscCode}</td>
-                    </tr>
-                  </table>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-
-        <!-- \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 CONTACT INFO \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 -->
-        <tr>
-          <td style="padding:0 48px 28px;">
-            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border-radius:14px;border:1px solid #bbf7d0;">
-              <tr>
-                <td style="padding:22px 28px;">
-                  <p style="color:#15803d;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 14px;">\u{1F4DE} &nbsp;Contact Information</p>
-                  <p style="color:#166534;font-size:13px;font-weight:500;margin:0 0 10px;">For any assistance regarding subscription, quotation, or payment:</p>
-                  <table cellpadding="0" cellspacing="4">
-                    <tr>
-                      <td style="padding:4px 0;font-size:13px;color:#1e293b;">
-                        \u{1F4E7} &nbsp;<a href="mailto:${COMPANY_DETAILS.email}" style="color:#2563eb;text-decoration:none;font-weight:600;">${COMPANY_DETAILS.email}</a>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style="padding:4px 0;font-size:13px;color:#1e293b;">
-                        \u{1F4DE} &nbsp;<a href="tel:+919810078958" style="color:#1e293b;text-decoration:none;font-weight:600;">+91-9810078958</a>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style="padding:4px 0;font-size:13px;color:#1e293b;">
-                        \u{1F310} &nbsp;<a href="https://journalslibrary.com/" style="color:#2563eb;text-decoration:none;font-weight:600;">journalslibrary.com</a>
-                      </td>
-                    </tr>
-                  </table>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-
-        <!-- \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 SIGNATURE \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 -->
-        <tr>
-          <td style="padding:0 48px 28px;">
-            <table width="100%" cellpadding="0" cellspacing="0" style="border-top:2px solid #e2e8f0;padding-top:24px;">
-              <tr>
-                <td style="padding-top:20px;">
-                  <p style="color:#475569;font-size:14px;margin:0 0 4px;">Warm regards,</p>
-                  <p style="color:#1e293b;font-size:15px;font-weight:700;margin:0 0 2px;">STM Digital Library Team</p>
-                  <p style="color:#64748b;font-size:12px;margin:0;">${COMPANY_DETAILS.legalName}</p>
-                  <p style="color:#64748b;font-size:12px;margin:4px 0 0;">A-118, 1st Floor, Sector-63, Noida - 201301, U.P., India</p>
-                </td>
-                <td style="text-align:right;vertical-align:bottom;padding-top:20px;">
-                  <p style="color:#94a3b8;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 4px;">For Publisher</p>
-                  <p style="color:#1e293b;font-size:13px;font-weight:700;margin:0 0 4px;">STM Digital Library</p>
-                  <p style="color:#64748b;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin:0;">Authorized Signatory</p>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-
-        <!-- \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 FOOTER \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 -->
-        <tr>
-          <td style="background:linear-gradient(135deg,#0f172a 0%,#1e3a6e 100%);padding:28px 48px;text-align:center;">
-            <p style="color:#f8fafc;font-size:13px;font-weight:700;margin:0 0 6px;letter-spacing:0.5px;">
-              \u{1F3C6} &nbsp;21 Years of Trusted Excellence in Education &amp; Academic Publishing
-            </p>
-            <p style="color:#64748b;font-size:11px;margin:0 0 4px;">
-              \xA9 ${(/* @__PURE__ */ new Date()).getFullYear()} ${COMPANY_DETAILS.legalName} All rights reserved.
-            </p>
-            <p style="color:#475569;font-size:11px;margin:0;">
-              GSTIN: ${COMPANY_DETAILS.gstin} &nbsp;|&nbsp; PAN: ${COMPANY_DETAILS.pan} &nbsp;|&nbsp; CIN: ${COMPANY_DETAILS.cin}
-            </p>
-          </td>
-        </tr>
-
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
+      const htmlBody = buildQuotationEmailHtml({
+        hasLogo: logoExists,
+        recipientName: userName,
+        quotationNumber,
+        issuedDate,
+        validityDays,
+        duration: subscriptionDuration,
+        departments: saved.departments,
+        discount: discountAmount,
+        total: Number(row.total)
+      });
       const inlineAttachments = [];
       if (pdfBase64) inlineAttachments.push({ filename: `Quotation_${quotationNumber.replace(/[\\/]+/g, "-")}.pdf`, content: pdfBase64, encoding: "base64" });
       if (logoExists) {
@@ -84374,19 +84300,19 @@ Open the conversation: ${MAIL_BASE}/admin/publishers`
   app.get("/api/sales/pro-applications", authenticateJWT, requireSalesRole, async (req, res) => {
     try {
       const status = String(req.query.status || "");
-      const rows = await prisma3.subscriptionRequest.findMany({
+      const rows2 = await prisma3.subscriptionRequest.findMany({
         where: { planType: "Pro", ...status ? { status } : {} },
         orderBy: { createdAt: "desc" },
         take: 200
       });
       const users = await prisma3.user.findMany({
-        where: { id: { in: rows.map((r2) => r2.userId).filter(Boolean) } },
+        where: { id: { in: rows2.map((r2) => r2.userId).filter(Boolean) } },
         select: { id: true, displayName: true, email: true, organization: true, contact: true, interestedDomains: true, createdAt: true }
       });
       const byId = new Map(users.map((u) => [u.id, u]));
       res.json({
-        pending: rows.filter((r2) => r2.status === "Pending").length,
-        applications: rows.map((r2) => ({ ...r2, member: byId.get(r2.userId) || null }))
+        pending: rows2.filter((r2) => r2.status === "Pending").length,
+        applications: rows2.map((r2) => ({ ...r2, member: byId.get(r2.userId) || null }))
       });
     } catch (e2) {
       console.error("pro applications:", e2?.message);
@@ -85025,7 +84951,8 @@ ${posts[0] ? `    <lastmod>${new Date(posts[0].updatedAt).toISOString()}</lastmo
   });
   {
     const g = googleStatus();
-    console.log(g.enabled ? `Google sign-in: enabled (client ${g.clientIdMasked})` : `Google sign-in: DISABLED: ${g.problem}. Email sign-in is unaffected.`);
+    console.log(`Google sign-in: GOOGLE_CLIENT_ID exists=${g.runtimeConfigured}, trimmedLength=${g.trimmedLength}, formatValid=${g.formatValid}, client=${g.maskedClientId ?? "none"}`);
+    console.log(g.enabled ? "Google sign-in: ENABLED" : `Google sign-in: DISABLED: ${g.validationReason}. Email sign-in is unaffected.`);
     if (g.buildVariablePresent) console.warn(`VITE_GOOGLE_CLIENT_ID is set but is no longer read: the page takes its client ID from GOOGLE_CLIENT_ID at runtime${g.buildVariableMatches === false ? " (and the two values DIFFER; only GOOGLE_CLIENT_ID matters)" : ""}.`);
   }
   app.listen(PORT, "0.0.0.0", () => {

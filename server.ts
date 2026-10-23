@@ -44,6 +44,7 @@ import { mediaStorageRoot, mediaDir as mediaDirPath, mediaDriver, mediaStorageSt
 import { aiConfig } from "./src/server/aiAssistantConfig.js";
 import { searchContent } from "./src/lib/catalogueSearch.js";
 import { contentTypeCounts } from "./src/lib/publicCounts.js";
+import { buildQuotationEmailHtml } from "./src/lib/quotation/quotationEmail.js";
 import { publicJournalCount, publicJournalStatusSql, publicJournalStatusWhere, PUBLIC_JOURNAL_STATUSES } from "./src/lib/publicJournals.js";
 import { COMPANY_DETAILS, currentIssuer } from "./src/config.js";
 import { canonicalOrSelf, canonicalOrSelfList, canonicalDepartmentName, resolveCanonicalDepartment, entitlementCovers, foldCounts, departmentFromSlug, spellingsOfAll } from "./src/lib/departmentRegistry.js";
@@ -13082,253 +13083,32 @@ async function startServer() {
       const row = out.row;
       const saved = row.pricingBreakdown?.doc as QuoteDoc;
 
-      const esc = (v: any) => String(v ?? '').replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } as any)[m]);
       const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
       const quotationNumber: string = row.id;
       const userName: string = saved.contactName || saved.instName;
       const discountAmount: number = Number(row.discountAmount) || 0;
       const validityDays: number = saved.validityDays;
-      const totalAmount = Number(row.total).toLocaleString('en-IN', { minimumFractionDigits: 2 });
       const subscriptionDuration = 'Annual';
 
       // Read logo for CID inline attachment
       const logoPath = path.join(process.cwd(), 'public', 'assets', 'stm-logo.png');
       const logoExists = fs.existsSync(logoPath);
 
-      const departmentsHtml = saved.departments.length
-        ? saved.departments.map(d => `<li style="padding:4px 0;color:#1e293b;font-size:14px;">✅ &nbsp;${esc(d)}</li>`).join('')
-        : '<li style="color:#94a3b8;font-size:14px;">—</li>';
       const [yy, mm, dd] = saved.quoteDate.split('-').map(Number);
       const issuedDate = new Date(yy, mm - 1, dd).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 
-      const htmlBody = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Quotation — STM Digital Library</title>
-</head>
-<body style="margin:0;padding:0;background-color:#eef2f7;font-family:'Segoe UI',Arial,sans-serif;">
-
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#eef2f7;padding:32px 0;">
-    <tr><td align="center">
-      <table width="620" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);max-width:620px;">
-
-        <!-- ═══════════ HEADER ═══════════ -->
-        <tr>
-          <td style="background:linear-gradient(135deg,#0f172a 0%,#1e3a6e 100%);padding:32px 48px 28px;text-align:center;">
-            ${logoExists
-              ? `<img src="cid:stm-logo" alt="STM Digital Library" width="110" height="110" style="display:block;margin:0 auto 16px;border-radius:12px;" />`
-              : `<div style="display:inline-block;background:#2563eb;border-radius:12px;padding:10px 22px;margin-bottom:16px;"><span style="color:#ffffff;font-size:18px;font-weight:900;letter-spacing:3px;">STM</span></div>`
-            }
-            <h1 style="color:#ffffff;margin:0 0 6px;font-size:26px;font-weight:900;letter-spacing:1px;line-height:1.2;">STM DIGITAL LIBRARY</h1>
-            <p style="color:#93c5fd;margin:0 0 16px;font-size:13px;font-weight:500;letter-spacing:0.5px;">${COMPANY_DETAILS.positioning}</p>
-            <span style="display:inline-block;background:#15803d;color:#ffffff;font-size:11px;font-weight:700;border-radius:30px;padding:6px 20px;letter-spacing:1px;">
-              🏆 &nbsp;21 Years of Trusted Excellence in Education &amp; Academic Publishing
-            </span>
-          </td>
-        </tr>
-
-        <!-- ═══════════ GREETING ═══════════ -->
-        <tr>
-          <td style="padding:36px 48px 0;">
-            <p style="font-size:16px;color:#1e293b;margin:0 0 6px;font-weight:600;">Dear ${esc(userName)},</p>
-            <p style="font-size:14px;color:#475569;line-height:1.75;margin:0 0 20px;">
-              Greetings from <strong>STM Digital Library</strong>!<br/>
-              Thank you for your interest in our digital library subscription services.<br/>
-              Please find attached the quotation for the selected department(s) and subscription duration.
-            </p>
-            <hr style="border:none;border-top:1px solid #e2e8f0;margin:0 0 28px;"/>
-          </td>
-        </tr>
-
-        <!-- ═══════════ QUOTATION DETAILS ═══════════ -->
-        <tr>
-          <td style="padding:0 48px 28px;">
-            <table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#1d4ed8,#1e40af);border-radius:14px;overflow:hidden;">
-              <tr>
-                <td style="padding:20px 28px 10px;">
-                  <p style="color:#bfdbfe;font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;margin:0 0 18px;">📄 &nbsp;Quotation Details</p>
-
-                  <!-- Row -->
-                  <table width="100%" cellpadding="0" cellspacing="0">
-                    <tr>
-                      <td style="color:#93c5fd;font-size:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);width:55%;">Quotation Number</td>
-                      <td style="color:#ffffff;font-size:13px;font-weight:700;text-align:right;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">${esc(quotationNumber)}</td>
-                    </tr>
-                    <tr>
-                      <td style="color:#93c5fd;font-size:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">Quotation Date</td>
-                      <td style="color:#ffffff;font-size:13px;font-weight:600;text-align:right;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">${issuedDate}</td>
-                    </tr>
-                    <tr>
-                      <td style="color:#93c5fd;font-size:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">Subscription Validity</td>
-                      <td style="color:#86efac;font-size:13px;font-weight:600;text-align:right;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">${validityDays} Days from Issue</td>
-                    </tr>
-                    <tr>
-                      <td style="color:#93c5fd;font-size:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">Subscription Duration</td>
-                      <td style="color:#ffffff;font-size:13px;font-weight:600;text-align:right;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);">${subscriptionDuration}</td>
-                    </tr>
-                  </table>
-
-                  <!-- Departments -->
-                  <p style="color:#93c5fd;font-size:12px;margin:14px 0 6px;">Selected Department(s)</p>
-                  <ul style="margin:0 0 14px;padding-left:4px;list-style:none;">
-                    ${departmentsHtml}
-                  </ul>
-                  ${discountAmount ? `
-                  <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:14px;">
-                    <tr>
-                      <td style="color:#86efac;font-size:13px;font-weight:600;padding-bottom:6px;">Special Discount / Adjustment</td>
-                      <td style="text-align:right;color:#86efac;font-size:13px;font-weight:700;padding-bottom:6px;">-₹${discountAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                    </tr>
-                  </table>
-                  ` : ''}
-
-                  <!-- Grand Total -->
-                  <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid rgba(255,255,255,0.25);padding-top:14px;margin-top:4px;">
-                    <tr>
-                      <td style="color:#bfdbfe;font-size:13px;font-weight:600;padding-top:14px;">Total Amount (Including GST)</td>
-                      <td style="text-align:right;padding-top:14px;">
-                        <span style="color:#ffffff;font-size:22px;font-weight:900;">₹${totalAmount}</span>
-                      </td>
-                    </tr>
-                  </table>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-
-        <!-- ═══════════ ABOUT STM ═══════════ -->
-        <tr>
-          <td style="padding:0 48px 28px;">
-            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f9ff;border-radius:14px;border:1px solid #bae6fd;">
-              <tr>
-                <td style="padding:22px 28px;">
-                  <p style="color:#0369a1;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 14px;">📚 &nbsp;About STM Digital Library</p>
-                  <p style="color:#475569;font-size:13px;margin:0 0 12px;line-height:1.7;">STM Digital Library is a curated academic platform providing access to:</p>
-                  <table cellpadding="0" cellspacing="0">
-                    <tr><td style="padding:3px 0;color:#1e293b;font-size:13px;">✦ &nbsp;Academic Journals</td></tr>
-                    <tr><td style="padding:3px 0;color:#1e293b;font-size:13px;">✦ &nbsp;Conference Proceedings</td></tr>
-                    <tr><td style="padding:3px 0;color:#1e293b;font-size:13px;">✦ &nbsp;Educational Videos</td></tr>
-                    <tr><td style="padding:3px 0;color:#1e293b;font-size:13px;">✦ &nbsp;E-books &amp; Reference Materials</td></tr>
-                    <tr><td style="padding:3px 0;color:#1e293b;font-size:13px;">✦ &nbsp;Theses &amp; Research Content</td></tr>
-                    <tr><td style="padding:3px 0;color:#1e293b;font-size:13px;">✦ &nbsp;Legally sourced open-access academic resources</td></tr>
-                  </table>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-
-        <!-- ═══════════ PAYMENT INFO ═══════════ -->
-        <tr>
-          <td style="padding:0 48px 28px;">
-            <table width="100%" cellpadding="0" cellspacing="0" style="background:#fefce8;border-radius:14px;border:1px solid #fde68a;">
-              <tr>
-                <td style="padding:22px 28px;">
-                  <p style="color:#92400e;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 14px;">💳 &nbsp;Payment Information</p>
-                  <p style="color:#78350f;font-size:13px;font-weight:600;margin:0 0 12px;">Payments must be made only to:</p>
-                  <table width="100%" cellpadding="0" cellspacing="0">
-                    <tr>
-                      <td style="color:#92400e;font-size:12px;padding:5px 0;border-bottom:1px solid #fde68a;width:45%;">Account Name</td>
-                      <td style="color:#1e293b;font-size:13px;font-weight:700;padding:5px 0;border-bottom:1px solid #fde68a;">${COMPANY_DETAILS.legalName}</td>
-                    </tr>
-                    <tr>
-                      <td style="color:#92400e;font-size:12px;padding:5px 0;border-bottom:1px solid #fde68a;">Account Number</td>
-                      <td style="color:#1e293b;font-size:13px;font-weight:700;padding:5px 0;border-bottom:1px solid #fde68a;">${COMPANY_DETAILS.bank.accountNumber}</td>
-                    </tr>
-                    <tr>
-                      <td style="color:#92400e;font-size:12px;padding:5px 0;border-bottom:1px solid #fde68a;">Bank Name</td>
-                      <td style="color:#1e293b;font-size:13px;font-weight:700;padding:5px 0;border-bottom:1px solid #fde68a;">${COMPANY_DETAILS.bank.bankName}</td>
-                    </tr>
-                    <tr>
-                      <td style="color:#92400e;font-size:12px;padding:5px 0;border-bottom:1px solid #fde68a;">Branch</td>
-                      <td style="color:#1e293b;font-size:13px;font-weight:600;padding:5px 0;border-bottom:1px solid #fde68a;">${COMPANY_DETAILS.bank.branch}</td>
-                    </tr>
-                    <tr>
-                      <td style="color:#92400e;font-size:12px;padding:5px 0;">IFSC Code</td>
-                      <td style="color:#1e293b;font-size:13px;font-weight:700;padding:5px 0;">${COMPANY_DETAILS.bank.ifscCode}</td>
-                    </tr>
-                  </table>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-
-        <!-- ═══════════ CONTACT INFO ═══════════ -->
-        <tr>
-          <td style="padding:0 48px 28px;">
-            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border-radius:14px;border:1px solid #bbf7d0;">
-              <tr>
-                <td style="padding:22px 28px;">
-                  <p style="color:#15803d;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 14px;">📞 &nbsp;Contact Information</p>
-                  <p style="color:#166534;font-size:13px;font-weight:500;margin:0 0 10px;">For any assistance regarding subscription, quotation, or payment:</p>
-                  <table cellpadding="0" cellspacing="4">
-                    <tr>
-                      <td style="padding:4px 0;font-size:13px;color:#1e293b;">
-                        📧 &nbsp;<a href="mailto:${COMPANY_DETAILS.email}" style="color:#2563eb;text-decoration:none;font-weight:600;">${COMPANY_DETAILS.email}</a>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style="padding:4px 0;font-size:13px;color:#1e293b;">
-                        📞 &nbsp;<a href="tel:+919810078958" style="color:#1e293b;text-decoration:none;font-weight:600;">+91-9810078958</a>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style="padding:4px 0;font-size:13px;color:#1e293b;">
-                        🌐 &nbsp;<a href="https://journalslibrary.com/" style="color:#2563eb;text-decoration:none;font-weight:600;">journalslibrary.com</a>
-                      </td>
-                    </tr>
-                  </table>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-
-        <!-- ═══════════ SIGNATURE ═══════════ -->
-        <tr>
-          <td style="padding:0 48px 28px;">
-            <table width="100%" cellpadding="0" cellspacing="0" style="border-top:2px solid #e2e8f0;padding-top:24px;">
-              <tr>
-                <td style="padding-top:20px;">
-                  <p style="color:#475569;font-size:14px;margin:0 0 4px;">Warm regards,</p>
-                  <p style="color:#1e293b;font-size:15px;font-weight:700;margin:0 0 2px;">STM Digital Library Team</p>
-                  <p style="color:#64748b;font-size:12px;margin:0;">${COMPANY_DETAILS.legalName}</p>
-                  <p style="color:#64748b;font-size:12px;margin:4px 0 0;">A-118, 1st Floor, Sector-63, Noida - 201301, U.P., India</p>
-                </td>
-                <td style="text-align:right;vertical-align:bottom;padding-top:20px;">
-                  <p style="color:#94a3b8;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 4px;">For Publisher</p>
-                  <p style="color:#1e293b;font-size:13px;font-weight:700;margin:0 0 4px;">STM Digital Library</p>
-                  <p style="color:#64748b;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin:0;">Authorized Signatory</p>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-
-        <!-- ═══════════ FOOTER ═══════════ -->
-        <tr>
-          <td style="background:linear-gradient(135deg,#0f172a 0%,#1e3a6e 100%);padding:28px 48px;text-align:center;">
-            <p style="color:#f8fafc;font-size:13px;font-weight:700;margin:0 0 6px;letter-spacing:0.5px;">
-              🏆 &nbsp;21 Years of Trusted Excellence in Education &amp; Academic Publishing
-            </p>
-            <p style="color:#64748b;font-size:11px;margin:0 0 4px;">
-              © ${new Date().getFullYear()} ${COMPANY_DETAILS.legalName} All rights reserved.
-            </p>
-            <p style="color:#475569;font-size:11px;margin:0;">
-              GSTIN: ${COMPANY_DETAILS.gstin} &nbsp;|&nbsp; PAN: ${COMPANY_DETAILS.pan} &nbsp;|&nbsp; CIN: ${COMPANY_DETAILS.cin}
-            </p>
-          </td>
-        </tr>
-
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
+      // The layout lives in src/lib/quotation/quotationEmail.ts (one palette, tables, logo on the left); this supplies the values.
+      const htmlBody = buildQuotationEmailHtml({
+        hasLogo: logoExists,
+        recipientName: userName,
+        quotationNumber,
+        issuedDate,
+        validityDays,
+        duration: subscriptionDuration,
+        departments: saved.departments,
+        discount: discountAmount,
+        total: Number(row.total),
+      });
 
       const inlineAttachments: any[] = [];
       if (pdfBase64) inlineAttachments.push({ filename: `Quotation_${quotationNumber.replace(/[\\/]+/g, '-')}.pdf`, content: pdfBase64, encoding: 'base64' });
@@ -16678,8 +16458,10 @@ async function startServer() {
 
   // One line at start-up, so a missing client ID is noticed here rather than as a button that does nothing. Nothing else depends on it.
   {
+    // What THIS process sees, at start-up: so "is the variable there, and is it usable" is answered by the log, not guessed from a settings page.
     const g = googleStatus();
-    console.log(g.enabled ? `Google sign-in: enabled (client ${g.clientIdMasked})` : `Google sign-in: DISABLED: ${g.problem}. Email sign-in is unaffected.`);
+    console.log(`Google sign-in: GOOGLE_CLIENT_ID exists=${g.runtimeConfigured}, trimmedLength=${g.trimmedLength}, formatValid=${g.formatValid}, client=${g.maskedClientId ?? 'none'}`);
+    console.log(g.enabled ? 'Google sign-in: ENABLED' : `Google sign-in: DISABLED: ${g.validationReason}. Email sign-in is unaffected.`);
     if (g.buildVariablePresent) console.warn(`VITE_GOOGLE_CLIENT_ID is set but is no longer read: the page takes its client ID from GOOGLE_CLIENT_ID at runtime${g.buildVariableMatches === false ? ' (and the two values DIFFER; only GOOGLE_CLIENT_ID matters)' : ''}.`);
   }
 
