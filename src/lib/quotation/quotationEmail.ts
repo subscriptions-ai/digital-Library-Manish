@@ -67,8 +67,8 @@ export function buildQuotationEmailHtml(p: QuotationEmailInput): string {
   const year = new Date().getFullYear();
 
   const logo = p.hasLogo
-    ? `<img src="cid:stm-logo" alt="STM Digital Library" width="56" height="56" style="display:block;width:56px;height:56px;border:0;border-radius:50%;" />`
-    : `<table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="width:56px;height:56px;background:${BLUE};border-radius:50%;text-align:center;font-size:16px;font-weight:800;letter-spacing:1px;color:#FFFFFF;">STM</td></tr></table>`;
+    ? `<img src="cid:stm-logo" alt="STM Digital Library" width="64" height="64" style="display:block;width:64px;height:64px;border:0;border-radius:50%;" />`
+    : `<table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="width:64px;height:64px;background:${BLUE};border-radius:50%;text-align:center;font-size:16px;font-weight:800;letter-spacing:1px;color:#FFFFFF;">STM</td></tr></table>`;
 
   // Two columns, so fourteen departments do not become a very tall list.
   const depts = p.departments.length ? p.departments : ['—'];
@@ -154,18 +154,23 @@ export function buildQuotationEmailHtml(p: QuotationEmailInput): string {
 <tr><td align="center" style="padding:24px 12px;">
 <table role="presentation" class="container" width="640" cellpadding="0" cellspacing="0" style="width:640px;max-width:640px;background:#FFFFFF;border:1px solid ${RULE};border-radius:12px;">
 
-  <!-- Header: logo on the left, the name beside it -->
-  <tr><td class="px" style="background:${INK};border-radius:12px 12px 0 0;padding:20px 40px;">
+  <!-- Header: logo on the left, the name beside it, the quotation number on the right -->
+  <tr><td class="px" bgcolor="${INK}" style="background:${INK};border-radius:12px 12px 0 0;padding:28px 40px;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-      <td width="56" style="width:56px;vertical-align:middle;">${logo}</td>
-      <td style="padding-left:16px;vertical-align:middle;">
-        <p style="margin:0;font-size:20px;line-height:24px;font-weight:700;color:#FFFFFF;">STM Digital Library</p>
-        <p style="margin:2px 0 0;font-size:13px;line-height:18px;color:#93B4FF;">Subscription quotation</p>
+      <td width="64" style="width:64px;vertical-align:middle;">${logo}</td>
+      <td style="padding-left:18px;vertical-align:middle;">
+        <p style="margin:0;font-size:22px;line-height:28px;font-weight:700;letter-spacing:-0.2px;color:#FFFFFF;">STM Digital Library</p>
+        <p style="margin:4px 0 0;font-size:11px;line-height:16px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#93B4FF;">Subscription Quotation</p>
       </td>
-      <td class="hdr-right" align="right" style="vertical-align:middle;font-size:12px;line-height:18px;color:#93B4FF;white-space:nowrap;">${esc(p.quotationNumber)}</td>
+      <td class="hdr-right" align="right" style="vertical-align:middle;white-space:nowrap;">
+        <table role="presentation" cellpadding="0" cellspacing="0" align="right" style="border-left:1px solid ${MUTED};"><tr><td style="padding:2px 0 2px 20px;text-align:left;">
+          <p style="margin:0;font-size:10px;line-height:14px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#93B4FF;">Quotation No.</p>
+          <p style="margin:3px 0 0;font-size:15px;line-height:20px;font-weight:700;color:#FFFFFF;">${esc(p.quotationNumber)}</p>
+        </td></tr></table>
+      </td>
     </tr></table>
   </td></tr>
-  <tr><td style="height:3px;line-height:3px;font-size:0;background:${BLUE};">&nbsp;</td></tr>
+  <tr><td bgcolor="${BLUE}" style="height:4px;line-height:4px;font-size:0;background:${BLUE};">&nbsp;</td></tr>
 
   <!-- Introduction -->
   <tr><td class="px" style="padding:32px 40px 24px;">

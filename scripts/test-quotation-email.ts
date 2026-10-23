@@ -18,7 +18,7 @@ const header = html.slice(html.indexOf('<!-- Header'), html.indexOf('<!-- Introd
 console.log('Header');
 check('"Operated by IT BREAK COM PRIVATE LIMITED" is not in the header', !/operated by/i.test(header) && !/operated by/i.test(html));
 check('the logo is the first thing in the header, on the left', header.indexOf('cid:stm-logo') > -1 && header.indexOf('cid:stm-logo') < header.indexOf('STM Digital Library</p>'));
-check('the logo cell comes before the title cell (left, then name)', header.indexOf('width="56"') < header.indexOf('padding-left:16px'));
+check('the logo cell comes before the title cell (left, then name)', header.indexOf('width="64"') < header.indexOf('padding-left:18px'));
 check('the logo uses exactly src="cid:stm-logo" (the server swaps that attribute for the stored copy)', /src="cid:stm-logo"/.test(html));
 check('without a logo file a plain "STM" mark stands in, and nothing points at cid', !/cid:stm-logo/.test(buildQuotationEmailHtml({ ...base, hasLogo: false })) && />STM</.test(buildQuotationEmailHtml({ ...base, hasLogo: false })));
 const stored = html.replace(/src="cid:stm-logo"/g, 'src="https://journalslibrary.com/assets/stm-logo.png"');
