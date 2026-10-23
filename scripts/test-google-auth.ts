@@ -42,7 +42,11 @@ section('Part 1b — the client ID, GIS initialization and the service worker');
   check('the real-looking ID is accepted', googleClientIdProblem(good) === null);
   const typo = good.replace('x0q2', 'xOq2');
   check('the capital-O-for-zero typo that broke production is caught, and named', /character a Google client ID never has/.test(googleClientIdProblem(typo) || ''), googleClientIdProblem(typo));
-  check('a missing ID is reported', googleClientIdProblem('') === 'GOOGLE_CLIENT_ID is not set');
+  check('a missing or empty ID is reported', /not set, or is empty/.test(googleClientIdProblem('') || ''));
+  const shaped = '231482248019-31fsa96pu9qb9a2ks71eo1evj4je7b6a.apps.googleusercontent.com'.replace('231482248019', '555555555555').replace('31fsa96pu9qb9a2ks71eo1evj4je7b6a', 'q7wer1ty2ui3op4as5df6gh7jk8lz9xc');
+  check('the shape of a real ID (12-digit project, 32 lower-case letters and digits) is accepted, and a stray newline or space around it is trimmed away', googleClientIdProblem(shaped) === null && googleClientIdProblem((shaped + ' \r\n').trim()) === null);
+  check('an ID wrapped in quotes is named as such', /quotation marks/.test(googleClientIdProblem(`"${shaped}"`) || ''));
+  check('an invisible character from pasting is named, with its code point', /U\+200B/.test(googleClientIdProblem(shaped.replace('q7w', 'q7\u200Bw')) || ''));
   check('whitespace, a wrong suffix and a missing project number are caught', !!googleClientIdProblem(good + ' ') && !!googleClientIdProblem(good.replace('.apps.googleusercontent.com', '.example.com')) && !!googleClientIdProblem('4q0oiqabika4b5m34870osftvjtg3vtj.apps.googleusercontent.com'));
   // GIS: initialize runs once however many times pages mount (sign-in, sign-up, React's double effect).
   const calls: any[] = [];
@@ -363,7 +367,8 @@ try {
     check('the Super Admin diagnostic is refused to anyone else (403)', (await api('GET', '/api/admin/auth/google-status', { token: plainTok })).status === 403 && (await api('GET', '/api/admin/auth/google-status')).status === 401);
     const st = await api('GET', '/api/admin/auth/google-status', { token: adminTok });
     check('the Super Admin sees: enabled, no problem, a masked ID, and no full ID or secret',
-      st.status === 200 && st.data?.enabled === true && st.data?.problem === null && /…/.test(st.data?.clientIdMasked) && !JSON.stringify(st.data).includes(AUD) && !/GOCSPX|secret/i.test(JSON.stringify(st.data)), st.data);
+      st.status === 200 && st.data?.enabled === true && st.data?.runtimeConfigured === true && st.data?.formatValid === true && st.data?.validationReason === null
+        && st.data?.trimmedLength === AUD.length && /…/.test(st.data?.maskedClientId) && !JSON.stringify(st.data).includes(AUD) && !/GOCSPX|secret/i.test(JSON.stringify(st.data)), st.data);
 
     // A server started with the classic typo (capital O for zero) refuses to hand a browser an ID that cannot exist.
     const BAD_PORT = 3113;
@@ -373,7 +378,7 @@ try {
       check('with a mistyped ID Google is OFF for the page (no broken button), and no ID is offered', cfg.enabled === false && cfg.clientId === null, cfg);
       const attempt = await fetch(`http://127.0.0.1:${BAD_PORT}/api/auth/google`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ credential: cred({ email: `x-${RUN}@google-test.invalid` }) }) });
       check('and the server answers 503 "unavailable, use email", not a verification failure', attempt.status === 503 && (await attempt.json()).code === 'GOOGLE_UNAVAILABLE');
-      check('the start-up log names the cause and the differing build variable', /DISABLED/.test(bad.log) && /character a Google client ID never has/.test(bad.log) && /VITE_GOOGLE_CLIENT_ID is set but is no longer read/.test(bad.log) && /DIFFER/.test(bad.log), bad.log.split('\n').filter(l => /Google|VITE_/.test(l)).join(' | '));
+      check('the start-up log says what the process sees (exists, length, format) and names the cause', /exists=true, trimmedLength=72, formatValid=false/.test(bad.log) && /DISABLED/.test(bad.log) && /character a Google client ID never has/.test(bad.log) && /VITE_GOOGLE_CLIENT_ID is set but is no longer read/.test(bad.log) && /DIFFER/.test(bad.log), bad.log.split('\n').filter(l => /Google|VITE_/.test(l)).join(' | '));
     } finally { await stop(bad); }
   }
 
