@@ -53,7 +53,7 @@ import { requireOfficialDepartments, requireOfficialDepartmentsOnEdit } from "./
 import { docToRow, nextQuoteNo, quoteNoPrefix, stateCodeOf, QUOTE_DEPARTMENTS, QUOTE_KIND, buildInstitutionPlanSnapshot, buildSoloPlanSnapshot, planSnapshotToRow, type QuoteDoc, type PlanSnapshot } from "./src/lib/quotation/quotationModel.js";
 import { DOMAINS, REGISTRANT_TYPES, DESIGNATIONS_BY_TYPE, ALL_DESIGNATIONS, opensInstitutionDashboard } from "./src/constants.js";
 import { ASSIGNABLE_MEMBER_ROLES, PRO_ONLY_ACCESS_ROLES, assignableRole, roleFromDesignation, resolveImportRole,
-  cleanDesignation, effectiveAccessRole } from "./src/lib/memberRoles.js";
+  cleanDesignation, effectiveAccessRole, validateDesignation, accessRoleOf } from "./src/lib/memberRoles.js";
 import { effectiveSessionLimit, parseSessionLimit, decideSignIn, LIMIT_REACHED } from "./src/lib/sessionLimits.js";
 import { GOOGLE, googleConfigured, googleClientIdForBrowser, googleStatus, verifyGoogleCredential, GoogleAuthError, signGoogleToken, readGoogleToken, type LinkClaims, type OnboardingClaims } from "./src/server/googleAuth.js";
 import { getState as getIngestionState, normaliseIssn } from "./src/lib/ingestionWorker.js";
@@ -965,6 +965,11 @@ async function startServer() {
     // stopped being a text box.
     const type = REGISTRANT_TYPES.some(t => t.id === registrantType) ? registrantType : null;
     const role = type && (DESIGNATIONS_BY_TYPE[type] || []).includes(designation) ? designation : null;
+    // A title written in under "Other" is kept as written (text, 100 characters, no markup or script), so the account carries the person's real title.
+    // Only a LISTED title can open the institution dashboard below: `role` stays null for a written-in one, so a custom title never changes what an
+    // account is given. (Counting by title, on the public figures, still uses listed titles only.)
+    const customTitle = !role && designation ? validateDesignation(designation) : null;
+    const storedDesignation = role || (customTitle && 'value' in customTitle && customTitle.value ? customTitle.value : '');
 
     // Whoever runs a library, or runs the place, is given the librarian's
     // view — and that view is about an institution, so there has to be one.
@@ -1020,12 +1025,10 @@ async function startServer() {
         displayName: name,
         organization: organization || "",
         contact: contact || "",
-        // Only a designation from the list. Falling back to whatever was sent
-        // would put the free-text mess straight back into the field that
-        // exists to be counted — and counting is the whole reason it stopped
-        // being a text box. Anything else still reaches sales in the lead's
-        // notes, so nothing is lost, only kept out of the column.
-        designation: role || "",
+        // A listed designation, or a title written in under "Other" after it was checked (text, 100 characters at most, no markup or script).
+        // Anything that fails the check is not stored; it still reaches sales in the lead's notes. Counting by title uses listed titles only, so a
+        // written-in one adds nothing to those figures.
+        designation: storedDesignation,
         registrantType: type,
         state: state ? String(state).slice(0, 80) : null,
         country: country ? String(country).slice(0, 80) : null,
@@ -5909,8 +5912,8 @@ async function startServer() {
       // of twenty thousand members never exists in memory all at once.
       if (str(q.format) === 'csv') {
         const cols = ['Name', 'Email', 'Phone', 'WhatsApp', 'Organisation', 'Registering as',
-          'Designation', 'State', 'Country', 'Departments', 'Came from', 'Verified',
-          'Last read', 'Role', 'Access role', 'Status', 'Joined'];
+          'Professional designation', 'State', 'Country', 'Departments', 'Came from', 'Verified',
+          'Last read', 'Role', 'Account type', 'Status', 'Joined'];
         const cell = (v: any) => {
           const t = v === null || v === undefined ? '' : String(v);
           return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
@@ -6787,6 +6790,24 @@ async function startServer() {
       const existing = await prisma.user.findUnique({ where: { id } });
       if (!existing) return res.status(404).json({ error: "User not found" });
 
+      // Professional designation: text, 100 characters at most, no markup or script, and not checked against a list. One on record cannot be blanked here.
+      const desigIn = designation === undefined ? ({ set: false } as const) : designationFromRequest(designation, { current: (existing as any).designation });
+      if ('error' in desigIn) return res.status(400).json(DESIGNATION_ERROR(desigIn.error));
+      // Account type (memberRole): for the people an institution added only. It is the label for what they are to the library; the technical role above is
+      // what the application authorises with, and is not touched by this.
+      let nextMemberRole: string | undefined;
+      if (req.body.memberRole !== undefined && req.body.memberRole !== '') {
+        if (!existing.institutionId || existing.role === 'Institution' || STAFF_ROLES.includes(existing.role)) {
+          return res.status(400).json({ error: "An account type can only be set for a person an institution has added.", code: 'MEMBER_ROLE' });
+        }
+        const next = assignableRole(req.body.memberRole);
+        if (!next) return res.status(400).json(MEMBER_ROLE_ERROR);
+        if (next !== (existing as any).memberRole) {
+          if (PRO_ONLY_ACCESS_ROLES.includes(next) && !(await institutionOnPro(req, existing.institutionId))) return res.status(403).json({ error: STUDENT_NEEDS_PRO, code: 'STUDENT_NEEDS_PRO' });
+          nextMemberRole = next;
+        }
+      }
+
       const email = req.body.email === undefined || req.body.email === '' ? null : normalizeEmail(req.body.email);
       const emailChanged = !!email && email !== normalizeEmail(existing.email);
       const roleChanged = !!role && role !== existing.role;
@@ -6824,7 +6845,8 @@ async function startServer() {
           ...(roleChanged ? { role } : {}),
           ...(organization !== undefined ? { organization } : {}),
           ...(contact !== undefined ? { contact } : {}),
-          ...(designation !== undefined ? { designation } : {}),
+          ...(desigIn.set ? { designation: desigIn.value } : {}),
+          ...(nextMemberRole ? { memberRole: nextMemberRole } : {}),
           ...(nextSessionLimit !== undefined ? { maxConcurrentSessions: nextSessionLimit } : {}),
           institutionProfile: newInstitutionProfile
         }
@@ -13488,9 +13510,25 @@ async function startServer() {
     code: 'MEMBER_ROLE', allowed: ASSIGNABLE_MEMBER_ROLES,
   };
 
-  /** The role in a request: the one chosen, or, from an older client, the one its designation settles. Never a default. */
-  const requestedMemberRole = (body: any) =>
-    assignableRole(body?.memberRole) ?? (body?.memberRole ? null : assignableRole(roleFromDesignation(body?.designation)));
+  /** The account type in a request: the one chosen. Never a default, and never read off the designation (a title grants and decides nothing). */
+  const requestedMemberRole = (body: any) => assignableRole(body?.memberRole);
+
+  /**
+   * The professional designation in a request, checked the same way on every route: text, at most 100 characters, no markup or script. It is NOT checked
+   * against the suggested lists (a Researcher may be an Associate Professor), and the word "Other" is refused because it only opens the text box.
+   * `current` is what the person already has: a designation on record cannot be blanked by an edit, and a person with none may stay without.
+   */
+  const designationFromRequest = (raw: any, opts: { required?: boolean; current?: string | null } = {}):
+    { error: string } | { set: true; value: string } | { set: false } => {
+    const v = validateDesignation(raw, { required: opts.required });
+    if ('error' in v) return { error: v.error };
+    if (v.value === null) {
+      if (opts.current && String(opts.current).trim()) return { error: 'The professional designation cannot be left blank. Choose one, or enter it under Other.' };
+      return { set: false };
+    }
+    return { set: true, value: v.value };
+  };
+  const DESIGNATION_ERROR = (error: string) => ({ error, code: 'INVALID_DESIGNATION' });
 
   /**
    * How many users an institution may have, and how many it has.
@@ -13858,6 +13896,10 @@ async function startServer() {
       if (!name || !email || !password) {
         return res.status(400).json({ error: "Name, email and password are required" });
       }
+      // The professional designation is asked for, and checked, before anything is created.
+      const desig = designationFromRequest(designation, { required: true });
+      if ('error' in desig) return res.status(400).json(DESIGNATION_ERROR(desig.error));
+      const designationValue = desig.set ? desig.value : null;
 
       // Case-insensitively: "Raju@x.com" and "raju@x.com" are one person, and a second row for them is exactly what must never exist.
       const existing: any = await prisma.user.findFirst({ where: { email: { equals: String(email).trim(), mode: 'insensitive' } } });
@@ -13887,7 +13929,7 @@ async function startServer() {
       if (reusable) {
         const back: any = await reactivateRemovedMember(prisma, existing, {
           institutionId: targetInstitutionId!, institutionName: institutionName || '', actor: { uid: req.user.uid, email: req.user.email, role: req.user.role },
-          data: { displayName: name, passwordHash: hashed, contact: mobile || null, designation: cleanDesignation(designation), memberRole,
+          data: { displayName: name, passwordHash: hashed, contact: mobile || null, designation: designationValue, memberRole,
                   institutionProfile: { branch: branch || '', department: department || '' } },
         });
         const { password: _p, ...safeBack } = back;
@@ -13902,7 +13944,7 @@ async function startServer() {
           role: 'Student', // the technical access class of an institution's member; see the note above memberRole
           memberRole,
           contact: mobile || null,
-          designation: cleanDesignation(designation),
+          designation: designationValue,
           organization: institutionName,
           institutionId: targetInstitutionId,
           institutionProfile: {
@@ -13966,6 +14008,14 @@ async function startServer() {
             continue;
           }
 
+          // The designation (optional here) is checked like any other: text, 100 characters at most, no markup or script. Not checked against a list.
+          const rowDesig = designationFromRequest(row.designation);
+          if ('error' in rowDesig) {
+            errorCount++;
+            errors.push({ email: u.email, error: rowDesig.error });
+            continue;
+          }
+          const rowDesignation = rowDesig.set ? rowDesig.value : null;
           // A Role column wins; without one the designation must settle it. Otherwise the row is
           // refused and says why. It is never given a role nobody chose.
           const resolved = resolveImportRole(row);
@@ -13991,7 +14041,7 @@ async function startServer() {
           if (reusable) {
             await reactivateRemovedMember(prisma, existing, {
               institutionId: targetInstitutionId!, institutionName: institutionName || '', actor: { uid: req.user.uid, email: req.user.email, role: req.user.role },
-              data: { displayName: u.name, passwordHash: hashed, contact: u.mobile || null, designation: cleanDesignation(row.designation), memberRole: uRole,
+              data: { displayName: u.name, passwordHash: hashed, contact: u.mobile || null, designation: rowDesignation, memberRole: uRole,
                       institutionProfile: { branch: u.branch || '', department: u.department || '' } },
             });
             successCount++;
@@ -14006,7 +14056,7 @@ async function startServer() {
               role: 'Student', // the technical access class of an institution's member; see the note above memberRole
               memberRole: uRole,
               contact: u.mobile || null,
-              designation: cleanDesignation(row.designation),
+              designation: rowDesignation,
               organization: institutionName,
               institutionId: targetInstitutionId,
               institutionProfile: {
@@ -14089,9 +14139,11 @@ async function startServer() {
         }
       }
 
-      // Only a real change of role is checked, so a member added before the role existed keeps
-      // what they have when their record is saved. The designation is free text and is never
-      // checked against a list. An account that runs the institution has no role to change here.
+      // Only a real change of account type is checked, so a member added before it existed keeps what they have when their record is saved. The
+      // designation is checked for what it is (text, 100 characters, no markup) and never against a list. An account that runs the institution has
+      // no account type to change here.
+      const desigIn = designation === undefined ? ({ set: false } as const) : designationFromRequest(designation, { current: (existing as any).designation });
+      if ('error' in desigIn) return res.status(400).json(DESIGNATION_ERROR(desigIn.error));
       let nextMemberRole: string | undefined;
       if (memberRoleGiven && existing.role !== 'Institution') {
         const next = assignableRole(req.body.memberRole);
@@ -14113,7 +14165,7 @@ async function startServer() {
         ...(displayName ? { displayName } : {}),
         ...(email ? { email } : {}),
         ...(contact !== undefined ? { contact } : {}),
-        ...(designation !== undefined ? { designation: cleanDesignation(designation) } : {}),
+        ...(desigIn.set ? { designation: desigIn.value } : {}),
         ...(nextMemberRole ? { memberRole: nextMemberRole } : {}),
         institutionProfile: newInstitutionProfile
       };

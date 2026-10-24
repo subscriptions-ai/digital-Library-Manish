@@ -35,7 +35,7 @@ type Board = {
 type Member = {
   id: string; displayName: string | null; email: string; role: string;
   /** What the person is to the library (Faculty, Student…) and how it was settled; null when nothing settles it. */
-  accessRole: string | null; accessRoleSource: 'set' | 'account' | 'designation' | 'review';
+  accessRole: string | null; accessRoleSource: 'set' | 'account' | 'review';
   designation: string | null; contact: string | null; state: string | null;
   createdAt: string; emailVerifiedAt: string | null; lastReadAt: string | null;
   status?: string; isBlocked?: boolean;
@@ -386,8 +386,8 @@ function Row({ group, open, onToggle, canRestrict, onChanged, search, status }: 
                 <thead className="bg-surface-2 text-[10px] font-bold uppercase tracking-wider text-muted">
                   <tr>
                     <th className="px-4 py-2.5 text-left">Member</th>
-                    <th className="px-4 py-2.5 text-left">Role</th>
-                    <th className="px-4 py-2.5 text-left">Designation</th>
+                    <th className="px-4 py-2.5 text-left">Account Type</th>
+                    <th className="px-4 py-2.5 text-left">Professional Designation</th>
                     <th className="px-4 py-2.5 text-left">Status</th>
                     <th className="px-4 py-2.5 text-right">Joined</th>
                     <th className="px-4 py-2.5 text-right">Last read</th>
@@ -409,8 +409,7 @@ function Row({ group, open, onToggle, canRestrict, onChanged, search, status }: 
                       </td>
                       <td className="px-4 py-2.5">
                         <span
-                          title={m.accessRoleSource === 'designation' ? 'Settled from the designation; not yet saved on the account'
-                            : m.accessRoleSource === 'review' ? 'No role has been chosen, and the designation does not settle one' : undefined}
+                          title={m.accessRoleSource === 'review' ? 'No account type has been chosen. It is never read off the designation.' : undefined}
                           className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                             m.role === 'Institution' ? 'bg-info-soft text-accent'
                             : m.accessRole ? 'bg-surface-2 text-ink-2' : 'bg-caution-soft text-caution'}`}>
@@ -454,8 +453,8 @@ function Row({ group, open, onToggle, canRestrict, onChanged, search, status }: 
                 <thead className="bg-surface-2 text-[10px] font-bold uppercase tracking-wider text-muted">
                   <tr>
                     <th className="px-4 py-2.5 text-left">Former member</th>
-                    <th className="px-4 py-2.5 text-left">Previous role</th>
-                    <th className="px-4 py-2.5 text-left">Designation</th>
+                    <th className="px-4 py-2.5 text-left">Previous account type</th>
+                    <th className="px-4 py-2.5 text-left">Professional Designation</th>
                     <th className="px-4 py-2.5 text-left">Status</th>
                     <th className="px-4 py-2.5 text-right">Actions</th>
                   </tr>

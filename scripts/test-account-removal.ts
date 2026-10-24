@@ -198,7 +198,7 @@ try {
 
   section('TEST 7 / duplicate protection — the same institution re-adds the same email');
   const re = await mkUser('readd', { institutionId: A.id }); await remove(tokA, re.id);
-  const again = await call('/api/institution/students', tokA, { method: 'POST', body: { name: 'Re Added', email: re.email.toUpperCase(), password: 'NewPassw0rd!', designation: 'Student', mobile: '9999999999' } });
+  const again = await call('/api/institution/students', tokA, { method: 'POST', body: { name: 'Re Added', email: re.email.toUpperCase(), password: 'NewPassw0rd!', memberRole: 'Student', designation: 'Student', mobile: '9999999999' } });
   const ur = await row(re.id);
   const copies = await db.user.count({ where: { email: { equals: re.email, mode: 'insensitive' } } });
   check('the existing identity is reused (same id), even when the email is typed in capitals', again.status === 200 && again.data?.id === re.id, again);
@@ -209,10 +209,10 @@ try {
   check('audit: the cancellation is recorded as a re-add', (await audits('GLOBAL_DELETION_CANCELLED', re.id)).some((a: any) => /re-added/.test(a.meta?.reason || '')));
 
   const other = await mkUser('readd-other', { institutionId: A.id }); await remove(tokA, other.id);
-  const stolen = await call('/api/institution/students', tokB, { method: 'POST', body: { name: 'X', email: other.email, password: 'NewPassw0rd!', designation: 'Student' } });
+  const stolen = await call('/api/institution/students', tokB, { method: 'POST', body: { name: 'X', email: other.email, password: 'NewPassw0rd!', memberRole: 'Student', designation: 'Student' } });
   check('a DIFFERENT institution cannot take over a removed account', stolen.status === 409 && (await row(other.id)).status === R.PENDING_DELETION, stolen);
   const live = await mkUser('exists-live', { institutionId: A.id });
-  check('an active account is still "already exists"', (await call('/api/institution/students', tokA, { method: 'POST', body: { name: 'X', email: live.email, password: 'NewPassw0rd!', designation: 'Student' } })).status === 409);
+  check('an active account is still "already exists"', (await call('/api/institution/students', tokA, { method: 'POST', body: { name: 'X', email: live.email, password: 'NewPassw0rd!', memberRole: 'Student', designation: 'Student' } })).status === 409);
   const bulk = await call('/api/institution/students/bulk', tokA, { method: 'POST', body: { users: [{ name: 'Bulk Back', email: other.email.toUpperCase(), password: 'NewPassw0rd!', role: 'Student' }] } });
   check('bulk import follows the same rule: reuse, no duplicate', bulk.data?.successCount === 1 && (await db.user.count({ where: { email: { equals: other.email, mode: 'insensitive' } } })) === 1 && (await row(other.id)).status === 'Active', bulk);
   const pend2 = await mkUser('selfreg', { institutionId: A.id }); await remove(tokA, pend2.id);

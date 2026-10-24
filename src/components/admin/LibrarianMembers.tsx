@@ -62,8 +62,8 @@ export function LibrarianMembers({ librarianId, institutionId, institutionName }
             <thead className="bg-surface-2 text-[10px] font-bold uppercase tracking-wider text-muted">
               <tr>
                 <th className="px-4 py-2.5 text-left">Member</th>
-                <th className="px-4 py-2.5 text-left">Role</th>
-                <th className="px-4 py-2.5 text-left">Designation</th>
+                <th className="px-4 py-2.5 text-left">Account Type</th>
+                <th className="px-4 py-2.5 text-left">Professional Designation</th>
                 <th className="px-4 py-2.5 text-right">Added</th>
                 <th className="px-4 py-2.5 text-right">Last read</th>
               </tr>
