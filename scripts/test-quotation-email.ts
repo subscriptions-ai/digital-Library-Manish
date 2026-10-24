@@ -28,19 +28,49 @@ console.log('\nContent: every value is there');
 for (const [what, needle] of [
   ['recipient', 'Dear Asha Rao,'], ['quotation number', 'ITB/SDL/26-27/002'], ['date', '23 Oct 2026'], ['validity', '15 days from issue'], ['duration', 'Annual'],
   ['total, with Indian grouping and paise', '₹94,282.00'.replace('₹', '&#8377;')], ['department Law', 'Law'], ['department Nursing', 'Nursing'], ['department Computer / IT', 'Computer / IT'],
-  ['department count', 'Selected departments &middot; 3'],
+  ['department count row', '3 departments'],
   ['account name', COMPANY_DETAILS.legalName], ['account number', COMPANY_DETAILS.bank.accountNumber], ['bank', COMPANY_DETAILS.bank.bankName],
   ['branch', COMPANY_DETAILS.bank.branch], ['IFSC', COMPANY_DETAILS.bank.ifscCode], ['contact email', COMPANY_DETAILS.email],
   ['GSTIN', COMPANY_DETAILS.gstin], ['PAN', COMPANY_DETAILS.pan], ['CIN', COMPANY_DETAILS.cin],
-  ['the attached-quotation sentence', 'Please find attached the quotation for the selected department(s) and subscription duration.'],
+  ['the attached-quotation sentence', 'Please find attached our subscription quotation for the selected department(s) and subscription period.'],
+  ['the attachment reminder', 'Please refer to the attached PDF for the complete quotation, department details, pricing and applicable terms.'],
+  ['the one-line description', 'A single organised academic platform for discovering, accessing and managing research and learning resources.'],
+  ['the contact line', 'Need assistance?'], ['the phone, from the company details', COMPANY_DETAILS.mobile.replace(/-/g, ' ')],
+  ['the signature address', 'A-118, 1st Floor, Sector-63, Noida - 201301, U.P., India'],
 ] as const) check(what, html.includes(needle), needle);
 check('no discount line when there is no discount', !/Special discount/.test(html));
 const withDiscount = buildQuotationEmailHtml({ ...base, discount: 4000 });
 check('a discount shows as a minus amount', /Special discount \/ adjustment/.test(withDiscount) && /&minus;&#8377;4,000\.00/.test(withDiscount));
-check('one department reads "department", not "departments", with no count', /Selected department</.test(buildQuotationEmailHtml({ ...base, departments: ['Law'] })) && !/Selected department &middot;/.test(buildQuotationEmailHtml({ ...base, departments: ['Law'] })));
-check('an empty list shows a dash, not a broken table', /—/.test(buildQuotationEmailHtml({ ...base, departments: [] })));
-const odd = buildQuotationEmailHtml({ ...base, departments: ['A', 'B', 'C', 'D', 'E'] });
-check('an odd number of departments still lays out (two columns, last row padded)', (odd.match(/<tr><td style="padding:5px 8px 5px 0/g) || []).length === 3);
+check('one department reads "1 department"', buildQuotationEmailHtml({ ...base, departments: ['Law'] }).includes('>1 department<'));
+check('an empty list shows 0 departments and no broken table', buildQuotationEmailHtml({ ...base, departments: [] }).includes('0 departments') && !/&#10003;/.test(buildQuotationEmailHtml({ ...base, departments: [] })));
+
+console.log('\nDepartments: 1–4 are named, more are a count (the PDF keeps the full list)');
+const names = (n: number) => Array.from({ length: n }, (_, i) => `Department ${String.fromCharCode(65 + (i % 26))}${i}`);
+const ticks = (h: string) => (h.match(/&#10003;/g) || []).length;
+for (const n of [1, 2, 3, 4]) {
+  const h = buildQuotationEmailHtml({ ...base, departments: names(n) });
+  check(`${n} department${n > 1 ? 's' : ''}: all named, no "more" line`, ticks(h) === n && names(n).every(d => h.includes(d)) && !/more department/.test(h) && !/Complete department-wise/.test(h));
+}
+for (const [n, rest] of [[5, 1], [16, 12], [34, 30]] as const) {
+  const h = buildQuotationEmailHtml({ ...base, departments: names(n) });
+  check(`${n} departments: first 4 named, "+ ${rest} more department${rest > 1 ? 's' : ''}", count row says ${n}`,
+    ticks(h) === 4 && names(4).every(d => h.includes(d)) && !h.includes(names(5)[4]) && h.includes(`+ ${rest} more department${rest > 1 ? 's' : ''}`) && h.includes(`>${n} departments<`), h.match(/\+ \d+ more[^<]*/)?.[0]);
+  check(`${n} departments: points to the attached quotation for the rest`, h.includes('Complete department-wise details are included in the attached quotation.'));
+}
+check('the order given is kept (first four, not a sort)', (() => { const h = buildQuotationEmailHtml({ ...base, departments: ['Zoology', 'Law', 'Arts', 'Physics', 'Botany'] }); return h.indexOf('Zoology') < h.indexOf('Law') && !h.includes('Botany'); })());
+check('a long department name stays inside its cell (wraps; no nowrap on names)', !/white-space:nowrap[^"]*"[^>]*><span[^>]*>&#10003;/.test(buildQuotationEmailHtml({ ...base, departments: ['Electronics & Telecommunication Engineering'] })));
+const sixteen = buildQuotationEmailHtml({ ...base, departments: names(16), total: 150851.2 });
+check('the total is the amount given, in Indian grouping', sixteen.includes('&#8377;1,50,851.20'));
+
+console.log('\nRemoved from the body');
+check('no About list (journals, proceedings, videos, e-books, theses)', !/Academic journals|Conference proceedings|Educational videos|Theses|About STM Digital Library/.test(html));
+check('no "For Publisher / Authorized Signatory" block', !/For Publisher|Authorized Signatory/i.test(html));
+check('no separate Contact information card', !/Contact information/i.test(html));
+check('the legal identity stays in the signature and the footer', (html.match(new RegExp(COMPANY_DETAILS.legalName, 'g')) || []).length >= 2);
+
+console.log('\nPhone: the header does not lose the quotation number');
+check('the quotation number is in the header once, in a cell that stacks under the name on a phone', (header.match(/ITB\/SDL\/26-27\/002/g) || []).length === 1 && /class="hcol hright"/.test(header) && /\.hcol \{ display:block/.test(html));
+check('the header is compact (24px vertical padding)', /padding:24px 40px/.test(header));
 
 console.log('\nSafety: nothing the sender typed becomes markup');
 const hostile = buildQuotationEmailHtml({ ...base, recipientName: '<img src=x onerror=alert(1)>', quotationNumber: '"><script>1</script>', departments: ['<b>Law</b>'] });
