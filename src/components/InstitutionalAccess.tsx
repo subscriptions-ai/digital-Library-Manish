@@ -66,7 +66,7 @@ export function InstitutionalAccess() {
   return (
     <div className="min-h-screen bg-surface">
       {/* Hero */}
-      <section className="bg-navy py-12 sm:py-16 lg:py-24">
+      <section className="bg-navy section-spacing">
         <div className="container-public">
           <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-16">
             <div>
@@ -122,7 +122,7 @@ export function InstitutionalAccess() {
       </section>
 
       {/* Key Features */}
-      <section className="bg-ground py-16 sm:py-24">
+      <section className="bg-ground section-spacing">
         <div className="container-public">
           <div className="mb-12 text-center sm:mb-16">
             <h2 className="text-3xl font-bold text-ink">Institutional Benefits</h2>
@@ -150,7 +150,7 @@ export function InstitutionalAccess() {
       </section>
 
       {/* Process */}
-      <section className="scroll-mt-20 py-16 sm:py-24" id="trial-form">
+      <section className="scroll-mt-20 section-spacing" id="trial-form">
         <div className="container-public">
           <div className="grid grid-cols-1 items-start gap-12 lg:grid-cols-2 lg:gap-16">
             <div>

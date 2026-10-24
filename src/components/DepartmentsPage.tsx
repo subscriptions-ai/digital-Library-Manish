@@ -44,7 +44,7 @@ export function DepartmentsPage() {
         </div>
       </section>
 
-      <section aria-labelledby="dept-index-heading" className="container-public py-12 sm:py-16">
+      <section aria-labelledby="dept-index-heading" className="container-public section-spacing">
         <Eyebrow>All departments</Eyebrow>
         <Heading className="max-w-3xl"><span id="dept-index-heading">Find a department</span></Heading>
 

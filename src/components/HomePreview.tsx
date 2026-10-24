@@ -388,7 +388,7 @@ function InstitutionStrip({ inst }: { inst: Institutions | null }) {
   const row = list.length < 8 ? [...list, ...list, ...list] : list;
   return (
     <section className="border-y py-7" style={{ borderColor: 'var(--np-line)', background: 'var(--np-soft)' }}>
-      <div className="mx-auto mb-4 max-w-6xl px-5">
+      <div className="container-public mb-4">
         <p className="text-[12.5px]" style={{ color: 'var(--np-body)' }}>
           <b className="np-strong" style={{ color: 'var(--np-ink)' }}>Colleges and universities</b> whose faculty,
           researchers and students read here.
@@ -429,7 +429,7 @@ function Impact({ stats, settled, depts, inst }: { stats: Stats | null; settled:
     { icon: Layers, value: depts.length || undefined, label: 'Departments', hint: 'Every subject the library covers', tone: 6 },
   ];
   return (
-    <section className="container-public py-20">
+    <section className="container-public section-spacing">
       <Eyebrow>Built for trust</Eyebrow>
       <Heading className="max-w-3xl">Every figure here is read from the catalogue as the page loads.</Heading>
       <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -528,7 +528,7 @@ function useSettled() {
   return ready;
 }
 
-const panel = 'rounded-xl border bg-surface p-5';
+const panel = 'rounded-xl border bg-surface p-card';
 
 /**
  * One labelled bar. The figure is always text, so the bar is never the only signal. A tiny
@@ -603,10 +603,10 @@ function CommunitySkeleton() {
   const look = { borderColor: 'var(--np-line)', background: 'var(--np-soft)' };
   return (
     <div role="status" aria-label="Loading institution figures">
-      <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-6">
+      <div className="mt-8 grid grid-cols-2 gap-card md:grid-cols-3 xl:grid-cols-6">
         {Array.from({ length: 6 }, (_, i) => <div key={i} className={`${block} h-[116px]`} style={look} />)}
       </div>
-      <div className="mt-12 grid grid-cols-1 gap-5 lg:grid-cols-2">
+      <div className="mt-12 grid grid-cols-1 gap-card lg:grid-cols-2">
         {[0, 1].map(i => <div key={i} className={`${block} h-[264px]`} style={look} />)}
       </div>
     </div>
@@ -621,7 +621,8 @@ function AcademicCommunity({ community }: { community: Community | null | undefi
   ] : [];
 
   return (
-    <section className="mx-auto max-w-6xl border-t px-5 py-16" style={{ borderColor: 'var(--np-line)' }}>
+    <section className="section-spacing border-t" style={{ borderColor: 'var(--np-line)' }}>
+     <div className="container-public">
       <Eyebrow>Who is with us</Eyebrow>
       <Heading className="max-w-4xl">Academic Community on STM Digital Library</Heading>
       <p className="mt-4 max-w-2xl text-[15px] leading-relaxed" style={{ color: 'var(--np-body)' }}>
@@ -640,7 +641,7 @@ function AcademicCommunity({ community }: { community: Community | null | undefi
 
       {community && (
         <>
-          <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-6">
+          <div className="mt-8 grid grid-cols-2 gap-card md:grid-cols-3 xl:grid-cols-6">
             {cards.map(c => (
               <div key={c.key} className="rounded-xl border bg-surface p-4 transition-colors hover:border-[color:var(--accent)]"
                 style={{ borderColor: 'var(--np-line)' }}>
@@ -657,7 +658,7 @@ function AcademicCommunity({ community }: { community: Community | null | undefi
           <h3 className="np-strong mt-12 text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: 'var(--np-body)' }}>
             Institutional reach
           </h3>
-          <div className="mt-4 grid grid-cols-1 gap-5 lg:grid-cols-2">
+          <div className="mt-4 grid grid-cols-1 gap-card lg:grid-cols-2">
             <TypePanel community={community} />
             <GeoPanel geography={community.geography} />
           </div>
@@ -668,7 +669,7 @@ function AcademicCommunity({ community }: { community: Community | null | undefi
       <h3 className="np-strong mt-10 text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: 'var(--np-body)' }}>
         Who uses the library
       </h3>
-      <ul className="mt-4 grid max-w-2xl grid-cols-2 gap-2 sm:grid-cols-3">
+      <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {AUDIENCES.map(a => (
           <li key={a.label} className="np-strong flex h-11 items-center gap-2.5 rounded-full border bg-surface px-4 text-[13px]"
             style={{ borderColor: 'var(--np-line)', color: 'var(--np-ink)' }}>
@@ -680,6 +681,7 @@ function AcademicCommunity({ community }: { community: Community | null | undefi
       <Link to="/for-institutions" className={`${btnPrimary} mt-8 w-full sm:w-auto`} style={{ background: 'var(--np-action)' }}>
         Explore institutional access <ArrowRight size={15} aria-hidden="true" />
       </Link>
+     </div>
     </section>
   );
 }
@@ -695,7 +697,7 @@ function DepartmentsTeaser({ depts }: { depts: DeptRow[] }) {
     .map(row => ({ row, dept: DOMAINS.find(d => d.name === row.name) }))
     .filter((x): x is { row: DeptRow; dept: (typeof DOMAINS)[number] } => Boolean(x.dept) && x.row.total > 0);
   return (
-    <section className="border-y py-16 sm:py-20" style={{ borderColor: 'var(--np-line)', background: 'var(--np-soft)' }}>
+    <section className="border-y section-spacing" style={{ borderColor: 'var(--np-line)', background: 'var(--np-soft)' }}>
       <div className="container-public">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <div className="max-w-2xl">
@@ -744,7 +746,7 @@ const PRINCIPLES = [
 
 function Principles() {
   return (
-    <section className="container-public py-20">
+    <section className="container-public section-spacing">
       <Eyebrow>How it is built</Eyebrow>
       <Heading className="max-w-3xl">Not a pile of PDFs. A catalogue, kept the way a library keeps one.</Heading>
       <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -922,7 +924,7 @@ function WhatIsNew({ books, articles, settled }: { books: NewBook[]; articles: N
   if (settled && !items.length) return null;
 
   return (
-    <section className="border-y py-20" style={{ borderColor: 'var(--np-line)', background: 'var(--np-soft)' }}>
+    <section className="border-y section-spacing" style={{ borderColor: 'var(--np-line)', background: 'var(--np-soft)' }}>
       <div className="container-public">
         <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
           <div className="max-w-2xl">
@@ -958,7 +960,7 @@ function Walkthrough({ stats, depts, subjects, articles }: {
     ['Come back to it', 'Your history is kept, the reader remembers the page, and the dashboard suggests what to read next.'],
   ];
   return (
-    <section className="container-public py-20">
+    <section className="container-public section-spacing">
       <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1fr_1.05fr] lg:items-center">
         <div>
           <Eyebrow>How reading works</Eyebrow>
@@ -1045,7 +1047,7 @@ function Audiences({ stats }: { stats: Stats | null }) {
       points: ['Free: the whole library, in half-hour sessions', 'Pro: no session limit for anyone you add', 'Pro: students added, in agreed numbers'] },
   ];
   return (
-    <section className="border-y py-20" style={{ borderColor: 'var(--np-line)', background: 'var(--np-soft)' }}>
+    <section className="border-y section-spacing" style={{ borderColor: 'var(--np-line)', background: 'var(--np-soft)' }}>
       <div className="container-public">
         <Eyebrow>Community</Eyebrow>
         <Heading className="max-w-3xl">One library, four ways in.</Heading>
@@ -1097,11 +1099,19 @@ const FAQS: [string, string][] = [
 function Questions() {
   const [open, setOpen] = useState<number | null>(0);
   return (
-    <section className="border-y py-20" style={{ borderColor: 'var(--np-line)', background: 'var(--np-soft)' }}>
-      <div className="mx-auto max-w-4xl px-5">
-        <Eyebrow>Before you register</Eyebrow>
-        <Heading>Common questions.</Heading>
-        <div className="mt-10 overflow-hidden rounded-xl border bg-surface" style={{ borderColor: 'var(--np-line)' }}>
+    <section className="border-y section-spacing" style={{ borderColor: 'var(--np-line)', background: 'var(--np-soft)' }}>
+      <div className="container-public">
+       {/* The title sits on the page grid at the left; the questions take the wide column beside it, so the accordion is neither a narrow island in the middle nor stretched across the page. */}
+       <div className="grid gap-8 lg:grid-cols-12 lg:gap-16">
+        <div className="lg:col-span-5">
+         <Eyebrow>Before you register</Eyebrow>
+         <Heading>Common questions.</Heading>
+         <p className="mt-5 text-[13px]" style={{ color: 'var(--np-body)' }}>
+          Something else? <Link to="/faq" className="np-strong underline" style={{ color: 'var(--np-ink)' }}>All questions</Link>
+          {' '}or <Link to="/contact" className="np-strong underline" style={{ color: 'var(--np-ink)' }}>ask us</Link>.
+         </p>
+        </div>
+        <div className="overflow-hidden rounded-xl border bg-surface lg:col-span-7" style={{ borderColor: 'var(--np-line)' }}>
           {FAQS.map(([q, a], k) => (
             <div key={q} className="border-b last:border-b-0" style={{ borderColor: 'var(--np-line)' }}>
               <button type="button" onClick={() => setOpen(open === k ? null : k)} aria-expanded={open === k}
@@ -1117,10 +1127,7 @@ function Questions() {
             </div>
           ))}
         </div>
-        <p className="mt-5 text-[13px]" style={{ color: 'var(--np-body)' }}>
-          Something else? <Link to="/faq" className="np-strong underline" style={{ color: 'var(--np-ink)' }}>All questions</Link>
-          {' '}or <Link to="/contact" className="np-strong underline" style={{ color: 'var(--np-ink)' }}>ask us</Link>.
-        </p>
+       </div>
       </div>
     </section>
   );
@@ -1253,7 +1260,8 @@ function Closing({ stats, inst }: { stats: Stats | null; inst: Institutions | nu
         style={{ background: 'linear-gradient(135deg, var(--np-navy) 0%, var(--np-navy-2) 60%, #1b2f63 100%)' }}>
         <div aria-hidden className="pointer-events-none absolute inset-0 opacity-70"
           style={{ background: 'radial-gradient(700px 360px at 80% 0%, rgba(245,179,1,0.12), transparent 60%)' }} />
-        <div className="relative mx-auto max-w-4xl px-5 py-20 text-center">
+        <div className="relative container-public section-spacing text-center">
+         <div className="mx-auto max-w-4xl">
           <Eyebrow onDark>Your reading starts here</Eyebrow>
           <h2 className="np-display mx-auto mt-5 max-w-2xl text-[34px] leading-tight text-white sm:text-[42px]">
             Open the library for your institution.
@@ -1270,6 +1278,7 @@ function Closing({ stats, inst }: { stats: Stats | null; inst: Institutions | nu
               Talk to us
             </Link>
           </div>
+         </div>
         </div>
       </section>
 

@@ -86,7 +86,7 @@ export function InstitutionsPage() {
         </div>
       </section>
 
-      <section className="container-public py-12">
+      <section className="container-public section-spacing">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by kind of institution">
             {kinds.map(k => (

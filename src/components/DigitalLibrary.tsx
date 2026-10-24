@@ -138,7 +138,7 @@ export function DigitalLibrary() {
     <div className="min-h-screen bg-surface">
       
       {/* ─── HERO SECTION ───────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-navy py-12 sm:py-16 lg:py-24">
+      <section className="relative overflow-hidden bg-navy section-spacing">
         <div className="container-public relative">
           <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-16">
             <motion.div 
@@ -227,7 +227,7 @@ export function DigitalLibrary() {
       </section>
 
       {/* ─── WHY WE ARE TECHNICALLY ADVANCED (The Edge) ────────────────────── */}
-      <section id="why-advanced" className="scroll-mt-20 bg-surface py-16 sm:py-24">
+      <section id="why-advanced" className="scroll-mt-20 bg-surface section-spacing">
         <div className="container-public">
           <div className="mx-auto mb-12 max-w-3xl text-center sm:mb-16">
             <p className="mb-3 text-xs font-bold uppercase tracking-widest text-accent">Academic Discovery</p>
@@ -261,7 +261,7 @@ export function DigitalLibrary() {
       </section>
 
       {/* ─── WHAT WE ARE OFFERING ─────────────────────────────────────────── */}
-      <section className="bg-navy py-16 sm:py-24">
+      <section className="bg-navy section-spacing">
         <div className="container-public">
           <div className="mb-12 flex flex-col justify-between gap-6 md:flex-row md:items-end">
             <div className="max-w-2xl">
@@ -301,7 +301,7 @@ export function DigitalLibrary() {
       </section>
 
       {/* ─── DOMAINS SECTION (Cards with Images) ───────────────────────────── */}
-      <section id="departments" className="scroll-mt-24 bg-surface py-16 sm:py-24">
+      <section id="departments" className="scroll-mt-24 bg-surface section-spacing">
         <div className="container-public">
           <div className="mx-auto mb-12 max-w-3xl text-center sm:mb-16">
             <p className="mb-3 text-xs font-bold uppercase tracking-widest text-accent">Explore by Department</p>
@@ -352,7 +352,7 @@ export function DigitalLibrary() {
       </section>
 
       {/* ─── CORE FUNCTIONALITIES ───────────────────────────────────────────── */}
-      <section className="bg-ground py-16 sm:py-24">
+      <section className="bg-ground section-spacing">
         <div className="container-public">
           <div className="mb-12 text-center sm:mb-16">
             <p className="mb-3 text-xs font-bold uppercase tracking-widest text-accent">Core Functionalities</p>
@@ -401,7 +401,7 @@ export function DigitalLibrary() {
       </section>
 
       {/* ─── FINAL CTA ──────────────────────────────────────────────────────── */}
-      <section className="bg-navy py-16 sm:py-24">
+      <section className="bg-navy section-spacing">
         <div className="container-public max-w-4xl text-center">
           <div className="on-dark-fill mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl text-amber" aria-hidden="true">
             <Library size={32} />

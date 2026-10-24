@@ -24,8 +24,10 @@ export function EmailVerificationPopup() {
   useEffect(() => {
     if (isVerificationRequired === null || isVerificationRequired === false) return;
 
-    // Only show if user is logged in and email is NOT verified
-    if (!profile || profile.isEmailVerified === undefined || profile.isEmailVerified === true) {
+    // Only show if user is logged in and email is NOT verified. The condition is the account's own verification state and nothing else, so an
+    // address Google (or the code) has verified makes this go away by itself; a prompt already open is closed when the profile says verified.
+    if (profile?.isEmailVerified === true) { setIsVisible(false); return; }
+    if (!profile || profile.isEmailVerified === undefined) {
       return;
     }
 
