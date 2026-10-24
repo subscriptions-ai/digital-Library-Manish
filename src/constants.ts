@@ -1,4 +1,5 @@
 import { Domain, Journal, ContentType, ContentTypeInfo } from "./types";
+import { rolesFor, SIGNUP_ROLE_CONFIG, INSTITUTION_ACCOUNT_ROLES } from "./lib/signupRoles";
 
 export const CONTENT_TYPES: ContentType[] = [
   { id: "books", name: "Books", icon: "Book", description: "Textbooks, reference materials, and specialized e-books." },
@@ -483,129 +484,28 @@ export const REGISTRANT_TYPES = [
 
 export type RegistrantType = typeof REGISTRANT_TYPES[number]['id'];
 
-/** The roles that belong to a Solo Learner on their own; they may also choose any other. */
-const SOLO_OWN_ROLES: string[] = [
-  'Undergraduate Student',
-  "Master's Student",
-  'PhD Scholar',
-  'Postdoctoral Researcher',
-  'Researcher / Scientist',
-  'Faculty / Academic Professional',
-  'Working Professional',
-  'Industry Professional',
-  'Entrepreneur / Founder',
-  'Consultant',
-  'Freelancer',
-  'Independent Researcher',
-  'Research Scientist',
-  'Research Associate',
-  'Principal Investigator (PI)',
-  'Research / Academic Coordinator',
-];
-
+/**
+ * The designation lists live in src/lib/signupRoles.ts, one set per account context. These are the names the server and the sign-up form
+ * already import. A person is offered only the roles of the context they chose; a Solo Learner is offered the broadest list.
+ */
 export const DESIGNATIONS_BY_TYPE: Record<string, string[]> = {
-  Institute: [
-    // Students and researchers sign up under their institution too — they are most of the people in it.
-    'Undergraduate Student',
-    "Master's Student",
-    'PhD Scholar',
-    'Postdoctoral Researcher',
-    'Researcher / Scientist',
-    'Faculty / Academic Professional',
-    'Librarian',
-    'Principal',
-    'Vice Principal',
-    'Dean',
-    'Director',
-    'Head of Department (HOD)',
-    'Professor',
-    'Associate Professor',
-    'Assistant Professor',
-    'Faculty Member',
-  ],
-  Corporate: [
-    'HR Manager',
-    'CEO / Managing Director',
-    'Director',
-    'Vice President (VP)',
-    'General Manager',
-    'Senior Manager',
-    'Accounts Manager',
-    'Manager',
-    'Department Head',
-    'R&D Head',
-    'R&D Manager',
-    'Research Scientist',
-    'Research Associate',
-    'Technical Lead / Manager',
-    'Engineering Manager',
-    'Product Manager',
-    'Training & Development Manager',
-    'Procurement / Purchase Manager',
-  ],
-  // A Solo Learner may choose any role there is.
-  Solo: [],
+  Institute: rolesFor('Institute'),
+  Corporate: rolesFor('Corporate'),
+  Solo: rolesFor('Solo'),
 };
 
-/** Every role, once each, in the order the lists above give them. */
-const allRolesOnce = (): string[] => [...new Set([...(DESIGNATIONS_BY_TYPE.Institute || []), ...(DESIGNATIONS_BY_TYPE.Corporate || []), ...SOLO_OWN_ROLES])];
-DESIGNATIONS_BY_TYPE.Solo = allRolesOnce();
-
-/**
- * The same roles, gathered into the handful of kinds a person recognises.
- *
- * Eighteen options in one flat list is a list nobody reads to the end of — they
- * pick whatever is near the top that is close enough, which is exactly the bad
- * data the dropdown was meant to stop. Grouping changes only what is shown; the
- * value stored is the same string either way, so removing this affects nothing
- * already recorded.
- */
+/** The same roles, gathered into the handful of kinds a person recognises. Grouping changes only what is shown; the stored value is the label. */
 export const DESIGNATION_GROUPS: Record<string, { label: string; roles: string[] }[]> = {
-  Institute: [
-    { label: 'Studying', roles: ['Undergraduate Student', "Master's Student", 'PhD Scholar', 'Postdoctoral Researcher'] },
-    { label: 'Research & academia', roles: ['Researcher / Scientist', 'Faculty / Academic Professional'] },
-    { label: 'Library', roles: ['Librarian'] },
-    { label: 'Leadership', roles: ['Principal', 'Vice Principal', 'Dean', 'Director', 'Head of Department (HOD)'] },
-    { label: 'Faculty', roles: ['Professor', 'Associate Professor', 'Assistant Professor', 'Faculty Member'] },
-  ],
-  Corporate: [
-    { label: 'Leadership', roles: ['CEO / Managing Director', 'Director', 'Vice President (VP)', 'General Manager', 'Department Head'] },
-    { label: 'Research & development', roles: ['R&D Head', 'R&D Manager', 'Research Scientist', 'Research Associate'] },
-    { label: 'Management', roles: ['Senior Manager', 'Manager', 'HR Manager', 'Accounts Manager', 'Product Manager', 'Engineering Manager', 'Technical Lead / Manager', 'Training & Development Manager', 'Procurement / Purchase Manager'] },
-  ],
-  // A Solo Learner is one person with no organisation behind them, so every role is on offer:
-  // their own, then the library, leadership, faculty and corporate roles of the other two.
-  Solo: [],
+  Institute: SIGNUP_ROLE_CONFIG.Institute.groups,
+  Corporate: SIGNUP_ROLE_CONFIG.Corporate.groups,
+  Solo: SIGNUP_ROLE_CONFIG.Solo.groups,
 };
 
-DESIGNATION_GROUPS.Solo = (() => {
-  const seen = new Set<string>();
-  const merged: { label: string; roles: string[] }[] = [];
-  const add = (label: string, roles: string[]) => {
-    const fresh = roles.filter(r => !seen.has(r));
-    fresh.forEach(r => seen.add(r));
-    if (!fresh.length) return;
-    const existing = merged.find(g => g.label === label);
-    if (existing) existing.roles.push(...fresh); else merged.push({ label, roles: fresh });
-  };
-  add('Studying', ['Undergraduate Student', "Master's Student", 'PhD Scholar', 'Postdoctoral Researcher']);
-  add('Research & academia', ['Researcher / Scientist', 'Faculty / Academic Professional', 'Independent Researcher', 'Research Scientist', 'Research Associate', 'Principal Investigator (PI)', 'Research / Academic Coordinator']);
-  add('Working', ['Working Professional', 'Industry Professional', 'Entrepreneur / Founder', 'Consultant', 'Freelancer']);
-  for (const type of ['Institute', 'Corporate'] as const) {
-    for (const g of DESIGNATION_GROUPS[type]) add(g.label, g.roles);
-  }
-  return merged;
-})();
-
-/**
- * The handful of roles most people at each kind of place hold, offered first so that most
- * members never open the full list. Every entry is a role in DESIGNATIONS_BY_TYPE for that type
- * — the server only keeps a designation it recognises.
- */
+/** The handful of roles most people in each context hold, offered first so most never open the full list. Each is a role of that context. */
 export const POPULAR_DESIGNATIONS: Record<string, string[]> = {
-  Institute: ['Librarian', 'Faculty / Academic Professional', 'Professor', 'Researcher / Scientist', 'Undergraduate Student', 'PhD Scholar', 'Dean', 'Head of Department (HOD)'],
-  Corporate: ['R&D Manager', 'Research Scientist', 'Research Associate', 'Department Head', 'Manager', 'Technical Lead / Manager', 'Product Manager', 'CEO / Managing Director'],
-  Solo: ['Undergraduate Student', "Master's Student", 'PhD Scholar', 'Researcher / Scientist', 'Independent Researcher', 'Faculty / Academic Professional', 'Working Professional', 'Librarian'],
+  Institute: SIGNUP_ROLE_CONFIG.Institute.popular,
+  Corporate: SIGNUP_ROLE_CONFIG.Corporate.popular,
+  Solo: SIGNUP_ROLE_CONFIG.Solo.popular,
 };
 
 /** Every designation there is, for checking one that arrives from a form. */
@@ -613,26 +513,15 @@ export const ALL_DESIGNATIONS: string[] =
   [...new Set(Object.values(DESIGNATIONS_BY_TYPE).flat())];
 
 /**
- * The designations that come with the institution dashboard rather than the
- * member one.
+ * The designations that come with the institution dashboard rather than the member one.
  *
- * Whoever runs a library or runs the place is given the librarian's view — the
- * shelves, the people, the analytics — because that is the view they came for
- * and the one that eventually gets bought. Everyone else gets the reader's
- * dashboard. The free clock applies to both; what differs is what they see,
- * not how long they may look at it.
+ * Whoever runs a library or runs the place is given the librarian's view — the shelves, the people, the analytics — because that is the view
+ * they came for and the one that eventually gets bought. Everyone else gets the reader's dashboard. The list is explicit
+ * (INSTITUTION_ACCOUNT_ROLES): it does not follow how the sign-up lists are grouped or named.
  */
-export const INSTITUTION_DASHBOARD_GROUPS: Record<string, string[]> = {
-  Institute: ['Library', 'Leadership'],
-  Corporate: ['Leadership'],
-};
-
 export function opensInstitutionDashboard(type?: string | null, designation?: string | null): boolean {
   if (!type || !designation) return false;
-  const wanted = INSTITUTION_DASHBOARD_GROUPS[type] || [];
-  return (DESIGNATION_GROUPS[type] || [])
-    .filter(g => wanted.includes(g.label))
-    .some(g => g.roles.includes(designation));
+  return (INSTITUTION_ACCOUNT_ROLES[type] || []).includes(designation);
 }
 
 /**
