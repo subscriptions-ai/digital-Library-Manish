@@ -414,12 +414,126 @@ try {
     const np = await api('POST', '/api/auth/login', { body: { email: noPwUser.email, password: 'anything' } });
     check('an account with no password cannot be entered by password', np.status === 401);
   }
+
+  // ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  section('EMAIL VERIFICATION — an address Google has confirmed is verified: in the database, in the response, after a reload');
+  {
+    const verifiedRows = (email: string) => db.emailVerification.findMany({ where: { email: { equals: email, mode: 'insensitive' }, isVerified: true } });
+    const auditCount = (email: string) => db.adminAuditLog.count({ where: { adminEmail: email, action: 'EMAIL_VERIFIED_VIA_GOOGLE' } as any });
+    const row = (id: string) => db.user.findUnique({ where: { id } }) as Promise<any>;
+
+    // 1 + 13 — an existing, unverified password account: Google alone does not verify it (it is not even connected yet); the password proof does.
+    const u1 = await mkUser('ev-pw', { emailVerified: false, role: 'Student', interested: FOUR });
+    const s1 = `g-${RUN}-ev-pw`;
+    const b1 = await row(u1.id);
+    const first = await google(cred({ sub: s1, email: u1.email.toUpperCase() }));
+    check('EV1a: Google presenting the address asks for the account\'s password first, and verifies nothing yet', first.data?.status === 'ACCOUNT_LINK_REQUIRED' && !first.data?.token && (await row(u1.id)).emailVerifiedAt === null && (await verifiedRows(u1.email)).length === 0, first.data);
+    const ok1 = await api('POST', '/api/auth/google/link', { body: { linkToken: first.data.linkToken, password: PASSWORD } });
+    const a1 = await row(u1.id);
+    check('EV1b: after the password proof the SAME user is verified, with a timestamp, and a session exists', ok1.status === 200 && !!ok1.data?.token && !!a1.emailVerifiedAt && a1.id === u1.id && (await liveCount(u1.id)) === 1, ok1.data);
+    check('EV1c: the OTP table agrees (so nothing that reads it asks again)', (await verifiedRows(u1.email)).length === 1);
+    check('EV1d: the sign-in response already says verified, so the prompt never opens', ok1.data?.user?.isEmailVerified === true, ok1.data?.user?.isEmailVerified);
+    const m1 = await me(ok1.data.token);
+    check('EV1e: the current-user endpoint says verified, immediately and after a "reload" (a second call)', m1.data?.isEmailVerified === true && (await me(ok1.data.token)).data?.isEmailVerified === true, m1.data?.isEmailVerified);
+    check('EV1f: nothing else changed: role, departments, institution, password hash', a1.role === b1.role && JSON.stringify(a1.interestedDomains) === JSON.stringify(b1.interestedDomains) && a1.institutionId === b1.institutionId && a1.password === b1.password);
+    check('EV1g: one audit event records it, with no token in it', (await auditCount(u1.email)) === 1 && !JSON.stringify(await db.adminAuditLog.findMany({ where: { adminEmail: u1.email, action: 'EMAIL_VERIFIED_VIA_GOOGLE' } as any })).includes(first.data.linkToken));
+    await api('POST', '/api/auth/logout', { token: ok1.data.token });
+
+    // 2 — an account already linked, never verified: its next Google sign-in verifies it.
+    const u2 = await mkUser('ev-linked', { emailVerified: false });
+    await link(u2.id, `g-${RUN}-ev-linked`);
+    const r2 = await google(cred({ sub: `g-${RUN}-ev-linked`, email: u2.email }));
+    const a2 = await row(u2.id);
+    check('EV2: a linked, unverified account becomes verified on a matching Google sign-in (database, response, /me)', r2.status === 200 && !!a2.emailVerifiedAt && r2.data?.user?.isEmailVerified === true && (await me(r2.data.token)).data?.isEmailVerified === true && (await verifiedRows(u2.email)).length === 1, r2.data?.user?.isEmailVerified);
+    await api('POST', '/api/auth/logout', { token: r2.data?.token });
+
+    // 3 — already verified: the original timestamp survives, and no second event is written.
+    const u3 = await mkUser('ev-already');
+    await link(u3.id, `g-${RUN}-ev-already`);
+    const t0 = (await row(u3.id)).emailVerifiedAt;
+    const r3 = await google(cred({ sub: `g-${RUN}-ev-already`, email: u3.email }));
+    check('EV3: a verified user stays verified and the original timestamp is not overwritten', r3.status === 200 && +(await row(u3.id)).emailVerifiedAt === +t0 && (await auditCount(u3.email)) === 0, r3.data?.user?.isEmailVerified);
+    check('EV3b: the response says verified (the account\'s own record counts, not only the OTP table)', r3.data?.user?.isEmailVerified === true && (await me(r3.data.token)).data?.isEmailVerified === true);
+    await api('POST', '/api/auth/logout', { token: r3.data?.token });
+
+    // 4 — a new Google user is created verified, and still has to give the registration details.
+    const e4 = `ev-new-${RUN}@google-test.invalid`;
+    const g4 = await google(cred({ sub: `g-${RUN}-ev-new`, email: e4, name: 'Ev New' }));
+    check('EV4a: nothing is created until the registration details are given', g4.data?.status === 'PROFILE_REQUIRED' && (await countByEmail(e4)) === 0);
+    const refused = await api('POST', '/api/auth/google/complete-signup', { body: { onboardingToken: g4.data.onboardingToken, ...profile({ interestedDomains: [] }), name: 'Ev New' } });
+    check('EV4b: Google does not replace profile completion: missing details are still refused', refused.status === 400 && (await countByEmail(e4)) === 0, refused.data);
+    const done = await api('POST', '/api/auth/google/complete-signup', { body: { onboardingToken: g4.data.onboardingToken, ...profile(), name: 'Ev New' } });
+    const made = await db.user.findFirst({ where: { email: e4 } }) as any; if (made) created.users.push(made.id);
+    check('EV4c: created verified (timestamp, OTP table, response and /me), as an ordinary Subscriber', done.status === 200 && !!made?.emailVerifiedAt && made?.role === 'Subscriber' && (await verifiedRows(e4)).length === 1 && done.data?.user?.isEmailVerified === true && (await me(done.data.token)).data?.isEmailVerified === true, done.data?.user?.isEmailVerified);
+    await api('POST', '/api/auth/logout', { token: done.data?.token });
+
+    // 5 — case: one account, however the address is written.
+    const mixed = await db.user.create({ data: { email: `Mixed-Case-${RUN}@google-test.invalid`, password: HASH, role: 'Subscriber', displayName: 'Mixed', emailVerifiedAt: null } as any });
+    created.users.push(mixed.id);
+    await link(mixed.id, `g-${RUN}-ev-mixed`);
+    const r5 = await google(cred({ sub: `g-${RUN}-ev-mixed`, email: `MIXED-case-${RUN}@GOOGLE-test.invalid` }));
+    check('EV5: a different capitalisation reaches the same account, verifies it, and creates no second one', r5.status === 200 && !!(await row(mixed.id)).emailVerifiedAt && (await countByEmail(mixed.email)) === 1 && r5.data?.user?.isEmailVerified === true, r5.data);
+    await api('POST', '/api/auth/logout', { token: r5.data?.token });
+
+    // 6/7/8 — credentials that must leave an unverified account unverified.
+    const u6 = await mkUser('ev-bad', { emailVerified: false }); await link(u6.id, `g-${RUN}-ev-bad`);
+    const bads: [string, string, any][] = [
+      ['wrong audience', cred({ sub: `g-${RUN}-ev-bad`, email: u6.email, aud: 'someone-elses-client.apps.googleusercontent.com' }), {}],
+      ['expired', cred({ sub: `g-${RUN}-ev-bad`, email: u6.email, exp: Math.floor(Date.now() / 1000) - 3600 }), {}],
+      ['bad signature', cred({ sub: `g-${RUN}-ev-bad`, email: u6.email, key: other.privateKey }), {}],
+      ['email_verified false', cred({ sub: `g-${RUN}-ev-bad`, email: u6.email, verified: false }), { verified: true, isEmailVerified: true, emailVerified: true, email_verified: true, email: u6.email }],
+    ];
+    for (const [name, c, extra] of bads) {
+      const r = await google(c, extra);
+      const u = await row(u6.id);
+      check(`EV6: ${name} → refused, no session, the account is still unverified`, [401, 403].includes(r.status) && !r.data?.token && u.emailVerifiedAt === null && (await verifiedRows(u6.email)).length === 0 && (await liveCount(u6.id)) === 0, r);
+    }
+    const g6 = await google(cred({ sub: `g-${RUN}-ev-bad`, email: `someone-else-${RUN}@google-test.invalid` }));
+    check('EV6b: a valid credential whose address is NOT this account\'s own cannot verify it (the identity is the Google subject; the address must match too)', g6.status === 200 && (await row(u6.id)).emailVerifiedAt === null && (await verifiedRows(u6.email)).length === 0, g6.status);
+    const un = await row(u6.id);
+    check('EV6c: …it signed the linked person in, and their own address stays unverified', un.emailVerifiedAt === null, un.emailVerifiedAt);
+    if (g6.data?.token) await api('POST', '/api/auth/logout', { token: g6.data.token });
+
+    // 9/10 — blocked and pending-deletion accounts are refused before anything about them changes.
+    const u9 = await mkUser('ev-blocked', { emailVerified: false, blocked: true }); await link(u9.id, `g-${RUN}-ev-blocked`);
+    const r9 = await google(cred({ sub: `g-${RUN}-ev-blocked`, email: u9.email }));
+    check('EV9: blocked → 403, no session, still unverified', r9.status === 403 && !r9.data?.token && (await row(u9.id)).emailVerifiedAt === null && (await verifiedRows(u9.email)).length === 0, r9.data);
+    const u10 = await mkUser('ev-pending', { emailVerified: false, status: 'PENDING_DELETION' }); await link(u10.id, `g-${RUN}-ev-pending`);
+    const r10 = await google(cred({ sub: `g-${RUN}-ev-pending`, email: u10.email }));
+    check('EV10: pending deletion → ACCOUNT_REMOVED, still pending, still unverified', r10.status === 403 && r10.data?.code === 'ACCOUNT_REMOVED' && (await row(u10.id)).status === 'PENDING_DELETION' && (await row(u10.id)).emailVerifiedAt === null, r10.data);
+
+    // 11 — the session limit is the ordinary one.
+    const u11 = await mkUser('ev-limit', { emailVerified: false }); await link(u11.id, `g-${RUN}-ev-limit`);
+    const p11 = await api('POST', '/api/auth/login', { body: { email: u11.email, password: PASSWORD } });
+    const g11 = await google(cred({ sub: `g-${RUN}-ev-limit`, email: u11.email }));
+    check('EV11: limit 1, a session already open → Google is refused by the same rule', p11.status === 200 && g11.status === 409 && g11.data?.code === 'ACTIVE_SESSION_EXISTS' && (await liveCount(u11.id)) === 1, g11.data);
+    await api('POST', '/api/auth/logout', { token: p11.data?.token });
+
+    // 12 — password sign-in: unverified stays unverified (the prompt shows), verified through the OTP table stays verified.
+    const u12 = await mkUser('ev-password', { emailVerified: false });
+    const p12 = await api('POST', '/api/auth/login', { body: { email: u12.email, password: PASSWORD } });
+    check('EV12a: password sign-in of an unverified account says isEmailVerified false, in the response and in /me (the prompt shows)', p12.status === 200 && p12.data?.user?.isEmailVerified === false && (await me(p12.data.token)).data?.isEmailVerified === false, p12.data?.user?.isEmailVerified);
+    await db.emailVerification.create({ data: { email: u12.email, isVerified: true } });
+    check('EV12b: verified by the code (OTP table only) still counts as verified', (await me(p12.data.token)).data?.isEmailVerified === true);
+    await api('POST', '/api/auth/logout', { token: p12.data?.token });
+
+    // 14 — the send/confirm endpoints, for an account Google verified.
+    const p14 = await api('POST', '/api/auth/login', { body: { email: u3.email, password: PASSWORD } });
+    const send = await api('POST', '/api/verify/check-or-send', { token: p14.data?.token, body: { email: u3.email } });
+    check('EV14a: asking to verify an already-verified account (signed in as it) says so, sends no code, makes no OTP row with a code', send.status === 200 && send.data?.verified === true && !send.data?.otpSent && (await db.emailVerification.count({ where: { email: u3.email, otp: { not: null } } })) === 0, send.data);
+    const confirm = await api('POST', '/api/verify/confirm', { token: p14.data?.token, body: { email: u3.email, otp: '000000' } });
+    check('EV14b: an old code entered afterwards is told "already verified", not an error', confirm.status === 200 && confirm.data?.alreadyVerified === true, confirm);
+    const stranger = await api('POST', '/api/verify/confirm', { body: { email: u3.email, otp: '000000' } });
+    check('EV14c: someone who is not that account gets the same plain refusal as ever (no way to ask which addresses are verified)', stranger.status === 400, stranger);
+    await api('POST', '/api/auth/logout', { token: p14.data?.token });
+  }
 } finally {
   await stop(srv);
   await db.authIdentity.deleteMany({ where: { OR: [{ userId: { in: created.users } }, { providerSubject: { contains: RUN } }] } }).catch(() => {});
   const stray = await db.user.findMany({ where: { email: { contains: `-${RUN}@` } }, select: { id: true } }).catch(() => [] as any[]);
   const ids = [...new Set([...created.users, ...stray.map((u: any) => u.id)])];
   await db.lead.deleteMany({ where: { email: { contains: `-${RUN}@` } } }).catch(() => {});
+  await db.emailVerification.deleteMany({ where: { email: { contains: `-${RUN}@`, mode: 'insensitive' } } }).catch(() => {});
   await db.freeSession.deleteMany({ where: { userId: { in: ids } } }).catch(() => {});
   await db.userSession.deleteMany({ where: { userId: { in: ids } } }).catch(() => {});
   await db.subscription.deleteMany({ where: { userId: { in: ids } } }).catch(() => {});

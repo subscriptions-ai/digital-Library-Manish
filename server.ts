@@ -769,6 +769,49 @@ async function startServer() {
   });
 
 
+  /**
+   * Whether an address is verified: ONE answer, from the two places that can say so. `User.emailVerifiedAt` is the account's own record (set by
+   * the OTP check, or by a verified Google sign-in); `EmailVerification.isVerified` is the OTP table, which is keyed by address and also serves
+   * people who verify before they have an account. The Verify Your Email prompt used to read only the second, so an account Google had verified
+   * (first) still looked unverified to the page.
+   */
+  const emailIsVerified = async (user: { email: string; emailVerifiedAt?: Date | string | null }): Promise<boolean> => {
+    if (user.emailVerifiedAt) return true;
+    const rec = await (prisma as any).emailVerification.findFirst({ where: { email: { equals: String(user.email).trim(), mode: 'insensitive' }, isVerified: true }, select: { id: true } }).catch(() => null);
+    return !!rec;
+  };
+
+  /**
+   * An address Google has just confirmed (the credential was verified server-side and its `email_verified` was true) becomes verified here, in both
+   * places, and stays that way after a reload. The caller has already checked that the verified address is this account's own. An existing
+   * timestamp is never overwritten, and nothing but the verification state is touched: no role, no entitlement, no membership.
+   * Returns whether the account was newly marked, so the audit event is written once.
+   */
+  const markEmailVerified = async (db: any, user: any): Promise<boolean> => {
+    let newly = false;
+    if (!user.emailVerifiedAt) {
+      user.emailVerifiedAt = new Date();
+      await db.user.update({ where: { id: user.id }, data: { emailVerifiedAt: user.emailVerifiedAt } });
+      newly = true;
+    }
+    const rec = await db.emailVerification.findUnique({ where: { email: user.email } });
+    if (!rec) await db.emailVerification.create({ data: { email: user.email, isVerified: true } });
+    else if (!rec.isVerified) await db.emailVerification.update({ where: { email: user.email }, data: { isVerified: true, otp: null, otpExpiry: null } });
+    return newly;
+  };
+
+  /** The signed-in caller's own address from an optional bearer token, or null. Used so "already verified" is only ever said to the account it is about. */
+  const callerEmail = (req: any): string | null => {
+    const h = String(req.headers?.authorization || '');
+    if (!h.startsWith('Bearer ')) return null;
+    try { const d: any = jwt.verify(h.slice(7), JWT_SECRET); return normalizeEmail(d?.email) || null; } catch { return null; }
+  };
+  const callerOwnsVerifiedEmail = async (req: any, email: string): Promise<boolean> => {
+    if (callerEmail(req) !== normalizeEmail(email)) return false;
+    const u: any = await findUserByEmail(prisma, email).catch(() => null);
+    return !!u && (await emailIsVerified(u));
+  };
+
   // --- Email Verification OTP System ---
   app.post("/api/verify/check-or-send", async (req, res) => {
     try {
@@ -783,7 +826,12 @@ async function startServer() {
       let record = await (prisma as any).emailVerification.findUnique({ where: { email } });
       
       if (record && record.isVerified) {
-        return res.json({ verified: true });
+        return res.json({ verified: true, alreadyVerified: true });
+      }
+      // The signed-in account's own record says verified (Google confirmed it): no code is made, nothing is sent. Said only to that account itself,
+      // so this open endpoint cannot be used to ask which addresses are verified.
+      if (await callerOwnsVerifiedEmail(req, email)) {
+        return res.json({ verified: true, alreadyVerified: true });
       }
 
       // Generate 6 digit OTP
@@ -832,6 +880,11 @@ async function startServer() {
       if (!email || !otp) return res.status(400).json({ error: "Email and OTP required" });
 
       const record = await (prisma as any).emailVerification.findUnique({ where: { email } });
+      // Confirming something that is already verified (an old code, or an address Google has since verified) is not an error to the account it
+      // belongs to: it is told, safely, that the address is already verified. Anyone else gets the same plain refusal as before.
+      if ((!record || record.isVerified) && await callerOwnsVerifiedEmail(req, email)) {
+        return res.json({ success: true, alreadyVerified: true });
+      }
       if (!record || record.isVerified) {
         return res.status(400).json({ error: "Invalid request or already verified" });
       }
@@ -1048,6 +1101,10 @@ async function startServer() {
         lastLoginAt: new Date(),
       }
     });
+    // An account made already verified (Google proved the address) is verified in the OTP table too, so nothing that reads that table asks again.
+    if (m.emailVerified && m.identity) {
+      await tx.emailVerification.upsert({ where: { email }, create: { email, isVerified: true }, update: { isVerified: true, otp: null, otpExpiry: null } });
+    }
     if (m.identity) {
       await tx.authIdentity.create({ data: { userId: created.id, provider: m.identity.provider, providerSubject: m.identity.subject, emailAtLink: m.identity.emailAtLink } });
     }
@@ -1162,7 +1219,7 @@ async function startServer() {
 
       // Don't send password back
       const { password: _, ...profile } = userObj;
-      res.json({ token, user: profile });
+      res.json({ token, user: { ...profile, isEmailVerified: await emailIsVerified(userObj) } });
     } catch (error) {
       // Two requests for one address at once: the unique index let one through.
       if (error instanceof MemberExistsError) return res.status(400).json({ error: "User already exists" });
@@ -1206,8 +1263,9 @@ async function startServer() {
         .catch(() => {});
     }
 
+    // The verification state is read now, from the database, and sent with the user: the page must not have to guess it, or hold an old copy of it.
     const { password: _, ...profile } = userObj;
-    return res.json({ ...(opts.extra || {}), token: started.token, user: profile });
+    return res.json({ ...(opts.extra || {}), token: started.token, user: { ...profile, isEmailVerified: await emailIsVerified(userObj) } });
   };
 
   // Auth: Login
@@ -1324,10 +1382,11 @@ async function startServer() {
           return res.status(blocked.status).json(blocked.body);
         }
         if (STAFF_ROLES.includes(u.role)) return res.status(403).json(GOOGLE_NOT_FOR_STAFF);
-        // Google has just confirmed the address; an account that never confirmed it now has.
-        if (!u.emailVerifiedAt && normalizeEmail(u.email) === g.email) {
-          u.emailVerifiedAt = new Date();
-          await prisma.user.update({ where: { id: u.id }, data: { emailVerifiedAt: u.emailVerifiedAt } }).catch(() => {});
+        // Google has just confirmed the address (the credential was verified above, `email_verified` included); an account that never confirmed it
+        // now has, in both places the page and the admin screens read. Only when the verified address is this account's own.
+        if (normalizeEmail(u.email) === g.email) {
+          const newly = await markEmailVerified(prisma, u).catch((): boolean => false);
+          if (newly) await auditAccount(prisma, googleActor(u), 'EMAIL_VERIFIED_VIA_GOOGLE', { userId: u.id, provider: GOOGLE });
         }
         return await finishSignIn(u, req, res, {
           replaceExisting: req.body?.replaceExisting === true,
@@ -1406,7 +1465,7 @@ async function startServer() {
       }
       await auditAccount(prisma, googleActor(made.userObj), 'GOOGLE_SIGNUP_COMPLETED', { userId: made.userObj.id, provider: GOOGLE });
       const { password: _pw, ...profile } = made.userObj;
-      res.json({ status: 'AUTHENTICATED', token: made.token, user: profile });
+      res.json({ status: 'AUTHENTICATED', token: made.token, user: { ...profile, isEmailVerified: await emailIsVerified(made.userObj) } });
     } catch (e: any) {
       console.error('POST /api/auth/google/complete-signup:', e?.message);
       res.status(500).json({ error: 'Failed to create your account' });
@@ -1441,10 +1500,6 @@ async function startServer() {
           if (mine) { if (mine.providerSubject !== lk.sub) throw new GoogleLinkConflict(); return; }
           await tx.authIdentity.create({ data: { userId: user.id, provider: GOOGLE, providerSubject: lk.sub, emailAtLink: lk.email } });
           newlyLinked = true;
-          if (!user.emailVerifiedAt && normalizeEmail(user.email) === lk.email) {
-            user.emailVerifiedAt = new Date();
-            await tx.user.update({ where: { id: user.id }, data: { emailVerifiedAt: user.emailVerifiedAt } });
-          }
         });
       } catch (e: any) {
         if (e instanceof GoogleLinkConflict || e?.code === 'P2002') {
@@ -1453,6 +1508,11 @@ async function startServer() {
         throw e;
       }
       if (newlyLinked) await auditAccount(prisma, googleActor(user), 'GOOGLE_ACCOUNT_LINKED', { userId: user.id, provider: GOOGLE });
+      // The person proved the account with its password and Google proved the address: now (and not before) the address is verified.
+      if (normalizeEmail(user.email) === lk.email) {
+        const newly = await markEmailVerified(prisma, user).catch((): boolean => false);
+        if (newly) await auditAccount(prisma, googleActor(user), 'EMAIL_VERIFIED_VIA_GOOGLE', { userId: user.id, provider: GOOGLE });
+      }
       return await finishSignIn(user, req, res, {
         replaceExisting: req.body?.replaceExisting === true,
         extra: { status: 'AUTHENTICATED', linked: true },
@@ -2009,14 +2069,9 @@ async function startServer() {
         return res.status(404).json({ error: "User not found" });
       }
 
-      // Fetch email verification status
-      const emailVerif = await prisma.emailVerification.findUnique({
-        where: { email: userObj.email },
-        select: { isVerified: true }
-      });
-
+      // The account's own record or the OTP table, whichever says verified (see emailIsVerified).
       const { password: _, ...profile } = userObj;
-      res.json({ ...profile, isEmailVerified: emailVerif?.isVerified || false });
+      res.json({ ...profile, isEmailVerified: await emailIsVerified(userObj) });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch user" });
     }
