@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { UsersByInstitution } from './UsersByInstitution';
 import { LibrarianMembers } from './LibrarianMembers';
+import { AccountDepartments } from './AccountDepartments';
 import { REGISTRANT_TYPES, DOMAINS } from '../../constants';
 import { AccountSummary, ResetPasswordDialog, useReauth } from './AccountSecurity';
 import { useAuth } from '../../contexts/AuthContext';
@@ -762,6 +763,9 @@ export function UserManager() {
                             ) : <p className="text-sm text-muted italic">No payment history.</p>}
                           </div>
                         </div>
+
+                        {/* The departments this account selected (and, where it differs, what it can open). Fetched for this row only. */}
+                        <AccountDepartments userId={user.id} />
 
                         {/* The people this librarian put on the library. */}
                         {user.role === 'Institution' && user.institutionId && (
