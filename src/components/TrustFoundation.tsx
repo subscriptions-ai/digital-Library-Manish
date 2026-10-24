@@ -10,18 +10,18 @@ const cards = [
 ];
 
 export function TrustFoundation() {
-  return <section aria-labelledby="trust-heading" className="container-public border-t border-rule py-10 sm:py-12">
+  return <section aria-labelledby="trust-heading" className="border-t border-rule section-spacing"><div className="container-public">
     <p className="text-xs font-semibold uppercase tracking-[0.14em] text-accent">Trust &amp; Transparency</p>
     <h2 id="trust-heading" className="mt-3 text-2xl font-bold text-ink sm:text-3xl">Built for Transparent Academic Discovery</h2>
     <p className="mt-4 max-w-3xl text-sm leading-relaxed text-ink-2">Clear content sources, secure access controls and transparent policies help researchers and institutions understand how STM Digital Library works.</p>
-    <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {cards.map(({ title, text, icon: Icon, to }) => <li key={title} className="min-w-0 rounded-xl border border-rule bg-surface p-5">
+    <ul className="mt-6 grid gap-card sm:grid-cols-2 lg:grid-cols-4">
+      {cards.map(({ title, text, icon: Icon, to }) => <li key={title} className="min-w-0 rounded-xl border border-rule bg-surface p-card">
         <Icon size={22} aria-hidden="true" className="text-accent" />
         <h3 className="mt-3 text-base font-semibold text-ink">{to ? <Link to={to} className="rounded underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">{title}</Link> : title}</h3>
         <p className="mt-2 text-sm leading-relaxed text-muted">{text}</p>
       </li>)}
     </ul>
-  </section>;
+  </div></section>;
 }
 
 export function CompanyTrustBlock() {

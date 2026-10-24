@@ -182,7 +182,7 @@ export function DomainLandingPage() {
       <SeoHead seo={departmentSeo(domain)} />
 
       {/* ══ HERO ════════════════════════════════════════════════════════════════ */}
-      <section className="bg-navy py-12 sm:py-16">
+      <section className="bg-navy section-spacing">
         <div className="container-public">
           {/* Breadcrumb */}
           <nav aria-label="Breadcrumb" className="on-dark-3 mb-8 flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-widest">
@@ -280,7 +280,7 @@ export function DomainLandingPage() {
       )}
 
       {/* ══ IMPORTANCE ══════════════════════════════════════════════════════════ */}
-      <section className="bg-ground py-16 sm:py-20">
+      <section className="bg-ground section-spacing">
         <div className="container-public">
           <div className="grid grid-cols-1 items-start gap-12 lg:grid-cols-2 lg:gap-14">
             {/* Left */}
@@ -351,7 +351,7 @@ export function DomainLandingPage() {
       </section>
 
       {/* ══ CONTENT TYPES ════════════════════════════════════════════════════════ */}
-      <section id="content-types" className="scroll-mt-8 bg-surface py-16 sm:py-20">
+      <section id="content-types" className="scroll-mt-8 bg-surface section-spacing">
         <div className="container-public">
           {/* Heading */}
           <div className="mb-12 text-center">
@@ -425,7 +425,7 @@ export function DomainLandingPage() {
       </section>
 
       {/* ══ WHY THIS DEPARTMENT ══════════════════════════════════════════════════ */}
-      <section className="bg-navy py-16 sm:py-20">
+      <section className="bg-navy section-spacing">
         <div className="container-public">
           <div className="grid grid-cols-1 items-start gap-12 lg:grid-cols-2 lg:gap-14">
             {/* Left */}
@@ -484,7 +484,7 @@ export function DomainLandingPage() {
       </section>
 
       {/* ══ ACCESS ═══════════════════════════════════════════════════════════════ */}
-      <section id="subscription" className="scroll-mt-8 bg-surface py-16 sm:py-20">
+      <section id="subscription" className="scroll-mt-8 bg-surface section-spacing">
         <div className="container-public max-w-3xl text-center">
           <h2 className="text-3xl font-bold text-ink sm:text-4xl">Access {domain.name} content</h2>
           {signedIn ? (
@@ -522,7 +522,7 @@ export function DomainLandingPage() {
       </section>
 
       {/* ══ RELATED DOMAINS ══════════════════════════════════════════════════════ */}
-      <section className="bg-ground py-16">
+      <section className="bg-ground section-spacing">
         <div className="container-public">
           <div className="mb-8 flex items-center justify-between gap-4">
             <h2 className="text-xl font-bold text-ink">Explore Related Domains</h2>

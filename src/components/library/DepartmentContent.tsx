@@ -162,7 +162,7 @@ export function DepartmentContent({ department, account, access }: { department:
   if (access.eligible !== true) return null;
 
   return (
-    <section id="latest" aria-labelledby="latest-heading" className="scroll-mt-8 bg-surface py-14 sm:py-16">
+    <section id="latest" aria-labelledby="latest-heading" className="scroll-mt-8 bg-surface section-spacing">
       <div className="container-public">
         <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
           <div>

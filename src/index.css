@@ -79,9 +79,14 @@
   --viewer-bar-h: 56px;
   --viewer-pager-h: 44px;
 
-  --w-public: 1200px;
+  /* The public site's one grid: header, every section and the footer all sit in this width. Text keeps its own, narrower line length (--w-prose, max-w-* on a
+     paragraph); a SECTION never shrinks below this just to make its text readable. */
+  --w-public: 1400px;
   --w-app: 1280px;
   --w-prose: 72ch;
+  --section-y: 40px;
+  --card-gap: 12px;
+  --card-pad: 18px;
 
   /* Charts only. Three shelves — articles, books, everything else — so three
      hues that stay apart for a colourblind reader as well as for everyone
@@ -709,8 +714,17 @@ body {
   .container-public { width: 100%; max-width: var(--w-public); margin-inline: auto; padding-inline: 16px; }
   .container-app    { width: 100%; max-width: var(--w-app);    margin-inline: auto; padding-inline: 16px; }
   .container-prose  { width: 100%; max-width: var(--w-prose);  margin-inline: auto; }
-  @media (min-width: 640px)  { .container-public, .container-app { padding-inline: 24px; } }
-  @media (min-width: 1024px) { .container-public, .container-app { padding-inline: 32px; } }
+  /* Gutters: 16px on a phone, 24px from a tablet, 28px on a small laptop, 32px on a wide screen (public); the app keeps 24 / 32 from its old breakpoints. */
+  @media (min-width: 640px)  { .container-app { padding-inline: 24px; } }
+  @media (min-width: 768px)  { .container-public { padding-inline: 24px; } }
+  @media (min-width: 1024px) { .container-app { padding-inline: 32px; } .container-public { padding-inline: 28px; } }
+  @media (min-width: 1440px) { .container-public { padding-inline: 32px; } }
+
+  /* One vertical rhythm for the public pages' major sections: 40 / 56 / 72 / 80px. Use it instead of a py-* on a <section>. */
+  .section-spacing { padding-block: var(--section-y); }
+  /* One card rhythm: the gap between cards in a grid, and the padding inside a card. */
+  .gap-card { gap: var(--card-gap); }
+  .p-card   { padding: var(--card-pad); }
 
   /* Readable long-form text: About, FAQ, legal, content sources. */
   .prose-page { max-width: var(--w-prose); color: var(--ink-2); font-size: 1rem; line-height: 1.75; }
@@ -907,3 +921,8 @@ body:has(#signup-form :is(input, select, textarea, button):focus) .fab-avoid-for
 .dark .bg-accent.text-accent-on.hover\:bg-accent-hover:not(.keep-bright):hover { background-color: var(--accent-solid-hover); }
 /* …and what sits inside such a chip (a count, an icon) must follow it to white, or it keeps the dark ink. */
 .dark .bg-accent.text-accent-on:not(.keep-bright) .text-accent-on { color: #fff; }
+
+/* The public rhythm tokens by screen width (section padding, card gap, card padding). Unlayered, after :root, so they win over the phone defaults above. */
+@media (min-width: 768px)  { :root { --section-y: 56px; --card-gap: 16px; --card-pad: 22px; } }
+@media (min-width: 1024px) { :root { --section-y: 72px; --card-gap: 20px; --card-pad: 26px; } }
+@media (min-width: 1440px) { :root { --section-y: 80px; --card-gap: 24px; --card-pad: 30px; } }

@@ -50,7 +50,7 @@ export function ForStudents() {
   return (
     <div className="min-h-screen bg-ground">
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-navy py-12 sm:py-16 lg:py-24">
+      <section className="relative overflow-hidden bg-navy section-spacing">
         <div className="container-public relative flex flex-col items-center gap-12 lg:flex-row">
           <div className="lg:w-1/2">
             <motion.p
@@ -119,7 +119,7 @@ export function ForStudents() {
       </section>
 
       {/* Features Grid */}
-      <section className="container-public py-16 sm:py-24">
+      <section className="container-public section-spacing">
         <div className="mx-auto mb-12 max-w-3xl text-center sm:mb-16">
           <h2 className="mb-4 text-3xl font-bold text-ink md:text-4xl">Built for Modern Learners</h2>
           <p className="text-base text-ink-2 sm:text-lg">We've designed every feature around how students actually study, read, and research today.</p>
@@ -146,7 +146,7 @@ export function ForStudents() {
       </section>
       
       {/* Subscription — Solo Learner pricing. Institutions have their own, on their own pages. */}
-      <section className="bg-surface-2 py-16 sm:py-20" aria-labelledby="solo-subscription">
+      <section className="bg-surface-2 section-spacing" aria-labelledby="solo-subscription">
         <div className="container-public">
           <div className="mx-auto mb-10 max-w-3xl text-center">
             <h2 id="solo-subscription" className="mb-3 text-3xl font-bold text-ink md:text-4xl">Subscription</h2>
@@ -193,7 +193,7 @@ export function ForStudents() {
       </section>
 
       {/* CTA */}
-      <section className="bg-navy py-16 text-center sm:py-20">
+      <section className="bg-navy text-center section-spacing">
         <div className="container-public">
           <h2 className="on-dark mb-4 text-3xl font-bold">Ready to accelerate your research?</h2>
           <p className="on-dark-2 mx-auto mb-8 max-w-2xl">Join students and researchers who are using our platform to discover and manage academic content.</p>

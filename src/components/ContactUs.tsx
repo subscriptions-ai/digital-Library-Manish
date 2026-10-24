@@ -294,7 +294,7 @@ export function ContactUs() {
         </div>
       </section>
 
-      <section className="py-12 sm:py-16">
+      <section className="section-spacing">
         <div className="container-public">
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 lg:gap-12">
             {/* Contact Info */}
@@ -513,7 +513,7 @@ export function ContactUs() {
       </section>
 
       {/* ── Connect with STM Digital Library ───────────────────────────────── */}
-      <section aria-labelledby="connect-heading" className="py-12 sm:py-16 border-t border-rule">
+      <section aria-labelledby="connect-heading" className="border-t border-rule section-spacing">
         <div className="container-public">
           <div className="mb-8 text-center">
             <p className="mb-2 text-xs font-bold uppercase tracking-widest text-muted">WhatsApp</p>

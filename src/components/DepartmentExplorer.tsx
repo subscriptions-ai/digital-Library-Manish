@@ -79,7 +79,7 @@ export function DepartmentExplorer({ totals, selectedId, onSelect }: {
   const top = d ? d.journals.slice().sort((a, b) => b.articleCount - a.articleCount).slice(0, 5) : [];
 
   return (
-    <section id="explorer" aria-labelledby="explorer-heading" className="scroll-mt-24 border-y py-16 sm:py-20"
+    <section id="explorer" aria-labelledby="explorer-heading" className="scroll-mt-24 border-y section-spacing"
       style={{ borderColor: 'var(--np-line)', background: 'var(--np-soft)' }}>
       <div className="container-public">
         <Eyebrow>Core departments</Eyebrow>

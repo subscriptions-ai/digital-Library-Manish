@@ -43,7 +43,7 @@ export function ForInstitutions() {
   return (
     <div className="min-h-screen bg-surface">
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-navy py-12 sm:py-16 lg:py-24">
+      <section className="relative overflow-hidden bg-navy section-spacing">
         <div className="container-public relative flex flex-col items-center gap-12 lg:flex-row">
           <div className="lg:w-1/2">
             <motion.p
@@ -115,7 +115,7 @@ export function ForInstitutions() {
       </section>
 
       {/* Main Features Grid */}
-      <section className="border-t border-rule bg-ground py-16 sm:py-24">
+      <section className="border-t border-rule bg-ground section-spacing">
         <div className="container-public">
           <div className="mx-auto mb-12 max-w-3xl text-center sm:mb-16">
             <h2 className="mb-4 text-3xl font-bold text-ink md:text-4xl">Everything an Institution Needs</h2>
@@ -144,7 +144,7 @@ export function ForInstitutions() {
       </section>
 
       {/* Stats/Highlight Section */}
-      <section className="bg-navy py-16 sm:py-24">
+      <section className="bg-navy section-spacing">
         <div className="container-public flex flex-col items-center gap-12 lg:flex-row lg:gap-16">
           <div className="lg:w-1/2">
             <h2 className="on-dark mb-6 text-3xl font-bold leading-tight md:text-4xl">Support academic discovery across your campus</h2>

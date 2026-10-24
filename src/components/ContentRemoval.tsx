@@ -185,7 +185,7 @@ export function ContentRemoval() {
       </section>
 
       {/* Form */}
-      <section className="py-12 sm:py-16">
+      <section className="section-spacing">
         <div className="container-public max-w-3xl">
           <form onSubmit={handleSubmit} className="flex flex-col gap-6">
 
