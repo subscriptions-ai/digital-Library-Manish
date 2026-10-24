@@ -3,10 +3,13 @@ import { COMPANY_DETAILS } from '../../config';
 /**
  * The email that carries a quotation (the PDF is attached; this is the body).
  *
+ * A concise quotation summary: the formal quotation is the attached PDF, so the body carries only what a reader needs at a glance (the
+ * details, a few department names and a count, the total, how to pay, whom to ask). The full department list lives in the PDF and the
+ * database; only this email shortens it (see MAX_DEPARTMENTS_SHOWN).
+ *
  * One palette, used everywhere: ink #0F172B and brand blue #1B5DFC, on white and a pale neutral, with one very light blue tint to lift the
- * total. Every section is the same shape (a small blue label, then a bordered card) so nothing competes with anything else. The layout is
- * tables with inline styles, which is what Gmail and the desktop clients honour; the only <style> is a small media query that lets
- * the card narrow on a phone, and the email still reads correctly where it is ignored.
+ * total. The layout is tables with inline styles, which is what Gmail and the desktop clients honour; the only <style> is a small media
+ * query that stacks the header and the department names on a phone, and the email still reads correctly where it is ignored.
  *
  * The logo is referenced as `src="cid:stm-logo"` exactly: the server attaches the file under that content id, and swaps the attribute for
  * a public address in the copy it stores for viewing in a browser.
@@ -31,6 +34,9 @@ export const QUOTATION_EMAIL_PALETTE = [INK, BLUE, TEXT, MUTED, RULE, SURFACE, T
 const esc = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } as Record<string, string>)[m]);
 const money = (n: number) => Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2 });
 
+/** The email names this many departments; more than that are summarised as "+ N more departments". The PDF always lists them all. */
+export const MAX_DEPARTMENTS_SHOWN = 4;
+
 export type QuotationEmailInput = {
   /** A logo file is attached as cid:stm-logo. */
   hasLogo: boolean;
@@ -49,17 +55,17 @@ export type QuotationEmailInput = {
 
 /** A section: a small blue label over a bordered card. */
 const section = (label: string, inner: string) =>
-  `<tr><td class="px" style="padding:0 40px 24px;">` +
-  `<p style="margin:0 0 10px;font-size:11px;line-height:16px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:${BLUE};">${label}</p>` +
+  `<tr><td class="px" style="padding:0 40px 18px;">` +
+  `<p style="margin:0 0 8px;font-size:11px;line-height:16px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:${BLUE};">${label}</p>` +
   `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${SURFACE};border:1px solid ${RULE};border-radius:10px;">` +
-  `<tr><td style="padding:6px 20px;">${inner}</td></tr></table></td></tr>`;
+  `<tr><td style="padding:4px 20px;">${inner}</td></tr></table></td></tr>`;
 
 /** Label on the left, value on the right, a hairline between rows. */
 const rows = (pairs: [string, string, boolean?][]) =>
   `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">` +
   pairs.map(([k, v, bold], i) =>
-    `<tr><td style="padding:11px 0;font-size:13px;line-height:18px;color:${MUTED};width:42%;vertical-align:top;${i ? `border-top:1px solid ${RULE};` : ''}">${k}</td>` +
-    `<td style="padding:11px 0;font-size:13px;line-height:18px;color:${INK};font-weight:${bold ? 700 : 600};text-align:right;vertical-align:top;${i ? `border-top:1px solid ${RULE};` : ''}">${v}</td></tr>`
+    `<tr><td style="padding:8px 0;font-size:13px;line-height:18px;color:${MUTED};width:42%;vertical-align:top;${i ? `border-top:1px solid ${RULE};` : ''}">${k}</td>` +
+    `<td style="padding:8px 0;font-size:13px;line-height:18px;color:${INK};font-weight:${bold ? 700 : 600};text-align:right;vertical-align:top;${i ? `border-top:1px solid ${RULE};` : ''}">${v}</td></tr>`
   ).join('') + `</table>`;
 
 export function buildQuotationEmailHtml(p: QuotationEmailInput): string {
@@ -70,20 +76,26 @@ export function buildQuotationEmailHtml(p: QuotationEmailInput): string {
     ? `<img src="cid:stm-logo" alt="STM Digital Library" width="64" height="64" style="display:block;width:64px;height:64px;border:0;border-radius:50%;" />`
     : `<table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="width:64px;height:64px;background:${BLUE};border-radius:50%;text-align:center;font-size:16px;font-weight:800;letter-spacing:1px;color:#FFFFFF;">STM</td></tr></table>`;
 
-  // Two columns, so fourteen departments do not become a very tall list.
-  const depts = p.departments.length ? p.departments : ['—'];
-  const deptCells = (list: string[]) => list.map(d =>
-    `<td style="padding:5px 8px 5px 0;font-size:13px;line-height:18px;color:${INK};vertical-align:top;width:50%;"><span style="color:${BLUE};font-weight:700;">&#10003;</span>&nbsp; ${esc(d)}</td>`).join('');
+  // Up to four names, two to a row (one to a row on a phone). Any more are a count: the attached PDF has the complete list.
+  const all = p.departments;
+  const shown = all.slice(0, MAX_DEPARTMENTS_SHOWN);
+  const remaining = all.length - shown.length;
+  const deptCell = (d: string) =>
+    `<td class="dcell" style="padding:4px 8px 4px 0;font-size:13px;line-height:18px;color:${INK};vertical-align:top;width:50%;"><span style="color:${BLUE};font-weight:700;">&#10003;</span>&nbsp; ${esc(d)}</td>`;
   const deptRows: string[] = [];
-  for (let i = 0; i < depts.length; i += 2) {
-    const pair = depts.slice(i, i + 2);
-    if (pair.length === 1) pair.push('');
-    deptRows.push(`<tr>${pair.map(d => d ? deptCells([d]) : `<td style="width:50%;"></td>`).join('')}</tr>`);
+  for (let i = 0; i < shown.length; i += 2) {
+    const pair = shown.slice(i, i + 2);
+    deptRows.push(`<tr>${pair.map(deptCell).join('')}${pair.length === 1 ? `<td class="dcell" style="width:50%;"></td>` : ''}</tr>`);
   }
-  const departmentBlock =
-    `<p style="margin:0 0 6px;font-size:13px;line-height:18px;color:${MUTED};">Selected department${p.departments.length === 1 ? '' : 's'}` +
-    `${p.departments.length > 1 ? ` &middot; ${p.departments.length}` : ''}</p>` +
-    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 8px;">${deptRows.join('')}</table>`;
+  const departmentBlock = shown.length
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid ${RULE};"><tr><td style="padding-top:10px;">` +
+      `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${deptRows.join('')}</table>` +
+      (remaining > 0
+        ? `<p style="margin:6px 0 2px;font-size:13px;line-height:18px;font-weight:700;color:${BLUE};">+ ${remaining} more department${remaining === 1 ? '' : 's'}</p>` +
+          `<p style="margin:0 0 6px;font-size:12px;line-height:18px;color:${MUTED};">Complete department-wise details are included in the attached quotation.</p>`
+        : `<div style="height:6px;line-height:6px;font-size:0;">&nbsp;</div>`) +
+      `</td></tr></table>`
+    : '';
 
   const details =
     rows([
@@ -91,31 +103,35 @@ export function buildQuotationEmailHtml(p: QuotationEmailInput): string {
       ['Quotation date', esc(p.issuedDate)],
       ['Valid for', `${esc(p.validityDays)} days from issue`],
       ['Subscription duration', esc(p.duration)],
+      ['Selected departments', all.length === 1 ? '1 department' : `${all.length} departments`],
     ]) +
-    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid ${RULE};"><tr><td style="padding-top:12px;">${departmentBlock}</td></tr></table>` +
+    departmentBlock +
     (p.discount > 0
       ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid ${RULE};"><tr>` +
-        `<td style="padding:11px 0;font-size:13px;line-height:18px;color:${MUTED};">Special discount / adjustment</td>` +
-        `<td style="padding:11px 0;font-size:13px;line-height:18px;color:${INK};font-weight:600;text-align:right;">&minus;&#8377;${money(p.discount)}</td></tr></table>`
+        `<td style="padding:9px 0;font-size:13px;line-height:18px;color:${MUTED};">Special discount / adjustment</td>` +
+        `<td style="padding:9px 0;font-size:13px;line-height:18px;color:${INK};font-weight:600;text-align:right;">&minus;&#8377;${money(p.discount)}</td></tr></table>`
       : '');
 
   const total =
-    `<tr><td class="px" style="padding:0 40px 28px;">` +
+    `<tr><td class="px" style="padding:0 40px 14px;">` +
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${TINT};border:1px solid ${TINT_RULE};border-radius:10px;"><tr>` +
-    `<td style="padding:16px 20px;font-size:13px;line-height:18px;font-weight:600;color:${INK};vertical-align:middle;">Total amount<br/><span style="font-weight:400;color:${MUTED};font-size:12px;">including GST</span></td>` +
-    `<td style="padding:16px 20px;text-align:right;vertical-align:middle;font-size:26px;line-height:30px;font-weight:800;color:${INK};white-space:nowrap;">&#8377;${money(p.total)}</td>` +
+    `<td style="padding:14px 20px;font-size:13px;line-height:18px;font-weight:600;color:${INK};vertical-align:middle;">Total amount<br/><span style="font-weight:400;color:${MUTED};font-size:12px;">including GST</span></td>` +
+    `<td style="padding:14px 20px;text-align:right;vertical-align:middle;font-size:26px;line-height:30px;font-weight:800;color:${INK};white-space:nowrap;">&#8377;${money(p.total)}</td>` +
     `</tr></table></td></tr>`;
 
+  const attachment =
+    `<tr><td class="px" style="padding:0 40px 18px;">` +
+    `<p style="margin:0;font-size:13px;line-height:20px;color:${TEXT};">Please refer to the attached PDF for the complete quotation, department details, pricing and applicable terms.</p>` +
+    `</td></tr>`;
+
   const about =
-    `<p style="margin:12px 0 6px;font-size:13px;line-height:20px;color:${TEXT};">STM Digital Library is a curated academic platform providing access to:</p>` +
-    `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 10px;">` +
-    ['Academic journals', 'Conference proceedings', 'Educational videos', 'E-books &amp; reference materials', 'Theses &amp; research content', 'Legally sourced open-access academic resources']
-      .map(t => `<tr><td style="padding:3px 10px 3px 0;font-size:13px;line-height:18px;color:${BLUE};vertical-align:top;">&bull;</td><td style="padding:3px 0;font-size:13px;line-height:18px;color:${INK};">${t}</td></tr>`).join('') +
-    `</table>`;
+    `<tr><td class="px" style="padding:0 40px 22px;">` +
+    `<p style="margin:0;font-size:12px;line-height:19px;color:${MUTED};"><strong style="color:${INK};font-weight:600;">STM Digital Library</strong> &mdash; A single organised academic platform for discovering, accessing and managing research and learning resources.</p>` +
+    `</td></tr>`;
 
   const bank = co.bank;
   const payment =
-    `<p style="margin:12px 0 0;font-size:13px;line-height:20px;font-weight:600;color:${INK};">Payments must be made only to:</p>` +
+    `<p style="margin:10px 0 0;font-size:13px;line-height:20px;font-weight:600;color:${INK};">Payments must be made only to:</p>` +
     rows([
       ['Account name', esc(co.legalName), true],
       ['Account number', esc(bank.accountNumber), true],
@@ -124,14 +140,16 @@ export function buildQuotationEmailHtml(p: QuotationEmailInput): string {
       ['IFSC code', esc(bank.ifscCode), true],
     ]);
 
-  const link = (href: string, text: string) => `<a href="${href}" style="color:${BLUE};text-decoration:none;font-weight:600;">${text}</a>`;
+  // The phone number is the one in the company details, shown with a space (+91 9810078958); the tel: link carries digits only.
+  const link = (href: string, text: string) => `<a href="${href}" style="color:${BLUE};text-decoration:none;font-weight:600;white-space:nowrap;">${text}</a>`;
+  const phoneText = esc(co.mobile.replace(/-/g, ' '));
+  const sep = `<span style="color:${MUTED};"> &middot; </span>`; // plain spaces, so a narrow screen wraps between the three, never inside one
   const contact =
-    `<p style="margin:12px 0 0;font-size:13px;line-height:20px;color:${TEXT};">For any assistance regarding subscription, quotation or payment:</p>` +
-    rows([
-      ['Email', link(`mailto:${esc(co.email)}`, esc(co.email))],
-      ['Phone', link('tel:+919810078958', '+91-9810078958')],
-      ['Website', link('https://journalslibrary.com/', 'journalslibrary.com')],
-    ]);
+    `<tr><td class="px" style="padding:0 40px 20px;">` +
+    `<p style="margin:0 0 4px;font-size:13px;line-height:20px;font-weight:700;color:${INK};">Need assistance?</p>` +
+    `<p style="margin:0;font-size:13px;line-height:22px;color:${TEXT};">` +
+    `${link(`mailto:${esc(co.email)}`, esc(co.email))}${sep}${link(`tel:+${co.mobile.replace(/\D/g, '')}`, phoneText)}${sep}${link('https://journalslibrary.com/', 'journalslibrary.com')}</p>` +
+    `</td></tr>`;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -144,7 +162,11 @@ export function buildQuotationEmailHtml(p: QuotationEmailInput): string {
   @media only screen and (max-width:640px) {
     .container { width:100% !important; border-radius:0 !important; }
     .px { padding-left:20px !important; padding-right:20px !important; }
-    .hdr-right { display:none !important; }
+    .hcol { display:block !important; width:100% !important; }
+    .hright { padding-top:14px !important; text-align:left !important; }
+    .hqn { float:none !important; border-left:0 !important; }
+    .hqn td { padding-left:0 !important; }
+    .dcell { display:block !important; width:100% !important; padding-right:0 !important; }
   }
 </style>
 </head>
@@ -155,17 +177,21 @@ export function buildQuotationEmailHtml(p: QuotationEmailInput): string {
 <table role="presentation" class="container" width="640" cellpadding="0" cellspacing="0" style="width:640px;max-width:640px;background:#FFFFFF;border:1px solid ${RULE};border-radius:12px;">
 
   <!-- Header: logo on the left, the name beside it, the quotation number on the right -->
-  <tr><td class="px" bgcolor="${INK}" style="background:${INK};border-radius:12px 12px 0 0;padding:28px 40px;">
+  <tr><td class="px" bgcolor="${INK}" style="background:${INK};border-radius:12px 12px 0 0;padding:24px 40px;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-      <td width="64" style="width:64px;vertical-align:middle;">${logo}</td>
-      <td style="padding-left:18px;vertical-align:middle;">
-        <p style="margin:0;font-size:22px;line-height:28px;font-weight:700;letter-spacing:-0.2px;color:#FFFFFF;">STM Digital Library</p>
-        <p style="margin:4px 0 0;font-size:11px;line-height:16px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#93B4FF;">Subscription Quotation</p>
+      <td class="hcol" style="vertical-align:middle;">
+        <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+          <td width="64" style="width:64px;vertical-align:middle;">${logo}</td>
+          <td style="padding-left:18px;vertical-align:middle;">
+            <p style="margin:0;font-size:22px;line-height:28px;font-weight:700;letter-spacing:-0.2px;color:#FFFFFF;">STM Digital Library</p>
+            <p style="margin:4px 0 0;font-size:11px;line-height:16px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#93B4FF;">Subscription Quotation</p>
+          </td>
+        </tr></table>
       </td>
-      <td class="hdr-right" align="right" style="vertical-align:middle;white-space:nowrap;">
-        <table role="presentation" cellpadding="0" cellspacing="0" align="right" style="border-left:1px solid ${MUTED};"><tr><td style="padding:2px 0 2px 20px;text-align:left;">
+      <td class="hcol hright" align="right" style="vertical-align:middle;">
+        <table role="presentation" class="hqn" cellpadding="0" cellspacing="0" align="right" style="border-left:1px solid ${MUTED};"><tr><td style="padding:2px 0 2px 20px;text-align:left;">
           <p style="margin:0;font-size:10px;line-height:14px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#93B4FF;">Quotation No.</p>
-          <p style="margin:3px 0 0;font-size:15px;line-height:20px;font-weight:700;color:#FFFFFF;">${esc(p.quotationNumber)}</p>
+          <p style="margin:3px 0 0;font-size:15px;line-height:20px;font-weight:700;color:#FFFFFF;white-space:nowrap;">${esc(p.quotationNumber)}</p>
         </td></tr></table>
       </td>
     </tr></table>
@@ -173,38 +199,34 @@ export function buildQuotationEmailHtml(p: QuotationEmailInput): string {
   <tr><td bgcolor="${BLUE}" style="height:4px;line-height:4px;font-size:0;background:${BLUE};">&nbsp;</td></tr>
 
   <!-- Introduction -->
-  <tr><td class="px" style="padding:32px 40px 24px;">
-    <p style="margin:0 0 12px;font-size:16px;line-height:24px;font-weight:700;color:${INK};">Dear ${esc(p.recipientName)},</p>
-    <p style="margin:0 0 10px;font-size:14px;line-height:22px;color:${TEXT};">Thank you for your interest in <strong style="color:${INK};">STM Digital Library</strong> and its subscription services.</p>
-    <p style="margin:0;font-size:14px;line-height:22px;color:${TEXT};">Please find attached the quotation for the selected department(s) and subscription duration.</p>
+  <tr><td class="px" style="padding:26px 40px 20px;">
+    <p style="margin:0 0 10px;font-size:16px;line-height:24px;font-weight:700;color:${INK};">Dear ${esc(p.recipientName)},</p>
+    <p style="margin:0 0 8px;font-size:14px;line-height:22px;color:${TEXT};">Thank you for your interest in <strong style="color:${INK};">STM Digital Library</strong>.</p>
+    <p style="margin:0;font-size:14px;line-height:22px;color:${TEXT};">Please find attached our subscription quotation for the selected department(s) and subscription period.</p>
   </td></tr>
 
   ${section('Quotation details', details)}
   ${total}
-  ${section('About STM Digital Library', about)}
+  ${attachment}
+  ${about}
   ${section('Payment information', payment)}
-  ${section('Contact information', contact)}
+  ${contact}
 
   <!-- Signature -->
-  <tr><td class="px" style="padding:4px 40px 28px;">
+  <tr><td class="px" style="padding:4px 40px 24px;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid ${RULE};"><tr>
-      <td style="padding-top:20px;vertical-align:top;">
+      <td style="padding-top:18px;vertical-align:top;">
         <p style="margin:0 0 4px;font-size:14px;line-height:20px;color:${TEXT};">Warm regards,</p>
         <p style="margin:0 0 2px;font-size:15px;line-height:20px;font-weight:700;color:${INK};">STM Digital Library Team</p>
         <p style="margin:0;font-size:12px;line-height:18px;color:${MUTED};">${esc(co.legalName)}</p>
         <p style="margin:2px 0 0;font-size:12px;line-height:18px;color:${MUTED};">A-118, 1st Floor, Sector-63, Noida - 201301, U.P., India</p>
       </td>
-      <td align="right" style="padding-top:20px;vertical-align:bottom;">
-        <p style="margin:0 0 3px;font-size:10px;line-height:14px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:${MUTED};">For Publisher</p>
-        <p style="margin:0 0 3px;font-size:13px;line-height:18px;font-weight:700;color:${INK};">STM Digital Library</p>
-        <p style="margin:0;font-size:10px;line-height:14px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:${MUTED};">Authorized Signatory</p>
-      </td>
     </tr></table>
   </td></tr>
 
   <!-- Footer: quiet -->
-  <tr><td class="px" style="background:${SURFACE};border-top:1px solid ${RULE};border-radius:0 0 12px 12px;padding:20px 40px;text-align:center;">
-    <p style="margin:0 0 6px;font-size:12px;line-height:18px;font-weight:600;color:${INK};">21 Years of Trusted Excellence in Education &amp; Academic Publishing</p>
+  <tr><td class="px" style="background:${SURFACE};border-top:1px solid ${RULE};border-radius:0 0 12px 12px;padding:16px 40px;text-align:center;">
+    <p style="margin:0 0 4px;font-size:11px;line-height:16px;font-weight:600;color:${MUTED};">21 Years of Trusted Excellence in Education &amp; Academic Publishing</p>
     <p style="margin:0 0 2px;font-size:11px;line-height:16px;color:${MUTED};">&copy; ${year} ${esc(co.legalName)} All rights reserved.</p>
     <p style="margin:0;font-size:11px;line-height:16px;color:${MUTED};">GSTIN: ${esc(co.gstin)} &nbsp;|&nbsp; PAN: ${esc(co.pan)} &nbsp;|&nbsp; CIN: ${esc(co.cin)}</p>
   </td></tr>

@@ -14,9 +14,14 @@ import { REGISTRANT_TYPES, DOMAINS } from '../../constants';
 import { AccountSummary, ResetPasswordDialog, useReauth } from './AccountSecurity';
 import { useAuth } from '../../contexts/AuthContext';
 import { DEFAULT_SESSION_LIMIT, MAX_SESSION_LIMIT, MIN_SESSION_LIMIT } from '../../lib/sessionLimits';
+import { ASSIGNABLE_MEMBER_ROLES, suggestedAccountType, designationAfterAccountTypeChange, designationFromState, designationStateFor, type DesignationState } from '../../lib/memberRoles';
+import { DesignationPicker } from '../DesignationPicker';
 
 // The roles that exist on the server (STAFF_ROLES + reader roles). The server decides who may assign which.
 const ROLES = ['SuperAdmin', 'SubscriptionManager', 'ContentManager', 'SalesManager', 'SalesExecutive', 'Publisher', 'Institution', 'Student', 'Subscriber'];
+
+// Staff accounts have no account type or professional designation to suggest from; mirrors STAFF_ROLES on the server.
+const STAFF = ['SuperAdmin', 'Admin', 'ContentManager', 'SubscriptionManager', 'SalesExecutive', 'SalesManager', 'Publisher'];
 
 const ROLE_COLORS: Record<string, string> = {
   SuperAdmin: 'bg-alarm-soft text-alarm',
@@ -83,7 +88,11 @@ export function UserManager() {
 
   // Edit modal
   const [editUser, setEditUser] = useState<any | null>(null);
-  const [editForm, setEditForm] = useState({ displayName: '', email: '', role: '', organization: '', contact: '', designation: '', branch: '', department: '', sessionLimit: '' });
+  const [editForm, setEditForm] = useState({ displayName: '', email: '', role: '', memberRole: '', organization: '', contact: '', branch: '', department: '', sessionLimit: '' });
+  // The professional designation: a title and whether it is being written in as "Other". Suggested from the account type, never forced by it.
+  const [editDesig, setEditDesig] = useState<DesignationState>({ value: '', other: false });
+  const [editDesigNotice, setEditDesigNotice] = useState('');
+  const [editDesigError, setEditDesigError] = useState('');
   const [editSaving, setEditSaving] = useState(false);
 
   // Delete confirm
@@ -148,12 +157,29 @@ export function UserManager() {
       role: user.role || '',
       organization: user.organization || '',
       contact: user.contact || '',
-      designation: user.designation || '',
+      memberRole: isInstitutionMember(user) && (ASSIGNABLE_MEMBER_ROLES as readonly string[]).includes(user.memberRole) ? user.memberRole : '',
       branch: user.institutionProfile?.branch || '',
       department: user.institutionProfile?.department || '',
       // Empty is "use the system default"; the server stores that as null.
       sessionLimit: user.maxConcurrentSessions ? String(user.maxConcurrentSessions) : ''
     });
+    // What is on record is shown as it is: a listed title as a selection, a title from another list kept as selected, anything else under "Other".
+    // Nothing is emptied because the account type does not suggest it.
+    setEditDesig(designationStateFor(accountTypeOf(user, isInstitutionMember(user) ? user.memberRole : ''), user.designation));
+    setEditDesigNotice(''); setEditDesigError('');
+  };
+
+  /** A person an institution added (as opposed to staff, an institution's own account, or an individual): the ones that have an account type. */
+  const isInstitutionMember = (u: any) => !!u?.institutionId && u.role !== 'Institution' && !STAFF.includes(u.role);
+  /** The list to suggest titles from: the account type; an institution's own account suggests library roles; a corporate sign-up suggests industry titles. */
+  const accountTypeOf = (u: any, memberRole?: string) => memberRole || (u?.role === 'Institution' ? 'Institution Admin' : u?.registrantType === 'Corporate' ? 'Corporate' : '');
+  const changeEditAccountType = (type: string) => {
+    setEditForm(f => ({ ...f, memberRole: type }));
+    setEditDesigError('');
+    if (!type) return;
+    const next = designationAfterAccountTypeChange(type, editDesig);
+    setEditDesig(next.state);
+    setEditDesigNotice(next.reset ? 'Please select the professional designation for this account type.' : '');
   };
 
   /** The limit as the form holds it: null for the default, a whole number 1-10, or an error to show instead of saving. */
@@ -169,6 +195,10 @@ export function UserManager() {
     if (!editUser) return;
     const limit = parsedLimit();
     if ('error' in limit) { toast.error(limit.error); return; }
+    // A title on record cannot be blanked from here; a person with none may stay without one. Written-in titles are checked for length and markup only.
+    const desig = designationFromState(editDesig, { required: !!String(editUser.designation || '').trim() });
+    if ('error' in desig) { setEditDesigError(desig.error); toast.error(desig.error); document.getElementById('admin-edit-designation')?.focus(); return; }
+    setEditDesigError('');
     setEditSaving(true);
     try {
       const { sessionLimit: _unused, ...fields } = editForm;
@@ -176,7 +206,7 @@ export function UserManager() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...authHeader() },
         // The limit travels with the other fields, and only from a Super Admin: the server refuses anyone else's.
-        body: JSON.stringify({ ...fields, ...(isSuperAdmin ? { maxConcurrentSessions: limit.value } : {}), ...(actorPassword ? { actorPassword } : {}) }),
+        body: JSON.stringify({ ...fields, memberRole: fields.memberRole || undefined, designation: desig.value ?? undefined, ...(isSuperAdmin ? { maxConcurrentSessions: limit.value } : {}), ...(actorPassword ? { actorPassword } : {}) }),
       }));
       if (!out) return;
       if (!out.res.ok) throw new Error(out.body?.error || 'Update failed');
@@ -444,7 +474,8 @@ export function UserManager() {
             <thead className="bg-surface-2 sticky top-0 z-10">
               <tr>
                 <th className="px-6 py-4 border-b border-rule text-xs font-bold text-ink-2 uppercase tracking-widest">User</th>
-                <th className="px-6 py-4 border-b border-rule text-xs font-bold text-ink-2 uppercase tracking-widest">Role</th>
+                <th className="px-6 py-4 border-b border-rule text-xs font-bold text-ink-2 uppercase tracking-widest">Account Type</th>
+                <th className="px-6 py-4 border-b border-rule text-xs font-bold text-ink-2 uppercase tracking-widest">Professional Designation</th>
                 {/* The signup form has been collecting these for weeks and no
                     screen has ever shown them. */}
                 <th className="px-6 py-4 border-b border-rule text-xs font-bold text-ink-2 uppercase tracking-widest">Registered as</th>
@@ -455,12 +486,12 @@ export function UserManager() {
             </thead>
             <tbody className="divide-y divide-rule-subtle">
               {loading ? (
-                <tr><td colSpan={6} className="px-6 py-16 text-center text-muted">
+                <tr><td colSpan={7} className="px-6 py-16 text-center text-muted">
                   <Loader2 className="animate-spin mx-auto mb-2 text-accent" size={24} />
                   Loading users…
                 </td></tr>
               ) : users.length === 0 ? (
-                <tr><td colSpan={6} className="px-6 py-16 text-center text-muted">No users found.</td></tr>
+                <tr><td colSpan={7} className="px-6 py-16 text-center text-muted">No users found.</td></tr>
               ) : users.map(user => (
                 <React.Fragment key={user.id}>
                   <tr aria-selected={expandedRow === user.id} className={`transition-colors ${expandedRow === user.id ? 'bg-accent-soft' : 'hover:bg-surface-hover'}`}>
@@ -495,11 +526,8 @@ export function UserManager() {
                             )}
                           </div>
                           {user.organization && <div className="text-xs text-muted mt-0.5">{user.organization}</div>}
-                          {(user.designation || user.contact) && (
-                            <div className="text-xs text-muted mt-0.5 flex gap-2">
-                              {user.designation && <span className="font-semibold text-ink-2">{user.designation}</span>}
-                              {user.contact && <span>• {user.contact}</span>}
-                            </div>
+                          {user.contact && (
+                            <div className="text-xs text-muted mt-0.5">{user.contact}</div>
                           )}
                         </div>
                       </div>
@@ -508,7 +536,7 @@ export function UserManager() {
                       {/* An institution's people are shown by what they are to the library (Faculty, Student…),
                           not by the technical access class they all share. Staff and individuals keep theirs. */}
                       {user.institutionId && user.role !== 'Institution' ? (
-                        <span title={user.accessRoleSource === 'designation' ? 'Settled from the designation; not yet saved on the account' : user.accessRole ? undefined : 'No role has been chosen, and the designation does not settle one'}
+                        <span title={user.accessRole ? undefined : `No account type has been chosen. Edit the user to choose one.${suggestedAccountType(user.designation) ? ` Their designation usually goes with ${suggestedAccountType(user.designation)}, but it is never used to decide.` : ''}`}
                           className={`text-xs font-bold px-2.5 py-1 rounded-full ${user.accessRole ? 'bg-surface-2 text-ink-2' : 'bg-caution-soft text-caution'}`}>
                           {user.accessRole || 'Needs review'}
                         </span>
@@ -523,9 +551,12 @@ export function UserManager() {
                       )}
                     </td>
                     <td className="px-6 py-4">
+                      {/* The person's real-world title. It sits beside the account type and never stands in for it. */}
+                      <span className="text-sm text-ink-2">{user.designation || <span className="text-muted">—</span>}</span>
+                    </td>
+                    <td className="px-6 py-4">
                       <div className="text-xs">
                         <p className="font-semibold text-ink-2">{user.registrantType || <span className="text-muted">—</span>}</p>
-                        {user.designation && <p className="text-muted">{user.designation}</p>}
                         {(user.state || user.country) && (
                           <p className="mt-0.5 text-muted">{[user.state, user.country].filter(Boolean).join(', ')}</p>
                         )}
@@ -679,7 +710,7 @@ export function UserManager() {
                   {/* Expanded details */}
                   {expandedRow === user.id && (
                     <tr className="bg-surface-2/60">
-                      <td colSpan={6} className="px-6 py-5 border-b border-rule-subtle">
+                      <td colSpan={7} className="px-6 py-5 border-b border-rule-subtle">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div>
                             <h4 className="text-xs font-bold text-ink-2 uppercase tracking-widest mb-3 flex items-center gap-2">
@@ -884,26 +915,37 @@ export function UserManager() {
                     {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
                   </select>
                 </div>
+                {/* Only for a person an institution added: how they use the library. The Role above is what the application authorises with; this is not. */}
+                {isInstitutionMember(editUser) && (
+                  <div>
+                    <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-1.5">Account Type</label>
+                    <select value={editForm.memberRole} onChange={e => changeEditAccountType(e.target.value)}
+                      className="w-full bg-surface-2 border border-rule px-4 py-2.5 rounded-xl text-sm focus:border-accent outline-none">
+                      <option value="">Select account type…</option>
+                      {ASSIGNABLE_MEMBER_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                    <p className="mt-1 text-[11px] text-muted">Faculty, Researcher or Student. It does not change what the account can access.</p>
+                  </div>
+                )}
                 <div>
                   <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-1.5">Organization / Institution Name</label>
                   <input value={editForm.organization} onChange={e => setEditForm(f => ({ ...f, organization: e.target.value }))}
                     placeholder="Optional"
                     className="w-full bg-surface-2 border border-rule px-4 py-2.5 rounded-xl text-sm focus:border-accent focus:ring-2 focus:ring-accent-soft outline-none" />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-1.5">Mobile Number</label>
-                    <input value={editForm.contact} onChange={e => setEditForm(f => ({ ...f, contact: e.target.value }))}
-                      placeholder="Optional"
-                      className="w-full bg-surface-2 border border-rule px-4 py-2.5 rounded-xl text-sm focus:border-accent focus:ring-2 focus:ring-accent-soft outline-none" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-1.5">Designation</label>
-                    <input value={editForm.designation} onChange={e => setEditForm(f => ({ ...f, designation: e.target.value }))}
-                      placeholder="Optional"
-                      className="w-full bg-surface-2 border border-rule px-4 py-2.5 rounded-xl text-sm focus:border-accent focus:ring-2 focus:ring-accent-soft outline-none" />
-                  </div>
+                <div>
+                  <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-1.5">Mobile Number</label>
+                  <input value={editForm.contact} onChange={e => setEditForm(f => ({ ...f, contact: e.target.value }))}
+                    placeholder="Optional"
+                    className="w-full bg-surface-2 border border-rule px-4 py-2.5 rounded-xl text-sm focus:border-accent focus:ring-2 focus:ring-accent-soft outline-none" />
                 </div>
+                {/* Suggested from the account type, never forced by it, and it grants nothing. A title on record is kept as it is. */}
+                <DesignationPicker
+                  id="admin-edit-designation"
+                  accountType={accountTypeOf(editUser, isInstitutionMember(editUser) ? editForm.memberRole : '')}
+                  state={editDesig} onChange={d => { setEditDesig(d); setEditDesigError(''); setEditDesigNotice(''); }}
+                  notice={editDesigNotice} error={editDesigError}
+                />
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-1.5">Branch</label>

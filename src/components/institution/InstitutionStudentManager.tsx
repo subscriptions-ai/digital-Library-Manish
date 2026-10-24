@@ -6,7 +6,10 @@ import {
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { ASSIGNABLE_MEMBER_ROLES, DESIGNATION_SUGGESTIONS, MAX_DESIGNATION_LENGTH, PRO_ONLY_ACCESS_ROLES } from '../../lib/memberRoles';
+import {
+  ASSIGNABLE_MEMBER_ROLES, PRO_ONLY_ACCESS_ROLES, suggestedAccountType, designationAfterAccountTypeChange, designationFromState, designationStateFor, type DesignationState,
+} from '../../lib/memberRoles';
+import { DesignationPicker } from '../DesignationPicker';
 import { usePricing } from './pricing/PricingContext';
 import { LicensedAccessPanel } from '../LicensedAccessPanel';
 import { Button, ConfirmDialog, Dialog, EmptyState, Field, SkeletonRows, Spinner, StatusBadge, friendlyError } from '../ui';
@@ -16,6 +19,8 @@ function authHeader() {
 }
 
 const STUDENT_NEEDS_PRO = 'Students are not allowed to be added on this plan. Upgrade to Pro to add students.';
+const PICK_DESIGNATION = 'Please select the professional designation for this account type.';
+const NO_DESIGNATION: DesignationState = { value: '', other: false };
 
 /**
  * The role, as chips rather than a dropdown.
@@ -95,7 +100,11 @@ export function InstitutionStudentManager() {
 
   // Add modal
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newStudent, setNewStudent] = useState({ name: '', email: '', password: '', mobile: '', memberRole: '', designation: '', branch: '', department: '' });
+  const [newStudent, setNewStudent] = useState({ name: '', email: '', password: '', mobile: '', memberRole: '', branch: '', department: '' });
+  // The professional designation is its own state: a title and whether it is being written in as "Other". It is suggested from the account type, never forced by it.
+  const [newDesig, setNewDesig] = useState<DesignationState>(NO_DESIGNATION);
+  const [newDesigNotice, setNewDesigNotice] = useState('');
+  const [newDesigError, setNewDesigError] = useState('');
   const [addLoading, setAddLoading] = useState(false);
 
   // Bulk import
@@ -106,7 +115,10 @@ export function InstitutionStudentManager() {
 
   // Edit modal
   const [editStudent, setEditStudent] = useState<any | null>(null);
-  const [editForm, setEditForm] = useState({ displayName: '', email: '', contact: '', memberRole: '', designation: '', branch: '', department: '', password: '' });
+  const [editForm, setEditForm] = useState({ displayName: '', email: '', contact: '', memberRole: '', branch: '', department: '', password: '' });
+  const [editDesig, setEditDesig] = useState<DesignationState>(NO_DESIGNATION);
+  const [editDesigNotice, setEditDesigNotice] = useState('');
+  const [editDesigError, setEditDesigError] = useState('');
   const [editSaving, setEditSaving] = useState(false);
 
   // Delete confirm
@@ -192,15 +204,41 @@ export function InstitutionStudentManager() {
   }, []);
 
   /* ── ADD STUDENT ── */
+  /** The account type changed: a title picked from the old list stays only if the new list has it too; otherwise the field is emptied and says so. */
+  const changeAddRole = (role: string) => {
+    setNewStudent(f => ({ ...f, memberRole: role }));
+    setNewDesigError('');
+    if (!role) return;
+    const next = designationAfterAccountTypeChange(role, newDesig);
+    setNewDesig(next.state);
+    setNewDesigNotice(next.reset ? PICK_DESIGNATION : '');
+  };
+  const changeEditRole = (role: string) => {
+    setEditForm(f => ({ ...f, memberRole: role }));
+    setEditDesigError('');
+    if (!role) return;
+    const next = designationAfterAccountTypeChange(role, editDesig);
+    setEditDesig(next.state);
+    setEditDesigNotice(next.reset ? PICK_DESIGNATION : '');
+  };
+
   const handleAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newStudent.memberRole) { toast.error('Choose a role'); return; }
+    if (!newStudent.memberRole) { toast.error('Choose an account type'); return; }
+    const desig = designationFromState(newDesig, { required: true });
+    if ('error' in desig) {
+      setNewDesigError(desig.error);
+      toast.error(desig.error);
+      document.getElementById('add-designation')?.focus();
+      return;
+    }
+    setNewDesigError('');
     setAddLoading(true);
     try {
       const res = await fetch('/api/institution/students', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeader() },
-        body: JSON.stringify(newStudent),
+        body: JSON.stringify({ ...newStudent, designation: desig.value }),
       });
       let data: any = {};
       try { data = await res.json(); } catch {}
@@ -211,7 +249,8 @@ export function InstitutionStudentManager() {
       }
       toast.success('User added');
       setShowAddModal(false);
-      setNewStudent({ name: '', email: '', password: '', mobile: '', memberRole: '', designation: '', branch: '', department: '' });
+      setNewStudent({ name: '', email: '', password: '', mobile: '', memberRole: '', branch: '', department: '' });
+      setNewDesig(NO_DESIGNATION); setNewDesigNotice(''); setNewDesigError('');
       fetchStudents();
       pricing?.reload();
     } catch (err: any) {
@@ -229,22 +268,31 @@ export function InstitutionStudentManager() {
       email: student.email || '',
       contact: student.contact || '',
       memberRole: (ASSIGNABLE_MEMBER_ROLES as readonly string[]).includes(student.accessRole) ? student.accessRole : '',
-      designation: student.designation || '',
       branch: student.institutionProfile?.branch || '',
       department: student.institutionProfile?.department || '',
       password: '' // empty so they only reset it if they type something
     });
+    // What is on record is shown as it is: a listed title as a selection, a title from another list as selected and kept, anything else under "Other".
+    // Nothing is emptied just because the account type does not suggest it.
+    const type = (ASSIGNABLE_MEMBER_ROLES as readonly string[]).includes(student.accessRole) ? student.accessRole : (student.role === 'Institution' ? 'Institution Admin' : '');
+    setEditDesig(designationStateFor(type, student.designation));
+    setEditDesigNotice(''); setEditDesigError('');
   };
 
   const handleSaveEdit = async () => {
     if (!editStudent) return;
+    // A title that is on record cannot be blanked from here; a person with none may stay without one.
+    const hadTitle = !!String(editStudent.designation || '').trim();
+    const desig = designationFromState(editDesig, { required: hadTitle });
+    if ('error' in desig) { setEditDesigError(desig.error); toast.error(desig.error); document.getElementById('edit-designation')?.focus(); return; }
+    setEditDesigError('');
     setEditSaving(true);
     try {
       const res = await fetch(`/api/institution/students/${editStudent.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...authHeader() },
         // The role is sent only once there is one to send: an unclassified member stays unclassified until somebody chooses.
-        body: JSON.stringify({ ...editForm, memberRole: editForm.memberRole || undefined }),
+        body: JSON.stringify({ ...editForm, memberRole: editForm.memberRole || undefined, designation: desig.value ?? undefined }),
       });
       let data: any = {};
       try { data = await res.json(); } catch {}
@@ -325,9 +373,6 @@ export function InstitutionStudentManager() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <datalist id="designation-suggestions">
-        {DESIGNATION_SUGGESTIONS.map(d => <option key={d} value={d} />)}
-      </datalist>
       {/* User Addition Restriction: whether new users may be added. It is not
           the licensed-seat count below, and it never touches existing users. */}
       {addRestricted && (
@@ -417,8 +462,8 @@ export function InstitutionStudentManager() {
             <thead>
               <tr>
                 <th scope="col">User</th>
-                <th scope="col">Role</th>
-                <th scope="col">Designation</th>
+                <th scope="col">Account Type</th>
+                <th scope="col">Professional Designation</th>
                 <th scope="col">Status</th>
                 <th scope="col" className="text-right">Actions</th>
               </tr>
@@ -453,8 +498,8 @@ export function InstitutionStudentManager() {
                     </td>
                     <td>
                       {student.accessRole
-                        ? <span className="badge badge-accent" title={student.accessRoleSource === 'designation' ? 'Settled from the designation. Edit the user to confirm it.' : undefined}>{student.accessRole}</span>
-                        : <span className="badge badge-caution" title="No role has been chosen. Edit the user to choose one.">Needs review</span>}
+                        ? <span className="badge badge-accent">{student.accessRole}</span>
+                        : <span className="badge badge-caution" title={`No account type has been chosen. Edit the user to choose one.${suggestedAccountType(student.designation) ? ` Their designation usually goes with ${suggestedAccountType(student.designation)}, but it is never used to decide.` : ''}`}>Needs review</span>}
                     </td>
                     <td>
                       <span className="text-sm text-ink-2">{student.designation || '—'}</span>
@@ -577,15 +622,17 @@ export function InstitutionStudentManager() {
           </Field>
 
           <div role="group" aria-labelledby="add-role-label" className="field">
-            <p id="add-role-label" className="field-label">Role<span className="req" aria-hidden="true">*</span></p>
-            <RolePicker value={newStudent.memberRole} onFree={onFree}
-              onChange={role => setNewStudent({ ...newStudent, memberRole: role })} />
+            <p id="add-role-label" className="field-label">Account Type<span className="req" aria-hidden="true">*</span></p>
+            <RolePicker value={newStudent.memberRole} onFree={onFree} onChange={changeAddRole} />
+            <p className="field-help">How this person uses the library. It decides what the account can do; their professional designation below does not.</p>
           </div>
-          <Field label="Designation" help="Their job title, for example Associate Professor. Optional; it does not change what they can access.">
-            <input type="text" className="input" list="designation-suggestions" maxLength={MAX_DESIGNATION_LENGTH}
-              value={newStudent.designation} onChange={e => setNewStudent({ ...newStudent, designation: e.target.value })}
-              placeholder="e.g. Associate Professor" />
-          </Field>
+          <DesignationPicker
+            id="add-designation" required
+            accountType={newStudent.memberRole}
+            disabled={!newStudent.memberRole} disabledReason="Choose an account type first."
+            state={newDesig} onChange={d => { setNewDesig(d); setNewDesigError(''); setNewDesigNotice(''); }}
+            notice={newDesigNotice} error={newDesigError}
+          />
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Branch">
@@ -627,8 +674,8 @@ export function InstitutionStudentManager() {
         footer={<Button variant="outline" onClick={closeImport}>Close</Button>}
       >
         <div className="space-y-4">
-          <p className="text-sm text-ink-2">The file must include the headers: <strong className="text-ink">name, email, password, role</strong>. Optional headers: <strong className="text-ink">designation, mobile, branch, department</strong>.</p>
-          <p className="text-xs text-muted">Role must be one of: {ASSIGNABLE_MEMBER_ROLES.join(', ')}. If a row has no role, its designation is used only where it settles one (Professor, Associate Professor, Assistant Professor, Lecturer, Research Scholar/Associate/Fellow, Student); any other row is refused, so you can add the role and import it again.{onFree ? ' Student rows are refused on this plan — upgrade to Pro to add students.' : ''}</p>
+          <p className="text-sm text-ink-2">The file must include the headers: <strong className="text-ink">name, email, password, role</strong> (the account type). Optional headers: <strong className="text-ink">designation</strong> (the professional designation), <strong className="text-ink">mobile, branch, department</strong>.</p>
+          <p className="text-xs text-muted">The role column (account type) must be one of: {ASSIGNABLE_MEMBER_ROLES.join(', ')}. If a row has no role, its designation is used only where it settles one (Professor, Associate Professor, Assistant Professor, Lecturer, Research Scholar/Associate/Fellow, Student); any other row is refused, so you can add the role and import it again.{onFree ? ' Student rows are refused on this plan — upgrade to Pro to add students.' : ''}</p>
 
           <a href="data:text/csv;charset=utf-8,name,email,password,role,designation,mobile,branch,department%0AJohn%20Doe,john@example.com,pass123,Faculty,Associate%20Professor,9876543210,CSE,Engineering"
              download="sample_users.csv"
@@ -727,22 +774,23 @@ export function InstitutionStudentManager() {
               <input type="tel" className="input" value={editForm.contact} onChange={e => setEditForm(f => ({ ...f, contact: e.target.value }))}
                 placeholder="+91 9876543210" />
             </Field>
-            <Field label="Role">
-              <select className="input" value={editForm.memberRole} onChange={e => setEditForm(f => ({ ...f, memberRole: e.target.value }))}
+            <Field label="Account Type">
+              <select className="input" value={editForm.memberRole} onChange={e => changeEditRole(e.target.value)}
                 title={onFree ? STUDENT_NEEDS_PRO : undefined}>
-                <option value="">{editStudent?.role === 'Institution' ? 'Institution Admin' : 'Select role…'}</option>
+                <option value="">{editStudent?.role === 'Institution' ? 'Institution Admin' : 'Select account type…'}</option>
                 {ASSIGNABLE_MEMBER_ROLES.map(r => {
                   const locked = onFree && PRO_ONLY_ACCESS_ROLES.includes(r) && editStudent?.accessRole !== r;
                   return <option key={r} value={r} disabled={locked}>{locked ? `${r} — Pro only` : r}</option>;
                 })}
               </select>
             </Field>
-            <Field label="Designation" help="Their job title. It does not change what they can access.">
-              <input type="text" className="input" list="designation-suggestions" maxLength={MAX_DESIGNATION_LENGTH}
-                value={editForm.designation} onChange={e => setEditForm(f => ({ ...f, designation: e.target.value }))}
-                placeholder="e.g. Associate Professor" />
-            </Field>
           </div>
+          <DesignationPicker
+            id="edit-designation"
+            accountType={editForm.memberRole || (editStudent?.role === 'Institution' ? 'Institution Admin' : '')}
+            state={editDesig} onChange={d => { setEditDesig(d); setEditDesigError(''); setEditDesigNotice(''); }}
+            notice={editDesigNotice} error={editDesigError}
+          />
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Branch">

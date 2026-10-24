@@ -8,6 +8,8 @@ import { Button, friendlyError } from "./ui";
 import { EmailVerificationInput } from "./EmailVerificationInput";
 import { DOMAINS, REGISTRANT_TYPES, DESIGNATION_GROUPS, DESIGNATIONS_BY_TYPE, POPULAR_DESIGNATIONS, COUNTRIES, COUNTRY_DIAL_CODES } from "../constants";
 import { INDIAN_STATES } from "../lib/gstUtils";
+import { MAX_DESIGNATION_LENGTH, validateDesignation } from "../lib/memberRoles";
+import { designationAfterContextChange, searchRoles } from "../lib/signupRoles";
 import { libraryUrl } from "../lib/libraryRoute";
 import { getDashboardRoute } from "../lib/dashboardRoute";
 import { GoogleSignInButton } from "./auth/GoogleSignInButton";
@@ -96,17 +98,9 @@ function RolePicker({ type, value, isOther, error, notice, disabled, onPick, onO
   const [expanded, setExpanded] = useState(false);
 
   const groups = DESIGNATION_GROUPS[type] || [];
-  // Flat, once per type: the search runs over this on every keystroke.
-  const flat = useMemo(
-    () => groups.flatMap(g => g.roles.map(role => ({ role, haystack: `${role} ${g.label}`.toLowerCase() }))),
-    [type] // eslint-disable-line react-hooks/exhaustive-deps
-  );
   const q = query.trim().toLowerCase();
-  const results = useMemo(() => {
-    if (!q) return [];
-    const words = q.split(/\s+/);
-    return flat.filter(r => words.every(w => r.haystack.includes(w))).map(r => r.role);
-  }, [flat, q]);
+  // Only the roles of the chosen context are ever searched.
+  const results = useMemo(() => searchRoles(type, q), [type, q]);
 
   const popular = (POPULAR_DESIGNATIONS[type] || []).filter(r => (DESIGNATIONS_BY_TYPE[type] || []).includes(r));
   const searching = q.length > 0;
@@ -136,7 +130,7 @@ function RolePicker({ type, value, isOther, error, notice, disabled, onPick, onO
               onChange={e => setQuery(e.target.value)}
               onBlur={onBlur}
               onKeyDown={e => { if (e.key === 'Enter') e.preventDefault(); }}
-              placeholder="Search your role..."
+              placeholder="Search or select your designation / role"
               disabled={disabled}
               aria-invalid={error ? true : undefined}
               aria-describedby={describedBy('signup-role', error)}
@@ -509,7 +503,9 @@ function SignupForm({ mode, google, onBack, onExpired, onExists }: {
   if (!formData.name.trim()) errors.name = 'Please enter your full name.';
   if (org.required && !formData.organization.trim()) errors.organization = org.missing;
   if (roleIsOther) {
-    if (!customRole.trim()) errors.customRole = 'Please enter your designation.';
+    // The same check the server makes: text, 100 characters at most, no markup or script; and the word "Other" is not a title.
+    const custom = validateDesignation(customRole, { required: true });
+    if ('error' in custom) errors.customRole = custom.error === 'Professional designation is required.' ? 'Please enter your designation.' : custom.error;
   } else if (!formData.designation) {
     errors.role = 'Please select your designation / role.';
   }
@@ -528,7 +524,7 @@ function SignupForm({ mode, google, onBack, onExpired, onExists }: {
     if (id === formData.registrantType) return;
     // Only the role is at stake: it may not exist under the new type. Everything else the member
     // has typed stays where it is.
-    const keeps = !formData.designation || (DESIGNATIONS_BY_TYPE[id] || []).includes(formData.designation);
+    const keeps = designationAfterContextChange(formData.designation, id) === formData.designation;
     setFormData(f => ({ ...f, registrantType: id, designation: keeps ? f.designation : '' }));
     // The reset role is explained rather than flagged as an error the member did not make.
     if (!keeps) setTouched(t => ({ ...t, role: false }));
@@ -768,14 +764,14 @@ function SignupForm({ mode, google, onBack, onExpired, onExists }: {
                 />
 
                 {roleIsOther && (
-                  <FieldShell id="signup-custom-role" label="Your Designation" required error={show('customRole')}>
+                  <FieldShell id="signup-custom-role" label="Please specify your designation / role" required error={show('customRole')}>
                     <input
                       id="signup-custom-role"
-                      type="text" autoComplete="organization-title" maxLength={80} aria-required="true"
+                      type="text" autoComplete="organization-title" maxLength={MAX_DESIGNATION_LENGTH} aria-required="true"
                       value={customRole}
                       onChange={(e) => setCustomRole(e.target.value)}
                       onBlur={touch('customRole')}
-                      placeholder="Enter your designation"
+                      placeholder="Enter your professional designation"
                       disabled={off}
                       aria-invalid={show('customRole') ? true : undefined}
                       aria-describedby={describedBy('signup-custom-role', show('customRole'))}

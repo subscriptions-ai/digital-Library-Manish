@@ -30,9 +30,9 @@ check('Professor is not a role', () => assert.equal(assignableRole('Professor'),
 check('Librarian and Institution Admin cannot be assigned from the add screen', () => {
   assert.equal(assignableRole('Librarian'), null); assert.equal(assignableRole('Institution Admin'), null);
 });
-check('a Professor member is displayed as Faculty, never Student', () =>
-  assert.deepEqual(effectiveAccessRole({ role: 'Student', designation: 'Professor' }), { role: 'Faculty', source: 'designation' }));
-check('Associate Professor member → Faculty', () => assert.equal(effectiveAccessRole({ role: 'Student', designation: 'Associate Professor' }).role, 'Faculty'));
+check('a Professor member with no saved account type is NOT shown as Faculty (a title never decides it), and never as Student', () =>
+  assert.deepEqual(effectiveAccessRole({ role: 'Student', designation: 'Professor' }), { role: null, source: 'review' }));
+check('Associate Professor with no account type → needs review, not inferred', () => assert.equal(effectiveAccessRole({ role: 'Student', designation: 'Associate Professor' }).role, null));
 
 console.log('\n— What the table shows —');
 check('a saved role wins over the designation', () =>
@@ -41,12 +41,12 @@ check('the institution account is Institution Admin, whatever its title', () =>
   assert.deepEqual(effectiveAccessRole({ role: 'Institution', designation: 'Librarian' }), { role: 'Institution Admin', source: 'account' }));
 check('a saved memberRole cannot demote the institution account', () =>
   assert.equal(effectiveAccessRole({ role: 'Institution', memberRole: 'Student' }).role, 'Institution Admin'));
-check('a member titled Librarian is a Librarian', () => assert.equal(effectiveAccessRole({ role: 'Student', designation: 'Librarian' }).role, 'Librarian'));
+check('a member titled Librarian is not made a Librarian by the title', () => assert.equal(effectiveAccessRole({ role: 'Student', designation: 'Librarian' }).role, null));
 check('no role and a title that settles nothing → needs review, not Student', () =>
   assert.deepEqual(effectiveAccessRole({ role: 'Student', designation: '2nd Year' }), { role: null, source: 'review' }));
 check('no role and no title → needs review', () => assert.deepEqual(effectiveAccessRole({ role: 'Student' }), { role: null, source: 'review' }));
-check('an unknown saved memberRole is ignored, not trusted', () =>
-  assert.equal(effectiveAccessRole({ role: 'Student', memberRole: 'Godmode', designation: 'Professor' }).role, 'Faculty'));
+check('an unknown saved memberRole is ignored, not trusted, and the title does not stand in for it', () =>
+  assert.equal(effectiveAccessRole({ role: 'Student', memberRole: 'Godmode', designation: 'Professor' }).role, null));
 
 console.log('\n— Bulk import —');
 check('a Role column is used', () => assert.deepEqual(resolveImportRole({ role: 'Researcher', designation: 'Professor' }), { role: 'Researcher' }));
@@ -67,6 +67,7 @@ console.log('\n— Designation text —');
 check('trimmed and bounded', () => assert.equal(cleanDesignation('  Associate   Professor '), 'Associate Professor'));
 check('empty is null', () => assert.equal(cleanDesignation('   '), null));
 check('free text is kept', () => assert.equal(cleanDesignation('Dean of Studies'), 'Dean of Studies'));
+check('a title is bounded to the 100 characters the form allows', () => assert.equal(cleanDesignation('x'.repeat(150))!.length, 100));
 check('assignable list is exactly Faculty, Researcher, Student', () => assert.deepEqual([...ASSIGNABLE_MEMBER_ROLES], ['Faculty', 'Researcher', 'Student']));
 
 console.log(failed ? `\n${failed} FAILED` : '\nAll passed');
