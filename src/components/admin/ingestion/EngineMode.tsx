@@ -46,7 +46,7 @@ export function EngineMode({ state, coverage, onChanged }: { state: any; coverag
                 const order = w && !(w.Books === w.Journals && w.Journals === w.Articles)
                   ? `by priority — Books ${w.Books}, Journals ${w.Journals}, Articles ${w.Articles} of every ${w.Books + w.Journals + w.Articles} turns`
                   : 'taken fairly: Journals, then Articles, then Books, and round again';
-                return `One turn a minute, ${order}. A source or content type that cannot be asked is stepped over at once, never waited for; when every source is resting, the engine works on its local backlog instead.`;
+                return `One turn a minute, ${order}. A source or content type that cannot be asked is stepped over at once, never waited for, and a turn that finds nothing new goes straight on to the next source. Work on records already held (licences, held candidates, departments) runs in its own lane and never takes a discovery turn.`;
               })()
             : 'One pass a minute, shared out: one in five looks for new titles, the rest fetch articles.')
           : `Every pass will do ${MODES.find(m => m[0] === focus)?.[1].toLowerCase()} and nothing else, one a minute, for as long as the engine is running. It keeps going with this screen closed. Set it back to Everything when you are done.`}

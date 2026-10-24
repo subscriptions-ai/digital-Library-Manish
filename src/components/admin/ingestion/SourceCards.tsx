@@ -21,6 +21,13 @@ export type SourceCard = {
   availability?: Availability;
   health?: { state: string; failures: number; threshold: number; until: string | null; lastError: string | null; reason?: string | null; lastErrorKind?: string | null; lifetimeFailures?: number };
   yield?: 'productive' | 'low' | 'exhausted' | null;
+  /** What a productive source is productive FOR. A source that only fills the review queue is never "productive for the published catalogue". */
+  yieldFor?: 'published' | 'review' | null;
+  reviewOnly?: boolean;
+  /** One sentence for a person, from health, yield and availability read together. */
+  plain?: string | null;
+  /** Departments / searches the engine is leaving alone for now; the source itself is still asked about the rest. */
+  cursors?: { known: number; resting: { key: string; department: string | null; query: string | null; until: string }[] } | null;
   lastBatch?: Batch | null;
   /** The last batch that gave something, kept after later empty ones. */
   lastProductiveBatch?: Batch | null;
@@ -128,9 +135,15 @@ export function SourceCards({ sources, failed, onRetry, filter, onFilter, select
                     {/* Health and yield are different things: a source can be perfectly healthy and give nothing new. */}
                     {(s.yield || (s.health && (s.health.failures > 0 || (s.health.lifetimeFailures ?? 0) > 0))) && (
                       <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-muted">
-                        {s.yield && !(s.yield === 'exhausted' && s.availability?.kind === 'exhausted') && <span className={`badge ${s.yield === 'productive' ? 'badge-success' : 'badge-neutral'}`}>{s.yield === 'productive' ? 'Productive' : s.yield === 'low' ? 'Low yield' : 'Exhausted for now'}</span>}
+                        {s.yield && !(s.yield === 'exhausted' && s.availability?.kind === 'exhausted') && <span className={`badge ${s.yield === 'productive' ? (s.yieldFor === 'review' ? 'badge-neutral' : 'badge-success') : 'badge-neutral'}`}>{s.yield === 'productive' ? (s.yieldFor === 'review' || s.reviewOnly ? 'Productive for review' : s.yieldFor === 'published' ? 'Productive for published catalogue' : 'Productive') : s.yield === 'low' ? 'Low yield' : 'Exhausted for now'}</span>}
                         {s.health && s.health.failures > 0 && <span>{s.health.failures} consecutive failure{s.health.failures === 1 ? '' : 's'}</span>}
                         {s.health && (s.health.lifetimeFailures ?? 0) > 0 && <span title="Every failed request this source has ever had; it is never reset">{N(s.health.lifetimeFailures)} lifetime request failure{s.health.lifetimeFailures === 1 ? '' : 's'}</span>}
+                      </p>
+                    )}
+                    {s.plain && <p className="mt-1.5 text-[12px] leading-snug text-ink-2">{s.plain}</p>}
+                    {s.cursors && s.cursors.resting.length > 0 && (
+                      <p className="mt-1 text-[12px] text-muted" title="Each of these has given nothing for several turns in a row and is left alone until the time shown; the source is still asked about everything else.">
+                        Resting: {s.cursors.resting.slice(0, 4).map(c => `${c.department || c.query || c.key} (until ${clock(c.until)})`).join(', ')}{s.cursors.resting.length > 4 ? ` and ${s.cursors.resting.length - 4} more` : ''}
                       </p>
                     )}
                     {s.lastBatch && <p className="mt-1.5 text-[12px] text-muted">Last batch: {batchLine(s.lastBatch)}</p>}
