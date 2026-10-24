@@ -119,7 +119,7 @@ export async function getState() {
  * and a sweep that ran out is only reopened a month later, because DOAJ and DOAB
  * both grow and a department that was complete in March is not complete in June.
  */
-export async function claimSweep(source: string, departments: string[]) {
+export async function claimSweep(source: string, departments: string[], exclude: string[] = []) {
   const wanted: { department: string; term: string }[] = [];
   for (const dep of departments) for (const term of searchTermsFor(dep)) wanted.push({ department: dep, term });
 
@@ -145,7 +145,10 @@ export async function claimSweep(source: string, departments: string[]) {
   }
 
   const reopenAfter = new Date(Date.now() - 30 * 864e5);
-  const where = { source, department: { in: departments } };
+  // Searches the scheduler is leaving alone for now (a department that has given nothing for several turns), as "department|term" keys:
+  // the sweep rows themselves are not touched, so they come back by themselves when their rest is over.
+  const resting = exclude.map(k => { const i = k.indexOf('|'); return i < 0 ? null : { department: k.slice(0, i), term: k.slice(i + 1) }; }).filter(Boolean) as { department: string; term: string }[];
+  const where: any = { source, department: { in: departments }, ...(resting.length ? { NOT: { OR: resting } } : {}) };
   const order = [{ lastSweptAt: { sort: 'asc', nulls: 'first' } }];
   // Claimed, not merely found: the timer and a manual pass could otherwise walk the same page twice.
   if (schedulerV2()) {
@@ -561,11 +564,13 @@ export async function nextJournalForArticles(departments?: string[], cap = 0) {
  * one of them gets it. A journal cooling down after a visit that gave nothing is not a candidate until
  * its time comes; neither is one whose claim is fresh.
  */
-export async function pickJournal(departments: string[] | undefined, cap: number, v2: boolean): Promise<{ journal: any; recovered: boolean } | null> {
+export async function pickJournal(departments: string[] | undefined, cap: number, v2: boolean, excludeDepartments: string[] = []): Promise<{ journal: any; recovered: boolean } | null> {
   // A journal that already holds its share is finished, not merely resting.
   const inScope = {
     ...(departments?.length ? { domain: { in: departments } } : {}),
     ...(cap > 0 ? { articleCount: { lt: cap } } : {}),
+    // Departments the scheduler is leaving alone for now. A journal with no department is never one of them.
+    ...(excludeDepartments.length ? { AND: [{ OR: [{ domain: null }, { domain: { notIn: excludeDepartments } }] }] } : {}),
   };
   const staleAfter = new Date(Date.now() - 7 * 864e5);
   const base = { status: 'Accepted', issn: { not: null }, rightsBasis: 'DOAJ declaration', ...inScope };

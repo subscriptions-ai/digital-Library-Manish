@@ -3,6 +3,7 @@ import { INGESTION_POLICY, minutes } from './policy.js';
 import { runConditions, PROVIDER_FAILURE_SQL, RUN_LEVEL, RUN_BY_DEPARTMENT } from './runFilter.js';
 import { rotationStatus, type RotationStatus } from './rotation.js';
 import { ensureProviders, rotationEnabled } from './engine.js';
+import { maintenanceStatus } from './maintenance.js';
 
 /**
  * What the admin screen shows about the engine, computed from what is actually in the database.
@@ -33,6 +34,8 @@ export async function engineStatus(state: any, timer: { nextTickAt: number | nul
   const rotating = rotationEnabled();
   let rot: RotationStatus | null = null;
   if (rotating) { ensureProviders(); rot = await rotationStatus({ state }).catch(() => null); }
+  // Maintenance is a lane of its own: it is reported beside discovery, never as the engine's "current source".
+  const maint = rotating ? await maintenanceStatus().catch(() => null) : null;
 
   const [sources, staleClaims, cooling, claimed] = await Promise.all([
     db.ingestionSourceHealth.findMany(),
@@ -50,8 +53,9 @@ export async function engineStatus(state: any, timer: { nextTickAt: number | nul
   const GROUPS3 = ['Journals', 'Articles', 'Books'] as const;
   const groupsWaiting = rot ? GROUPS3.filter(g => rot!.groups[g].waiting) : [];
   const allWaiting = !!(rot && state.enabled && groupsWaiting.length === GROUPS3.length);
-  // The engine decided, on its last look, that nothing can be asked until a known time (or at all, until something changes).
-  const asleep = !!(rot && state.enabled && rot.idle);
+  // The engine decided, on its last look, that nothing can be asked until a known time (or at all, until something changes). That is only true while it
+  // is still true: a provider whose rest has ended since is already eligible, and then the engine is not waiting for anything.
+  const asleep = !!(rot && state.enabled && rot.idle && !rot.discoveryEligible);
   const engineFailing = (state.consecutiveFailures || 0) >= policy.needsAttentionAfterFailures;
   const silentFor = state.lastSuccessAt ? now - new Date(state.lastSuccessAt).getTime() : 0;
   let health: Health;
@@ -62,8 +66,8 @@ export async function engineStatus(state: any, timer: { nextTickAt: number | nul
   } else if (staleClaims > 0) {
     health = 'attention'; reasons.push(`${staleClaims} journal claim${staleClaims === 1 ? '' : 's'} abandoned by a worker that stopped`);
   } else if (rotating ? asleep : pausedSources.length > 0) {
-    // Waiting means the engine looked and found NOTHING to do — no source of any type, no coverage work, no local backlog. Every content type
-    // resting is not enough: the engine then works through its backlog, and is running. (`allWaiting` is kept for the reasons below.)
+    // Waiting means the engine looked and found nothing it can ask: no provider of any type has a department, search or journal left to try, and no
+    // coverage engine has work. Maintenance is a lane of its own and does not count either way. (`allWaiting` is kept for the reasons below.)
     // Every source resting is the sources' state, not a fault of the engine: it resumes by itself, and says when it will try again.
     health = 'waiting';
     if (!rotating) for (const s of pausedSources) reasons.push(`${s.source} is paused after repeated failures and will be tried again by itself`);
@@ -78,14 +82,18 @@ export async function engineStatus(state: any, timer: { nextTickAt: number | nul
     for (const p of problems) reasons.push(p.text);
     for (const g of groupsWaiting) reasons.push(`${g}: waiting for source recovery${rot.groups[g].retryAt ? ` (next try ${clock(rot.groups[g].retryAt!)})` : ''}`);
     if (rot.idle?.cause === 'caught-up' && health === 'waiting') reasons.push('Every source is up to date; the engine looks again when the first one is due.');
-    if (allWaiting && health === 'running' && rot.currentJob?.kind !== 'source') reasons.push('Every external source is resting; the engine is working through its local backlog meanwhile.');
     if (problems.length || groupsWaiting.length) reasons.push(health === 'waiting' ? 'The engine will pick up each source as it recovers.' : 'Healthy providers continue running automatically.');
   }
   // When it will look again, and at whom: from the engine's own record while it sleeps, else worked out now.
   const upNext = rot?.idle?.next ?? rot?.next ?? null;
   const next = upNext ? { group: upNext.group, provider: upNext.provider, label: upNext.label, at: upNext.at, text: `${upNext.group} — ${clock(upNext.at)}` } : null;
 
-  const label = { running: 'Running', waiting: 'Waiting for source recovery', paused: 'Paused', attention: 'Needs attention' }[health];
+  // "Waiting for source recovery" is for one situation only: no provider of any content type has anything it can be asked right now. While some
+  // sources are down or resting but discovery carries on through others, the honest words are that it continues.
+  const resting = (rot?.providers || []).filter(p => p.availability.state !== 'ok' && p.availability.kind !== 'not-configured').length;
+  const continuing = health === 'running' && !!rot && (problems.length > 0 || groupsWaiting.length > 0 || resting > 0);
+  const label = health === 'running' && continuing ? 'Continuing with next available source'
+    : { running: 'Running', waiting: 'Waiting for source recovery', paused: 'Paused', attention: 'Needs attention' }[health];
   const coolingCount = cooling._count._all as number;
 
   // The source working RIGHT NOW, or the one that last worked for what the engine was last doing — never a fixed guess from the phase.
@@ -95,8 +103,22 @@ export async function engineStatus(state: any, timer: { nextTickAt: number | nul
     ? (rot.currentJob?.label ?? rot.running?.label ?? rot.lastDecision?.label ?? (group ? rot.groups[group].current : null))
     : (SOURCE_FOR_PHASE[state.phase] || null);
   const activity = rot?.currentJob
-    ? `${rot.currentJob.kind === 'local' ? 'Backlog' : rot.currentJob.group} · ${rot.currentJob.label}`
-    : rot?.lastDecision && health === 'running' ? `${rot.lastDecision.kind === 'local' ? 'Backlog' : rot.lastDecision.group} · ${rot.lastDecision.label}` : null;
+    ? `${rot.currentJob.group} · ${rot.currentJob.label}`
+    : rot?.lastDecision && health === 'running' ? `${rot.lastDecision.group} · ${rot.lastDecision.label}` : null;
+
+  // Discovery and maintenance, shown apart. Discovery: which content type and source, and where in it (a department or search), now and next.
+  const nj = rot?.nextJobs?.[0] ?? null;
+  const discovery = rot ? {
+    state: !state.enabled ? 'paused' : health === 'waiting' ? 'waiting' : continuing ? 'continuing' : 'running',
+    current: rot.currentJob ? { group: rot.currentJob.group, label: rot.currentJob.label, since: rot.currentJob.since } : null,
+    last: rot.lastDecision ? { group: rot.lastDecision.group, label: rot.lastDecision.label, at: rot.lastDecision.at } : null,
+    next: nj ? { group: nj.group, label: nj.label, cursor: nj.cursor, at: rot.idle?.nextAt ?? null } : null,
+    eligible: rot.discoveryEligible,
+  } : null;
+  const maintenance = maint ? {
+    enabled: maint.enabled, running: maint.running, last: maint.last, lastUseful: maint.lastUseful, nextRunAt: maint.nextRunAt, intervalSeconds: maint.intervalSeconds,
+    backlog: maint.backlog, heldRecheck: maint.heldRecheck, runs: maint.runs,
+  } : null;
 
   return {
     health, label, reasons,
@@ -109,7 +131,8 @@ export async function engineStatus(state: any, timer: { nextTickAt: number | nul
     activity,
     nextJobs: rot?.nextJobs ?? [],
     lastDecision: rot?.lastDecision ?? null,
-    backlog: rot?.backlog ?? [],
+    discovery, maintenance,
+    backlog: maint?.backlog ?? [],
     weights: rot?.weights ?? null,
     currentlyProcessing: claimed[0]?.title || (state.currentJournal || null),
     lastPassAt: state.lastRunAt ?? null,
@@ -143,7 +166,22 @@ export async function last24Hours() {
             (count(*) filter (where ${PROVIDER_FAILURE_SQL}))::int "providerFailures",
             (count(*) filter (where r.error is not null and not ${PROVIDER_FAILURE_SQL}))::int errors
        from "IngestionRun" r where r."at" >= ((($1)::text)::timestamptz at time zone 'UTC')`, since);
-  return { passes: r.passes, added: r.added, held: r.held, failed: r.failed, errors: r.errors, providerFailures: r.providerFailures, rejected: r.rejected, needsReview: r.needsReview, enriched: r.enriched, promoted: r.promoted };
+  // Which providers actually grew the published catalogue. Records ADDED only; review candidates are shown beside them, never summed into them.
+  // Maintenance runs (source = a backlog job) add nothing by construction and are left out.
+  const by: any[] = await db.$queryRawUnsafe(
+    `select r.phase, r.source, coalesce(sum(r.added), 0)::int added, coalesce(sum(r."needsReview"), 0)::int review, count(*)::int turns
+       from "IngestionRun" r
+      where r."at" >= ((($1)::text)::timestamptz at time zone 'UTC') and r.source is not null and r.phase in ('Journals', 'Articles', 'Books')
+        and coalesce(r.note, '') not like 'Backlog%' and not ${PROVIDER_FAILURE_SQL}
+      group by r.phase, r.source
+     having coalesce(sum(r.added), 0) > 0 or coalesce(sum(r."needsReview"), 0) > 0
+      order by added desc, review desc`, since).catch(() => []);
+  return {
+    passes: r.passes, added: r.added, held: r.held, failed: r.failed, errors: r.errors, providerFailures: r.providerFailures, rejected: r.rejected, needsReview: r.needsReview, enriched: r.enriched, promoted: r.promoted,
+    // The same numbers under the names the screen uses, so each is a distinct thing: published growth, review candidates, duplicates, held candidates promoted.
+    newPublished: r.added, newReview: r.needsReview, duplicates: r.held, heldPromoted: r.promoted, failedWrites: r.failed + r.errors,
+    publishedByProvider: by.map(x => ({ group: x.phase, source: x.source, added: x.added, review: x.review, turns: x.turns })),
+  };
 }
 
 /**

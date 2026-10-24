@@ -4,18 +4,30 @@ import { sourceHealthState, recordSourceFailure, classifyFailure, type ErrorKind
 import { providerHolder, tryLockProvider, unlockProvider } from './providerLocks.js';
 import { createRunWithStats, runColumnsFromStats, type DeptStats } from './departmentStats.js';
 import {
-  GROUPS, loadRotationState, saveRotationState, runtimeOf, type Group, type RotationState, type BatchSummary, type IdleState, type Decision,
+  GROUPS, loadRotationState, saveRotationState, runtimeOf, type Group, type RotationState, type BatchSummary, type IdleState, type Decision, type CursorRuntime,
 } from './rotationState.js';
-import type { LocalJob, LocalOutcome } from './localWork.js';
-import { localOutcomeIsUseful, recordLocalOutcome } from './localWork.js';
 
 /**
- * The fair, self-healing scheduler for Everything mode.
+ * The fair, self-healing scheduler for Everything mode: the DISCOVERY lane.
  *
- * One TURN per timer tick. Everything mode takes the content types in turn — Journals, Articles, Books, and round again — so
- * no one of them can monopolise the engine. Inside a content type the providers take turns too, each with its own cursor and
- * its own checkpoint (never shared, never reset by another provider running). A turn checks up to INGESTION_BATCH_SIZE
- * candidates; that is a budget on what is LOOKED AT, not a quota of what must be inserted.
+ * Discovery is the engine's only external work: looking for genuinely new records. Everything that works on records already in the database
+ * (licence completion, held-candidate review, department classification) is the MAINTENANCE lane (maintenance.ts) with its own cadence and its own
+ * state, and never takes a discovery turn.
+ *
+ * One TICK of the timer takes one or more TURNS. Everything mode takes the content types in turn, and round again, so no one of them can monopolise
+ * the engine. Inside a content type the providers take turns too, each with its own cursor and its own checkpoint (never shared, never reset by
+ * another provider running). A turn checks up to the batch size in candidates; that is a budget on what is LOOKED AT, not a quota of what must be
+ * inserted. A turn that gave nothing useful does not end the tick: the tick goes straight on to the next provider (up to INGESTION_MAX_TURNS_PER_TICK
+ * turns), and ends at the first turn that did.
+ *
+ * "Nothing new" is judged where it was seen. A provider asks questions in many places (a department, a search term, a group of journals): each place
+ * is a CURSOR with its own zero-yield count, and when one has given nothing for the set number of turns only THAT cursor rests; the provider carries on
+ * with its other cursors. The provider as a whole rests as "exhausted for now" only when it has no cursor left to ask. A provider that has no cursors
+ * (a book feed, read in order from one checkpoint) is judged as a whole, as it always was.
+ *
+ * Health and yield are different facts. Health is whether the source answers; yield is whether what it answers is new. A source can be perfectly
+ * healthy and have nothing new today, and it can be productive for the review queue without adding one record to the catalogue; these are kept apart
+ * everywhere, and only records ADDED count as growth of the published catalogue.
  *
  * A provider that cannot be asked is stepped over, not waited for:
  *   · HTTP 429             → set aside until the time it gave (sourceHealth did that); the turn goes to the next provider at once.
@@ -23,19 +35,19 @@ import { localOutcomeIsUseful, recordLocalOutcome } from './localWork.js';
  *                            the same provider on its next turn, after a short soft backoff.
  *   · a daily quota (NCBI) → cooling, not failing; skipped until it resets.
  *   · its lock is held     → busy (a Quick Import is on it); skipped.
- *   · 3 batches with nothing useful → "exhausted for now"; left out for a few hours. Healthy, just not productive.
- * If no provider of a content type can be asked — every one is down, rate limited, over its quota, busy, switched off or resting as
- * exhausted — that type WAITS FOR SOURCE RECOVERY and the turn goes to the next type in the same tick. One dead source family never
- * pauses Everything, and a source is never asked before its rest is over (an exhausted one included).
+ *   · no cursor left       → "exhausted for now"; left out until its earliest cursor reopens. Healthy, just nothing new.
+ * If no provider of a content type can be asked, that type WAITS and the turn goes to the next type in the same tick. One dead source family never
+ * pauses Everything, and a source is never asked before its rest is over.
  *
- * Which content type takes a tick's FIRST turn follows weights (rotationConfig().weights; Books 3, Journals 2, Articles 1 by default: Books,
- * Journals, Books, Articles, Books, Journals …). A weight is priority, never a quota — the tick still falls through to every other type.
+ * Within a type, providers take turns round robin, with one bias: every other turn goes first to the available provider that has recently ADDED the
+ * most (a source that only fills the review queue never outranks one that adds to the catalogue). A fallback-tier source that has recently added
+ * records takes part as a peer (`peerWhenProductive`), so a productive fallback is not kept idle behind a primary that is merely reachable.
  *
- * Only when no source of ANY type could work does the engine turn to its LOCAL backlog (localWork.ts: held books judged again under the
- * current rules, departments for unplaced journals, licences already declared elsewhere). Only when that is empty too does it wait.
+ * Which content type takes a tick's FIRST turn follows weights (rotationConfig().weights; Books 3, Journals 2, Articles 1 by default). A weight is
+ * priority, never a quota: the tick still falls through to every other type.
  *
- * Providers are plugged in (see providers.ts), so this file knows nothing about any one of them and the rules above can be
- * exercised with stand-ins.
+ * Only when no provider of ANY type has a cursor it can ask does the engine wait, and say so. Providers are plugged in (see providers.ts), so this
+ * file knows nothing about any one of them and the rules above can be exercised with stand-ins.
  */
 
 export type Tier = 'primary' | 'supplementary' | 'fallback';
@@ -48,7 +60,12 @@ export type TurnCtx = {
   /** The engine's own place in a source with no checkpoint of its own; never shared with Quick Import. */
   position: any;
   savePosition: (p: any) => void;
+  /** Cursor keys (departments, searches) this provider has found nothing in lately: a turn leaves them alone and asks the others. */
+  restingCursors: string[];
 };
+
+/** How one cursor (a department, a search, a group of journals) did in a turn. `checked` 0 says nothing about it either way. */
+export type CursorResult = { key: string; department?: string | null; query?: string | null; checked: number; useful: number };
 
 export type TurnRan = {
   kind: 'ran';
@@ -77,10 +94,14 @@ export type TurnRan = {
   journal?: { id?: string | null; title?: string | null; department?: string | null };
   /** The quota (NCBI) stopped it early: not a failure; the source rests until then. */
   quotaUntil?: Date | null;
+  /** Which cursors the turn asked in, and what each gave. Only a `cursored` provider reports them. */
+  cursors?: CursorResult[];
 };
 export type TurnOutcome =
   | TurnRan
-  | { kind: 'nothing-due'; note?: string }
+  | { kind: 'nothing-due'; note?: string;
+      /** When something will next be due (a journal's cooldown ends), if the provider knows. The provider rests until then, never longer than the usual rest. */
+      until?: Date | null }
   | { kind: 'busy' }
   | { kind: 'request-failed'; error: string; status?: number | null; rateLimited?: boolean;
       /** Something broke on our side (the database, a bug) rather than the provider not answering. The provider's health is not touched. */
@@ -107,6 +128,17 @@ export type ProviderDef = {
   rotationOff?: () => string | null;
   /** A rest that is not a failure, e.g. a daily quota. */
   restingNow?: () => Promise<null | { until: Date | null; reason: string }>;
+  /**
+   * Asks in many places (departments, searches, journal groups) and tells the scheduler where, through TurnRan.cursors and ctx.restingCursors. Such a
+   * provider rests as a whole only when it has no cursor left (it says `nothing-due`); a zero-yield turn rests only the cursors it visited.
+   */
+  cursored?: boolean;
+  /** A fallback that takes part as a peer while it has recently ADDED records, so a productive fallback is not kept idle behind a merely reachable primary. */
+  peerWhenProductive?: boolean;
+  /** Can only send records to review (no controlled classification, rights not declared by the listing): never "productive for the published catalogue". */
+  reviewOnly?: boolean;
+  /** Where the next turn would ask, without asking: a department / search / journal. For the screen only. */
+  peekCursor?: (ctx: { wanted: string[]; resting: string[]; position: any }) => Promise<string | null>;
   turn: (ctx: TurnCtx) => Promise<TurnOutcome>;
 };
 
@@ -124,12 +156,6 @@ export const providersOf = (g: Group) => registry.filter(p => p.group === g);
  */
 let targetedPolicy: (() => Promise<boolean>) | null = null;
 export const setTargetedPolicy = (f: (() => Promise<boolean>) | null) => { targetedPolicy = f; };
-
-/** The local backlog jobs (localWork.ts), plugged in like the providers so the scheduler can be tested with stand-ins. */
-let localJobs: LocalJob[] = [];
-let localPicker: ((jobs: LocalJob[], allow: (g: Group) => boolean) => Promise<{ job: LocalJob; pending: number } | null>) | null = null;
-export const setLocalJobs = (jobs: LocalJob[], picker: typeof localPicker) => { localJobs = jobs; localPicker = picker; };
-export const getLocalJobs = () => localJobs;
 
 /**
  * The order content types take the first turn of a tick, from their weights: a smooth weighted round robin, so 3 / 2 / 1 interleaves as
@@ -200,6 +226,66 @@ export function yieldState(s: RotationState, id: string, now = Date.now()): 'pro
   return rt.lastBatch && rt.lastBatch.outcome === 'ok' && rt.lastBatch.useful > 0 ? 'productive' : null;
 }
 
+/**
+ * What a productive source is productive FOR. `published` only when it has recently ADDED records to the catalogue; `review` when what it gave was
+ * for a person to review (or enrichment). A source is never called productive for the published catalogue on the strength of review candidates.
+ */
+export function yieldFor(s: RotationState, id: string): 'published' | 'review' | null {
+  const rt = s.providers[id];
+  const b = rt?.lastProductiveBatch ?? (rt?.lastBatch && rt.lastBatch.useful > 0 ? rt.lastBatch : null);      // rows written before lastProductiveBatch existed
+  if (!rt || !b) return null;
+  if (b.added > 0 || (rt.addedEma ?? 0) >= rotationConfig().productiveAddedPerTurn) return 'published';
+  return b.sentToReview > 0 || b.enriched > 0 ? 'review' : null;
+}
+
+// ── Cursors ─────────────────────────────────────────────────────────────────
+
+const nowIso = (t = Date.now()) => new Date(t).toISOString();
+
+/** The cursor keys a provider is leaving alone for now. */
+export function restingCursorKeys(rt: { cursors?: Record<string, CursorRuntime> }, now = Date.now()): string[] {
+  return Object.entries(rt.cursors || {}).filter(([, c]) => c.exhaustedUntil && Date.parse(c.exhaustedUntil) > now).map(([k]) => k);
+}
+
+/** When the first resting cursor of this provider reopens, or null if none is resting. */
+export function earliestCursorReturn(rt: { cursors?: Record<string, CursorRuntime> }, now = Date.now()): Date | null {
+  const t = Object.values(rt.cursors || {}).map(c => (c.exhaustedUntil ? Date.parse(c.exhaustedUntil) : 0)).filter(x => x > now);
+  return t.length ? new Date(Math.min(...t)) : null;
+}
+
+/**
+ * Count what each cursor gave this turn, and rest only the ones that have given nothing for the set number of turns in a row. A cursor that was
+ * visited but where nothing was looked at (`checked` 0) is evidence of nothing, and is left as it was.
+ */
+function noteCursors(s: RotationState, id: string, results: CursorResult[], cfg: ReturnType<typeof rotationConfig>): string[] {
+  const rt = runtimeOf(s, id);
+  const cs = (rt.cursors ||= {});
+  const now = Date.now();
+  const rested: string[] = [];
+  for (const r of results) {
+    if (!r.key) continue;
+    const c = (cs[r.key] ||= { zeroYield: 0 });
+    c.department = r.department ?? c.department ?? null; c.query = r.query ?? c.query ?? null;
+    if (r.checked > 0 || r.useful > 0) { c.lastAt = nowIso(now); c.lastChecked = r.checked; c.lastUseful = r.useful; }
+    if (r.useful > 0) { c.zeroYield = 0; c.exhaustedUntil = null; c.exhaustedAt = null; continue; }
+    if (r.checked <= 0) continue;
+    c.zeroYield = (c.zeroYield || 0) + 1;
+    if (c.zeroYield >= cfg.cursorZeroYieldTurns) {
+      c.exhaustedUntil = nowIso(now + cfg.exhaustedHours * 3600_000); c.exhaustedAt = nowIso(now);
+      c.zeroYield = Math.max(0, cfg.cursorZeroYieldTurns - 1);        // the first empty visit after its rest sets it aside again
+      rested.push(c.department || c.query || r.key);
+    }
+  }
+  // Keep the row small: a cursor that has been quiet and open for a week carries no information.
+  for (const [k, c] of Object.entries(cs)) {
+    const idle = !c.exhaustedUntil || Date.parse(c.exhaustedUntil) < now;
+    if (idle && c.zeroYield === 0 && (!c.lastAt || Date.parse(c.lastAt) < now - 7 * 86_400_000)) delete cs[k];
+  }
+  return rested;
+}
+
+const ema = (prev: number | undefined, x: number) => Math.round(((prev ?? 0) * 0.6 + x * 0.4) * 100) / 100;
+
 // ── The turn ────────────────────────────────────────────────────────────────
 
 type AttemptEvent = {
@@ -227,7 +313,7 @@ function checkedLine(o: TurnRan): string {
 
 export const PROVIDER_ERROR = 'Provider request failed';
 
-async function runTypeTurn(group: Group, s: RotationState, base: Omit<TurnCtx, 'position' | 'savePosition' | 'batch'>): Promise<TurnResult> {
+async function runTypeTurn(group: Group, s: RotationState, base: Omit<TurnCtx, 'position' | 'savePosition' | 'batch' | 'restingCursors'>): Promise<TurnResult> {
   const cfg = rotationConfig();
   const full = providersOf(group);
   // The targeted provider (Books only) is not part of the round robin: it goes first on its share of turns and last on the rest.
@@ -251,7 +337,26 @@ async function runTypeTurn(group: Group, s: RotationState, base: Omit<TurnCtx, '
   const tried = new Set<string>();
   const noWork = new Set<string>();              // tried this turn and gave nothing to build on
   const okNow = (id: string) => avail.get(id)?.state === 'ok' && !noWork.has(id);
-  const fallbackEligible = (p: ProviderDef) => !p.fallbackFor || p.fallbackFor.every(id => !okNow(id));
+  const productiveNow = (p: ProviderDef) => cfg.productivityBias && !!p.peerWhenProductive && (runtimeOf(s, p.id).addedEma ?? 0) >= cfg.productiveAddedPerTurn;
+  const fallbackEligible = (p: ProviderDef) => !p.fallbackFor || p.fallbackFor.every(id => !okNow(id)) || productiveNow(p);
+
+  // Every other turn of this type goes first to the available source that has recently ADDED the most (published records only: review candidates
+  // never raise a source's rank). The other turns are plain round robin, so no source is left out. A targeted-coverage turn still goes first.
+  // A turn taken because of that bias does not move the round-robin place (as with the targeted turn), or the same few sources would keep
+  // the plain turns between them and the rest would never be asked.
+  const turnNo = s.turns?.[group] ?? 0;
+  let biased: ProviderDef | null = null;
+  if (cfg.productivityBias && turnNo % 2 === 0) {
+    const eligible = (p: ProviderDef) => !p.virtual && avail.get(p.id)?.state === 'ok' && fallbackEligible(p);
+    const plainFirst = ordered.find(p => eligible(p) || (p.virtual && avail.get(p.id)?.state === 'ok')) ?? null;
+    const cands = ordered.filter(p => eligible(p) && !p.reviewOnly && (runtimeOf(s, p.id).addedEma ?? 0) > 0);
+    const best = cands.reduce<ProviderDef | null>((b, p) => (!b || (runtimeOf(s, p.id).addedEma ?? 0) > (runtimeOf(s, b.id).addedEma ?? 0) ? p : b), null);
+    if (best && best !== plainFirst) {
+      const lead = ordered[0]?.virtual ? [ordered[0]] : [];
+      ordered = [...lead, best, ...ordered.filter(p => p !== best && !lead.includes(p))];
+      biased = best;
+    }
+  }
 
   let ran: { provider: ProviderDef; outcome: TurnRan; durationMs: number } | null = null;
   let stoppedByFailure = false;
@@ -272,7 +377,7 @@ async function runTypeTurn(group: Group, s: RotationState, base: Omit<TurnCtx, '
     let outcome: TurnOutcome;
     try {
       const batchSizeForGroup = group === 'Journals' ? (base.state?.journalsPerPass ?? 200) : group === 'Articles' ? (base.state?.articlesPerPass ?? base.state?.batchSize ?? 100) : group === 'Books' ? (base.state?.booksPerPass ?? 200) : cfg.batchSize;
-      outcome = await next.turn({ ...base, batch: batchSizeForGroup, position: rt.position ?? null, savePosition: p => { rt.position = p; } });
+      outcome = await next.turn({ ...base, batch: batchSizeForGroup, position: rt.position ?? null, savePosition: p => { rt.position = p; }, restingCursors: restingCursorKeys(rt) });
     } catch (e: any) {
       const msg = String(e?.message || e).slice(0, 300);
       // A request that threw (no answer, a bad body) is a failed request and is counted, once, like any other. Anything else that threw —
@@ -325,9 +430,20 @@ async function runTypeTurn(group: Group, s: RotationState, base: Omit<TurnCtx, '
       }
 
       case 'nothing-due': {
-        const z = noteZeroYield(s, next.id, cfg);
+        let text: string | null;
+        if (next.cursored) {
+          // No cursor is left to ask: every department / search / journal is walked out or resting. Now, and only now, the provider as a whole rests,
+          // until the first of its cursors reopens.
+          const rtn = runtimeOf(s, next.id);
+          const cap = Date.now() + cfg.exhaustedHours * 3600_000;
+          const times = [earliestCursorReturn(rtn)?.getTime(), outcome.until?.getTime()].filter((x): x is number => typeof x === 'number' && x > Date.now());
+          const back = new Date(Math.min(cap, Math.max(Date.now() + 60_000, times.length ? Math.min(...times) : cap)));
+          rtn.exhaustedUntil = back.toISOString(); rtn.exhaustedAt = nowIso(); rtn.refreshAfter = rtn.exhaustedUntil;
+          text = 'No department or search left to ask · Exhausted for now';
+          avail.set(next.id, { state: 'exhausted', until: back, reason: `nothing new for now — eligible again ${fmtClock(back)}` });
+        } else text = noteZeroYield(s, next.id, cfg).text;
         noWork.add(next.id);
-        events.push({ provider: next, outcome, durationMs, note: [outcome.note || 'Nothing due — up to date', z.text].filter(Boolean) as string[] });
+        events.push({ provider: next, outcome, durationMs, note: [outcome.note || 'Nothing due — up to date', text].filter(Boolean) as string[] });
         attempts.push({ provider: next.id, result: 'nothing-due' });
         break;
       }
@@ -363,7 +479,15 @@ async function runTypeTurn(group: Group, s: RotationState, base: Omit<TurnCtx, '
   const { provider, outcome, durationMs } = ran;
   const rt = runtimeOf(s, provider.id);
   rt.softBackoffUntil = null;
-  const z = outcome.useful > 0 ? (rt.zeroYield = 0, rt.exhaustedUntil = null, rt.exhaustedAt = null, rt.refreshAfter = null, { text: null as string | null, exhausted: false }) : noteZeroYield(s, provider.id, cfg);
+  // A provider that reports cursors is judged cursor by cursor: its zero-yield turns rest the departments / searches it visited, not the provider.
+  const cursorMode = !!provider.cursored && !!outcome.cursors?.length;
+  const restedCursors = cursorMode ? noteCursors(s, provider.id, outcome.cursors!, cfg) : [];
+  const z = outcome.useful > 0 ? (rt.zeroYield = 0, rt.exhaustedUntil = null, rt.exhaustedAt = null, rt.refreshAfter = null, { text: null as string | null, exhausted: false })
+    : cursorMode ? (rt.zeroYield = (rt.zeroYield || 0) + 1, { text: restedCursors.length ? `Nothing new in ${restedCursors.slice(0, 3).join(', ')}${restedCursors.length > 3 ? ` and ${restedCursors.length - 3} more` : ''} — resting; other departments carry on` : `Nothing new here · ${provider.label} carries on with its other departments`, exhausted: false })
+    : noteZeroYield(s, provider.id, cfg);
+  // What the source ADDED to the catalogue and what it sent to review, kept as separate running averages: only the first ranks it.
+  rt.addedEma = ema(rt.addedEma, outcome.added); rt.reviewEma = ema(rt.reviewEma, outcome.sentToReview);
+  (s.turns ||= {})[group] = (s.turns[group] ?? 0) + 1;
   const summary: BatchSummary = {
     at: new Date().toISOString(), outcome: 'ok', checked: outcome.checked, added: outcome.added, held: outcome.held, enriched: outcome.enriched,
     sentToReview: outcome.sentToReview, skipped: outcome.skipped, recordFailures: outcome.recordFailures, requestFailures: outcome.requestFailures ?? 0, useful: outcome.useful, note: outcome.note ?? null,
@@ -372,7 +496,7 @@ async function runTypeTurn(group: Group, s: RotationState, base: Omit<TurnCtx, '
   // What the source last GAVE, kept when later batches give nothing: "exhausted for now" is a state, not an erasure of what it did before.
   if (outcome.useful > 0) rt.lastProductiveBatch = summary;
   const idx = chain.findIndex(p => p.id === provider.id);
-  if (idx >= 0) s.cursors[group] = (idx + 1) % chain.length;           // a targeted turn does not move the round robin
+  if (idx >= 0 && provider !== biased) s.cursors[group] = (idx + 1) % chain.length;     // neither a targeted turn nor a productivity-biased one moves the round robin
   s.current[group] = provider.id;
 
   const switchedFrom = events.map(e => e.provider.label);
@@ -513,13 +637,17 @@ export async function wakeEngine(): Promise<void> {
 }
 
 /**
- * One tick. Takes the next content type in turn; if none of its sources can be asked it moves to the next type in the same
- * tick, so a dead family costs no time. Returns what ran, or why nothing did.
+ * One tick of the DISCOVERY lane. Takes the next content type in turn; if none of its sources can be asked it moves to the next type in the same
+ * tick, so a dead family costs no time. A turn that gave nothing useful does not end the tick: it goes straight on to the next provider (the next
+ * slot of the weighted order), up to INGESTION_MAX_TURNS_PER_TICK turns, and stops at the first turn that gave something. Returns the turn that
+ * mattered most (the last useful one, else the last) with every turn listed under `turns`, or why nothing ran.
  *
  * When NOTHING can be asked at all, the engine does not keep announcing it. The first such tick works out when the soonest source comes back
  * and records it (one run-log row, one rotation-state record); the ticks after that, until then, do no work and write nothing — they
  * answer from that record. It wakes at the time the soonest source can be asked, when an administrator changes the settings or switches the
  * engine on, when a source is switched on, when the server restarts, or at once for "Run extra pass now".
+ *
+ * Nothing in here touches the maintenance lane: it neither waits for it nor runs it.
  */
 export async function runRotationPass(opts: PassOptions) {
   const s = await loadRotationState();
@@ -534,85 +662,50 @@ export async function runRotationPass(opts: PassOptions) {
 
   const cfg = rotationConfig();
   const seq = typeSequence(cfg.weights);
-  const slot = s.typeCursor;
-  const groups = opts.only ? GROUPS.filter(g => g.toLowerCase() === opts.only) : orderForTick(seq, slot, cfg.weights);
   const base = { state: opts.state, wanted: opts.wanted, narrowed: opts.narrowed };
   const waiting: { group: Group; reason: string }[] = [];
   const idleGroups: Group[] = [];
   const failed: Group[] = [];
   const passedTypes: string[] = [];
-  // Each tick uses one slot of the weighted order, whichever type ends up working, so the priorities hold over time. (Equal weights keep the
-  // original rule — the next tick starts after the type that last took a turn — set inside the loop below.)
   const equal = allEqual(cfg.weights);
-  if (!opts.only && !equal) s.typeCursor = (slot + 1) % seq.length;
+  const turns: any[] = [];
+  let lastUseful: any = null;
 
-  for (const g of groups) {
-    const r = await runTypeTurn(g, s, base);
-    if (!opts.only && equal) s.typeCursor = (GROUPS.indexOf(g) + 1) % GROUPS.length;
-    if ('provider' in r) {
-      const lead = groups[0];
-      const reasons = [
-        opts.only ? `Mode: ${g} only` : g === lead ? `${g} has the turn (priority ${cfg.weights[g]} of ${cfg.weights.Books}/${cfg.weights.Journals}/${cfg.weights.Articles} Books/Journals/Articles)` : `${lead} had the turn but could not work; ${g} took it`,
-        ...passedTypes,
-        ...r.why,
-        r.outcome.checked ? `Batch: ${r.outcome.checked} candidates checked` : null,
-      ].filter(Boolean) as string[];
-      s.lastDecision = { at: new Date().toISOString(), group: g, label: r.label, kind: r.virtual ? 'coverage' : 'source', reasons };
-      s.idle = null; s.localZeroYield = 0; await saveRotationState(s);
-      return { ...r, phase: g, source: r.label, ...r.outcome };
+  while (turns.length < cfg.maxTurnsPerTick) {
+    // Each turn uses one slot of the weighted order, whichever type ends up working, so the priorities hold over time. (Equal weights keep the
+    // original rule — the next turn starts after the type that last took one — set inside the loop below.)
+    const slot = s.typeCursor;
+    const groups = opts.only ? GROUPS.filter(g => g.toLowerCase() === opts.only) : orderForTick(seq, slot, cfg.weights);
+    if (!opts.only && !equal) s.typeCursor = (slot + 1) % seq.length;
+    let took: any = null;
+    for (const g of groups) {
+      const r = await runTypeTurn(g, s, base);
+      if (!opts.only && equal) s.typeCursor = (GROUPS.indexOf(g) + 1) % GROUPS.length;
+      if ('provider' in r) {
+        const lead = groups[0];
+        const reasons = [
+          opts.only ? `Mode: ${g} only` : g === lead ? `${g} has the turn (priority ${cfg.weights[g]} of ${cfg.weights.Books}/${cfg.weights.Journals}/${cfg.weights.Articles} Books/Journals/Articles)` : `${lead} had the turn but could not work; ${g} took it`,
+          ...(turns.length ? [`The previous turn gave nothing useful, so this tick went straight on to the next source (turn ${turns.length + 1} of at most ${cfg.maxTurnsPerTick})`] : []),
+          ...passedTypes,
+          ...r.why,
+          r.outcome.checked ? `Batch: ${r.outcome.checked} candidates checked` : null,
+        ].filter(Boolean) as string[];
+        s.lastDecision = { at: new Date().toISOString(), group: g, label: r.label, kind: r.virtual ? 'coverage' : 'source', reasons };
+        s.idle = null; await saveRotationState(s);
+        took = { ...r, phase: g, source: r.label, ...r.outcome };
+        break;
+      }
+      passedTypes.push(`${g} passed over: ${r.waiting ? `every source resting (${r.reason})` : r.failed ? 'a source did not answer and will be retried' : r.reason}`);
+      if (r.failed) failed.push(g); else if (r.waiting) waiting.push({ group: g, reason: r.reason }); else idleGroups.push(g);
     }
-    passedTypes.push(`${g} passed over: ${r.waiting ? `every source resting (${r.reason})` : r.failed ? 'a source did not answer and will be retried' : r.reason}`);
-    if (r.failed) failed.push(g); else if (r.waiting) waiting.push({ group: g, reason: r.reason }); else idleGroups.push(g);
+    if (!took) break;
+    turns.push(took);
+    if (took.useful > 0) { lastUseful = took; break; }
   }
 
-  // No source of any type could work this tick. Before waiting, the local backlog: work on records already held, under the current rules.
-  // Guard: after MAX_CONSECUTIVE_LOCAL zero-useful-change local ticks, skip local jobs and let the engine idle/sleep so external sources
-  // get their next chance promptly. This prevents maintenance from dominating when it has a large backlog of records that all "still need a person".
-  const MAX_CONSECUTIVE_LOCAL = 2;
-  const localAllowed = (s.localZeroYield ?? 0) < MAX_CONSECUTIVE_LOCAL;
-  const local = localAllowed && localPicker ? await localPicker(localJobs, g => groups.includes(g)).catch(() => null) : null;
-  if (local) {
-    const { job, pending } = local;
-    s.localRunning = { job: job.id, label: job.label, group: job.group, since: new Date().toISOString() };
-    s.running = null;
-    await saveRotationState(s);
-    const t0 = Date.now();
-    let o: LocalOutcome | null = null; let err: string | null = null;
-    try { o = await job.run(cfg.localBatch); } catch (e: any) { err = String(e?.message || e).slice(0, 300); }
-    s.localRunning = null;
-
-    // Record zero-yield status for this individual job (its own cooldown).
-    if (o) await recordLocalOutcome(job.id, o).catch(() => {});
-
-    const useful = o ? localOutcomeIsUseful(o) : false;
-    if (useful) {
-      s.localZeroYield = 0;
-    } else {
-      s.localZeroYield = (s.localZeroYield ?? 0) + 1;
-    }
-
-    if (o) {
-      await createRunWithStats({
-        phase: job.group, source: job.label, more: pending > o.checked, durationMs: Date.now() - t0,
-        added: 0, promoted: o.promoted, enriched: o.enriched, skippedHeld: o.duplicates, skippedRejected: o.refused, skippedFailed: o.failed,
-        note: `Backlog · ${o.note}`.slice(0, 900),
-      }, null);
-      await db.ingestionState.update({ where: { id: 'singleton' }, data: { phase: job.group, lastRunAt: new Date(), lastError: null, lastSuccessAt: new Date(), consecutiveFailures: 0 } }).catch(() => {});
-    } else {
-      await createRunWithStats({ phase: 'Error', source: job.label, error: `Backlog job failed — ${err}`.slice(0, 500) }, null);
-    }
-    s.lastDecision = {
-      at: new Date().toISOString(), group: job.group, label: job.label, kind: 'local',
-      reasons: [`No external source of any content type could work this tick`, ...passedTypes, `${job.label}: ${pending} record${pending === 1 ? '' : 's'} to look at under the current rules`],
-    };
-    // Only clear idle when the local job was useful. Zero-useful-change maintenance must not prevent the engine from recognising it should sleep.
-    if (useful) s.idle = null;
-    await saveRotationState(s);
-    return {
-      ran: true as const, local: true as const, group: job.group, phase: job.group, provider: job.id, source: job.label, label: job.label,
-      checked: o?.checked ?? 0, added: 0, promoted: o?.promoted ?? 0, enriched: o?.enriched ?? 0, held: o?.duplicates ?? 0, sentToReview: 0,
-      note: o?.note ?? err, error: err, attempts: [], switchedFrom: [],
-    };
+  if (turns.length) {
+    const main = lastUseful ?? turns[turns.length - 1];
+    return { ...main, turns: turns.map(t => ({ group: t.group, provider: t.provider, label: t.label, checked: t.checked, added: t.added, held: t.held, sentToReview: t.sentToReview, useful: t.useful })) };
   }
 
   // Nothing ran. Say so once, with when it will be worth looking again.
@@ -660,6 +753,10 @@ export type ProviderStatus = {
   };
   /** Kept apart from health: a source can be perfectly healthy and give nothing new. */
   yield: 'productive' | 'low' | 'exhausted' | null;
+  /** What a productive source is productive FOR: the published catalogue, or only the review queue. Null when it is not productive. */
+  yieldFor: 'published' | 'review' | null;
+  /** Can only send records to review: never eligible for automatic publishing. */
+  reviewOnly: boolean;
   availability: { state: Availability['state']; kind: Availability['kind'] | null; until: string | null; reason: string | null };
   running: boolean;
   /** When a source was set aside as exhausted and when it is due to be tried again (null unless it is resting as exhausted). */
@@ -667,35 +764,57 @@ export type ProviderStatus = {
   lastBatch: BatchSummary | null;
   /** The last batch that gave something useful — kept after later, empty ones. */
   lastProductiveBatch: BatchSummary | null;
+  /** The departments / searches this provider is leaving alone for now, out of those it has asked in. The provider itself is still asked about the rest. */
+  cursors: { known: number; resting: { key: string; department: string | null; query: string | null; until: string }[] };
+  /** One sentence for a person, from health, yield and availability together, so "Healthy" and "Exhausted" never read as a contradiction. */
+  plain: string;
 };
 
 export type RotationStatus = {
   batchSize: number; failuresBeforeFallback: number; zeroYieldBatches: number;
-  groups: Record<Group, { current: string | null; next: string | null; waiting: boolean; waitingReason: string | null; retryAt: string | null; batchSize: number }>;
+  groups: Record<Group, { current: string | null; next: string | null; nextCursor: string | null; waiting: boolean; waitingReason: string | null; retryAt: string | null; batchSize: number }>;
   providers: ProviderStatus[];
   running: { group: Group; provider: string; label: string; since: string } | null;
   /** Set while the engine has nothing it can ask and is sleeping until `idle.nextAt`; null whenever any source is working. */
   idle: IdleState | null;
   /** The source that can be asked again soonest, worked out now, whatever the engine is doing. */
   next: IdleState['next'];
-  /** What is running now — a source, a coverage engine or a backlog job — and what would run next, in the weighted order. */
-  currentJob: { group: Group; label: string; kind: 'source' | 'coverage' | 'local'; since: string } | null;
-  nextJobs: { group: Group; label: string; kind: 'source' | 'coverage' | 'local' }[];
+  /** What discovery is doing now — a source or a coverage engine — and what would run next, in the weighted order. Maintenance is never in here. */
+  currentJob: { group: Group; label: string; kind: 'source' | 'coverage'; since: string } | null;
+  nextJobs: { group: Group; label: string; kind: 'source' | 'coverage'; cursor: string | null }[];
   weights: Record<Group, number>;
   lastDecision: Decision | null;
-  /** The local backlog: records each job still has to look at under the current rules. */
-  backlog: { id: string; label: string; group: Group; pending: number }[];
-  /** Consecutive ticks where only a local/maintenance job ran with zero useful changes. Resets on any external run or useful local job. */
-  localZeroYield: number;
+  /** True while any provider of any content type can be asked right now. Only when this is false is the engine waiting for anything. */
+  discoveryEligible: boolean;
   updatedAt: string | null;
 };
 
 /** The next provider a turn of this type would take, worked out the way a turn does it but without running anything. */
-function peekNext(chain: ProviderDef[], cursor: number, avail: Map<string, Availability>): ProviderDef | null {
+function peekNext(chain: ProviderDef[], cursor: number, avail: Map<string, Availability>, s: RotationState): ProviderDef | null {
   const ordered = rotate(chain, cursor % Math.max(1, chain.length));
   const okNow = (id: string) => avail.get(id)?.state === 'ok';
-  const eligible = (p: ProviderDef) => !p.fallbackFor || p.fallbackFor.every(id => !okNow(id));
+  const productive = (p: ProviderDef) => rotationConfig().productivityBias && !!p.peerWhenProductive && (runtimeOf(s, p.id).addedEma ?? 0) >= rotationConfig().productiveAddedPerTurn;
+  const eligible = (p: ProviderDef) => !p.fallbackFor || p.fallbackFor.every(id => !okNow(id)) || productive(p);
   return ordered.find(p => avail.get(p.id)?.state === 'ok' && eligible(p)) ?? ordered.find(p => avail.get(p.id)?.state === 'exhausted' && eligible(p)) ?? null;
+}
+
+/** The plain-language line for one provider (health, yield and availability read together). */
+export function plainStatus(p: ProviderDef, a: Availability, health: ProviderStatus['health'], yieldKind: ProviderStatus['yield'], yFor: ProviderStatus['yieldFor'], restingCursors: number, knownCursors: number): string {
+  if (a.state === 'unavailable') {
+    if (a.kind === 'not-configured') return a.reason || 'Not connected.';
+    if (a.kind === 'busy') return 'Being worked on right now.';
+    if (a.kind === 'quota') return `${a.reason || 'Daily limit reached'}; it is not failing.`;
+    if (a.kind === 'rate_limited') return 'Provider is rate limiting us; it is asked again when its pause ends.';
+    if (a.kind === 'degraded-backoff') return 'Provider reachable; retrying after a short pause.';
+    return 'Provider currently cannot be reached.';
+  }
+  if (a.state === 'exhausted') return 'Provider is reachable; current search space is temporarily exhausted.';
+  const partial = restingCursors > 0 && knownCursors > 0 ? ` ${restingCursors} of ${knownCursors} departments or searches are resting; the rest are still asked.` : '';
+  if (p.reviewOnly) return `Candidates available for review; not eligible for automatic publishing.${partial}`;
+  if (yieldKind === 'productive' && yFor === 'published') return `Provider reachable and recently produced usable records.${partial}`;
+  if (yieldKind === 'productive' && yFor === 'review') return `Provider reachable; recent records went to review rather than the published catalogue.${partial}`;
+  if (yieldKind === 'low') return `Provider reachable; its latest turns found little that is new.${partial}`;
+  return `Provider reachable.${partial}`;
 }
 
 export async function rotationStatus(opts: { state?: any } = {}): Promise<RotationStatus> {
@@ -703,39 +822,49 @@ export async function rotationStatus(opts: { state?: any } = {}): Promise<Rotati
   const cfg = rotationConfig();
   const providers: ProviderStatus[] = [];
   const avail = new Map<string, Availability>();
+  const now = Date.now();
   for (const p of registry) {
     const a = await availability(p, s);
     avail.set(p.id, a);
     const h = await sourceHealthState(p.healthKey);
     const cfgState = p.configured?.() ?? true;
+    const rt = s.providers[p.id];
+    const resting = Object.entries(rt?.cursors || {}).filter(([, c]) => c.exhaustedUntil && Date.parse(c.exhaustedUntil) > now)
+      .map(([key, c]) => ({ key, department: c.department ?? null, query: c.query ?? null, until: c.exhaustedUntil! }));
+    const health: ProviderStatus['health'] = {
+      state: h.health, failures: h.failures, threshold: h.threshold, until: h.until ? h.until.toISOString() : null, lastError: h.lastError, lastOkAt: h.lastOkAt ? h.lastOkAt.toISOString() : null,
+      lastErrorKind: h.lastErrorKind, reason: h.reason, lifetimeFailures: h.lifetimeFailures, probeDue: h.probeDue,
+    };
+    const y = yieldState(s, p.id); const yf = y === 'productive' || y === 'low' ? yieldFor(s, p.id) : null;
     providers.push({
       id: p.id, label: p.label, group: p.group, role: p.role, tier: p.tier, configured: cfgState,
-      health: {
-        state: h.health, failures: h.failures, threshold: h.threshold, until: h.until ? h.until.toISOString() : null, lastError: h.lastError, lastOkAt: h.lastOkAt ? h.lastOkAt.toISOString() : null,
-        lastErrorKind: h.lastErrorKind, reason: h.reason, lifetimeFailures: h.lifetimeFailures, probeDue: h.probeDue,
-      },
-      yield: yieldState(s, p.id),
+      health,
+      yield: y, yieldFor: y === 'productive' ? yf : null, reviewOnly: !!p.reviewOnly,
       availability: { state: a.state, kind: a.kind ?? null, until: a.until ? a.until.toISOString() : null, reason: a.reason },
       running: s.running?.provider === p.id || !!providerHolder(p.lock),
-      exhaustedAt: a.state === 'exhausted' ? (s.providers[p.id]?.exhaustedAt ?? null) : null,
-      refreshAfter: a.state === 'exhausted' ? (s.providers[p.id]?.refreshAfter ?? s.providers[p.id]?.exhaustedUntil ?? null) : null,
-      lastBatch: s.providers[p.id]?.lastBatch ?? null,
-      lastProductiveBatch: s.providers[p.id]?.lastProductiveBatch ?? null,
+      exhaustedAt: a.state === 'exhausted' ? (rt?.exhaustedAt ?? null) : null,
+      refreshAfter: a.state === 'exhausted' ? (rt?.refreshAfter ?? rt?.exhaustedUntil ?? null) : null,
+      lastBatch: rt?.lastBatch ?? null,
+      lastProductiveBatch: rt?.lastProductiveBatch ?? null,
+      cursors: { known: Object.keys(rt?.cursors || {}).length, resting },
+      plain: plainStatus(p, a, health, y, y === 'productive' ? yf : null, resting.length, Object.keys(rt?.cursors || {}).length),
     });
   }
   const groups = {} as RotationStatus['groups'];
   for (const g of GROUPS) {
     const chain = providersOf(g);
     const cur = s.current[g] ? chain.find(p => p.id === s.current[g]) : null;
-    const next = peekNext(chain, s.cursors[g] ?? 0, avail);
+    const next = peekNext(chain, s.cursors[g] ?? 0, avail, s);
     const w = s.waiting[g];
     const batchSizeForGroup = g === 'Journals' ? (opts?.state?.journalsPerPass ?? 200) : g === 'Articles' ? (opts?.state?.articlesPerPass ?? opts?.state?.batchSize ?? 100) : g === 'Books' ? (opts?.state?.booksPerPass ?? 200) : cfg.batchSize;
-    groups[g] = { current: cur?.label ?? null, next: next?.label ?? null, waiting: !!w, waitingReason: w?.reason ?? null, retryAt: w?.retryAt ?? null, batchSize: batchSizeForGroup };
+    const nextCursor = next?.peekCursor
+      ? await next.peekCursor({ wanted: opts?.state?.departments || [], resting: restingCursorKeys(runtimeOf(s, next.id)), position: s.providers[next.id]?.position ?? null }).catch(() => null)
+      : null;
+    groups[g] = { current: cur?.label ?? null, next: next?.label ?? null, nextCursor, waiting: !!w, waitingReason: w?.reason ?? null, retryAt: w?.retryAt ?? null, batchSize: batchSizeForGroup };
   }
   const run = s.running ? registry.find(p => p.id === s.running!.provider) : null;
   // Next jobs: walk the coming slots of the weighted order the way a tick would (first type with an eligible provider), without running anything.
   const seq = typeSequence(cfg.weights);
-  const backlog = localJobs.length ? await Promise.all(localJobs.map(async j => ({ id: j.id, label: j.label, group: j.group, pending: await j.pending().catch(() => 0) }))) : [];
   const nextJobs: RotationStatus['nextJobs'] = [];
   const cursorsPeek: Partial<Record<Group, number>> = { ...s.cursors };
   for (let k = 0; k < seq.length * 2 && nextJobs.length < 3; k++) {
@@ -744,24 +873,21 @@ export async function rotationStatus(opts: { state?: any } = {}): Promise<Rotati
       // A coverage engine reads this type's sources; it is a likely next job only while one of them can be asked.
       const sourceOk = providersOf(g).some(x => !x.virtual && avail.get(x.id)?.state === 'ok');
       const chain = providersOf(g).filter(x => !x.virtual || sourceOk);
-      const pk = peekNext(chain, cursorsPeek[g] ?? 0, avail);
+      const pk = peekNext(chain, cursorsPeek[g] ?? 0, avail, s);
       if (pk && avail.get(pk.id)?.state === 'ok') {
-        found = { group: g, label: pk.label, kind: pk.virtual ? 'coverage' : 'source' };
+        found = { group: g, label: pk.label, kind: pk.virtual ? 'coverage' : 'source', cursor: pk.label === groups[g].next ? groups[g].nextCursor : null };
         cursorsPeek[g] = (chain.indexOf(pk) + 1) % Math.max(1, chain.length);
         break;
       }
     }
-    if (!found) { const b = backlog.find(x => x.pending > 0); if (b) found = { group: b.group, label: `${b.label} (${b.pending} to look at)`, kind: 'local' }; }
     if (!found) break;
     const last = nextJobs[nextJobs.length - 1];
     if (!last || last.label !== found.label || last.group !== found.group) nextJobs.push(found);
-    if (found.kind === 'local') break;
   }
-  const currentJob: RotationStatus['currentJob'] = s.running && run
-    ? { group: s.running.group, label: run.label, kind: run.virtual ? 'coverage' : 'source', since: s.running.since }
-    : s.localRunning ? { group: s.localRunning.group, label: s.localRunning.label, kind: 'local', since: s.localRunning.since } : null;
+  const currentJob: RotationStatus['currentJob'] = s.running && run ? { group: s.running.group, label: run.label, kind: run.virtual ? 'coverage' : 'source', since: s.running.since } : null;
   return {
-    currentJob, nextJobs, weights: cfg.weights, lastDecision: s.lastDecision ?? null, backlog, localZeroYield: s.localZeroYield ?? 0,
+    currentJob, nextJobs, weights: cfg.weights, lastDecision: s.lastDecision && s.lastDecision.kind !== ('local' as any) ? s.lastDecision : null,
+    discoveryEligible: nextJobs.length > 0,
     batchSize: cfg.batchSize, failuresBeforeFallback: cfg.failuresBeforeFallback, zeroYieldBatches: cfg.zeroYieldBatches, groups, providers,
     running: s.running && run ? { group: s.running.group, provider: run.id, label: run.label, since: s.running.since } : null,
     idle: s.idle ?? null,

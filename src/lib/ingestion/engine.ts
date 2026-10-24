@@ -4,6 +4,7 @@ import { runRotationPass, wakeEngine } from './rotation.js';
 import { installProviders, getRoadAdapter } from './providers.js';
 export { getRoadAdapter, wakeEngine };
 import { createRunWithStats } from './departmentStats.js';
+import { startMaintenance } from './maintenance.js';
 
 /**
  * The one entry the timer and the "Run one pass" button call.
@@ -36,7 +37,11 @@ export async function runEnginePass(
     // The pass is counted once the engine has actually looked. A tick that finds the engine asleep (nothing can be asked until a known time)
     // is not a pass, and writes nothing — see runRotationPass.
     const countPass = () => db.ingestionState.update({ where: { id: 'singleton' }, data: { passCount: { increment: 1 } } }).catch(() => {});
-    return await runRotationPass({ only, wanted, narrowed, state, force: !!opts.force, countPass });
+    // Discovery first, and its result is what the timer and the "Run one pass" button get back. The maintenance lane is started beside it, not after it
+    // and not instead of it: it is not waited for, so a long backlog cannot delay the next discovery tick, and it runs on its own cadence whether or
+    // not discovery found something to do (maintenance.ts).
+    try { return await runRotationPass({ only, wanted, narrowed, state, force: !!opts.force, countPass }); }
+    finally { startMaintenance(); }
   } catch (e: any) {
     await db.ingestionState.update({ where: { id: 'singleton' }, data: { lastError: String(e?.message || e).slice(0, 1000), lastRunAt: new Date(), consecutiveFailures: { increment: 1 } } }).catch(() => {});
     // A pass that threw is the one most worth having a record of.

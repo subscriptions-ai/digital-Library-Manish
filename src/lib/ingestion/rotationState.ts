@@ -15,6 +15,22 @@ export type BatchSummary = {
   useful: number; note?: string | null;
 };
 
+/**
+ * One place inside a provider: a department, a search term, a journal group. "Exhausted for now" belongs here first — one department
+ * with nothing new must not take the whole provider out of the rotation while its other departments still have something to give.
+ */
+export type CursorRuntime = {
+  /** Consecutive turns that visited this cursor and gave nothing useful. Reset by any useful one. */
+  zeroYield: number;
+  exhaustedUntil?: string | null;
+  exhaustedAt?: string | null;
+  department?: string | null;
+  query?: string | null;
+  lastAt?: string | null;
+  lastChecked?: number;
+  lastUseful?: number;
+};
+
 export type ProviderRuntime = {
   /** Consecutive batches that gave nothing useful. Reset by any useful batch. */
   zeroYield: number;
@@ -30,6 +46,14 @@ export type ProviderRuntime = {
   lastProductiveBatch?: BatchSummary | null;
   /** The engine's own place in a source that has no checkpoint of its own (department-search sources). Never shared with Quick Import. */
   position?: any;
+  /** Per department / query / journal group: where this provider has recently found nothing. Keyed by the provider's own cursor key. */
+  cursors?: Record<string, CursorRuntime>;
+  /**
+   * What the provider recently PUBLISHED (an exponential average of records added per turn), kept apart from what it sent to review. It is
+   * what decides which source goes first: a source that only fills the review queue is never ranked above one that adds to the catalogue.
+   */
+  addedEma?: number;
+  reviewEma?: number;
 };
 
 export type RotationState = {
@@ -50,10 +74,12 @@ export type RotationState = {
   idle?: IdleState | null;
   /** Why the engine chose its last job: content priority, coverage, source health, what was skipped. Shown collapsed on the screen. */
   lastDecision?: Decision | null;
-  /** A local backlog job working right now (re-judging held books, filling departments). Null when none is. */
+  /** Superseded: see maintenance.ts. */
   localRunning?: { job: string; label: string; group: Group; since: string } | null;
-  /** Consecutive rotation ticks where only a local/maintenance job ran and produced zero useful changes. Reset by any external source run or useful local job. */
+  /** Superseded: maintenance now has its own lane and its own state row (maintenance.ts). Kept so rows written before that still read. */
   localZeroYield?: number;
+  /** Turns taken per content type, so "most turns go to the best published source, every third is plain round robin" has something to count. */
+  turns?: Partial<Record<Group, number>>;
   updatedAt: string | null;
 };
 
