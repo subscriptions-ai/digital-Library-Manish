@@ -301,6 +301,9 @@ try {
     const c = (await call(`/api/admin/users/${explicitAll.id}/entitlement`, admin)).data;
     check('an all-departments plan is shown as ALL_DEPARTMENTS', c?.effectiveDepartments === 'ALL_DEPARTMENTS' && c.fullCatalogue === true, c);
     check('a reader cannot call it', (await call(`/api/admin/users/${indiv.id}/entitlement`, indiv)).status === 403);
+    check('the inspector names the source and the exact selected names', b?.departmentSource === 'registration' && eq([...b.selectedDepartments].sort(), sorted(FOUR)) && b.selectedDepartmentCount === 4 && b.effectiveDepartmentCount === 4 && b.isInstitutionMember === false, b);
+    check('an institution member is flagged as inheriting, with the institution named', a?.departmentSource === 'institution' && a.isInstitutionMember === true && typeof a.institutionName === 'string' && a.institutionName.length > 0, a);
+    check('an explicit All Domains plan reports departmentSource all-domains-plan, selection kept separately', c?.departmentSource === 'all-domains-plan' && c.effectiveAll === true && Array.isArray(c.selectedDepartments), c);
   }
 
   section('Nothing was changed in anyone’s data');
