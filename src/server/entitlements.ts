@@ -144,6 +144,21 @@ export function narrowToEntitlement(e: Entitlement, requested: string | string[]
   return allowed.length ? allowed : null;
 }
 
+/** Where an account's departments come from, in the words the Super Admin's screen uses. */
+export type DepartmentSource = 'registration' | 'subscription' | 'institution' | 'all-domains-plan' | 'staff' | 'none';
+
+export function departmentSourceOf(e: Entitlement): DepartmentSource {
+  if (e.source === 'staff') return 'staff';
+  if (e.all) return 'all-domains-plan';
+  if (e.source === 'subscription') return 'subscription';
+  if (e.source === 'selected') return 'registration';
+  if (e.source === 'institution-subscription' || e.source === 'institution-selected') return 'institution';
+  return 'none';
+}
+
+/** Whether an account belongs to an institution without being its administrator: its departments are the institution's, not its own pick. */
+export const isInstitutionMember = (role: string, institutionId: string | null | undefined) => !!institutionId && role !== 'Institution';
+
 type Db = {
   user: { findUnique: (a: any) => Promise<any>; findMany: (a: any) => Promise<any[]> };
   subscription: { findMany: (a: any) => Promise<any[]> };

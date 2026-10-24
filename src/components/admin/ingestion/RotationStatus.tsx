@@ -27,7 +27,7 @@ export function RotationStatus({ state }: { state: any }) {
               <p className="text-[10.5px] font-semibold uppercase tracking-wide text-muted">{g}</p>
               {r.waiting ? (
                 <>
-                  <p className="mt-1 text-[13.5px] font-semibold text-ink">Waiting for source recovery</p>
+                  <p className="mt-1 text-[13.5px] font-semibold text-ink">No source of this kind can be asked now</p>
                   <p className="mt-0.5 text-[11.5px] text-muted">{r.retryAt ? <><Clock3 size={11} className="mr-1 inline" aria-hidden="true" />next try {clock(r.retryAt)} · </> : null}{ORDER.filter(o => o !== g).join(' and ')} keep running.</p>
                   {r.waitingReason && <p className="mt-1 text-[11.5px] leading-snug text-muted">{r.waitingReason}</p>}
                 </>
@@ -35,6 +35,7 @@ export function RotationStatus({ state }: { state: any }) {
                 <dl className="mt-1 space-y-0.5 text-[13px]">
                   <div className="flex gap-2"><dt className="w-14 text-muted">Current</dt><dd className="font-medium text-ink">{r.current || '—'}</dd></div>
                   <div className="flex gap-2"><dt className="w-14 text-muted">Next</dt><dd className="font-medium text-ink">{r.next || '—'}</dd></div>
+                  {r.nextCursor && <div className="flex gap-2"><dt className="w-14 text-muted">Asks in</dt><dd className="font-medium text-ink">{r.nextCursor}</dd></div>}
                   <div className="flex gap-2"><dt className="w-14 text-muted">Batch</dt><dd className="tabular-nums text-ink">{N(r.batchSize)}</dd></div>
                 </dl>
               )}

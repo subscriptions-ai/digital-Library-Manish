@@ -39,7 +39,7 @@ import { installSeoPages } from "./src/server/seoPages.js";
 import { aiAssistantSwitchState, aiAssistantSwitchHistory, setAiAssistantEnabled } from "./src/server/aiAssistantSwitch.js";
 import { s3Configured, isProduction, deleteObject, keyFromUrl } from "./src/server/storage/s3Storage.js";
 import { removeFromInstitution, cancelDeletion, reactivateRemovedMember, purgeDueAccounts, RemovalError, isRemovedStatus, maskEmail, GRACE_HOURS, PENDING_DELETION, DELETED } from "./src/server/accountRemoval.js";
-import { loadEntitlement, loadInstitutionDepartments, entitlementAllows, scopeOf, narrowToEntitlement, subscriptionDepartments, type Entitlement } from "./src/server/entitlements.js";
+import { loadEntitlement, loadInstitutionDepartments, entitlementAllows, scopeOf, narrowToEntitlement, subscriptionDepartments, departmentSourceOf, isInstitutionMember, type Entitlement } from "./src/server/entitlements.js";
 import { mediaStorageRoot, mediaDir as mediaDirPath, mediaDriver, mediaStorageStatus, ensureMediaDirs, assertUploadsPossible, uploadMedia, MediaStorageError } from "./src/server/storage/mediaStorage.js";
 import { aiConfig } from "./src/server/aiAssistantConfig.js";
 import { searchContent } from "./src/lib/catalogueSearch.js";
@@ -4415,14 +4415,21 @@ async function startServer() {
   // What one account may open, and why: the departments it selected next to the ones that actually apply. For finding entitlement mismatches.
   app.get("/api/admin/users/:id/entitlement", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
     try {
-      const u = await prisma.user.findUnique({ where: { id: String(req.params.id) }, select: { id: true, role: true, institutionId: true } });
+      const u = await prisma.user.findUnique({ where: { id: String(req.params.id) }, select: { id: true, role: true, institutionId: true, interestedDomains: true, institution: { select: { name: true } } } });
       if (!u) return res.status(404).json({ error: "User not found" });
       const e = await loadEntitlement(prisma as any, { uid: u.id, role: u.role, institutionId: u.institutionId });
+      const member = isInstitutionMember(u.role, u.institutionId);
       res.json({
         role: u.role, institutionId: u.institutionId,
-        selectedDepartments: e.selected, selectedCount: e.selected.length,
+        selectedDepartments: e.selected, selectedCount: e.selected.length, selectedDepartmentCount: e.selected.length,
         effectiveDepartments: e.all ? 'ALL_DEPARTMENTS' : e.departments, effectiveCount: e.all ? null : e.departments.length,
+        effectiveDepartmentCount: e.all ? null : e.departments.length, effectiveAll: e.all,
         fullCatalogue: e.all, source: e.source, institutionCeiling: e.institutionCeiling,
+        // For the Super Admin's account screen: where the list comes from, whether it is the account's own pick or an institution's,
+        // and whether anything was recorded at all (names that match no department count as not recorded).
+        departmentSource: departmentSourceOf(e),
+        isInstitutionMember: member, institutionName: u.institution?.name ?? null,
+        recordedSelection: Array.isArray(u.interestedDomains) ? (u.interestedDomains as unknown[]).length : 0,
       });
     } catch (err: any) { console.error("admin entitlement:", err?.message); res.status(500).json({ error: "Could not resolve entitlement" }); }
   });

@@ -10,15 +10,22 @@ import {
 import type { Group } from './rotationState.js';
 
 /**
- * The engine's LOCAL backlog: work on records already in the database, done when no external source can be asked.
+ * The engine's MAINTENANCE work: work on records already in the database. It runs in its own lane (maintenance.ts), on its own cadence, and
+ * never takes a discovery turn.
  *
  * Every job here re-applies a rule the harvest already applies, to data the harvest already fetched. None of them asks a source, invents a
  * value, or creates a record:
  *
- *   held-books         Draft books from a source that may publish on the classifier's word are judged again under the CURRENT rules (department
- *                      classifier, book year policy, the source's own department scope, duplicates). One that now passes every rule is published,
- *                      exactly as the harvest would have published it. Books from review-first sources, and books a person has decided, are never
- *                      touched. Runs once per rules version — after that there is nothing for it to do until the rules change.
+ *   held-books         The second pass over held books. Draft books from a source that may publish on the classifier's word go through, in order:
+ *                        1. enrichment      a licence another provider already declared for this very title is filled in (new evidence);
+ *                        2. classification  the department classifier, under the CURRENT rules;
+ *                        3. policy          the book year policy and the source's own department scope;
+ *                        4. duplicates      the same book already published under another record;
+ *                        5. publish         ONLY if every one of those now passes — exactly as the harvest would have published it.
+ *                      Anything that does not stays held (or, where the classifier names a department with moderate confidence, is counted as
+ *                      waiting for review). Books from review-first sources, and books a person has decided, are never touched. A full pass is made once
+ *                      per rules version and again every INGESTION_HELD_RECHECK_DAYS (7) so new evidence is picked up; nothing is published without
+ *                      passing all five steps. Counts kept: held checked, new evidence found, promoted, waiting for review, still held.
  *   journal-departments Journals listed by Crossref / OpenAlex / ROAD that the importer could not place are offered to the same journal rule again,
  *                      once per rules version. It only fills an empty department; the journal's status (review, metadata only) is not changed.
  *   licence-fill       A book with no licence, where another provider's recorded sighting declared exactly one title-level licence, gets that licence —
@@ -39,6 +46,10 @@ export type LocalOutcome = {
   enriched: number;
   /** Looked at, and still waiting for a person under the current rules. */
   stillHeld: number;
+  /** Held books where new evidence was found (a licence another provider declared for this very title). Counted inside `enriched` too. */
+  newEvidence?: number;
+  /** Held books the classifier names a department for with moderate confidence: they stay in the review queue, flagged as such. */
+  sentToReview?: number;
   /** Would have been published, but the same book is already published. */
   duplicates: number;
   /** Looked at and refused by a rule (outside the source's department scope, licence flag disagreement…). */
@@ -97,9 +108,13 @@ const heldBookWhere = () => ({ status: 'Draft', ownershipSource: 'Ingested', rej
 
 // ── Job 1: held books, judged again under the current rules ────────────────
 
+/** A full second pass over the held books is made again this often, so evidence that arrives later (another provider's sighting) is not missed. */
+const heldRecheckDays = () => { const n = Number(process.env.INGESTION_HELD_RECHECK_DAYS); return Number.isFinite(n) && n >= 1 && n <= 90 ? n : 7; };
+
 async function heldBooksFingerprint() {
   const st = await db.ingestionState.findUnique({ where: { id: 'singleton' }, select: { bookMinYear: true } }).catch(() => null);
-  return JSON.stringify(['held-books', CLASSIFIER_RULES_VERSION, STRONG_MIN, STRONG_MARGIN, bookMinYear(st), SELF_PUBLISHING_SOURCES]);
+  const epoch = Math.floor(Date.now() / (heldRecheckDays() * 86_400_000));
+  return JSON.stringify(['held-books', CLASSIFIER_RULES_VERSION, STRONG_MIN, STRONG_MARGIN, bookMinYear(st), SELF_PUBLISHING_SOURCES, epoch]);
 }
 
 /** Is the same book already published? DOI, ISBN or the dedupe fingerprint — the identifiers the harvest itself matches on. */
@@ -123,12 +138,25 @@ export const heldBooksJob: LocalJob = {
     const s = await loadLocal(); const fp = await heldBooksFingerprint(); const js = jobState(s, 'held-books', fp);
     const minYear = bookMinYear(await db.ingestionState.findUnique({ where: { id: 'singleton' }, select: { bookMinYear: true } }).catch(() => null));
     const rows: any[] = await db.book.findMany({ where: { ...heldBookWhere(), ...after(js.cursor) }, orderBy: ORDER, take: limit,
-      select: { id: true, title: true, description: true, year: true, doi: true, isbn: true, fingerprint: true, source: true, metadata: true, createdAt: true } });
-    const o = blank(); const byDept: Record<string, number> = {};
+      select: { id: true, title: true, description: true, year: true, doi: true, isbn: true, fingerprint: true, source: true, metadata: true, licence: true, createdAt: true } });
+    const o = blank(); o.newEvidence = 0; o.sentToReview = 0; const byDept: Record<string, number> = {};
     for (const b of rows) {
       o.checked++;
       js.cursor = { at: b.createdAt.toISOString(), id: b.id };
-      const meta = obj(b.metadata); const h = obj(meta.harvest); const p = obj(h.provider);
+      let meta = obj(b.metadata);
+      // 1. Enrichment. Only a licence another provider declared for this very title, and only where the book has none: the same conservative
+      //    fill the harvest and the licence-completion job make. It is evidence about the record; it never decides that the record is published.
+      if (!b.licence && meta.sources) {
+        const got = agreedSightingLicence(meta);
+        if (got) {
+          try {
+            const filled = { ...meta, licenceFill: { ...obj(meta.licenceFill), [got.provider]: { licence: got.licence, basis: 'title', handle: got.handle, filledAt: new Date().toISOString(), by: 'held-recheck' } } };
+            const r = await db.book.updateMany({ where: { id: b.id, OR: [{ licence: null }, { licence: '' }] }, data: { licence: got.licence, licenceIsNC: !licenceAllowsCommercialUse(got.licence), metadata: filled } });
+            if (r.count) { o.enriched++; o.newEvidence!++; meta = filled; }
+          } catch { o.failed++; }
+        }
+      }
+      const h = obj(meta.harvest); const p = obj(h.provider);
       const verdict = classifyDepartment({
         classifications: Array.isArray(h.classifications) ? h.classifications : [], subjects: Array.isArray(h.keywords) ? h.keywords : [],
         title: b.title, description: b.description, lcc: Array.isArray(p.lcc) ? p.lcc : undefined, nlm: Array.isArray(p.nlmClass) ? p.nlmClass : undefined,
@@ -136,7 +164,7 @@ export const heldBooksJob: LocalJob = {
       const cfg = feedOf(b.source);
       const yv = bookYearVerdict(b.year, minYear);
       // The harvest's own publishing rule, in full: strong, a self-publishing source, inside the source's department scope, within the year policy.
-      if (verdict.band !== 'strong' || !verdict.department || !cfg || cfg.reviewFirst || !yv.ok) { o.stillHeld++; continue; }
+      if (verdict.band !== 'strong' || !verdict.department || !cfg || cfg.reviewFirst || !yv.ok) { o.stillHeld++; if (verdict.band === 'review' && cfg && !cfg.reviewFirst) o.sentToReview!++; continue; }
       if (cfg.allowedDepartments && !cfg.allowedDepartments.includes(verdict.department)) { o.refused++; continue; }
       if (await publishedTwin(b)) { o.duplicates++; continue; }
       try {
@@ -148,9 +176,9 @@ export const heldBooksJob: LocalJob = {
       } catch { o.failed++; }
     }
     js.lastRunAt = new Date().toISOString();
-    js.totals.checked += o.checked; js.totals.promoted += o.promoted;
+    js.totals.checked += o.checked; js.totals.promoted += o.promoted; js.totals.enriched += o.enriched;
     await saveLocal(s);
-    o.note = `${o.checked} held books judged under rules v${CLASSIFIER_RULES_VERSION} (books from ${minYear}): ${o.promoted} now meet every rule and were published${Object.keys(byDept).length ? ` (${Object.entries(byDept).map(([d, n]) => `${d} ${n}`).join(', ')})` : ''}, ${o.stillHeld} still need a person${o.duplicates ? `, ${o.duplicates} already published under another record` : ''}${o.refused ? `, ${o.refused} outside the source's departments` : ''}`;
+    o.note = `${o.checked} held books judged under rules v${CLASSIFIER_RULES_VERSION} (books from ${minYear})${o.newEvidence ? `, ${o.newEvidence} with new evidence (a licence another provider declared)` : ''}: ${o.promoted} now meet every rule and were published${Object.keys(byDept).length ? ` (${Object.entries(byDept).map(([d, n]) => `${d} ${n}`).join(', ')})` : ''}, ${o.stillHeld} still need a person${o.sentToReview ? ` (${o.sentToReview} with a department the classifier is moderately sure of)` : ''}${o.duplicates ? `, ${o.duplicates} already published under another record` : ''}${o.refused ? `, ${o.refused} outside the source's departments` : ''}`;
     return o;
   },
 };
@@ -300,7 +328,9 @@ export async function recordLocalOutcome(jobId: string, o: LocalOutcome): Promis
   const js = s.jobs[jobId];
   if (!js) return { exhausted: false, count: 0 };
   if (!js.zeroYield) js.zeroYield = { count: 0, exhaustedUntil: null };
-  if (localOutcomeIsUseful(o)) {
+  // Maintenance has its own lane and cannot crowd out discovery, so a run that LOOKED at records is progress through its backlog (its cursor moved and
+  // `pending` shrank), whether or not it changed any of them. Only a run that looked at nothing is a run with nothing to do.
+  if (localOutcomeIsUseful(o) || o.checked > 0) {
     js.zeroYield = { count: 0, exhaustedUntil: null };
     await saveLocal(s);
     return { exhausted: false, count: 0 };

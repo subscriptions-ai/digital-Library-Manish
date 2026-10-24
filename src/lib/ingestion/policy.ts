@@ -126,8 +126,37 @@ export function rotationConfig() {
       Journals: envInt('INGESTION_WEIGHT_JOURNALS', 2, 0, 20),
       Articles: envInt('INGESTION_WEIGHT_ARTICLES', 1, 0, 20),
     },
-    /** How many records one local backlog job (re-judging held books, filling departments) looks at in one tick. */
+    /** How many records one maintenance job (re-judging held books, filling departments) looks at in one run. */
     localBatch: envInt('INGESTION_LOCAL_BATCH', 200, 10, 2000),
+    /**
+     * A turn that gave nothing useful does not end the tick: the tick goes straight on to the next provider. It ends at the first turn that
+     * gave something useful, or after this many turns. 1 is the older "one turn per tick".
+     */
+    maxTurnsPerTick: envInt('INGESTION_MAX_TURNS_PER_TICK', 3, 1, 10),
+    /** Consecutive turns that visited one cursor (a department, a search) and gave nothing before only THAT cursor rests. Defaults to the provider threshold. */
+    cursorZeroYieldTurns: envInt('INGESTION_CURSOR_ZERO_YIELD_TURNS', envInt('INGESTION_ZERO_YIELD_BATCHES_BEFORE_ROTATION', 3, 1, 50), 1, 50),
+    /** What a source must have added per turn (recent average) to count as productive for the published catalogue. */
+    productiveAddedPerTurn: 0.5,
+    /**
+     * Every other turn of a content type goes first to the source that has recently ADDED the most, and a productive fallback takes part as a peer.
+     * INGESTION_PRODUCTIVITY_BIAS=0 is the rollback to plain round robin (nothing stored is read differently; the averages are simply ignored).
+     */
+    productivityBias: process.env.INGESTION_PRODUCTIVITY_BIAS !== '0',
+  };
+}
+
+/**
+ * The MAINTENANCE lane (maintenance.ts): work on records already held. It has its own cadence, independent of the discovery lane, and never takes a
+ * discovery turn.
+ *
+ *   INGESTION_MAINTENANCE_SECONDS   least time between two maintenance runs. Default 120.
+ *   INGESTION_LOCAL_WORK=0          switches the lane off.
+ */
+export function maintenanceConfig() {
+  return {
+    enabled: process.env.INGESTION_LOCAL_WORK !== '0',
+    intervalSeconds: envInt('INGESTION_MAINTENANCE_SECONDS', 120, 0, 86_400),
+    batch: envInt('INGESTION_LOCAL_BATCH', 200, 10, 2000),
   };
 }
 

@@ -8,7 +8,8 @@ import { recordSourceFailure } from './sourceHealth.js';
 import { pickJournal, visitJournal, finishJournalVisit, ingestionDb } from '../ingestionWorker.js';
 import { runSearchProvider } from './quickImport.js';
 import { totals } from './departmentStats.js';
-import type { TurnCtx, TurnOutcome, TurnRan } from './rotation.js';
+import type { TurnCtx, TurnOutcome, TurnRan, CursorResult } from './rotation.js';
+import { restingForSearch } from './quickImport.js';
 
 /**
  * The continuous engine's article turns.
@@ -87,6 +88,18 @@ export async function visitJournalCrossref(journal: any, state: any, cap: number
   };
 }
 
+/** When the first journal in scope is due again (cooldowns), or null when none is cooling. For the scheduler's "come back at" time when nothing is due now. */
+async function nextJournalDue(departments: string[] | undefined, cap: number, exclude: string[]): Promise<Date | null> {
+  const where: any = {
+    status: 'Accepted', issn: { not: null }, rightsBasis: 'DOAJ declaration', nextEligibleAt: { gt: new Date() },
+    ...(departments?.length ? { domain: { in: departments } } : {}),
+    ...(cap > 0 ? { articleCount: { lt: cap } } : {}),
+    ...(exclude.length ? { AND: [{ OR: [{ domain: null }, { domain: { notIn: exclude } }] }] } : {}),
+  };
+  const a = await p.journal.aggregate({ where, _min: { nextEligibleAt: true } }).catch(() => null);
+  return (a?._min?.nextEligibleAt as Date | null) ?? null;
+}
+
 /** Walk due journals with one source until the turn's budget is spent, the journals run out, or the source asks us to stop. */
 async function journalTurn(kind: 'openalex' | 'crossref', ctx: TurnCtx): Promise<TurnOutcome> {
   const state = ctx.state; const v2 = schedulerV2();
@@ -95,9 +108,12 @@ async function journalTurn(kind: 'openalex' | 'crossref', ctx: TurnCtx): Promise
   const rows: Record<string, any>[] = [];
   const t = { checked: 0, added: 0, held: 0, review: 0, skipped: 0, failed: 0 };
   let visited = 0, stoppedBy: Visit['providerFailure'] | null = null, firstError: string | null = null;
+  // Where this turn asked, by department: a department is the cursor. One that has given nothing for several turns is left alone (ctx.restingCursors)
+  // while the others carry on; only when none is left does the provider as a whole rest.
+  const byDept = new Map<string, CursorResult>();
 
   while (t.checked < ctx.batch && visited < MAX_JOURNALS_PER_TURN && Date.now() - started < TURN_BUDGET_MS) {
-    const picked = await pickJournal(ctx.narrowed ? ctx.wanted : undefined, cap, v2);
+    const picked = await pickJournal(ctx.narrowed ? ctx.wanted : undefined, cap, v2, ctx.restingCursors);
     if (!picked) break;
     let r: Visit;
     try {
@@ -109,6 +125,11 @@ async function journalTurn(kind: 'openalex' | 'crossref', ctx: TurnCtx): Promise
     visited++;
 
     if (r.providerFailure) { stoppedBy = r.providerFailure; firstError ||= r.providerFailure.error; if (!r.journalId) break; }
+    if (r.journal && r.department) {
+      const c = byDept.get(r.department) ?? { key: r.department, department: r.department, checked: 0, useful: 0 };
+      c.checked += r.checked || 0; c.useful += (r.added || 0) + (r.needsReview || 0);
+      byDept.set(r.department, c);
+    }
     if (r.journal) {
       t.checked += r.checked || 0; t.added += r.added; t.held += r.skippedHeld; t.review += r.needsReview; t.skipped += r.skippedRejected; t.failed += r.skippedFailed;
       rows.push({
@@ -122,10 +143,14 @@ async function journalTurn(kind: 'openalex' | 'crossref', ctx: TurnCtx): Promise
   }
 
   if (stoppedBy && !t.checked) return { kind: 'request-failed', error: stoppedBy.error, status: stoppedBy.status, rateLimited: stoppedBy.rateLimited };
-  if (!visited) return { kind: 'nothing-due', note: 'No journal is due for articles right now' };
+  if (!visited) {
+    const resting = ctx.restingCursors.length;
+    return { kind: 'nothing-due', until: await nextJournalDue(ctx.narrowed ? ctx.wanted : undefined, cap, ctx.restingCursors),
+      note: resting ? `No journal is due outside the ${resting} department${resting === 1 ? '' : 's'} resting for now` : 'No journal is due for articles right now' };
+  }
   const out: TurnRan = {
     kind: 'ran', checked: t.checked, added: t.added, held: t.held, enriched: 0, sentToReview: t.review, skipped: t.skipped, recordFailures: t.failed,
-    useful: t.added + t.review, more: true, rows,
+    useful: t.added + t.review, more: true, rows, cursors: [...byDept.values()],
     note: stoppedBy ? `${sourceLabel[kind]} stopped answering part-way (${stoppedBy.error}); what was read before that was kept` : null,
     ledger: { articlesAdded: t.added, articlesSkipped: t.held + t.failed },
   };
@@ -138,8 +163,9 @@ export const crossrefTurn = (ctx: TurnCtx) => journalTurn('crossref', ctx);
 /** Europe PMC and arXiv: searched by department, from the engine's own saved place. */
 export async function searchTurn(id: 'europepmc' | 'arxiv', ctx: TurnCtx): Promise<TurnOutcome> {
   let out;
+  const skip = restingForSearch(id, ctx.restingCursors);
   try {
-    out = await runSearchProvider(id, ctx.batch, ctx.position);
+    out = await runSearchProvider(id, ctx.batch, ctx.position, { skip });
   } catch (e: any) {
     const msg = String(e?.message || e);
     if (e instanceof SourceError && e.kind === 'invalid') await recordSourceFailure(id === 'europepmc' ? 'EuropePMC' : 'arXiv', msg).catch(() => {});
@@ -148,9 +174,15 @@ export async function searchTurn(id: 'europepmc' | 'arxiv', ctx: TurnCtx): Promi
   ctx.savePosition(out.nextPosition);
   const stats = out.byDepartment || {};
   const tot = totals(stats);
+  // Nothing was asked because every department is resting: the provider has no cursor left.
+  if (out.allResting) return { kind: 'nothing-due', note: 'Every department is resting for now' };
+  // The department is the cursor: what each gave this turn (added + sent to review is useful; a department that only returned what we already hold is not).
+  const cursors: CursorResult[] = Object.entries(stats).filter(([d]) => d).map(([d, v]: [string, any]) => ({
+    key: d, department: d, checked: (v.added || 0) + (v.held || 0) + (v.sentToReview || 0) + (v.skipped || 0) + (v.failed || 0), useful: (v.added || 0) + (v.sentToReview || 0),
+  }));
   return {
     kind: 'ran', checked: out.checked, added: tot.added, held: tot.held, enriched: 0, sentToReview: tot.sentToReview, skipped: tot.skipped, recordFailures: tot.failed,
     useful: tot.added + tot.sentToReview, more: out.moreAvailable, note: out.partial || null,
-    departmentStats: stats, ledger: { articlesAdded: tot.added, articlesSkipped: tot.held + tot.failed },
+    departmentStats: stats, cursors, ledger: { articlesAdded: tot.added, articlesSkipped: tot.held + tot.failed },
   };
 }

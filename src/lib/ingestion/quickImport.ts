@@ -79,10 +79,14 @@ export type QuickOutcome = {
   counters?: { accepted?: number; metadataOnly?: number; seen?: number };
   /** The breakdown by department (books and articles): written beside the run, so a department sees what was added to it. */
   byDepartment?: DeptStats;
+  /** Department-search sources: every department was resting, so nothing was asked. */
+  allResting?: boolean;
 };
 
 type Ctx = {
   job: QuickJob; limit: number; admin: any; position: any;
+  /** The engine only: departments to leave alone this turn (they have given nothing for several turns). Quick Import never sets it. */
+  skip?: string[];
   /** The write step of an advanced book import: exactly where and how far the preview read, not where "Import more" would go. */
   fixed?: { startToken: string | null; from: string | null };
   progress: (p: Partial<QuickProgress>) => void;
@@ -257,7 +261,7 @@ const runRoad = async (ctx: Ctx) => {
 
 // ── Articles ───────────────────────────────────────────────────────────────
 
-type Gathered = { items: (RawCandidate & { department: string | null })[]; fetched: number; skipped: number; partial: string | null; nextPosition: any; moreAvailable: boolean };
+type Gathered = { items: (RawCandidate & { department: string | null })[]; fetched: number; skipped: number; partial: string | null; nextPosition: any; moreAvailable: boolean; allResting?: boolean };
 
 /** Journals the engine would fetch articles for, taken in id order from where the last manual run stopped. */
 async function gatherByJournal(ctx: Ctx, def: Def, fetchOne: (j: any, fromYear: number, rows: number) => Promise<{ items: RawCandidate[]; fetched: number; skipped: number }>, gapMs: number): Promise<Gathered> {
@@ -320,8 +324,10 @@ async function gatherBySearch(ctx: Ctx, def: Def, departments: string[], fetchPa
   let turn: number = Number.isInteger(ctx.position?.turn) ? ctx.position.turn % departments.length : 0;
   const out: Gathered = { items: [], fetched: 0, skipped: 0, partial: null, nextPosition: null, moreAvailable: true };
 
-  // A department whose results ran out is finished for this run; it starts again from the beginning next time.
-  const spent = new Set<string>();
+  // A department whose results ran out is finished for this run; it starts again from the beginning next time. A department the engine is leaving
+  // alone for now is finished for this run from the start (the position is kept as it was, so it is picked up where it was when its rest is over).
+  const spent = new Set<string>(departments.filter(d => ctx.skip?.includes(d)));
+  if (spent.size >= departments.length) { out.nextPosition = ctx.position ?? { turn, places }; out.moreAvailable = false; out.allResting = true; return out; }
   for (let n = 0; n < departments.length * 6 && out.fetched < ctx.limit && spent.size < departments.length && Date.now() - started < policy.runBudgetMs; n++) {
     const dept = departments[turn];
     if (spent.has(dept)) { turn = (turn + 1) % departments.length; continue; }
@@ -349,6 +355,7 @@ async function gatherBySearch(ctx: Ctx, def: Def, departments: string[], fetchPa
 
 /** Judge, check the files, write — the shared pipeline (articlePipeline.ts) — and report. */
 async function finishArticles(ctx: Ctx, def: Def, g: Gathered): Promise<QuickOutcome> {
+  if (g.allResting) return { checked: 0, added: 0, alreadyHeld: 0, needsReview: 0, skipped: 0, failed: 0, notes: [], nextPosition: g.nextPosition, moreAvailable: false, allResting: true };
   const cands: Candidate[] = g.items.map(i => ({ ...i, department: i.department as any, extra: i.extra ?? null }));
   ctx.progress({ checked: g.fetched, limit: ctx.limit, open: false });
   const { sum, heldAlready, rejected, viewable, byDepartment } = await judgeVerifyWrite(cands, ctx.admin, { skippedAtFetch: g.skipped, progress: p => ctx.progress(p as any) });
@@ -380,9 +387,20 @@ const runArxiv = async (ctx: Ctx) => {
  * The continuous engine's turn on a department-search source (Europe PMC, arXiv): this very gather and this very write, started
  * from the ENGINE'S own saved place and never from Quick Import's, so neither can move the other.
  */
-export async function runSearchProvider(id: 'europepmc' | 'arxiv', limit: number, position: any): Promise<QuickOutcome> {
-  const ctx: Ctx = { job: null as any, limit, admin: null, position, progress: () => {} };
+export async function runSearchProvider(id: 'europepmc' | 'arxiv', limit: number, position: any, opts: { skip?: string[] } = {}): Promise<QuickOutcome> {
+  const ctx: Ctx = { job: null as any, limit, admin: null, position, skip: opts.skip, progress: () => {} };
   return id === 'europepmc' ? runEuropePmc(ctx) : runArxiv(ctx);
+}
+
+/** The cursor keys of a department-search source are its departments; this is the part of the scheduler's resting list that applies to it. */
+export const restingForSearch = (id: 'europepmc' | 'arxiv', resting: string[]): string[] => resting.filter(d => (id === 'europepmc' ? HEALTH_DEPARTMENTS : ARXIV_DEPARTMENTS).includes(d));
+
+/** The department the next turn of a department-search source would ask about, from the engine's saved place, skipping resting ones. For the screen only. */
+export function peekSearchDepartment(id: 'europepmc' | 'arxiv', position: any, resting: string[]): string | null {
+  const list = id === 'europepmc' ? HEALTH_DEPARTMENTS : ARXIV_DEPARTMENTS;
+  const start = Number.isInteger(position?.turn) ? position.turn % list.length : 0;
+  for (let i = 0; i < list.length; i++) { const d = list[(start + i) % list.length]; if (!resting.includes(d)) return d; }
+  return null;
 }
 
 // ── Books ──────────────────────────────────────────────────────────────────
@@ -668,6 +686,8 @@ export async function listQuickSources() {
         reason: st.health.reason, lastErrorKind: st.health.lastErrorKind, lifetimeFailures: st.health.lifetimeFailures,
       },
       yield: rp?.yield ?? null,
+      // What a productive source is productive FOR, the departments / searches it is leaving alone, the one-sentence reading, and review-only.
+      yieldFor: rp?.yieldFor ?? null, reviewOnly: rp?.reviewOnly ?? false, plain: rp?.plain ?? null, cursors: rp?.cursors ?? null,
       lastBatch: rp?.lastBatch ?? null,
       lastProductiveBatch: rp?.lastProductiveBatch ?? null,
       exhaustedAt: rp?.exhaustedAt ?? null, refreshAfter: rp?.refreshAfter ?? null,

@@ -1,6 +1,6 @@
 /**
- * The always-productive engine: weighted content priority, live fallback across providers and content types, coverage work, the local backlog
- * when every source rests, and "Waiting for source recovery" only when there is truly nothing useful to do. Also: the backlog jobs never break
+ * The always-productive engine: weighted content priority, live fallback across providers and content types, coverage work, the maintenance lane
+ * (a lane of its own, beside discovery), and "Waiting for source recovery" only when no provider of any type can be asked. Also: the backlog jobs never break
  * a rule (year, department confidence, review-first sources, duplicates), enrichment is never counted as "added", and progress survives a restart.
  *
  *   npx tsx scripts/test-always-productive.ts
@@ -14,6 +14,7 @@ const real = /^DATABASE_URL=(.*)$/m.exec(env)?.[1]?.replace(/^["']|["']$/g, '');
 if (!real) throw new Error('no DATABASE_URL in .env');
 process.env.DATABASE_URL = real.replace(/\/[^/?]+(\?.*)?$/, '/stm_ingestion_test');
 process.env.INGESTION_SOFT_BACKOFF_SECONDS = '0,0';
+process.env.INGESTION_MAX_TURNS_PER_TICK = '1';      // one turn per tick: the multi-turn tick has its own suite (test-discovery-lanes.ts)
 for (const k of ['INGESTION_WEIGHT_BOOKS', 'INGESTION_WEIGHT_JOURNALS', 'INGESTION_WEIGHT_ARTICLES', 'INGESTION_LOCAL_WORK', 'INGESTION_JOURNAL_COVERAGE', 'BOOKS_CROSSREF', 'BOOKS_PRESSBOOKS']) delete process.env[k];
 const { ingestionDb: db } = await import('../src/lib/ingestion/db.js');
 if ((await db.$queryRawUnsafe<any[]>('select current_database() d'))[0].d !== 'stm_ingestion_test') throw new Error('refusing to run against anything but stm_ingestion_test');
@@ -26,6 +27,7 @@ const { engineStatus } = await import('../src/lib/ingestion/status.js');
 const { ensureProviders } = await import('../src/lib/ingestion/engine.js');
 const { buildProviders } = await import('../src/lib/ingestion/providers.js');
 const L = await import('../src/lib/ingestion/localWork.js');
+const M = await import('../src/lib/ingestion/maintenance.js');
 const { pickJournalDepartment } = await import('../src/lib/ingestion/journalCoverage.js');
 const { pickTargetDepartment } = await import('../src/lib/ingestion/targetedBooks.js');
 const { rotationConfig } = await import('../src/lib/ingestion/policy.js');
@@ -71,9 +73,9 @@ const STATE: any = { batchSize: 100, journalsPerPass: 200, articlesPerPass: 100,
 const tick = (extra: any = {}) => R.runRotationPass({ wanted: [], narrowed: false, state: STATE, ...extra }) as Promise<any>;
 const timer = { nextTickAt: Date.now() + 60_000, lastTickAt: Date.now(), busy: false };
 const reset = async (providers: any[], local: Job[] = []) => {
-  await __resetRotationState(); __resetProviderLocks(); asked = []; behaviour = {}; localLeft = 0; localRuns = 0;
+  await __resetRotationState(); await M.__resetMaintenance(); __resetProviderLocks(); asked = []; behaviour = {}; localLeft = 0; localRuns = 0;
   await db.ingestionSourceHealth.deleteMany({ where: { source: { startsWith: `P${RUN}-` } } });
-  R.setProviders(providers as any); R.setLocalJobs(local as any, pick as any);
+  R.setProviders(providers as any); M.setMaintenanceJobs(local as any, pick as any);
 };
 
 const DOAJ = mk('doaj', 'Journals'), CRJ = mk('crossrefjournals', 'Journals', { tier: 'fallback', fallbackFor: ['doaj'] });
@@ -115,18 +117,21 @@ check('no Book source was asked', !asked.some(a => ['doab', 'oapen', 'crossrefbo
 const d2 = (await loadRotationState()).lastDecision;
 check('the decision says why: Books had the turn but could not work', !!d2 && /Books had the turn but could not work; Journals took it/.test(d2.reasons.join(' | ')), d2?.reasons);
 
-section('TEST 3: every external source resting, local held queue available');
+section('TEST 3: every external source resting, held queue available — maintenance is its own lane');
 await reset([DOAJ, CR, DOAB], [LOCAL]); await rest('doaj', 60); await rest('crossref', 60); await rest('doab', 60); localLeft = 450;
 const t3 = await tick();
-check('the local backlog runs instead of waiting', t3.ran === true && t3.local === true && t3.source === 'Held candidate review', t3);
-check('it reports promoted and enriched apart from added', t3.added === 0 && t3.promoted === 1 && t3.enriched === 2);
+check('discovery does NOT run the backlog in place of a source: with nothing to ask it waits', t3.ran === false && /Waiting for source recovery/.test(t3.note), t3);
+check('…and no backlog job ran inside the discovery tick', localRuns === 0, localRuns);
+const m3 = await M.runMaintenanceOnce({ force: true });
+check('the maintenance lane runs the backlog on its own', m3.ran === true && (m3 as any).label === 'Held candidate review', m3);
+check('it reports promoted and enriched apart from added', (m3 as any).outcome.promoted === 1 && (m3 as any).outcome.enriched === 2);
 const row3 = await db.ingestionRun.findFirst({ where: { source: 'Held candidate review', at: { gte: T_START } }, orderBy: { at: 'desc' } });
 check('its run row keeps them apart too (added 0, promoted 1, enriched 2)', row3?.added === 0 && row3?.promoted === 1 && row3?.enriched === 2, row3);
 const st3 = await engineStatus({ ...STATE, phase: 'Books' }, timer);
-check('the engine reads "Running", not "Waiting for source recovery"', st3.health === 'running', `${st3.health} / ${st3.label}`);
-check('Current source names the backlog job', st3.currentSource === 'Held candidate review', st3.currentSource);
-check('the next job is the backlog (no source is eligible)', st3.nextJobs?.[0]?.kind === 'local', st3.nextJobs);
-check('the decision is kept and explains it', (await loadRotationState()).lastDecision?.kind === 'local');
+check('maintenance work does not change what discovery says: still "Waiting for source recovery"', st3.health === 'waiting' && st3.label === 'Waiting for source recovery', `${st3.health} / ${st3.label}`);
+check('Current source is never the maintenance job', st3.currentSource !== 'Held candidate review', st3.currentSource);
+check('the screen has a maintenance block, apart from discovery', st3.maintenance?.last?.label === 'Held candidate review' && st3.discovery?.state === 'waiting', { m: st3.maintenance?.last?.label, d: st3.discovery?.state });
+check('the discovery decision is not a backlog decision', (await loadRotationState()).lastDecision?.kind !== 'local');
 
 section('TEST 4: every external source resting, coverage work available');
 await reset([DOAJ, CR, DOAB, COVER]); await rest('doaj', 60); await rest('crossref', 60); await rest('doab', 60);
@@ -156,7 +161,7 @@ check('the next tick goes on without waiting for DOAB', t6b.ran === true && t6b.
 section('Zero-yield rotation');
 await reset([DOAJ, CR, DOAB, OAPEN]); behaviour.doab = 'zero'; process.env.INGESTION_WEIGHT_JOURNALS = '0'; process.env.INGESTION_WEIGHT_ARTICLES = '0';
 const zs: string[] = [];
-for (let i = 0; i < 8; i++) zs.push((await tick()).provider);
+for (let i = 0; i < 12; i++) zs.push((await tick()).provider);       // twelve: the source that gives the most goes first on every other turn, so the empty one reaches its third batch a little later
 const rt = (await loadRotationState()).providers.doab;
 check('three empty DOAB batches → "exhausted for now"', !!rt?.exhaustedUntil && Date.parse(rt.exhaustedUntil) > Date.now(), rt);
 check('after that Books carry on with OAPEN; DOAB is not asked again', zs.slice(-3).every(p => p === 'oapen') && asked.filter(a => a === 'doab').length === 3, zs.join(','));
@@ -241,6 +246,7 @@ await db.book.deleteMany({ where: { fingerprint: { startsWith: `fp-${RUN}` } } }
 await db.ingestionSourceHealth.deleteMany({ where: { source: { startsWith: `P${RUN}-` } } });
 await db.ingestionRun.deleteMany({ where: { at: { gte: T_START } } });
 await db.appSetting.deleteMany({ where: { key: 'ingestion.localwork.v1' } });
+await M.__resetMaintenance();
 await __resetRotationState();
 console.log(`\n${pass} passed, ${fail} failed`);
 await db.$disconnect();

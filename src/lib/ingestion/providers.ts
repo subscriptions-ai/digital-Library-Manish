@@ -1,12 +1,12 @@
 import { ingestionDb as db } from './db.js';
-import { setProviders, setTargetedPolicy, setLocalJobs, type ProviderDef, type TurnCtx, type TurnOutcome } from './rotation.js';
+import { setProviders, setTargetedPolicy, type ProviderDef, type TurnCtx, type TurnOutcome, type CursorResult } from './rotation.js';
 import { journalCoverageTurn } from './journalCoverage.js';
-import { LOCAL_JOBS, nextLocalJob } from './localWork.js';
 import { targetedTurn, loadPriorityConfig, nextBooksTurn, isTargetedTurn } from './targetedBooks.js';
 import { totals } from './departmentStats.js';
 import { harvestFeed, harvestDue, DOAB_OAI, OAPEN_OAI, OTL_FEED, NCBI_FEED, CROSSREF_BOOKS_FEED, NLM_FEED, PRESSBOOKS_FEED, type OaiProviderConfig, type HarvestReport } from './books/oaiHarvest.js';
 import { ncbiLimits, usedToday } from './books/ncbi.js';
 import { crossrefTurn, openAlexTurn, searchTurn } from './articleTurns.js';
+import { peekSearchDepartment } from './quickImport.js';
 import { fetchCrossrefJournals, fetchOpenAlexSources, writeJournalCandidates, type JournalPage } from './journalSources.js';
 import { SourceError } from './articleSources.js';
 import { recordSourceFailure, classifyFailure } from './sourceHealth.js';
@@ -32,14 +32,15 @@ const nextUtcMidnight = () => { const d = new Date(); d.setUTCHours(24, 0, 0, 0)
 // ── Journals ────────────────────────────────────────────────────────────────
 
 const doajTurn = async (ctx: TurnCtx): Promise<TurnOutcome> => {
-  const sweep = await claimSweep('DOAJ', ctx.wanted);
-  if (!sweep) return { kind: 'nothing-due', note: 'Every DOAJ search has been walked out; they reopen within 30 days' };
+  const sweep = await claimSweep('DOAJ', ctx.wanted, ctx.restingCursors);
+  if (!sweep) return { kind: 'nothing-due', note: ctx.restingCursors.length ? 'Every DOAJ search is walked out or resting for now' : 'Every DOAJ search has been walked out; they reopen within 30 days' };
+  const cursor = (checked: number, useful: number): CursorResult[] => [{ key: `${sweep.department}|${sweep.term}`, department: sweep.department, query: sweep.term, checked, useful }];
   const r: any = await discoverJournalsPage(sweep);
   if (r.failed) return { kind: 'request-failed', error: r.error || 'DOAJ did not answer', status: r.status ?? null, rateLimited: !!r.rateLimited };
   if (r.refused) {
     // Answered, and said no to this search: not the source being down. The sweep went to the back of the queue.
     return { kind: 'ran', checked: 0, added: 0, held: 0, enriched: 0, sentToReview: 0, skipped: 0, recordFailures: 0, useful: 0, more: false,
-      note: `"${sweep.term}": DOAJ refused this search (HTTP ${r.status}) — moved on to another`, journal: { department: sweep.department } };
+      note: `"${sweep.term}": DOAJ refused this search (HTTP ${r.status}) — moved on to another`, journal: { department: sweep.department }, cursors: cursor(0, 0) };
   }
   return {
     kind: 'ran', checked: r.seen, added: r.created, held: Math.max(0, r.seen - r.created), enriched: r.enriched, sentToReview: 0, skipped: 0, recordFailures: 0,
@@ -48,6 +49,7 @@ const doajTurn = async (ctx: TurnCtx): Promise<TurnOutcome> => {
     columns: { journalsSeen: r.seen, journalsAccepted: r.accepted, journalsRefused: r.rejected },
     ledger: { journalsSeen: r.seen, journalsAccepted: r.accepted, journalsRejected: r.rejected },
     journal: { department: sweep.department },
+    cursors: cursor(r.seen, r.created + r.enriched),
   };
 };
 
@@ -55,8 +57,8 @@ type JournalFetch = (term: string, position: number, size: number) => Promise<Jo
 
 /** A journal source that lists journals by search term: walk a department's term one page at a time, from the engine's own sweep. */
 async function journalSourceTurn(sweepSource: string, label: 'Crossref Journals' | 'OpenAlex Sources' | 'ROAD', healthKey: string, fetchPage: JournalFetch, ctx: TurnCtx): Promise<TurnOutcome> {
-  const sweep = await claimSweep(sweepSource, ctx.wanted);
-  if (!sweep) return { kind: 'nothing-due', note: `Every ${label} search has been walked out; they reopen within 30 days` };
+  const sweep = await claimSweep(sweepSource, ctx.wanted, ctx.restingCursors);
+  if (!sweep) return { kind: 'nothing-due', note: ctx.restingCursors.length ? `Every ${label} search is walked out or resting for now` : `Every ${label} search has been walked out; they reopen within 30 days` };
   let page: JournalPage;
   try {
     page = await fetchPage(sweep.term, sweep.position, ctx.batch);
@@ -81,6 +83,7 @@ async function journalSourceTurn(sweepSource: string, label: 'Crossref Journals'
     columns: { journalsSeen: w.checked, journalsRefused: w.catalogued, uniqueCandidates: new Set(keys).size, cursor: `${sweep.term}#${sweep.position + 1}` },
     ledger: { journalsSeen: w.checked },
     journal: { department: sweep.department },
+    cursors: [{ key: `${sweep.department}|${sweep.term}`, department: sweep.department, query: sweep.term, checked: w.checked, useful: w.created + w.enriched }],
   };
 }
 
@@ -110,6 +113,8 @@ function bookProvider(cfg: OaiProviderConfig, id: string, label: string, healthK
   const isNcbi = cfg.kind === 'ncbi';
   return {
     id, label, group: 'Books', tier: 'supplementary', healthKey, lock: cfg.provider,
+    // A review-first feed can only send books to a person; it is never "productive for the published catalogue", however many books it queues.
+    reviewOnly: !!cfg.reviewFirst || isNcbi,
     role: isNcbi ? 'Biomedical and health books, review-first' : id === 'doab' ? 'Scholarly open-access books' : id === 'oapen' ? 'Scholarly open-access books and enrichment'
       : id === 'crossrefbooks' ? 'Scholarly book metadata by DOI (Metadata Only, review-first)' : id === 'nlm' ? 'Health-book catalogue records with NLM classification (Metadata Only)'
       : id === 'pressbooks' ? 'Openly published university textbooks (licence read from each book, review-first)' : 'Academic textbooks',
@@ -193,25 +198,54 @@ async function legacyDoabSweepTurn(ctx: TurnCtx): Promise<TurnOutcome> {
   };
 }
 
+// ── Where a turn would ask next (for the screen only) ───────────────────────
+
+const notResting = (resting: string[]) => resting.map(k => { const i = k.indexOf('|'); return i < 0 ? null : { department: k.slice(0, i), term: k.slice(i + 1) }; }).filter(Boolean) as { department: string; term: string }[];
+
+/** The search a sweep-based journal source would take next: the one left longest, in a department in scope, that is not resting. */
+const peekSweep = (source: string) => async ({ wanted, resting }: { wanted: string[]; resting: string[] }): Promise<string | null> => {
+  const rest = notResting(resting);
+  const r = await db.departmentSweep.findFirst({
+    where: { source, exhaustedAt: null, ...(wanted.length ? { department: { in: wanted } } : {}), ...(rest.length ? { NOT: { OR: rest } } : {}) },
+    orderBy: [{ lastSweptAt: { sort: 'asc', nulls: 'first' } }], select: { department: true, term: true },
+  }).catch(() => null);
+  return r ? `${r.department} · "${r.term}"` : null;
+};
+
+/** The journal a Crossref / OpenAlex article turn would visit next, with its department. */
+const peekJournal = async ({ wanted, resting }: { wanted: string[]; resting: string[] }): Promise<string | null> => {
+  const j = await db.journal.findFirst({
+    where: {
+      status: 'Accepted', issn: { not: null }, rightsBasis: 'DOAJ declaration', exhaustedAt: null, OR: [{ nextEligibleAt: null }, { nextEligibleAt: { lte: new Date() } }],
+      ...(wanted.length ? { domain: { in: wanted } } : {}),
+      ...(resting.length ? { AND: [{ OR: [{ domain: null }, { domain: { notIn: resting } }] }] } : {}),
+    },
+    orderBy: [{ lastIngestedAt: { sort: 'asc', nulls: 'first' } }], select: { title: true, domain: true },
+  }).catch(() => null);
+  return j ? `${j.domain || 'Unplaced'} · ${j.title}` : null;
+};
+
 // ── The list ────────────────────────────────────────────────────────────────
 
 
 export function buildProviders(): ProviderDef[] {
   return [
     // Journals
-    { id: 'doaj', label: 'DOAJ', group: 'Journals', tier: 'primary', role: 'Primary open-access journal source', healthKey: 'DOAJ', lock: 'DOAJ', turn: doajTurn },
+    { id: 'doaj', label: 'DOAJ', group: 'Journals', tier: 'primary', role: 'Primary open-access journal source', healthKey: 'DOAJ', lock: 'DOAJ', turn: doajTurn, cursored: true, peekCursor: peekSweep('DOAJ') },
     {
       id: 'road', label: 'ROAD / ISSN', group: 'Journals', tier: 'fallback', fallbackFor: ['doaj'], role: 'Open-access journal fallback', healthKey: 'ROAD', lock: 'ROAD',
       configured: () => (roadAdapter ? true : 'not connected — ROAD has no public data interface this engine can use yet'),
-      turn: ctx => journalSourceTurn('ROAD', 'ROAD', 'ROAD', (t, pos, n) => roadAdapter!(t, pos, n), ctx),
+      turn: ctx => journalSourceTurn('ROAD', 'ROAD', 'ROAD', (t, pos, n) => roadAdapter!(t, pos, n), ctx), cursored: true, peekCursor: peekSweep('ROAD'),
     },
     {
       id: 'crossrefjournals', label: 'Crossref Journals', group: 'Journals', tier: 'fallback', fallbackFor: ['doaj', 'road'], role: 'Journal identity and ISSN fallback (open access unverified)', healthKey: 'Crossref', lock: 'CrossrefJournals',
       turn: ctx => journalSourceTurn('CrossrefJournals', 'Crossref Journals', 'Crossref', (t, pos, n) => fetchCrossrefJournals(t, pos * n, n), ctx),
+      cursored: true, peekCursor: peekSweep('CrossrefJournals'),
     },
     {
       id: 'openalexsources', label: 'OpenAlex Sources', group: 'Journals', tier: 'fallback', fallbackFor: ['doaj', 'road', 'crossrefjournals'], role: 'Supplementary journal fallback (open access unverified)', healthKey: 'OpenAlex', lock: 'OpenAlexSources',
       turn: ctx => journalSourceTurn('OpenAlexSources', 'OpenAlex Sources', 'OpenAlex', (t, pos, n) => fetchOpenAlexSources(t, pos + 1, n), ctx),
+      cursored: true, peekCursor: peekSweep('OpenAlexSources'),
     },
     // Not a source: the departments with the fewest journal TITLES go first, through whichever of these can be asked (each keeps its own health,
     // lock and sweep rows). DOAJ verifies open access; the other two catalogue metadata only or hold for review, exactly as they do as fallbacks.
@@ -226,10 +260,11 @@ export function buildProviders(): ProviderDef[] {
       ]),
     },
     // Articles
-    { id: 'crossref', label: 'Crossref', group: 'Articles', tier: 'primary', role: 'Primary article source', healthKey: 'Crossref', lock: 'Crossref', turn: crossrefTurn },
-    { id: 'openalex', label: 'OpenAlex', group: 'Articles', tier: 'fallback', fallbackFor: ['crossref'], role: 'Article fallback', healthKey: 'OpenAlex', lock: 'OpenAlex', turn: openAlexTurn },
-    { id: 'europepmc', label: 'Europe PMC', group: 'Articles', tier: 'supplementary', role: 'Medical and life-science articles', healthKey: 'EuropePMC', lock: 'EuropePMC', turn: ctx => searchTurn('europepmc', ctx) },
-    { id: 'arxiv', label: 'arXiv', group: 'Articles', tier: 'supplementary', role: 'Preprints', healthKey: 'arXiv', lock: 'arXiv', turn: ctx => searchTurn('arxiv', ctx) },
+    { id: 'crossref', label: 'Crossref', group: 'Articles', tier: 'primary', role: 'Primary article source', healthKey: 'Crossref', lock: 'Crossref', turn: crossrefTurn, cursored: true, peekCursor: peekJournal },
+    // A fallback by design, but it takes part as a peer for as long as it is recently ADDING records (its yield, not its tier, decides).
+    { id: 'openalex', label: 'OpenAlex', group: 'Articles', tier: 'fallback', fallbackFor: ['crossref'], peerWhenProductive: true, role: 'Article fallback, a peer while productive', healthKey: 'OpenAlex', lock: 'OpenAlex', turn: openAlexTurn, cursored: true, peekCursor: peekJournal },
+    { id: 'europepmc', label: 'Europe PMC', group: 'Articles', tier: 'supplementary', role: 'Medical and life-science articles', healthKey: 'EuropePMC', lock: 'EuropePMC', turn: ctx => searchTurn('europepmc', ctx), cursored: true, peekCursor: ({ position, resting }) => Promise.resolve(peekSearchDepartment('europepmc', position, resting)) },
+    { id: 'arxiv', label: 'arXiv', group: 'Articles', tier: 'supplementary', role: 'Preprints', healthKey: 'arXiv', lock: 'arXiv', turn: ctx => searchTurn('arxiv', ctx), cursored: true, peekCursor: ({ position, resting }) => Promise.resolve(peekSearchDepartment('arxiv', position, resting)) },
     // Books
     bookProvider(DOAB_OAI, 'doab', 'DOAB', 'DOAB', null),
     bookProvider(OAPEN_OAI, 'oapen', 'OAPEN', 'OAPEN', 'BOOKS_OAPEN'),
@@ -253,6 +288,5 @@ export function installProviders() {
   setProviders(buildProviders());
   // Of every ten Books turns, the configured share go to the lowest-covered department first (see targetedBooks.ts).
   setTargetedPolicy(async () => { const c = await loadPriorityConfig(); return c.enabled && isTargetedTurn(await nextBooksTurn(), c.share); });
-  // When no source of any type can work, the local backlog (localWork.ts) runs before the engine waits. INGESTION_LOCAL_WORK=0 switches it off.
-  setLocalJobs(process.env.INGESTION_LOCAL_WORK === '0' ? [] : LOCAL_JOBS, nextLocalJob);
+  // The maintenance jobs (localWork.ts) are not part of the rotation: they have their own lane (maintenance.ts), which engine.ts starts beside it.
 }
