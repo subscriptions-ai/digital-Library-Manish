@@ -13,6 +13,7 @@ const env = readFileSync(new URL('../.env', import.meta.url), 'utf8');
 const real = /^DATABASE_URL=(.*)$/m.exec(env)?.[1]?.replace(/^["']|["']$/g, '');
 if (!real) throw new Error('no DATABASE_URL in .env');
 process.env.DATABASE_URL = real.replace(/\/[^/?]+(\?.*)?$/, '/stm_ingestion_test');
+process.env.INGESTION_ADAPTIVE_SCHEDULER = '0';        // this suite pins the previous static order and one-useful-turn-per-tick rule; the adaptive scheduler has its own (test-adaptive-scheduler.ts)
 process.env.INGESTION_SOFT_BACKOFF_SECONDS = '0,0';
 for (const k of ['INGESTION_WEIGHT_BOOKS', 'INGESTION_WEIGHT_JOURNALS', 'INGESTION_WEIGHT_ARTICLES', 'INGESTION_LOCAL_WORK', 'INGESTION_JOURNAL_COVERAGE', 'BOOKS_CROSSREF', 'BOOKS_PRESSBOOKS',
   'INGESTION_MAX_TURNS_PER_TICK', 'INGESTION_PRODUCTIVITY_BIAS', 'INGESTION_MAINTENANCE_SECONDS', 'INGESTION_CURSOR_ZERO_YIELD_TURNS']) delete process.env[k];
@@ -20,6 +21,8 @@ for (const k of ['INGESTION_WEIGHT_BOOKS', 'INGESTION_WEIGHT_JOURNALS', 'INGESTI
 Object.assign(process.env, { INGESTION_MAX_TURNS_PER_TICK: '1', INGESTION_WEIGHT_BOOKS: '1', INGESTION_WEIGHT_JOURNALS: '1', INGESTION_WEIGHT_ARTICLES: '1' });
 const { ingestionDb: db } = await import('../src/lib/ingestion/db.js');
 if ((await db.$queryRawUnsafe<any[]>('select current_database() d'))[0].d !== 'stm_ingestion_test') throw new Error('refusing to run against anything but stm_ingestion_test');
+// A journal claim left behind by a test server that was stopped mid-visit (an earlier suite) would read as an abandoned worker and make the engine say "attention". Scratch database only (guarded above).
+await db.journal.updateMany({ where: { claimedAt: { not: null } }, data: { claimedAt: null, claimedBy: null } });
 
 const R = await import('../src/lib/ingestion/rotation.js');
 const { loadRotationState, saveRotationState, __resetRotationState } = await import('../src/lib/ingestion/rotationState.js');

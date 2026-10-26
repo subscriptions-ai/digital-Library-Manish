@@ -36,7 +36,9 @@ function EngineCopy({ rotation }: { rotation: any }) {
       Journals are discovered through DOAJ, with {list(fallbacks)} available as fallbacks{connected('road') ? '' : ' (ROAD / ISSN is in the chain but not connected yet: it has no public data interface)'}.
       {' '}Articles are collected primarily through Crossref, with OpenAlex, Europe PMC and arXiv used where appropriate.
       {' '}Books are collected through DOAB, OAPEN, Open Textbook Library, NCBI Bookshelf and NLM Catalog, with Crossref Books and Pressbooks adding books for review only; no book file is hosted here, so each book is catalogued with a link to its source, or as a record with no Read button when no licence is known.
-      {' '}Content types take turns by priority ({rotation.weights ? `Books ${rotation.weights.Books} · Journals ${rotation.weights.Journals} · Articles ${rotation.weights.Articles}` : 'Books first'}). A source that has nothing new in one department rests only for that department and is still asked about the others; the engine waits only when no source of any kind can be asked. Maintenance (licence completion, held-candidate review, department classification) runs in its own lane beside discovery and never takes a discovery turn.
+      {' '}{rotation.adaptive
+        ? <>Content types are offered in order of how productive their best available source is right now (the set priorities, {rotation.weights ? `Books ${rotation.weights.Books} · Journals ${rotation.weights.Journals} · Articles ${rotation.weights.Articles}` : 'Books first'}, only break ties, and no type waits for ever), and a pass keeps working through sources until its time budget is spent instead of stopping at the first that adds something.</>
+        : <>Content types take turns by priority ({rotation.weights ? `Books ${rotation.weights.Books} · Journals ${rotation.weights.Journals} · Articles ${rotation.weights.Articles}` : 'Books first'}).</>} A source that has nothing new in one department rests only for that department and is still asked about the others; the engine waits only when no source of any kind can be asked. Maintenance (licence completion, held-candidate review, department classification) runs in its own lane beside discovery and never takes a discovery turn.
     </>
   );
 }
@@ -91,6 +93,7 @@ export function EngineStatus({ state, onChanged }: { state: any; onChanged: () =
             {st.label || (running ? 'Running' : 'Paused')}
             <Badge tone={HEALTH_TONE[st.health] || 'neutral'}>{continuing ? CONTINUING_BADGE : HEALTH_BADGE[st.health] || 'Action needed'}</Badge>
           </h2>
+          {running && st.summary && <p className="mt-1.5 text-[14px] font-medium text-ink-2" data-testid="engine-summary">{st.summary}</p>}
           <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-muted">
             {st.rotation?.enabled ? <EngineCopy rotation={st.rotation} /> : (
               <>Journals come from DOAJ, where their licence is decided once per title. Articles follow from OpenAlex. Books come from DOAB, OAPEN, Open Textbook Library, NCBI Bookshelf and NLM Catalog;
@@ -165,24 +168,28 @@ export function EngineStatus({ state, onChanged }: { state: any; onChanged: () =
       )}
 
       <div className="mt-5">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">Last 24 hours <span className="font-normal normal-case tracking-normal">· {N(day.passes)} runs</span></p>
-        <dl className="mt-2 grid grid-cols-2 gap-x-6 gap-y-2.5 sm:grid-cols-4 lg:grid-cols-7">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">Last 24 hours <span className="font-normal normal-case tracking-normal">· {N(day.passes)} runs · ingestion events, not catalogue totals</span></p>
+        <dl className="mt-2 grid grid-cols-2 gap-x-6 gap-y-2.5 sm:grid-cols-4 lg:grid-cols-6">
           {[
+            ['Checked', day.checked, 'Candidates looked at by runs that recorded it. Older article and journal runs did not, so this can be lower than the real figure.'],
             ['New published', day.newPublished ?? day.added, 'Records added to the published catalogue. Review candidates are never counted here.'],
             ['New review candidates', day.newReview ?? day.needsReview, 'Records sent to a person to review. Not published.'],
-            ['Duplicates skipped', day.duplicates ?? day.held, 'Already in the catalogue.'],
+            ['Duplicates', day.duplicates ?? day.held, 'Already in the catalogue (all kinds). Split below.'],
+            ['Duplicate enriched', day.duplicateEnriched, 'Duplicates that completed a held record\'s empty fields (never licence, file, access or status).'],
+            ['Duplicate conflicting', day.duplicateConflicting, 'Duplicates that disagreed with the held record on licence or DOI. Left unchanged for a person to look at.'],
+            ['Unique yield', day.uniqueYieldPct == null ? null : `${day.uniqueYieldPct}%`, 'New records (published or for review) as a share of the candidates looked at.'],
             ['Held promoted', day.heldPromoted ?? day.promoted, 'Held candidates published after passing every rule again.'],
-            ['Enriched', day.enriched, 'Existing records completed (a licence, a department).'],
+            ['Enriched (all)', day.enriched, 'Existing records completed, including by the maintenance lane (a licence, a department).'],
             ['Source requests failed', day.providerFailures, 'Requests a source did not answer. Counted apart from records.'],
             ['Failed writes', day.failedWrites ?? ((day.failed || 0) + (day.errors || 0)), 'Records the catalogue could not write.'],
           ].map(([label, v, tip]: any) => (
             <div key={label} title={tip}>
               <dt className="text-[11px] text-muted">{label}</dt>
-              <dd className={`text-[17px] font-semibold tabular-nums ${label === 'Failed writes' && v ? 'text-alarm' : 'text-ink'}`}>{N(v || 0)}</dd>
+              <dd className={`text-[17px] font-semibold tabular-nums ${label === 'Failed writes' && v ? 'text-alarm' : 'text-ink'}`}>{typeof v === 'string' ? v : v == null && (label === 'Checked' || label.startsWith('Duplicate ')) ? '—' : N(v || 0)}</dd>
             </div>
           ))}
         </dl>
-        {day.rejected > 0 && <p className="mt-1.5 text-[12px] text-muted">{N(day.rejected)} refused by a rule.</p>}
+        {day.rejected > 0 && <p className="mt-1.5 text-[12px] text-muted">{N(day.refusedByRule ?? day.rejected)} refused by a rule.</p>}
         {day.publishedByProvider?.length > 0 && (
           <details className="mt-2.5 group" open>
             <summary className="cursor-pointer select-none text-[12.5px] font-semibold text-ink hover:text-accent">Published additions by provider</summary>

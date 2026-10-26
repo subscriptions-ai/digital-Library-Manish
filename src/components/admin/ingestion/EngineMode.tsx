@@ -46,6 +46,7 @@ export function EngineMode({ state, coverage, onChanged }: { state: any; coverag
                 const order = w && !(w.Books === w.Journals && w.Journals === w.Articles)
                   ? `by priority — Books ${w.Books}, Journals ${w.Journals}, Articles ${w.Articles} of every ${w.Books + w.Journals + w.Articles} turns`
                   : 'taken fairly: Journals, then Articles, then Books, and round again';
+                if (state.status.rotation.adaptive) return `A pass every minute, and within it turn after turn until its time budget is spent. Content types are offered in order of how productive their best available source is right now (the set priorities, Books ${w?.Books}, Journals ${w?.Journals}, Articles ${w?.Articles}, only break ties, and no type is passed over for long). A source or content type that cannot be asked is stepped over at once, never waited for. Work on records already held (licences, held candidates, departments) runs in its own lane and never takes a discovery turn.`;
                 return `One turn a minute, ${order}. A source or content type that cannot be asked is stepped over at once, never waited for, and a turn that finds nothing new goes straight on to the next source. Work on records already held (licences, held candidates, departments) runs in its own lane and never takes a discovery turn.`;
               })()
             : 'One pass a minute, shared out: one in five looks for new titles, the rest fetch articles.')

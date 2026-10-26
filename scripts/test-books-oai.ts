@@ -11,6 +11,7 @@ const real = /^DATABASE_URL=(.*)$/m.exec(env)?.[1]?.replace(/^["']|["']$/g, '');
 if (!real) throw new Error('no DATABASE_URL in .env');
 const TEST_URL = real.replace(/\/[^/?]+(\?.*)?$/, '/stm_ingestion_test');
 process.env.DATABASE_URL = TEST_URL;
+process.env.INGESTION_ADAPTIVE_SCHEDULER = '0';        // this suite pins the previous static order and one-useful-turn-per-tick rule; the adaptive scheduler has its own (test-adaptive-scheduler.ts)
 
 const { ingestionDb: db } = await import('../src/lib/ingestion/db.js');
 const dbName = (await db.$queryRawUnsafe('select current_database() d'))[0].d;
@@ -720,7 +721,8 @@ catalogue = [
 // ── N: the department breakdown ───────────────────────────────────────────
 section('N. Department breakdown: counted as each book is decided, reconciled with the run, shared by every way in');
 {
-  const { runEnginePass } = await import('../src/lib/ingestion/engine.js');
+  const { runEnginePass, ensureProviders } = await import('../src/lib/ingestion/engine.js');
+  const { setTargetedPolicy } = await import('../src/lib/ingestion/rotation.js');
   const { __resetRotationState } = await import('../src/lib/ingestion/rotationState.js');
   const { __resetProviderLocks } = await import('../src/lib/ingestion/providerLocks.js');
   const { departmentMetrics } = await import('../src/lib/ingestion/departmentMetrics.js');
@@ -759,6 +761,9 @@ section('N. Department breakdown: counted as each book is decided, reconciled wi
   const beforeArch = await departmentMetrics('Architecture', range('lifetime'));
   const beforeAll = await departmentMetrics(null, range('lifetime'));
 
+  // Which Books turn is "targeted coverage" depends on a counter kept in the database (the 70/30 rule), so left alone this pass was DOAB only some of the time.
+  // This section is about the DOAB turn, so the targeted policy is off for it (its own suite, test-catalogue-expansion.ts, covers 70/30).
+  ensureProviders(); setTargetedPolicy(null);
   const pass: any = await runEnginePass([], { force: true, only: 'books' });
   const row = await db.ingestionRun.findFirst({ where: { phase: 'Books', source: 'DOAB' }, orderBy: { at: 'desc' } });
   const stats: any[] = await db.ingestionRunDepartmentStat.findMany({ where: { runId: row!.id } });

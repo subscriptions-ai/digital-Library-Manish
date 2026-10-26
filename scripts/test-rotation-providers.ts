@@ -14,6 +14,7 @@ const env = readFileSync(new URL('../.env', import.meta.url), 'utf8');
 const real = /^DATABASE_URL=(.*)$/m.exec(env)?.[1]?.replace(/^["']|["']$/g, '');
 if (!real) throw new Error('no DATABASE_URL in .env');
 process.env.DATABASE_URL = real.replace(/\/[^/?]+(\?.*)?$/, '/stm_ingestion_test');
+process.env.INGESTION_ADAPTIVE_SCHEDULER = '0';        // this suite pins the previous static order and one-useful-turn-per-tick rule; the adaptive scheduler has its own (test-adaptive-scheduler.ts)
 
 // This suite tests the real providers in the rotation under the ORIGINAL fair rotation (Journals → Articles → Books, no coverage engine, no local backlog). Weighted
 // priority, journal coverage, review-only Book sources in the rotation and the local backlog are covered by scripts/test-always-productive.ts.
@@ -135,7 +136,10 @@ try {
   const jA = await db.journal.findFirst({ where: { issn: newA } }), jB = await db.journal.findFirst({ where: { issn: newB } });
   check('C. a Crossref-only journal is Needs Review / OA unverified — not Accepted', jA?.status === 'NeedsReview' && jB?.status === 'NeedsReview' && /OA unverified/.test(jA?.rightsBasis || ''), `${jA?.status} / ${jA?.rightsBasis}`);
   check('C. no open-access status, licence or commercial-use permission was invented', jA?.licence === null && jA?.licenceIsNC === null && jA?.openAccess === false && jA?.rightsVerifiedAt === null && jA?.rightsVerifiedBy === null);
-  check('C. both of its ISSNs are kept, and it carries the department it was searched under', jB?.eissn === newBe && jB?.domain === DEPT);
+  check('C. both of its ISSNs are kept', jB?.eissn === newBe, `eissn ${jB?.eissn}`);
+  // Since the journal-department rule (journalDepartment.ts) a journal is placed by what IT says it is about, never by the search term that happened to find it.
+  // This stand-in has no subjects, so it stays unplaced for a person (and the maintenance lane's department job) rather than inheriting the searched department.
+  check('C. it does NOT inherit the department it was searched under (no subjects → unplaced, never a guess)', jB?.domain == null, `domain ${jB?.domain}`);
   const held = await db.journal.findFirst({ where: { issn: heldIssn } });
   check('a journal we already hold is NOT changed in status, licence or rights — only an empty field is filled', held?.status === 'Accepted' && held?.licence === 'CC BY' && held?.licenceIsNC === false && held?.rightsBasis === 'DOAJ declaration' && held?.publisherName === 'Keep Me' && held?.eissn === '3333-3333');
   check('review-first journals are never picked for article fetching (only Accepted + DOAJ-declared are)', (await db.journal.count({ where: { id: { in: [jA!.id, jB!.id] }, status: 'Accepted' } })) === 0);

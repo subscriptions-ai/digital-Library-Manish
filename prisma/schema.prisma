@@ -1742,6 +1742,9 @@ model IngestionRun {
   enriched        Int @default(0)
   /// Held books published by the backlog after meeting every rule under the current rules. Already in the catalogue as Drafts, so not "added".
   promoted        Int @default(0)
+  /// Duplicates whose incoming metadata disagreed with the held record on a rights-bearing field (licence) or an identifier (DOI).
+  /// Counted and left alone for a person to look at; never applied. (`skippedHeld` = every duplicate, `enriched` = the ones improved.)
+  duplicateConflicting Int @default(0)
 
   // Discovery passes report on titles rather than articles.
   journalsSeen     Int @default(0)
@@ -2089,4 +2092,90 @@ model AdminAuditLog {
   meta       Json?
 
   @@index([action, at])
+}
+
+/// One historical backfill: a bounded, resumable, pauseable, cancellable pass over a provider's past records, kept entirely apart from the continuous engine.
+///
+/// Its place lives HERE and nowhere else (`cursor`, `windowStart`/`windowEnd`, `inflight`): a backfill never reads or writes BookHarvestCheckpoint, DepartmentSweep,
+/// Journal.fetchCursor, the rotation row or any provider health row.
+///
+/// Counters are exact across a crash. A chunk is first PLANNED (fetched, read, judged against the catalogue; the page's identity and each record's planned outcome are
+/// kept, in `inflight`), then APPLIED (the writes), then COMMITTED in one compare-and-set statement that adds the planned counts to the totals, moves `cursor` forward
+/// and clears `inflight`. A crash before the plan is saved counts nothing and re-plans; a crash after it re-fetches the same page, proves it is the same page, and
+/// re-applies the same plan, so what was already written stays "published" and is never re-counted as a duplicate. A page that is NOT the same stops the job safely.
+model BackfillJob {
+  id          String @id @default(uuid())
+  /// The adapter's id as the backfill registry spells it. (Phase 2A: only a test fixture exists.)
+  provider    String
+  /// JOURNAL | ARTICLE | BOOK | CASE_REPORT | THESIS | CONFERENCE_PROCEEDING | EDUCATIONAL_VIDEO | NEWSLETTER | MAGAZINE — a string, so a new kind of content needs an
+  /// adapter and a line in backfillTypes.ts, never a migration. Periodicals ARE Journals: there is no PERIODICAL type, table or pipeline.
+  contentType String
+  /// Pending | Running | Paused | Completed | Failed | Cancelled
+  status      String @default("Pending")
+  /// A dry run reads, normalises and judges, and writes NOTHING to the catalogue. The default is a dry run.
+  dryRun      Boolean @default(true)
+
+  // ── What was asked for ────────────────────────────────────
+  windowStart DateTime?
+  windowEnd   DateTime?
+  /// Departments in scope; [] = all.
+  departments Json   @default("[]")
+  /// OAFirst | MetadataOnlyAllowed
+  accessPreference String @default("OAFirst")
+  /// A hard ceiling on records fetched by this job (also bounded by BACKFILL_MAX_RECORDS_PER_JOB).
+  maxRecords  Int    @default(1000)
+  /// Provider-specific parameters, the period preset the person chose, and for a real run the dry run it was started from (`previewJobId`).
+  config      Json?
+
+  // ── Where it has got to: this job's own committed place ───
+  cursor          String?   @db.Text
+  checkpointAt    DateTime?
+  chunksCompleted Int       @default(0)
+  /// The chunk that has been planned and not yet committed, as BOUNDED identity — never records: { v, chunkNumber, cursorBefore, expectedCursorAfter, limit, pageHash,
+  /// planned: [[stableId, outcomeCode], …] (at most one chunk, ≤ 100 pairs), counts, bytes, plannedAt, attempts }. A retry re-fetches the same cursor and proceeds
+  /// ONLY if the page's identity matches this plan. Null between chunks and for dry runs.
+  inflight        Json?
+
+  // ── What it has done. Every candidate fetched ends in exactly one of: published, review, held, duplicate, refused, failed. ──
+  recordsFetched    Int @default(0)
+  /// Fetched records that could be read into the common shape (the rest are counted failed).
+  recordsNormalized Int @default(0)
+  /// New distinct records: published + review + held.
+  recordsUnique     Int @default(0)
+  /// Every duplicate. Unchanged = duplicate − enriched − conflicting (the same split the continuous engine reports).
+  recordsDuplicate            Int @default(0)
+  /// Of the duplicates: an empty descriptive field of the held record was filled. Never licence, DOI, file, access or status.
+  recordsEnriched             Int @default(0)
+  /// Of the duplicates: licence, DOI or identity disagreed with the held record. Counted and left exactly as they were.
+  recordsDuplicateConflicting Int @default(0)
+  recordsHeld       Int @default(0)
+  recordsReview     Int @default(0)
+  recordsPublished  Int @default(0)
+  /// Refused by a rule (year policy, licence not allowed). Not a failure.
+  recordsRefused    Int @default(0)
+  /// Unreadable records and records the catalogue could not write.
+  recordsFailed     Int @default(0)
+  bytesProcessed    BigInt @default(0)
+
+  // ── Lifecycle ─────────────────────────────────────────────
+  startedAt   DateTime?
+  completedAt DateTime?
+  pausedAt    DateTime?
+  /// A person asked to pause / cancel; the worker finishes and commits the chunk it is on, then does it.
+  pauseRequested  Boolean @default(false)
+  cancelRequested Boolean @default(false)
+  /// Which worker holds the job, and when it last said it was alive. A Running job whose heartbeat is stale was interrupted and is taken over from its cursor/inflight.
+  claimedBy   String?
+  heartbeatAt DateTime?
+  lastError   String?  @db.Text
+  /// What a dry run found. Strictly bounded (backfillPreview.ts): aggregate counts, at most 25 sample records and 25 reasons, and a hard size cap. Null for a real run.
+  preview     Json?
+
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status, updatedAt])
+  @@index([provider, contentType, status])
+  @@index([createdAt])
 }

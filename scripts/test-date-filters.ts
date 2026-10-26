@@ -39,13 +39,17 @@ const dayPlus = (d: string, n: number) => new Date(Date.parse(`${d}T00:00:00Z`) 
 /** An instant: `offset` days from today in India, at hh:mm:ss India time. */
 const istAt = (offset: number, hh: number, mm: number, ss: number) => new Date(Date.parse(`${TODAY}T00:00:00Z`) - IST + offset * DAY + (hh * 3600 + mm * 60 + ss) * 1000);
 
-const mkUser = async (role: string) => {
-  const u = await db.user.create({ data: { email: `${role.toLowerCase()}-df-${RUN}@api-test.invalid`, password: 'x', role } });
-  const sid = `sid-df-${RUN}-${role}`;
+const mkUser = async (role: string, n = 0) => {
+  const u = await db.user.create({ data: { email: `${role.toLowerCase()}-df-${RUN}${n ? `-${n}` : ''}@api-test.invalid`, password: 'x', role } });
+  const sid = `sid-df-${RUN}-${role}${n ? `-${n}` : ''}`;
   await db.userSession.create({ data: { userId: u.id, sessionId: sid, expiresAt: new Date(Date.now() + 3600_000) } });
   return jwt.sign({ uid: u.id, sid, role, email: u.email }, SECRET, { expiresIn: '1h' });
 };
 const adminTok = await mkUser('SuperAdmin');
+// The server limits requests PER MEMBER (1,200 in 15 minutes, server.ts apiLimiter) and this suite makes more than that. The production limit stays as it is; the suite
+// spreads its calls over a few throwaway admins, so the result no longer depends on how fast the machine happens to be.
+const adminPool = [adminTok, ...(await Promise.all([1, 2, 3].map(n => mkUser('SuperAdmin', n))))];
+let poolAt = 0;
 await db.ingestionState.upsert({ where: { id: 'singleton' }, create: { id: 'singleton', enabled: false }, update: { enabled: false } });
 
 const child = spawn('npx', ['tsx', '--import', new URL('./test-ingestion-api.preload.mjs', import.meta.url).pathname, 'server.ts'], {
@@ -59,7 +63,7 @@ const call = async (path: string, token?: string) => {
   const text = await r.text(); let data: any = null; try { data = JSON.parse(text); } catch {}
   return { status: r.status, data };
 };
-const A = (p: string) => call(p, adminTok);
+const A = (p: string) => call(p, adminPool[poolAt++ % adminPool.length]);
 
 // ── Ranges, as the screen sends them, and the days each one means ────────────
 type Rg = { name: string; q: string; from: string | null; to: string | null };
@@ -317,7 +321,9 @@ try {
 
   section('Pagination');
   for (const [c, r] of [[COMBOS[5], RANGES[7]], [COMBOS[3], RANGES[4]], [COMBOS[5], RANGES[0]]] as [Combo, Rg][]) {
-    const whole = await allRows(c, r, 200), small = await allRows(c, r, 2);
+    const whole = await allRows(c, r, 200);
+    // Many small pages, but never so many that the walk hits its page cap: the page size follows how much data the scratch database has accumulated (2 for a small set), so the result does not depend on it.
+    const small = await allRows(c, r, Math.max(2, Math.ceil(whole.rows.length / 40)));
     const ids = small.rows.map((x: any) => x.id);
     check(`${c.name} · ${r.name}: two at a time gives the same rows as all at once`, whole.rows.length > 2 && same(whole.rows.map((x: any) => x.id), ids), `${whole.rows.length} rows in ${small.pages} pages`);
     check(`${c.name} · ${r.name}: no row appears twice, and newest comes first`, new Set(ids).size === ids.length && small.rows.every((x: any, i: number, a: any[]) => i === 0 || new Date(a[i - 1].at) >= new Date(x.at)));

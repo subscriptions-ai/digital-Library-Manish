@@ -2,6 +2,7 @@ import { ingestionDb as db } from './db.js';
 import { classifyCandidates, writeClassified, type Candidate, type Classified, type WriteSummary } from './importService.js';
 import { checkFiles } from './articleSources.js';
 import { bump, type DeptStats } from './departmentStats.js';
+import { reconcileDuplicates, type DupResult } from './duplicates.js';
 
 /**
  * Judge, check the files, write — the one pipeline every article source goes through, whether the continuous engine or an
@@ -14,6 +15,8 @@ export type PipelineResult = {
   heldAlready: number; rejected: number; viewable: number;
   /** The breakdown by department, counted from what actually happened to each record. */
   byDepartment: DeptStats;
+  /** What the duplicates were worth: unchanged / enriched (an empty field filled) / conflicting (rights or DOI disagree; left alone). enriched ⊂ held. */
+  dup: DupResult;
 };
 
 export async function judgeVerifyWrite(
@@ -55,6 +58,11 @@ export async function judgeVerifyWrite(
 
   await refreshCoverage(classified);
 
+  // A duplicate from another source is compared with the record we hold: it may complete it, or disagree with it (duplicates.ts).
+  const dup = await reconcileDuplicates(classified.filter(c => c.outcome === 'HELD' && c.heldId).map(c => ({
+    heldId: c.heldId!, incoming: { authors: c.authors, volume: c.volume, issue: c.issue, subject: c.subject, publisherName: c.publisherName, journalName: c.journalName, issn: c.issn, licence: c.licence, doi: c.doi },
+  })));
+
   // Every record is counted once, in the department it belongs to. (A Draft article keeps its journal's department; only books wait unplaced.)
   const byDepartment: DeptStats = {};
   classified.forEach((c, i) => {
@@ -69,7 +77,7 @@ export async function judgeVerifyWrite(
   if (opts.skippedAtFetch) bump(byDepartment, '', 'skipped', opts.skippedAtFetch);
 
   const viewable = classified.filter(c => c.result === 'added' && c.access === 'ViewableHere').length;
-  return { classified, sum, heldAlready, rejected, viewable, byDepartment };
+  return { classified, sum, heldAlready, rejected, viewable, byDepartment, dup };
 }
 
 /** A journal's counts are what its own page shows; they follow what was just written. Its cursor and cooldown are the engine's and are not touched. */

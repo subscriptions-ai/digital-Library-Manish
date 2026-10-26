@@ -8,7 +8,11 @@
  * saves a place beside it. No column is added and nothing is migrated.
  */
 
-export type CursorProvider = 'openalex' | 'crossref';
+/**
+ * `crossrefSince` and `crossrefWalk` are Crossref's incremental-sync bookkeeping, kept beside its place: `crossrefSince` is "<YYYY-MM-DD>|<from year>", the day
+ * from which Crossref is asked for what it has (re)indexed since the last finished walk of this journal; `crossrefWalk` is the day the walk now under way began.
+ */
+export type CursorProvider = 'openalex' | 'crossref' | 'crossrefSince' | 'crossrefWalk';
 
 function parse(raw: string | null | undefined): Record<string, string> {
   if (!raw) return {};

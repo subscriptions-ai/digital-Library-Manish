@@ -54,6 +54,14 @@ export type ProviderRuntime = {
    */
   addedEma?: number;
   reviewEma?: number;
+  /**
+   * Rates over the candidates a turn CHECKED (so providers with different page sizes compare fairly), as exponential averages. `publishRateEma` = added ÷ checked,
+   * `newRateEma` = (added + sent to review) ÷ checked (the brief's "unique yield"), `enrichRateEma` = enriched ÷ checked, `dupRateEma` = already held ÷ checked.
+   * `errorEma` is 1 for a turn in which the provider failed a request, 0 otherwise. Scheduling facts only (scheduler.ts); nothing here is catalogue data.
+   */
+  publishRateEma?: number; newRateEma?: number; enrichRateEma?: number; dupRateEma?: number; errorEma?: number;
+  /** Turns taken, and when the provider was last asked (any outcome). */
+  runs?: number; lastAskedAt?: string | null;
 };
 
 export type RotationState = {
@@ -80,6 +88,10 @@ export type RotationState = {
   localZeroYield?: number;
   /** Turns taken per content type, so "most turns go to the best published source, every third is plain round robin" has something to count. */
   turns?: Partial<Record<Group, number>>;
+  /** Turns the adaptive scheduler has given to OTHER content types since this one last had one (while it had something to run). The starvation guard reads it. */
+  passedOver?: Partial<Record<Group, number>>;
+  /** The last state code written to the audit log per provider (scheduler.ts), so a rotation is recorded once per CHANGE, never once per tick. */
+  codes?: Record<string, string>;
   updatedAt: string | null;
 };
 
@@ -87,6 +99,8 @@ export type Decision = {
   at: string; group: Group; label: string;
   kind: 'source' | 'coverage' | 'local';
   reasons: string[];
+  /** Structured reason codes (scheduler.ts `reasonCode`), e.g. OPENALEX_SELECTED_PRODUCTIVE, DOAB_SKIPPED_COOLDOWN. */
+  codes?: string[];
 };
 
 export type IdleState = {

@@ -14,6 +14,7 @@ const real = /^DATABASE_URL=(.*)$/m.exec(env)?.[1]?.replace(/^["']|["']$/g, '');
 if (!real) throw new Error('no DATABASE_URL in .env');
 const TEST_URL = real.replace(/\/[^/?]+(\?.*)?$/, '/stm_ingestion_test');
 process.env.DATABASE_URL = TEST_URL;
+process.env.INGESTION_ADAPTIVE_SCHEDULER = '0';        // this suite pins the previous static order and one-useful-turn-per-tick rule; the adaptive scheduler has its own (test-adaptive-scheduler.ts)
 
 // This suite tests the rotation rules under the ORIGINAL fair rotation (Journals → Articles → Books, no coverage engine, no local backlog). Weighted
 // priority, journal coverage, review-only Book sources in the rotation and the local backlog are covered by scripts/test-always-productive.ts.
@@ -78,7 +79,8 @@ const reset = async () => {
   for (const p of CHAIN) await db.ingestionSourceHealth.deleteMany({ where: { source: p.healthKey } });   // this test's own health rows only
   setProviders(CHAIN as any);
 };
-const STATE = { articlesPerJournal: 30, yearsBack: 7, batchSize: 200 };
+// No per-type settings here: a turn's budget then comes from INGESTION_BATCH_SIZE (default 100). The admin's per-type settings, when present, win (checked below).
+const STATE = { articlesPerJournal: 30, yearsBack: 7 };
 const pass1 = (only?: any) => runRotationPass({ only, wanted: [], narrowed: false, state: STATE }) as Promise<any>;
 const runsOf = async (since: Date, source?: string) => db.ingestionRun.findMany({ where: { at: { gte: since }, ...(source ? { source } : {}), note: { not: null } }, orderBy: { at: 'asc' } });
 const seqOf = (arr: string[]) => arr.map(c => c.split(':')[0]);
@@ -100,6 +102,12 @@ try {
   calls.length = 0; await pass1();
   check('INGESTION_BATCH_SIZE changes the turn’s budget', calls[0].endsWith(':40'), calls[0]);
   delete process.env.INGESTION_BATCH_SIZE;
+  // The admin's per-type settings (journalsPerPass / articlesPerPass / booksPerPass) are the budget for their type, whatever the environment says.
+  await reset();
+  const PER_TYPE = { articlesPerJournal: 30, yearsBack: 7, journalsPerPass: 150, articlesPerPass: 80, booksPerPass: 120 };
+  calls.length = 0;
+  for (let i = 0; i < 3; i++) await runRotationPass({ wanted: [], narrowed: false, state: PER_TYPE });
+  check('per-type settings are each type’s turn budget (Journals 150, Articles 80, Books 120)', calls.length === 3 && calls[0].endsWith(':150') && calls[1].endsWith(':80') && calls[2].endsWith(':120'), calls.join(' '));
 
   section('A. Three failed requests rest DOAJ, and the same turn goes straight to the next source');
   await reset(); behaviour.doaj = 'fail'; behaviour.road = 'ok';

@@ -23,6 +23,7 @@ import {
 import { judgeArticle, licenceAllowsCommercialUse } from './ingestion/eligibility.js';
 import { runScheduledHarvest, DOAB_OAI, OAPEN_OAI, OTL_FEED, NCBI_FEED } from './ingestion/books/oaiHarvest.js';
 import { findHeldArticles, findPossibleDuplicates, canonicalFingerprint, normaliseDoi } from './ingestion/dedup.js';
+import { reconcileDuplicates, type Incoming } from './ingestion/duplicates.js';
 import { tryLockProvider, unlockProvider } from './ingestion/providerLocks.js';
 import { readCursor, writeCursor, type CursorProvider } from './ingestion/journalCursor.js';
 import { canonicalDepartmentName, canonicalOrSelf } from './departmentRegistry.js';
@@ -744,6 +745,7 @@ export async function visitJournal(journal: any, state: any, cap: number, v2: bo
   let added = 0, skippedHeld = 0, skippedFailed = 0, skippedRejected = 0, needsReview = 0;
   let firstFailure: string | null = null;
   const seenThisPage = new Set<string>();
+  const dupPairs: { heldId: string; incoming: Incoming }[] = [];
 
   for (let i = 0; i < works.length; i++) {
     // Enough new records for this journal's limit; the rest of the page is not needed.
@@ -755,7 +757,15 @@ export async function visitJournal(journal: any, state: any, cap: number, v2: bo
     const heldHere = held.get(i) ?? (seenThisPage.has(fingerprint) ? { articleId: '(this page)', via: 'fingerprint' as const, journalId: journal.id } : null);
     const decision = judgeArticle(w, { journal, held: heldHere, possibleDuplicateOf: possibleDupes.get(i) ?? null, minYear: fromYear });
 
-    if (decision.outcome === 'HELD') { skippedHeld++; continue; }
+    if (decision.outcome === 'HELD') {
+      skippedHeld++;
+      // A duplicate from this source may complete the record we hold, or disagree with it (duplicates.ts).
+      if (heldHere && !heldHere.articleId.startsWith('(')) dupPairs.push({ heldId: heldHere.articleId, incoming: {
+        authors: w.authors, volume: w.raw.biblio?.volume, issue: w.raw.biblio?.issue, subject: (w.raw.concepts || [])[0]?.display_name, publisherName: journal.publisherName,
+        journalName: journal.title, issn: journal.issn, licence: w.licence, doi: w.doi,
+      } });
+      continue;
+    }
     if (decision.outcome === 'REJECTED') { skippedRejected++; continue; }
 
     const raw = w.raw;
@@ -805,6 +815,7 @@ export async function visitJournal(journal: any, state: any, cap: number, v2: bo
     }
   }
 
+  const dup = await reconcileDuplicates(dupPairs);
   const fin = await finishJournalVisit(journal, cap, v2, { added, needsReview, next, provider: 'openalex' });
 
   return {
@@ -813,6 +824,8 @@ export async function visitJournal(journal: any, state: any, cap: number, v2: bo
     journalId: journal.id,
     checked: results.length,
     added,
+    enriched: dup.enriched,
+    conflicting: dup.conflicting,
     skippedHeld,
     skippedFailed,
     skippedRejected,
@@ -835,7 +848,7 @@ export async function visitJournal(journal: any, state: any, cap: number, v2: bo
  */
 export async function finishJournalVisit(
   journal: any, cap: number, v2: boolean,
-  r: { added: number; needsReview: number; next: string | null; provider: CursorProvider },
+  r: { added: number; needsReview: number; next: string | null; provider: CursorProvider; extras?: Partial<Record<CursorProvider, string | null | undefined>> },
 ) {
   const policy = INGESTION_POLICY;
   const now = () => new Date();
@@ -883,6 +896,14 @@ export async function finishJournalVisit(
   if (!v2) { delete data.nextEligibleAt; delete data.noChangeCount; delete data.lastIngestionStatus; delete data.failureCount; delete data.claimedAt; delete data.claimedBy;
     data.fetchCursor = place(full ? null : next); data.exhaustedAt = next && !full ? null : new Date(); }
 
+  // The source's incremental-sync bookkeeping (Crossref's baseline and walk day), written beside its place. A journal that ends "full" forgets it: whatever
+  // was left for a later visit (its limit raised, records deferred) must not be hidden behind a baseline that says the window was read.
+  if (r.extras && v2) {
+    for (const [k, v] of Object.entries(r.extras)) {
+      if (v === undefined && !full) continue;
+      data.fetchCursor = writeCursor(data.fetchCursor, k as CursorProvider, full ? null : v ?? null);
+    }
+  }
   await p.journal.update({ where: { id: journal.id }, data });
   return { full, gained, noChange, articles: s.a as number };
 }

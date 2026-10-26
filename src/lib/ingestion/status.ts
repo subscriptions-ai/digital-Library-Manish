@@ -4,6 +4,7 @@ import { runConditions, PROVIDER_FAILURE_SQL, RUN_LEVEL, RUN_BY_DEPARTMENT } fro
 import { rotationStatus, type RotationStatus } from './rotation.js';
 import { ensureProviders, rotationEnabled } from './engine.js';
 import { maintenanceStatus } from './maintenance.js';
+import { providerYield } from './providerYield.js';
 
 /**
  * What the admin screen shows about the engine, computed from what is actually in the database.
@@ -27,6 +28,47 @@ const SOURCE_FOR_PHASE: Record<string, string> = { Articles: 'OpenAlex', Journal
 
 const GROUP_FOR_PHASE: Record<string, 'Journals' | 'Articles' | 'Books'> = { Journals: 'Journals', Articles: 'Articles', Books: 'Books' };
 const clock = (d: Date | string) => new Date(d).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' }).toUpperCase();
+
+/**
+ * One honest sentence about what the engine is doing, from the providers' real state (not from the last tick's mood):
+ *   · nothing can be asked at all, some of it down  → "Waiting for source recovery."   (the ONLY place that phrase is true)
+ *   · nothing can be asked, all merely caught up    → "Caught up for now."
+ *   · some content types cannot run, others can     → "Books waiting for source recovery. Articles and journals continue."
+ *   · a type is only rate limited                   → "Books: rate limited until 10:35 AM."
+ */
+export function engineSummary(rot: Pick<RotationStatus, 'providers'> | null, enabled: boolean): { text: string; lines: string[]; runnable: string[] } {
+  if (!rot) return { text: '', lines: [], runnable: [] };
+  if (!enabled) return { text: 'Paused.', lines: [], runnable: [] };
+  const GROUPS = ['Books', 'Journals', 'Articles'] as const;
+  const real = rot.providers.filter(p => p.availability.kind !== 'not-configured' && !p.virtual);
+  const info = GROUPS.map(g => {
+    const own = real.filter(p => p.group === g);
+    const ok = own.filter(p => p.availability.state === 'ok');
+    const resting = own.filter(p => p.availability.state === 'unavailable' && ['rate_limited', 'cooling', 'unavailable'].includes(p.availability.kind || ''));
+    const limited = resting.length > 0 && resting.every(p => p.availability.kind === 'rate_limited');
+    const until = resting.map(p => p.availability.until).filter(Boolean).sort()[0] ?? null;
+    return { g, runnable: ok.length > 0, recovery: resting.length > 0 && ok.length === 0, limited, until, caught: own.length > 0 && ok.length === 0 && resting.length === 0 };
+  });
+  const name = (g: string) => g.toLowerCase();
+  const list = (a: string[]) => a.length <= 1 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`;
+  const runnable = info.filter(i => i.runnable).map(i => i.g);
+  if (!runnable.length) {
+    const rec = info.filter(i => i.recovery);
+    if (!rec.length) return { text: 'Caught up for now.', lines: [], runnable };
+    const allLimited = rec.every(i => i.limited);
+    const soonest = rec.map(i => i.until).filter(Boolean).sort()[0];
+    return { text: allLimited && soonest ? `Rate limited until ${clock(soonest)}.` : 'Waiting for source recovery.', lines: [], runnable };
+  }
+  const lines: string[] = [];
+  for (const i of info) {
+    if (i.runnable) continue;
+    if (i.recovery) lines.push(i.limited && i.until ? `${i.g}: rate limited until ${clock(i.until)}.` : `${i.g} waiting for source recovery.`);
+    else if (i.caught) lines.push(`${i.g} caught up for now.`);
+  }
+  if (!lines.length) return { text: 'All content types are running.', lines, runnable };
+  const text = `${lines.join(' ')} ${list(runnable.map(name)).replace(/^./, c => c.toUpperCase())} continue.`;
+  return { text, lines, runnable };
+}
 
 export async function engineStatus(state: any, timer: { nextTickAt: number | null; lastTickAt: number | null; busy: boolean }) {
   const now = Date.now();
@@ -122,6 +164,8 @@ export async function engineStatus(state: any, timer: { nextTickAt: number | nul
 
   return {
     health, label, reasons,
+    /** One sentence for the screen (see engineSummary). */
+    summary: engineSummary(rot, !!state.enabled).text,
     /** While waiting: the source that comes back first and when the engine will look at it. Null when nothing has a time (a source is held by something with no end). */
     waiting: health === 'waiting' ? { since: rot?.idle?.since ?? null, cause: rot?.idle?.cause ?? 'recovery', next, nextAttemptAt: rot?.idle?.nextAt ?? upNext?.at ?? null } : null,
     next,
@@ -176,7 +220,12 @@ export async function last24Hours() {
       group by r.phase, r.source
      having coalesce(sum(r.added), 0) > 0 or coalesce(sum(r."needsReview"), 0) > 0
       order by added desc, review desc`, since).catch(() => []);
+  // What the discovery runs looked at and how much of it was new (maintenance rows excluded): the efficiency picture, from the same log.
+  const eff = await providerYield(24).then(y => y.total).catch(() => null);
   return {
+    checked: eff?.checked ?? null, uniqueYieldPct: eff?.uniqueYieldPct ?? null, enrichmentYieldPct: eff?.enrichmentYieldPct ?? null,
+    duplicateUnchanged: eff?.duplicateUnchanged ?? null, duplicateEnriched: eff?.duplicateEnriched ?? null, duplicateConflicting: eff?.duplicateConflicting ?? null,
+    refusedByRule: r.rejected,
     passes: r.passes, added: r.added, held: r.held, failed: r.failed, errors: r.errors, providerFailures: r.providerFailures, rejected: r.rejected, needsReview: r.needsReview, enriched: r.enriched, promoted: r.promoted,
     // The same numbers under the names the screen uses, so each is a distinct thing: published growth, review candidates, duplicates, held candidates promoted.
     newPublished: r.added, newReview: r.needsReview, duplicates: r.held, heldPromoted: r.promoted, failedWrites: r.failed + r.errors,

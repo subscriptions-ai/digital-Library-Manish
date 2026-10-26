@@ -66,6 +66,8 @@ export function clock(d: Date) {
 export type QuickOutcome = {
   checked: number; added: number; alreadyHeld: number; needsReview: number; skipped: number; failed: number;
   enriched?: number;
+  /** Duplicates that disagreed with the held record on rights or DOI and were left alone (duplicates.ts). */
+  duplicateConflicting?: number;
   /** Different books examined, by identifier (a book seen twice counts once). */
   uniqueCandidates?: number;
   /** Of `skipped`: records the provider says have not changed since our last sync, so they were not judged again. */
@@ -358,14 +360,16 @@ async function finishArticles(ctx: Ctx, def: Def, g: Gathered): Promise<QuickOut
   if (g.allResting) return { checked: 0, added: 0, alreadyHeld: 0, needsReview: 0, skipped: 0, failed: 0, notes: [], nextPosition: g.nextPosition, moreAvailable: false, allResting: true };
   const cands: Candidate[] = g.items.map(i => ({ ...i, department: i.department as any, extra: i.extra ?? null }));
   ctx.progress({ checked: g.fetched, limit: ctx.limit, open: false });
-  const { sum, heldAlready, rejected, viewable, byDepartment } = await judgeVerifyWrite(cands, ctx.admin, { skippedAtFetch: g.skipped, progress: p => ctx.progress(p as any) });
+  const { sum, heldAlready, rejected, viewable, byDepartment, dup } = await judgeVerifyWrite(cands, ctx.admin, { skippedAtFetch: g.skipped, progress: p => ctx.progress(p as any) });
 
   const notes: string[] = [];
+  if (dup.enriched) notes.push(`${dup.enriched} articles already held were completed with details they were missing.`);
+  if (dup.conflicting) notes.push(`${dup.conflicting} duplicates disagreed with the held record on licence or DOI and were left as they are.`);
   if (sum.added) notes.push(`${viewable} of the ${sum.added} added open in the viewer; the rest link to the publisher.`);
   if (sum.failed && sum.firstError) notes.push(`First write error: ${sum.firstError}`);
   return {
     checked: g.fetched, added: sum.added, alreadyHeld: heldAlready + sum.held, needsReview: sum.reviewWritten,
-    skipped: g.skipped + rejected + sum.rejected, failed: sum.failed, notes,
+    skipped: g.skipped + rejected + sum.rejected, failed: sum.failed, notes, enriched: dup.enriched, duplicateConflicting: dup.conflicting,
     nextPosition: g.nextPosition, partial: g.partial, moreAvailable: g.moreAvailable,
     byDepartment,
   };
@@ -779,6 +783,9 @@ async function record(def: Def, r: QuickResult, admin: any, how: string) {
   else if (r.byDepartment) Object.assign(row, runColumnsFromStats(r.byDepartment));      // the run's totals ARE the sums of its breakdown
   else Object.assign(row, { added: r.added, skippedHeld: r.alreadyHeld, skippedFailed: r.failed, skippedRejected: r.skipped, needsReview: r.needsReview });
   if (def.group === 'Books') { row.checked = r.checked; if (r.uniqueCandidates != null) row.uniqueCandidates = r.uniqueCandidates; }   // a Book run must account for every candidate it examined (accounting.ts)
+  else row.checked = r.checked;                               // the other kinds are not reconciled, but unique yield is measured against it
+  if (def.group !== 'Journals' && r.enriched) row.enriched = r.enriched;
+  if (r.duplicateConflicting) row.duplicateConflicting = r.duplicateConflicting;
   // The same writer the continuous engine uses: the run and its department breakdown, together or not at all.
   await createRunWithStats(row, def.group === 'Journals' ? null : r.byDepartment, def.group === 'Books' ? 'Books' : 'Articles');
 

@@ -3,6 +3,11 @@ import { rotationConfig } from './policy.js';
 import { sourceHealthState, recordSourceFailure, classifyFailure, type ErrorKind } from './sourceHealth.js';
 import { providerHolder, tryLockProvider, unlockProvider } from './providerLocks.js';
 import { createRunWithStats, runColumnsFromStats, type DeptStats } from './departmentStats.js';
+import { audit } from './audit.js';
+import {
+  noteTurnFacts, providerScore, adaptiveGroupOrder, notePassedOver, reasonCode, stateKindOf, transitionsToLog, backlogPressure, qualityOf, type ReasonKind, type Quality,
+} from './scheduler.js';
+import { draftsWaiting } from './reviewQueue.js';
 import {
   GROUPS, loadRotationState, saveRotationState, runtimeOf, type Group, type RotationState, type BatchSummary, type IdleState, type Decision, type CursorRuntime,
 } from './rotationState.js';
@@ -76,6 +81,8 @@ export type TurnRan = {
   useful: number;
   /** Distinct candidate identifiers the turn examined (checked counts a repeat as many times as it was seen). */
   uniqueCandidates?: number;
+  /** Duplicates whose incoming rights/identifier data disagreed with the held record. Counted, never applied (articlePipeline.ts). */
+  duplicateConflicting?: number;
   /** Provider requests that failed during this turn (a source that stopped answering part-way). Not records, and not counted in any record figure. */
   requestFailures?: number;
   more: boolean;
@@ -135,6 +142,8 @@ export type ProviderDef = {
   cursored?: boolean;
   /** A fallback that takes part as a peer while it has recently ADDED records, so a productive fallback is not kept idle behind a merely reachable primary. */
   peerWhenProductive?: boolean;
+  /** The least time between two turns of this provider inside ONE tick (the drain). Defaults to INGESTION_PROVIDER_MIN_GAP_SECONDS. */
+  minGapSeconds?: number;
   /** Can only send records to review (no controlled classification, rights not declared by the listing): never "productive for the published catalogue". */
   reviewOnly?: boolean;
   /** Where the next turn would ask, without asking: a department / search / journal. For the screen only. */
@@ -296,8 +305,14 @@ type AttemptEvent = {
 export type TurnResult =
   | { ran: true; group: Group; provider: string; label: string; outcome: TurnRan; attempts: { provider: string; result: string }[]; switchedFrom: string[];
       /** For the "why this job" note: the provider's standing, and every one passed over before it with its reason. */
-      why: string[]; virtual: boolean }
-  | { ran: false; group: Group; waiting: boolean; failed: boolean; reason: string; retryAt: Date | null; attempts: { provider: string; result: string }[] };
+      why: string[]; virtual: boolean;
+      /** Structured reasons (OPENALEX_SELECTED_PRODUCTIVE, DOAB_SKIPPED_COOLDOWN …) and what was seen of each provider, for the audit log. */
+      codes: string[]; observed: Observed[] }
+  | { ran: false; group: Group; waiting: boolean; failed: boolean; reason: string; retryAt: Date | null; attempts: { provider: string; result: string }[]; codes: string[]; observed: Observed[] };
+
+type Observed = { id: string; kind: ReasonKind | null; selected: boolean; reason?: string | null; until?: Date | null };
+/** What one tick knows while it drains: when each provider was last asked in it, and how full the review queue is. */
+export type TickCtx = { asked: Map<string, number>; pressure: number };
 
 const rotate = <T,>(a: T[], from: number) => a.map((_, i) => a[(from + i) % a.length]);
 
@@ -313,15 +328,20 @@ function checkedLine(o: TurnRan): string {
 
 export const PROVIDER_ERROR = 'Provider request failed';
 
-async function runTypeTurn(group: Group, s: RotationState, base: Omit<TurnCtx, 'position' | 'savePosition' | 'batch' | 'restingCursors'>): Promise<TurnResult> {
+async function runTypeTurn(group: Group, s: RotationState, base: Omit<TurnCtx, 'position' | 'savePosition' | 'batch' | 'restingCursors'>, tick?: TickCtx): Promise<TurnResult> {
   const cfg = rotationConfig();
-  const full = providersOf(group);
+  // A provider asked a moment ago in THIS tick is left alone until its gap is over (the drain's per-provider rate guard). Not a rest, not "waiting".
+  const gapOf = (p: ProviderDef) => (p.minGapSeconds ?? cfg.providerMinGapSeconds) * 1000;
+  const gapped = (p: ProviderDef) => !!tick && !p.virtual && Date.now() - (tick.asked.get(p.id) ?? 0) < gapOf(p);
+  const full = providersOf(group).filter(p => !gapped(p));
   // The targeted provider (Books only) is not part of the round robin: it goes first on its share of turns and last on the rest.
   const targeted = group === 'Books' ? full.find(p => p.id === 'targeted') ?? null : null;
   const chain = targeted ? full.filter(p => p !== targeted) : full;
   const attempts: { provider: string; result: string }[] = [];
   const events: AttemptEvent[] = [];
-  if (!full.length) return { ran: false, group, waiting: true, failed: false, reason: 'no source is wired for this', retryAt: null, attempts };
+  if (!providersOf(group).length) return { ran: false, group, waiting: true, failed: false, reason: 'no source is wired for this', retryAt: null, attempts, codes: [], observed: [] };
+  // A coverage engine reads the real sources, so with all of those inside their gap it waits too.
+  if (!full.some(p => !p.virtual)) return { ran: false, group, waiting: false, failed: false, reason: 'every source was asked a moment ago', retryAt: null, attempts, codes: [], observed: [] };
 
   const start = chain.length ? (s.cursors[group] ?? 0) % chain.length : 0;
   let ordered = rotate(chain, start);
@@ -361,6 +381,25 @@ async function runTypeTurn(group: Group, s: RotationState, base: Omit<TurnCtx, '
   let ran: { provider: ProviderDef; outcome: TurnRan; durationMs: number } | null = null;
   let stoppedByFailure = false;
 
+  /**
+   * What this turn saw of every provider in the chain, as reason kinds: the state it ended in (resting, rate limited, exhausted …), or why a healthy one
+   * was passed over (a fallback that was not needed). The provider that ran carries how it came to be chosen.
+   */
+  const observe = (chosen: ProviderDef | null): Observed[] => ordered.map(p => {
+    const a = avail.get(p.id)!;
+    if (p === chosen) {
+      const rtp = runtimeOf(s, p.id);
+      const kind: ReasonKind = p === biased ? 'SELECTED_HIGH_YIELD'
+        : p.fallbackFor && !p.fallbackFor.some(id => before.get(id)?.state === 'ok') ? 'SELECTED_FALLBACK'
+        : (rtp.addedEma ?? 0) >= cfg.productiveAddedPerTurn ? 'SELECTED_PRODUCTIVE' : 'SELECTED_ROUND_ROBIN';
+      return { id: p.id, kind, selected: true };
+    }
+    const k = stateKindOf(a);
+    if (k) return { id: p.id, kind: k, selected: false, reason: a.reason, until: a.until };
+    if (a.state === 'ok' && !fallbackEligible(p)) return { id: p.id, kind: 'SKIPPED_FALLBACK_NOT_NEEDED' as ReasonKind, selected: false };
+    return { id: p.id, kind: null, selected: false };
+  });
+
   while (!ran && !stoppedByFailure) {
     // Only a source that can be asked right now. One resting as exhausted is NOT asked again early: its rest is a time, it comes back by itself
     // at the end of it, and in the meantime the turn goes to the next content type instead of knocking on a door that has just said "nothing".
@@ -376,7 +415,7 @@ async function runTypeTurn(group: Group, s: RotationState, base: Omit<TurnCtx, '
     const t0 = Date.now();
     let outcome: TurnOutcome;
     try {
-      const batchSizeForGroup = group === 'Journals' ? (base.state?.journalsPerPass ?? 200) : group === 'Articles' ? (base.state?.articlesPerPass ?? base.state?.batchSize ?? 100) : group === 'Books' ? (base.state?.booksPerPass ?? 200) : cfg.batchSize;
+      const batchSizeForGroup = group === 'Journals' ? (base.state?.journalsPerPass ?? cfg.batchSize) : group === 'Articles' ? (base.state?.articlesPerPass ?? base.state?.batchSize ?? cfg.batchSize) : group === 'Books' ? (base.state?.booksPerPass ?? cfg.batchSize) : cfg.batchSize;
       outcome = await next.turn({ ...base, batch: batchSizeForGroup, position: rt.position ?? null, savePosition: p => { rt.position = p; }, restingCursors: restingCursorKeys(rt) });
     } catch (e: any) {
       const msg = String(e?.message || e).slice(0, 300);
@@ -412,6 +451,7 @@ async function runTypeTurn(group: Group, s: RotationState, base: Omit<TurnCtx, '
           break;
         }
         const h = await sourceHealthState(next.healthKey);
+        noteTurnFacts(runtimeOf(s, next.id), { checked: 0, added: 0, sentToReview: 0, held: 0, enriched: 0, requestFailures: 1, failedRequest: true });
         const resting = !!h.until;                                   // 429 sets this at once; the third failure opens the breaker
         const note: string[] = [];
         if (outcome.rateLimited || h.health === 'rate_limited') note.push(`Rate limited${h.until ? ` until ${fmtClock(h.until)}` : ''}`);
@@ -471,7 +511,8 @@ async function runTypeTurn(group: Group, s: RotationState, base: Omit<TurnCtx, '
     else delete s.waiting[group];
     await writeEvents(group, events, null);
     await saveRotationState(s);
-    return { ran: false, group, waiting, failed: stoppedByFailure, reason, retryAt, attempts };
+    const observed = observe(null);
+    return { ran: false, group, waiting, failed: stoppedByFailure, reason, retryAt, attempts, codes: observed.filter(o => o.kind).map(o => reasonCode(o.id, o.kind!)), observed };
   }
 
   // A source worked.
@@ -493,6 +534,7 @@ async function runTypeTurn(group: Group, s: RotationState, base: Omit<TurnCtx, '
     sentToReview: outcome.sentToReview, skipped: outcome.skipped, recordFailures: outcome.recordFailures, requestFailures: outcome.requestFailures ?? 0, useful: outcome.useful, note: outcome.note ?? null,
   };
   rt.lastBatch = summary;
+  noteTurnFacts(rt, { checked: outcome.checked, added: outcome.added, sentToReview: outcome.sentToReview, held: outcome.held, enriched: outcome.enriched, requestFailures: outcome.requestFailures ?? 0 });
   // What the source last GAVE, kept when later batches give nothing: "exhausted for now" is a state, not an erasure of what it did before.
   if (outcome.useful > 0) rt.lastProductiveBatch = summary;
   const idx = chain.findIndex(p => p.id === provider.id);
@@ -518,7 +560,9 @@ async function runTypeTurn(group: Group, s: RotationState, base: Omit<TurnCtx, '
     else if (a && a.state !== 'ok') why.push(`${p.label} passed over: ${a.reason || a.state}`);
     else if (p.fallbackFor && !fallbackEligible(p)) why.push(`${p.label} passed over: fallback, only used when ${p.fallbackFor.join('/')} cannot work`);
   }
-  return { ran: true, group, provider: provider.id, label: provider.label, outcome, attempts, switchedFrom: events.map(e => e.provider.id), why, virtual: !!provider.virtual };
+  const observed = observe(provider);
+  return { ran: true, group, provider: provider.id, label: provider.label, outcome, attempts, switchedFrom: events.map(e => e.provider.id), why, virtual: !!provider.virtual,
+    codes: observed.filter(o => o.kind).map(o => reasonCode(o.id, o.kind!)), observed };
 }
 
 /** Count a batch (or a pass) that gave nothing useful, and set the source aside once it has done so enough times in a row. */
@@ -564,7 +608,9 @@ async function writeRan(group: Group, p: ProviderDef, o: TurnRan, durationMs: nu
   // Enrichment is counted on its own: completing a record already held is never a "new record added".
   if (o.enriched) row.enriched = o.enriched;
   if (o.columns) Object.assign(row, o.columns);
-  if (group === 'Books') row.checked = o.checked;     // a Book run must account for every candidate it examined (accounting.ts)
+  // How many candidates the turn examined: a Book run must account for every one of them (accounting.ts); for the other kinds it is what unique yield is measured against.
+  row.checked = o.checked;
+  if (o.duplicateConflicting) row.duplicateConflicting = o.duplicateConflicting;
   await createRunWithStats(row, o.departmentStats ?? null);
 }
 
@@ -575,6 +621,39 @@ async function applyLedger(group: Group, o: TurnRan) {
     where: { id: 'singleton' },
     data: { ...inc, phase: group, lastRunAt: new Date(), lastError: null, lastSuccessAt: new Date(), consecutiveFailures: 0 },
   }).catch(() => {});
+}
+
+// ── The adaptive part of a tick ─────────────────────────────────────────────
+
+/** Drafts waiting at which the review queue counts as full for backpressure (INGESTION_REVIEW_PRESSURE_FULL, default 1000). */
+const reviewPressureFull = () => { const n = Number(process.env.INGESTION_REVIEW_PRESSURE_FULL); return Number.isInteger(n) && n > 0 ? n : 1000; };
+
+/**
+ * How worth running each content type is right now: the best score among its providers that can be asked this instant (health, cooldown, rate limit,
+ * exhausted, busy, quota and the tick's min-gap all give 0), and 0 for a type with nothing that can run. A fallback counts only when it would
+ * actually be used (its primaries cannot work, or it has recently been adding records).
+ */
+async function groupScores(s: RotationState, tick: TickCtx): Promise<Record<Group, number>> {
+  const cfg = rotationConfig();
+  const avail = await availabilityMap(s);
+  const okNow = (id: string) => avail.get(id)?.state === 'ok';
+  const out = { Books: 0, Journals: 0, Articles: 0 } as Record<Group, number>;
+  for (const g of GROUPS) {
+    for (const p of providersOf(g)) {
+      if (p.virtual || !okNow(p.id)) continue;
+      const productive = cfg.productivityBias && !!p.peerWhenProductive && (runtimeOf(s, p.id).addedEma ?? 0) >= cfg.productiveAddedPerTurn;
+      if (p.fallbackFor && !(p.fallbackFor.every(id => !okNow(id)) || productive)) continue;
+      if (Date.now() - (tick.asked.get(p.id) ?? 0) < (p.minGapSeconds ?? cfg.providerMinGapSeconds) * 1000) continue;
+      out[g] = Math.max(out[g], providerScore(s.providers[p.id], { available: true, reviewOnly: p.reviewOnly, backlogPressure: tick.pressure }));
+    }
+  }
+  return out;
+}
+
+/** The changes worth remembering (a provider starts resting, a fallback takes over, a source returns), one audit row each. Never one per tick. */
+async function logTransitions(s: RotationState, observed: Observed[]) {
+  if (!observed.length) return;
+  for (const t of transitionsToLog(s, observed)) await audit(null, 'SCHEDULER_ROTATION', { provider: t.id, code: t.code, reason: t.reason, until: t.until });
 }
 
 // ── The pass ────────────────────────────────────────────────────────────────
@@ -671,36 +750,63 @@ export async function runRotationPass(opts: PassOptions) {
   const turns: any[] = [];
   let lastUseful: any = null;
 
-  while (turns.length < cfg.maxTurnsPerTick) {
+  // The adaptive scheduler orders the content types by how productive their best available provider is and keeps working after a useful turn (the
+  // drain). INGESTION_ADAPTIVE_SCHEDULER=0 is the previous behaviour exactly: static weights, and the tick ends at the first useful turn.
+  const adaptive = cfg.adaptive && !opts.only;
+  const maxTurns = adaptive ? cfg.drainMaxTurns : cfg.maxTurnsPerTick;
+  const tickStart = Date.now();
+  const tick: TickCtx = { asked: new Map(), pressure: adaptive ? backlogPressure(await draftsWaiting(), reviewPressureFull()) : 0 };
+  let emptyStreak = 0;
+  const observedAll: Observed[] = [];
+
+  while (turns.length < maxTurns) {
+    // The drain starts no new turn once the tick's time is spent (the one in progress is never cut short).
+    if (adaptive && turns.length > 0 && Date.now() - tickStart > cfg.tickBudgetSeconds * 1000) break;
     // Each turn uses one slot of the weighted order, whichever type ends up working, so the priorities hold over time. (Equal weights keep the
     // original rule — the next turn starts after the type that last took one — set inside the loop below.)
     const slot = s.typeCursor;
-    const groups = opts.only ? GROUPS.filter(g => g.toLowerCase() === opts.only) : orderForTick(seq, slot, cfg.weights);
-    if (!opts.only && !equal) s.typeCursor = (slot + 1) % seq.length;
+    let groups: Group[]; let scores: Record<Group, number> | null = null; let starved: Group | null = null;
+    if (opts.only) groups = GROUPS.filter(g => g.toLowerCase() === opts.only);
+    else if (adaptive) {
+      scores = await groupScores(s, tick);
+      const o = adaptiveGroupOrder(scores, cfg.weights, s.passedOver ?? {}, cfg.starvationTurns);
+      groups = o.order; starved = o.starved;
+    } else {
+      groups = orderForTick(seq, slot, cfg.weights);
+      if (!equal) s.typeCursor = (slot + 1) % seq.length;
+    }
     let took: any = null;
     for (const g of groups) {
-      const r = await runTypeTurn(g, s, base);
-      if (!opts.only && equal) s.typeCursor = (GROUPS.indexOf(g) + 1) % GROUPS.length;
+      const r = await runTypeTurn(g, s, base, adaptive ? tick : undefined);
+      observedAll.push(...r.observed);
+      if (!opts.only && !adaptive && equal) s.typeCursor = (GROUPS.indexOf(g) + 1) % GROUPS.length;
       if ('provider' in r) {
         const lead = groups[0];
         const reasons = [
-          opts.only ? `Mode: ${g} only` : g === lead ? `${g} has the turn (priority ${cfg.weights[g]} of ${cfg.weights.Books}/${cfg.weights.Journals}/${cfg.weights.Articles} Books/Journals/Articles)` : `${lead} had the turn but could not work; ${g} took it`,
-          ...(turns.length ? [`The previous turn gave nothing useful, so this tick went straight on to the next source (turn ${turns.length + 1} of at most ${cfg.maxTurnsPerTick})`] : []),
+          opts.only ? `Mode: ${g} only`
+            : adaptive ? `${g} ${g === lead ? 'led' : `took the turn after ${lead} could not work`} — scores ${GROUPS.map(x => `${x} ${scores![x]}`).join(' · ')}${starved === g ? ' (it had been passed over too long, so it went first)' : ''}`
+            : g === lead ? `${g} has the turn (priority ${cfg.weights[g]} of ${cfg.weights.Books}/${cfg.weights.Journals}/${cfg.weights.Articles} Books/Journals/Articles)` : `${lead} had the turn but could not work; ${g} took it`,
+          ...(turns.length ? [adaptive ? `Turn ${turns.length + 1} of this tick (at most ${maxTurns}, ${cfg.tickBudgetSeconds} s)` : `The previous turn gave nothing useful, so this tick went straight on to the next source (turn ${turns.length + 1} of at most ${cfg.maxTurnsPerTick})`] : []),
           ...passedTypes,
           ...r.why,
           r.outcome.checked ? `Batch: ${r.outcome.checked} candidates checked` : null,
         ].filter(Boolean) as string[];
-        s.lastDecision = { at: new Date().toISOString(), group: g, label: r.label, kind: r.virtual ? 'coverage' : 'source', reasons };
-        s.idle = null; await saveRotationState(s);
+        s.lastDecision = { at: new Date().toISOString(), group: g, label: r.label, kind: r.virtual ? 'coverage' : 'source', reasons, codes: r.codes };
+        s.idle = null;
+        if (adaptive && scores) notePassedOver(s, g, scores);
+        tick.asked.set(r.provider, Date.now());
         took = { ...r, phase: g, source: r.label, ...r.outcome };
         break;
       }
       passedTypes.push(`${g} passed over: ${r.waiting ? `every source resting (${r.reason})` : r.failed ? 'a source did not answer and will be retried' : r.reason}`);
       if (r.failed) failed.push(g); else if (r.waiting) waiting.push({ group: g, reason: r.reason }); else idleGroups.push(g);
     }
+    await logTransitions(s, observedAll.splice(0));
     if (!took) break;
+    await saveRotationState(s);
     turns.push(took);
-    if (took.useful > 0) { lastUseful = took; break; }
+    if (took.useful > 0) { lastUseful = took; emptyStreak = 0; if (!adaptive) break; }
+    else if (adaptive && ++emptyStreak >= cfg.maxTurnsPerTick) break;      // a run of empty turns has been through the sources; the next tick looks afresh
   }
 
   if (turns.length) {
@@ -757,6 +863,13 @@ export type ProviderStatus = {
   yieldFor: 'published' | 'review' | null;
   /** Can only send records to review: never eligible for automatic publishing. */
   reviewOnly: boolean;
+  /** A coverage engine, not a source: it never counts as "a source that can be asked". */
+  virtual: boolean;
+  /** Highly productive / Productive / Low yield / Caught up / Unavailable — from the running rates, recomputed each time, never a permanent rank. */
+  quality: Quality | null;
+  /** The adaptive scheduler's current ordering score (0 = cannot be asked now), and the running rates behind it. For the screen only. */
+  score: number;
+  rates: { publish: number | null; newUnique: number | null; enrich: number | null; duplicate: number | null; error: number | null; runs: number; lastAskedAt: string | null };
   availability: { state: Availability['state']; kind: Availability['kind'] | null; until: string | null; reason: string | null };
   running: boolean;
   /** When a source was set aside as exhausted and when it is due to be tried again (null unless it is resting as exhausted). */
@@ -783,6 +896,8 @@ export type RotationStatus = {
   currentJob: { group: Group; label: string; kind: 'source' | 'coverage'; since: string } | null;
   nextJobs: { group: Group; label: string; kind: 'source' | 'coverage'; cursor: string | null }[];
   weights: Record<Group, number>;
+  /** True while the adaptive scheduler orders the content types (INGESTION_ADAPTIVE_SCHEDULER). */
+  adaptive: boolean;
   lastDecision: Decision | null;
   /** True while any provider of any content type can be asked right now. Only when this is false is the engine waiting for anything. */
   discoveryEligible: boolean;
@@ -839,7 +954,9 @@ export async function rotationStatus(opts: { state?: any } = {}): Promise<Rotati
     providers.push({
       id: p.id, label: p.label, group: p.group, role: p.role, tier: p.tier, configured: cfgState,
       health,
-      yield: y, yieldFor: y === 'productive' ? yf : null, reviewOnly: !!p.reviewOnly,
+      yield: y, yieldFor: y === 'productive' ? yf : null, reviewOnly: !!p.reviewOnly, virtual: !!p.virtual, quality: qualityOf(a, rt),
+      score: providerScore(rt, { available: a.state === 'ok', reviewOnly: p.reviewOnly }),
+      rates: { publish: rt?.publishRateEma ?? null, newUnique: rt?.newRateEma ?? null, enrich: rt?.enrichRateEma ?? null, duplicate: rt?.dupRateEma ?? null, error: rt?.errorEma ?? null, runs: rt?.runs ?? 0, lastAskedAt: rt?.lastAskedAt ?? null },
       availability: { state: a.state, kind: a.kind ?? null, until: a.until ? a.until.toISOString() : null, reason: a.reason },
       running: s.running?.provider === p.id || !!providerHolder(p.lock),
       exhaustedAt: a.state === 'exhausted' ? (rt?.exhaustedAt ?? null) : null,
@@ -856,7 +973,7 @@ export async function rotationStatus(opts: { state?: any } = {}): Promise<Rotati
     const cur = s.current[g] ? chain.find(p => p.id === s.current[g]) : null;
     const next = peekNext(chain, s.cursors[g] ?? 0, avail, s);
     const w = s.waiting[g];
-    const batchSizeForGroup = g === 'Journals' ? (opts?.state?.journalsPerPass ?? 200) : g === 'Articles' ? (opts?.state?.articlesPerPass ?? opts?.state?.batchSize ?? 100) : g === 'Books' ? (opts?.state?.booksPerPass ?? 200) : cfg.batchSize;
+    const batchSizeForGroup = g === 'Journals' ? (opts?.state?.journalsPerPass ?? cfg.batchSize) : g === 'Articles' ? (opts?.state?.articlesPerPass ?? opts?.state?.batchSize ?? cfg.batchSize) : g === 'Books' ? (opts?.state?.booksPerPass ?? cfg.batchSize) : cfg.batchSize;
     const nextCursor = next?.peekCursor
       ? await next.peekCursor({ wanted: opts?.state?.departments || [], resting: restingCursorKeys(runtimeOf(s, next.id)), position: s.providers[next.id]?.position ?? null }).catch(() => null)
       : null;
@@ -886,7 +1003,7 @@ export async function rotationStatus(opts: { state?: any } = {}): Promise<Rotati
   }
   const currentJob: RotationStatus['currentJob'] = s.running && run ? { group: s.running.group, label: run.label, kind: run.virtual ? 'coverage' : 'source', since: s.running.since } : null;
   return {
-    currentJob, nextJobs, weights: cfg.weights, lastDecision: s.lastDecision && s.lastDecision.kind !== ('local' as any) ? s.lastDecision : null,
+    currentJob, nextJobs, weights: cfg.weights, adaptive: cfg.adaptive, lastDecision: s.lastDecision && s.lastDecision.kind !== ('local' as any) ? s.lastDecision : null,
     discoveryEligible: nextJobs.length > 0,
     batchSize: cfg.batchSize, failuresBeforeFallback: cfg.failuresBeforeFallback, zeroYieldBatches: cfg.zeroYieldBatches, groups, providers,
     running: s.running && run ? { group: s.running.group, provider: run.id, label: run.label, since: s.running.since } : null,
