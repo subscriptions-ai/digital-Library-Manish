@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { CheckCircle, XCircle, FileText, BookOpen, ExternalLink, ShieldCheck, X } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
+import { AutoClassification } from './review/AutoClassification';
 
 export function PublisherReviewQueue() {
   const [articles, setArticles] = useState<any[]>([]);
@@ -11,7 +12,7 @@ export function PublisherReviewQueue() {
   const [params, setParams] = useSearchParams();
   const wantTab = params.get('tab');
   const source = params.get('source') || '';
-  const [tab, setTab] = useState<'articles' | 'books' | 'ingested'>(wantTab === 'ingested' || wantTab === 'books' || wantTab === 'articles' ? wantTab : 'articles');
+  const [tab, setTab] = useState<'articles' | 'books' | 'ingested' | 'auto'>(wantTab === 'ingested' || wantTab === 'books' || wantTab === 'articles' || wantTab === 'auto' ? wantTab : 'articles');
   const [ingested, setIngested] = useState<any[]>([]);
   const [ingestedTotal, setIngestedTotal] = useState(0);
   const [departments, setDepartments] = useState<string[]>([]);
@@ -88,8 +89,11 @@ export function PublisherReviewQueue() {
             {t === 'ingested' ? 'Needs a department' : t} ({t === 'articles' ? articles.length : t === 'books' ? books.length : ingestedTotal})
           </button>
         ))}
+        <button onClick={() => setTab('auto')}
+          className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${tab === 'auto' ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-800'}`}>Auto Classification</button>
       </div>
 
+      {tab === 'auto' ? <AutoClassification /> : (
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         {loading ? (
           <div className="py-12 flex justify-center"><div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" /></div>
@@ -142,6 +146,7 @@ export function PublisherReviewQueue() {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }

@@ -63,6 +63,7 @@ import { audit as ingestionAudit } from "./src/lib/ingestion/audit.js";
 import { validateSettings } from "./src/lib/ingestion/settings.js";
 import { providerYield } from "./src/lib/ingestion/providerYield.js";
 import { reviewQueue } from "./src/lib/ingestion/reviewQueue.js";
+import * as reviewClassification from "./src/lib/ingestion/reviewClassification.js";
 import { pipelineStatus } from "./src/lib/ingestion/pipelineStatus.js";
 import { overview as backfillOverview, createJob as createBackfillJob, controlJob as controlBackfillJob, serializeJob as serializeBackfillJob, describeSource as describeBackfillSource } from "./src/lib/ingestion/backfill/jobs.js";
 import { startBackfillWorker } from "./src/lib/ingestion/backfill/worker.js";
@@ -8290,6 +8291,60 @@ async function startServer() {
 
   // ---- Publisher self endpoints (role: Publisher) ----
   app.get("/api/publisher/me", authenticateJWT, requirePublisher, async (req: any, res: any) => {
+  // ── Review automation R1/R1.5: classification analysis of the "Needs a department" queue. It does not modify catalogue/content records; only analysis summaries and audit metadata are stored. ──
+  // GET  summary   — the last analysis (persisted) and the job's progress; null summary means it has never been run.
+  // POST run       — start the analysis in the background (one at a time).
+  // GET  records   — one filtered, paged slice of the last result (held in this process; a restart needs a fresh run).
+  app.get("/api/admin/review/classification/summary", authenticateJWT, requireAdminOrManager, async (_req: any, res: any) => {
+    try {
+      const summary = await reviewClassification.loadSummary();
+      // ?brief=1 is for the Data Ingestion card: the headline numbers only, not the distributions and the threshold grid.
+      const brief = summary && _req.query.brief ? { finishedAt: summary.finishedAt, analysed: summary.analysed, queueTotal: summary.queueTotal, tiers: summary.tiers, rulesVersion: summary.rulesVersion } : summary;
+      res.json({ summary: brief, job: reviewClassification.jobState() });
+    }
+    catch (e: any) { res.status(500).json({ error: "Failed to read the classification analysis" }); }
+  });
+  app.post("/api/admin/review/classification/run", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const started = reviewClassification.startAnalysis(req.user, (s, err) => {
+        ingestionAudit(req.user, 'REVIEW_CLASSIFICATION_ANALYSIS', s
+          ? { catalogueChanged: false, analysed: s.analysed, tiers: s.tiers, rulesVersion: s.rulesVersion, recommendation: s.recommendation.basis }
+          : { catalogueChanged: false, failed: err }).catch(() => {});
+      });
+      if (!started) return res.status(409).json({ error: "An analysis is already running", job: reviewClassification.jobState() });
+      res.status(202).json({ job: reviewClassification.jobState() });
+    } catch (e: any) { res.status(500).json({ error: "Failed to start the classification analysis" }); }
+  });
+  // Classifier v1 vs v2 over the same queue (v2 is analysis-only; the ingestion engine keeps v1). Stores a comparison summary and an audit row; changes no book.
+  app.get("/api/admin/review/classification/comparison", authenticateJWT, requireAdminOrManager, async (_req: any, res: any) => {
+    try { res.json({ comparison: await reviewClassification.loadComparison(), job: reviewClassification.jobState() }); }
+    catch (e: any) { res.status(500).json({ error: "Failed to read the classifier comparison" }); }
+  });
+  app.post("/api/admin/review/classification/compare", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const started = reviewClassification.startComparison(req.user, (c, err) => {
+        ingestionAudit(req.user, 'REVIEW_CLASSIFICATION_COMPARISON', c
+          ? { catalogueChanged: false, analysed: c.analysed, v1Tiers: c.v1Tiers, v2Tiers: c.v2Tiers, changedDepartment: c.changedDepartment }
+          : { catalogueChanged: false, failed: err }).catch(() => {});
+      });
+      if (!started) return res.status(409).json({ error: "An analysis is already running", job: reviewClassification.jobState() });
+      res.status(202).json({ job: reviewClassification.jobState() });
+    } catch (e: any) { res.status(500).json({ error: "Failed to start the classifier comparison" }); }
+  });
+  app.get("/api/admin/review/classification/records", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const q = req.query, num = (v: any) => (v === undefined || v === '' || !Number.isFinite(Number(v)) ? undefined : Number(v));
+      const tiers = ['high', 'medium', 'low', 'unclassifiable'];
+      const filters: reviewClassification.Filters = {
+        source: q.source ? String(q.source).slice(0, 80) : undefined, department: q.department ? String(q.department).slice(0, 120) : undefined,
+        tier: tiers.includes(String(q.tier)) ? q.tier : undefined, minScore: num(q.minScore), maxScore: num(q.maxScore), minMargin: num(q.minMargin), maxMargin: num(q.maxMargin),
+        yearFrom: num(q.yearFrom), yearTo: num(q.yearTo), licence: q.licence ? String(q.licence) as any : undefined, language: q.language ? String(q.language).toLowerCase().slice(0, 40) : undefined,
+      };
+      const take = Math.min(Math.max(parseInt(q.limit as string) || 25, 1), 100), page = Math.max(1, parseInt(q.page as string) || 1);
+      res.json(await reviewClassification.recordsPage(filters, page, take));
+    } catch (e: any) { res.status(500).json({ error: "Failed to read the classification result" }); }
+  });
+
     try {
       const publisher = await resolvePublisherForUser(req);
       if (!publisher) return res.status(404).json({ error: "No publisher profile linked to this account" });

@@ -1,5 +1,6 @@
 import { DOMAINS } from '../../../constants.js';
 import { parseLcc, departmentFromLcc } from '../lcc.js';
+import { ddcEvidence } from '../ddc.js';
 
 /**
  * Which department does a book belong to?
@@ -133,6 +134,19 @@ const KEYWORDS_OTHER_LANGUAGES: [string, RegExp][] = [
 ];
 KEYWORDS.push(...KEYWORDS_OTHER_LANGUAGES);
 
+/**
+ * Classifier v2 — ANALYSIS ONLY. Review Automation compares it with v1; the ingestion engine, the harvest and the held-books job all call
+ * classifyDepartment() without a variant and so keep v1 exactly. v2 differs in two ways and nothing else:
+ *   1. Dewey (DDC) numbers count as controlled-code evidence (see ddc.ts).
+ *   2. The bare word "rehabilitation" is not Physiotherapy wording: "rehabilitation of offenders" and "social rehabilitation" are not physical
+ *      therapy. Physiotherapy keeps physiotherapy, physical therapy, physical / musculoskeletal / neuro / sports rehabilitation, kinesiology
+ *      and sports medicine.
+ */
+export const ANALYSIS_CLASSIFIER_V2 = 2;
+export type ClassifierVariant = 'v1' | 'v2';
+const PHYSIO_V2 = /\b(physiotherapy|physical therapy|physical rehabilitation|musculoskeletal rehabilitation|neuro-?rehabilitation|sports rehabilitation|kinesiology|sports medicine)\b/i;
+const KEYWORDS_V2: [string, RegExp][] = KEYWORDS.map(([d, re]) => (d === 'Physiotherapy' && re.source.includes('rehabilitation') ? [d, PHYSIO_V2] as [string, RegExp] : [d, re]));
+
 /** The classifier's own wording for one department, read-only, so a provider's pre-filter can build on it and not keep a rival list. */
 export function departmentKeywords(department: string): RegExp[] {
   return KEYWORDS.filter(([d]) => d === department).map(([, re]) => re);
@@ -184,9 +198,13 @@ export type ClassifyInput = {
   nlm?: string[];
   /** Library of Congress call numbers, when the source gives them (Open Textbook Library does). */
   lcc?: string[];
+  /** Dewey numbers (Open Library stores them). Read by classifier v2 only; v1 ignores them. */
+  ddc?: string[];
 };
 
-export function classifyDepartment(b: ClassifyInput): DepartmentVerdict {
+export function classifyDepartment(b: ClassifyInput, opts: { variant?: ClassifierVariant } = {}): DepartmentVerdict {
+  const v2 = opts.variant === 'v2';
+  const keywords = v2 ? KEYWORDS_V2 : KEYWORDS;
   const scores = new Map<string, number>();
   const why: Record<string, string[]> = {};
   const fams = new Map<string, Set<string>>();
@@ -240,10 +258,18 @@ export function classifyDepartment(b: ClassifyInput): DepartmentVerdict {
     add(dep, W.lcc, `NLM ${String(call).trim().slice(0, 24)}`, 'code');
   }
 
+  if (v2) {
+    const d = ddcEvidence(b.ddc);
+    if (d.department) {
+      const pts = GENERIC_DEPARTMENTS.has(d.department) ? W.codeGeneric : d.grade === 'specific' ? W.codeSpecific : d.grade === 'mid' ? W.codeMid : W.codeBroad;
+      add(d.department, pts, `DDC ${d.code}`, 'code');
+    }
+  }
+
   const subjects = (b.subjects || []).join(' ; ');
   const title = b.title || '';
   const abstract = (b.description || '').slice(0, 1200);
-  for (const [dep, re] of KEYWORDS) {
+  for (const [dep, re] of keywords) {
     if (subjects && re.test(subjects)) add(dep, W.keyword, 'subject keyword', 'subject');
     if (title && re.test(title)) add(dep, W.title, 'title', 'title');
     if (abstract && re.test(abstract)) add(dep, W.abstract, 'abstract', 'abstract');
