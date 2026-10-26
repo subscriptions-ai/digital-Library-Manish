@@ -13,6 +13,7 @@ const env = readFileSync(new URL('../.env', import.meta.url), 'utf8');
 const real = /^DATABASE_URL=(.*)$/m.exec(env)?.[1]?.replace(/^["']|["']$/g, '');
 if (!real) throw new Error('no DATABASE_URL in .env');
 process.env.DATABASE_URL = real.replace(/\/[^/?]+(\?.*)?$/, '/stm_ingestion_test');
+process.env.INGESTION_ADAPTIVE_SCHEDULER = '0';        // this suite pins the previous static order and one-useful-turn-per-tick rule; the adaptive scheduler has its own (test-adaptive-scheduler.ts)
 process.env.INGESTION_SOFT_BACKOFF_SECONDS = '0,0';
 process.env.INGESTION_MAX_TURNS_PER_TICK = '1';      // one turn per tick: the multi-turn tick has its own suite (test-discovery-lanes.ts)
 for (const k of ['INGESTION_WEIGHT_BOOKS', 'INGESTION_WEIGHT_JOURNALS', 'INGESTION_WEIGHT_ARTICLES', 'INGESTION_LOCAL_WORK', 'INGESTION_JOURNAL_COVERAGE', 'BOOKS_CROSSREF', 'BOOKS_PRESSBOOKS']) delete process.env[k];

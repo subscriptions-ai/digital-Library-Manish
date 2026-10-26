@@ -15,6 +15,7 @@ const env = readFileSync(new URL('../.env', import.meta.url), 'utf8');
 const real = /^DATABASE_URL=(.*)$/m.exec(env)?.[1]?.replace(/^["']|["']$/g, '');
 if (!real) throw new Error('no DATABASE_URL in .env');
 process.env.DATABASE_URL = real.replace(/\/[^/?]+(\?.*)?$/, '/stm_ingestion_test');
+process.env.INGESTION_ADAPTIVE_SCHEDULER = '0';        // this suite pins the previous static order and one-useful-turn-per-tick rule; the adaptive scheduler has its own (test-adaptive-scheduler.ts)
 
 // This suite tests the Book circuit breaker under the ORIGINAL fair rotation (Journals → Articles → Books, no coverage engine, no local backlog). Weighted
 // priority, journal coverage, review-only Book sources in the rotation and the local backlog are covered by scripts/test-always-productive.ts.

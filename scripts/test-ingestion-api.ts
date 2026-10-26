@@ -54,7 +54,7 @@ await db.ingestionSourceHealth.upsert({ where: { source: 'OpenAlex' }, create: {
 
 const child = spawn('npx', ['tsx', '--import', new URL('./test-ingestion-api.preload.mjs', import.meta.url).pathname, 'server.ts'], {
   cwd: new URL('..', import.meta.url).pathname, detached: true, stdio: ['ignore', 'pipe', 'pipe'],
-  env: { ...process.env, DATABASE_URL: TEST_URL, PORT: String(PORT), NODE_ENV: 'development', API_TEST_RUN: RUN, API_TEST_ISSN: ISSN, API_TEST_FILE_PORT: String(FILE_PORT) },
+  env: { ...process.env, DATABASE_URL: TEST_URL, PORT: String(PORT), NODE_ENV: 'development', INGESTION_ADAPTIVE_SCHEDULER: '0' /* single-turn passes: this suite is the API contract; the adaptive drain has test-adaptive-scheduler.ts */, API_TEST_RUN: RUN, API_TEST_ISSN: ISSN, API_TEST_FILE_PORT: String(FILE_PORT) },
 });
 let serverLog = ''; child.stdout!.on('data', d => (serverLog += d)); child.stderr!.on('data', d => (serverLog += d));
 const shutdown = async () => { try { process.kill(-child.pid!, 'SIGTERM'); } catch {} files.close(); await db.$disconnect(); };
@@ -187,6 +187,22 @@ try {
   section('Jobs survive a refresh');
   const act = await A('/api/admin/ingest/jobs/active');
   check('active jobs endpoint answers (nothing is running now)', act.status === 200 && Array.isArray(act.data.jobs));
+
+  section('Throughput panels: provider efficiency, review queue, pipeline, engine wording');
+  for (const path of ['/api/admin/ingest/provider-yield', '/api/admin/ingest/review-queue', '/api/admin/ingest/pipeline']) {
+    check(`${path}: a reader is refused`, (await call(path, { token: readerTok })).status === 403);
+    check(`${path}: no token is refused`, (await call(path)).status === 401);
+  }
+  const py = await A('/api/admin/ingest/provider-yield?hours=24');
+  check('provider-yield answers with providers and a total, and says how many hours', py.status === 200 && Array.isArray(py.data.providers) && py.data.hours === 24 && py.data.total && 'uniqueYieldPct' in py.data.total);
+  check('provider-yield keeps source failures apart from failed writes', py.data.providers.every((p: any) => 'providerFailures' in p && 'failedWrites' in p && 'duplicateUnchanged' in p && 'duplicateEnriched' in p && 'duplicateConflicting' in p));
+  const rq = await A('/api/admin/ingest/review-queue');
+  check('review-queue answers with a count, an age and a split by content type and provider', rq.status === 200 && typeof rq.data.awaiting === 'number' && Array.isArray(rq.data.byContentType) && Array.isArray(rq.data.byProvider) && 'newToday' in rq.data && 'oldestAt' in rq.data);
+  const pl = await A('/api/admin/ingest/pipeline');
+  check('pipeline answers with stages, and the inline stage carries no invented count', pl.status === 200 && pl.data.stages.some((x: any) => x.id === 'review') && pl.data.stages.find((x: any) => x.id === 'normalise')?.count === null);
+  const st2 = await A('/api/admin/ingest/state');
+  check('the engine state carries one sentence of status and the 24-hour efficiency fields', st2.status === 200 && typeof st2.data.status.summary === 'string' && 'uniqueYieldPct' in st2.data.last24h && 'duplicateEnriched' in st2.data.last24h);
+  check('each provider card has a score, its rates and a standing', (st2.data.status.rotation?.providers || []).every((p: any) => typeof p.score === 'number' && p.rates && 'quality' in p));
 } catch (e: any) {
   fail++; console.log('  FAIL  test crashed:', e?.message);
   console.log(serverLog.slice(-1500));

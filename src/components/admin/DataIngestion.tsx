@@ -3,6 +3,7 @@ import { EngineStatus } from './ingestion/EngineStatus';
 import { EngineMode } from './ingestion/EngineMode';
 import { RotationStatus } from './ingestion/RotationStatus';
 import { Metrics } from './ingestion/Metrics';
+import { PipelineStrip, ReviewQueueCard, ProviderYield } from './ingestion/Throughput';
 import { RunActivity } from './ingestion/RunActivity';
 import { EngineSettings } from './ingestion/EngineSettings';
 import { ScopePanel } from './ingestion/ScopePanel';
@@ -52,7 +53,12 @@ export function DataIngestion() {
       <ScopePanel state={state} onChanged={changed} />
       <EngineMode state={state} coverage={coverage || []} onChanged={changed} />
       <RotationStatus state={state} />
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 [&>*]:min-w-0">
+        <PipelineStrip refreshKey={bump} />
+        <ReviewQueueCard refreshKey={bump} />
+      </div>
       <Metrics state={state} />
+      <ProviderYield state={state} refreshKey={bump} />
 
       <div className="segmented" role="tablist" aria-label="Activity view">
         {([['log', 'Run activity'], ['coverage', 'Coverage'], ['books', 'Book coverage'], ['growth', 'Catalogue growth'], ['bulk', 'Bulk expansion']] as const).map(([id, label]) => (

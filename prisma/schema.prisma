@@ -1742,6 +1742,9 @@ model IngestionRun {
   enriched        Int @default(0)
   /// Held books published by the backlog after meeting every rule under the current rules. Already in the catalogue as Drafts, so not "added".
   promoted        Int @default(0)
+  /// Duplicates whose incoming metadata disagreed with the held record on a rights-bearing field (licence) or an identifier (DOI).
+  /// Counted and left alone for a person to look at; never applied. (`skippedHeld` = every duplicate, `enriched` = the ones improved.)
+  duplicateConflicting Int @default(0)
 
   // Discovery passes report on titles rather than articles.
   journalsSeen     Int @default(0)

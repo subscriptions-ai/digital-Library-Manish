@@ -58,6 +58,8 @@ export type Classified = Candidate & {
   status?: 'Published' | 'Draft';
   licenceVerdict?: string;
   reasons: string[];
+  /** When the outcome is HELD: the catalogue record it matched (null for a repeat inside the same batch). Lets a duplicate be compared with what is held (duplicates.ts). */
+  heldId?: string | null;
   /** Filled in by the write step. */
   result?: 'added' | 'held' | 'rejected' | 'review' | 'failed';
   resultDetail?: string;
@@ -120,7 +122,8 @@ export async function classifyCandidates(cands: Candidate[]): Promise<Classified
       },
     );
     if (d.outcome === 'ADD') seen.add(key);
-    return { ...c, key, outcome: d.outcome, access: d.access, status: d.status, licenceVerdict: d.licenceVerdict, reasons: d.reasons };
+    const heldRow = held.get(i);
+    return { ...c, key, outcome: d.outcome, access: d.access, status: d.status, licenceVerdict: d.licenceVerdict, reasons: d.reasons, heldId: d.outcome === 'HELD' ? heldRow?.articleId ?? null : null };
   });
 }
 

@@ -1,6 +1,6 @@
 import { releaseClaim } from './claims.js';
 import { articleMinYear } from './yearPolicy.js';
-import { INGESTION_POLICY, days, schedulerV2 } from './policy.js';
+import { INGESTION_POLICY, days, schedulerV2, incrementalSyncEnabled } from './policy.js';
 import { SourceError, fetchCrossrefForJournal } from './articleSources.js';
 import { judgeVerifyWrite } from './articlePipeline.js';
 import { readCursor, writeCursor } from './journalCursor.js';
@@ -36,6 +36,8 @@ const TURN_BUDGET_MS = 3 * 60_000;
 type Visit = {
   journal: string | null; journalId?: string; department?: string | null;
   checked: number; added: number; skippedHeld: number; skippedFailed: number; skippedRejected: number; needsReview: number;
+  /** Of the duplicates: held records completed from this source (⊂ skippedHeld), and ones that disagreed on rights or DOI and were left alone. */
+  enriched?: number; conflicting?: number;
   more?: boolean; error?: string | null; note?: string;
   providerFailure?: { paused: boolean; rateLimited: boolean; status: number | null; error: string };
 };
@@ -50,9 +52,19 @@ export async function visitJournalCrossref(journal: any, state: any, cap: number
   const offset = Number(readCursor(journal.fetchCursor, 'crossref')) || 0;
   const base = { journal: journal.title as string, journalId: journal.id as string, department: journal.domain as string | null };
 
+  // Incremental sync. A journal whose whole window has been read once is asked only for what Crossref has indexed since that walk began, not for the window
+  // again (a weekly re-read of records we already hold). The baseline is valid only for the same year policy; a walk already under way keeps the baseline
+  // it started with, and the day it began is remembered so a record indexed while the walk was still going is not missed.
+  const today = new Date().toISOString().slice(0, 10);
+  const [sinceDay, sinceYear] = String(readCursor(journal.fetchCursor, 'crossrefSince') || '').split('|');
+  const indexedSince = incrementalSyncEnabled() && /^\d{4}-\d{2}-\d{2}$/.test(sinceDay || '') && Number(sinceYear) === fromYear ? sinceDay : null;
+  // A walk begun before this existed has no recorded day: its true start is unknown, so it earns no baseline (the next walk reads the window once more, properly).
+  const walkStart: string | null = offset > 0 ? readCursor(journal.fetchCursor, 'crossrefWalk') : today;
+  const baselineAfterThisWalk: string | null = walkStart && /^\d{4}-\d{2}-\d{2}$/.test(walkStart) ? `${new Date(Date.parse(`${walkStart}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10)}|${fromYear}` : null;
+
   let got;
   try {
-    got = await fetchCrossrefForJournal(journal, fromYear, rows, offset);
+    got = await fetchCrossrefForJournal(journal, fromYear, rows, offset, indexedSince);
   } catch (e: any) {
     const msg = String(e?.message || e);
     // A response we could not read is the source failing to be usable: count it once, the way a failed request is counted.
@@ -65,10 +77,11 @@ export async function visitJournalCrossref(journal: any, state: any, cap: number
 
   // Nothing in the window: look again next week, never sooner. Only Crossref's own place is cleared.
   if (!got.fetched) {
+    const finished = incrementalSyncEnabled() ? writeCursor(writeCursor(writeCursor(journal.fetchCursor, 'crossref', null), 'crossrefSince', baselineAfterThisWalk), 'crossrefWalk', null) : writeCursor(journal.fetchCursor, 'crossref', null);
     await p.journal.update({
       where: { id: journal.id },
       data: {
-        lastIngestedAt: new Date(), fetchCursor: writeCursor(journal.fetchCursor, 'crossref', null), exhaustedAt: new Date(),
+        lastIngestedAt: new Date(), fetchCursor: finished, exhaustedAt: new Date(),
         nextEligibleAt: new Date(Date.now() + days(INGESTION_POLICY.cooldown.exhaustedDays)),
         noChangeCount: (journal.noChangeCount || 0) + 1, failureCount: 0, lastIngestionStatus: 'exhausted', claimedAt: null, claimedBy: null,
       },
@@ -79,9 +92,14 @@ export async function visitJournalCrossref(journal: any, state: any, cap: number
   const cands = got.items.map(i => ({ ...i, department: journal.domain || '' as any, extra: i.extra ?? null }));
   const pipe = await judgeVerifyWrite(cands, null, { maxWrites: v2 ? remaining : undefined, skippedAtFetch: got.skipped });
   const next = got.fetched >= rows ? String(offset + got.fetched) : null;     // a short page is the end of what Crossref holds for this window
-  const fin = await finishJournalVisit(journal, cap, v2, { added: pipe.sum.added, needsReview: pipe.sum.reviewWritten, next, provider: 'crossref' });
+  const fin = await finishJournalVisit(journal, cap, v2, {
+    added: pipe.sum.added, needsReview: pipe.sum.reviewWritten, next, provider: 'crossref',
+    // At the end of a walk the baseline moves up; part-way through, the day the walk began is kept. A journal that ends "full" forgets both (finishJournalVisit).
+    extras: incrementalSyncEnabled() ? { crossrefSince: next ? undefined : baselineAfterThisWalk, crossrefWalk: next ? walkStart : null } : undefined,
+  });
   return {
     ...base, checked: got.fetched, added: pipe.sum.added, skippedHeld: pipe.heldAlready + pipe.sum.held, skippedFailed: pipe.sum.failed,
+    enriched: pipe.dup.enriched, conflicting: pipe.dup.conflicting,
     skippedRejected: got.skipped + pipe.rejected + pipe.sum.rejected, needsReview: pipe.sum.reviewWritten,
     more: Boolean(next) && !fin.full, error: pipe.sum.failed ? pipe.sum.firstError ?? null : null,
     note: [recovered ? 'took over an abandoned claim' : null, fin.full ? `holds ${fin.articles} articles, the limit set` : next ? undefined : 'reached the end of this journal'].filter(Boolean).join(' · ') || undefined,
@@ -106,7 +124,7 @@ async function journalTurn(kind: 'openalex' | 'crossref', ctx: TurnCtx): Promise
   const cap = Math.max(0, state.articlesPerJournal ?? 0);
   const started = Date.now();
   const rows: Record<string, any>[] = [];
-  const t = { checked: 0, added: 0, held: 0, review: 0, skipped: 0, failed: 0 };
+  const t = { checked: 0, added: 0, held: 0, review: 0, skipped: 0, failed: 0, enriched: 0, conflicting: 0 };
   let visited = 0, stoppedBy: Visit['providerFailure'] | null = null, firstError: string | null = null;
   // Where this turn asked, by department: a department is the cursor. One that has given nothing for several turns is left alone (ctx.restingCursors)
   // while the others carry on; only when none is left does the provider as a whole rest.
@@ -127,13 +145,15 @@ async function journalTurn(kind: 'openalex' | 'crossref', ctx: TurnCtx): Promise
     if (r.providerFailure) { stoppedBy = r.providerFailure; firstError ||= r.providerFailure.error; if (!r.journalId) break; }
     if (r.journal && r.department) {
       const c = byDept.get(r.department) ?? { key: r.department, department: r.department, checked: 0, useful: 0 };
-      c.checked += r.checked || 0; c.useful += (r.added || 0) + (r.needsReview || 0);
+      c.checked += r.checked || 0; c.useful += (r.added || 0) + (r.needsReview || 0) + (r.enriched || 0);
       byDept.set(r.department, c);
     }
     if (r.journal) {
       t.checked += r.checked || 0; t.added += r.added; t.held += r.skippedHeld; t.review += r.needsReview; t.skipped += r.skippedRejected; t.failed += r.skippedFailed;
+      t.enriched += r.enriched || 0; t.conflicting += r.conflicting || 0;
       rows.push({
-        journalId: r.journalId ?? null, journalTitle: r.journal, added: r.added, skippedHeld: r.skippedHeld, skippedFailed: r.skippedFailed,
+        journalId: r.journalId ?? null, journalTitle: r.journal, checked: r.checked || 0, added: r.added, skippedHeld: r.skippedHeld, skippedFailed: r.skippedFailed,
+        enriched: r.enriched || 0, duplicateConflicting: r.conflicting || 0,
         skippedRejected: r.skippedRejected, needsReview: r.needsReview, more: !!r.more, error: r.providerFailure ? `Provider request failed — ${r.providerFailure.error}`.slice(0, 500) : r.error ?? null,
         note: [`${r.checked || 0} checked`, r.note].filter(Boolean).join(' · '),
       });
@@ -149,8 +169,8 @@ async function journalTurn(kind: 'openalex' | 'crossref', ctx: TurnCtx): Promise
       note: resting ? `No journal is due outside the ${resting} department${resting === 1 ? '' : 's'} resting for now` : 'No journal is due for articles right now' };
   }
   const out: TurnRan = {
-    kind: 'ran', checked: t.checked, added: t.added, held: t.held, enriched: 0, sentToReview: t.review, skipped: t.skipped, recordFailures: t.failed,
-    useful: t.added + t.review, more: true, rows, cursors: [...byDept.values()],
+    kind: 'ran', checked: t.checked, added: t.added, held: t.held, enriched: t.enriched, sentToReview: t.review, skipped: t.skipped, recordFailures: t.failed,
+    useful: t.added + t.review + t.enriched, more: true, rows, cursors: [...byDept.values()], duplicateConflicting: t.conflicting,
     note: stoppedBy ? `${sourceLabel[kind]} stopped answering part-way (${stoppedBy.error}); what was read before that was kept` : null,
     ledger: { articlesAdded: t.added, articlesSkipped: t.held + t.failed },
   };
@@ -180,9 +200,15 @@ export async function searchTurn(id: 'europepmc' | 'arxiv', ctx: TurnCtx): Promi
   const cursors: CursorResult[] = Object.entries(stats).filter(([d]) => d).map(([d, v]: [string, any]) => ({
     key: d, department: d, checked: (v.added || 0) + (v.held || 0) + (v.sentToReview || 0) + (v.skipped || 0) + (v.failed || 0), useful: (v.added || 0) + (v.sentToReview || 0),
   }));
+  // Duplicates completed from this source belong to the departments they were found in (the ones that saw the most duplicates take them first).
+  let left = out.enriched ?? 0;
+  for (const c of [...cursors].sort((a, b) => ((stats[b.key] as any)?.held || 0) - ((stats[a.key] as any)?.held || 0))) {
+    if (left <= 0) break;
+    const take = Math.min(left, (stats[c.key] as any)?.held || 0); c.useful += take; left -= take;
+  }
   return {
-    kind: 'ran', checked: out.checked, added: tot.added, held: tot.held, enriched: 0, sentToReview: tot.sentToReview, skipped: tot.skipped, recordFailures: tot.failed,
-    useful: tot.added + tot.sentToReview, more: out.moreAvailable, note: out.partial || null,
+    kind: 'ran', checked: out.checked, added: tot.added, held: tot.held, enriched: out.enriched ?? 0, sentToReview: tot.sentToReview, skipped: tot.skipped, recordFailures: tot.failed,
+    useful: tot.added + tot.sentToReview + (out.enriched ?? 0), more: out.moreAvailable, note: out.partial || null, duplicateConflicting: out.duplicateConflicting ?? 0,
     departmentStats: stats, cursors, ledger: { articlesAdded: tot.added, articlesSkipped: tot.held + tot.failed },
   };
 }

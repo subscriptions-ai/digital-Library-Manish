@@ -61,6 +61,9 @@ import { runEnginePass, wakeEngine } from "./src/lib/ingestion/engine.js";
 import { importDoajCatalogue, checkDoajCatalogue, importCheckedJournals } from "./src/lib/doajCatalogue.js";
 import { audit as ingestionAudit } from "./src/lib/ingestion/audit.js";
 import { validateSettings } from "./src/lib/ingestion/settings.js";
+import { providerYield } from "./src/lib/ingestion/providerYield.js";
+import { reviewQueue } from "./src/lib/ingestion/reviewQueue.js";
+import { pipelineStatus } from "./src/lib/ingestion/pipelineStatus.js";
 import { engineStatus, last24Hours, repeatedNoChangeAlerts, metrics as ingestionMetrics, runHistory, runSources } from "./src/lib/ingestion/status.js";
 import { INGESTION_POLICY, schedulerV2 } from "./src/lib/ingestion/policy.js";
 import { classifyCandidates, summarise as summariseCandidates, createPreview, loadPreview, commitOneOff, previewToCsv, PreviewError } from "./src/lib/ingestion/importService.js";
@@ -9302,6 +9305,25 @@ async function startServer() {
       console.error('GET ingest/state error:', e?.message);
       res.status(500).json({ error: "Failed to read ingestion state" });
     }
+  });
+
+  // GET /api/admin/ingest/provider-yield?hours=24 — how efficiently each provider turned what it looked at into catalogue growth (unique yield, duplicates split
+  // into unchanged / enriched / conflicting, provider request failures kept apart from failed writes). From the run log; nothing estimated.
+  app.get("/api/admin/ingest/provider-yield", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try { res.json(await providerYield(Number(req.query.hours) || 24)); }
+    catch (e: any) { console.error('GET ingest/provider-yield error:', e?.message); res.status(500).json({ error: "Failed to read provider yield" }); }
+  });
+
+  // GET /api/admin/ingest/review-queue — what the engine has put in front of a person, counted from the catalogue (never from the run log).
+  app.get("/api/admin/ingest/review-queue", authenticateJWT, requireSuperAdmin, async (_req: any, res: any) => {
+    try { res.json(await reviewQueue()); }
+    catch (e: any) { console.error('GET ingest/review-queue error:', e?.message); res.status(500).json({ error: "Failed to read the review queue" }); }
+  });
+
+  // GET /api/admin/ingest/pipeline — the pipeline's stages with the counts that really exist (no invented queue sizes).
+  app.get("/api/admin/ingest/pipeline", authenticateJWT, requireSuperAdmin, async (_req: any, res: any) => {
+    try { res.json(await pipelineStatus(await getIngestionState())); }
+    catch (e: any) { console.error('GET ingest/pipeline error:', e?.message); res.status(500).json({ error: "Failed to read the pipeline" }); }
   });
 
   // POST /api/admin/ingest/state — change settings, scope, or switch the engine on/off.

@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { CheckCircle, XCircle, FileText, BookOpen, ExternalLink, ShieldCheck } from 'lucide-react';
+import { CheckCircle, XCircle, FileText, BookOpen, ExternalLink, ShieldCheck, X } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 
 export function PublisherReviewQueue() {
   const [articles, setArticles] = useState<any[]>([]);
   const [books, setBooks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<'articles' | 'books' | 'ingested'>('articles');
+  // Data Ingestion's "Review now" lands here with the tab and the source already chosen (?tab=ingested&source=DOAB).
+  const [params, setParams] = useSearchParams();
+  const wantTab = params.get('tab');
+  const source = params.get('source') || '';
+  const [tab, setTab] = useState<'articles' | 'books' | 'ingested'>(wantTab === 'ingested' || wantTab === 'books' || wantTab === 'articles' ? wantTab : 'articles');
   const [ingested, setIngested] = useState<any[]>([]);
   const [ingestedTotal, setIngestedTotal] = useState(0);
   const [departments, setDepartments] = useState<string[]>([]);
@@ -30,13 +35,13 @@ export function PublisherReviewQueue() {
   useEffect(() => { fetchData(); }, []);
 
   const loadIngested = async (p: number) => {
-    const res = await fetch(`/api/admin/review/ingested-books?page=${p}&limit=25`, { headers: { Authorization: `Bearer ${token()}` } });
+    const res = await fetch(`/api/admin/review/ingested-books?page=${p}&limit=25${source ? `&source=${encodeURIComponent(source)}` : ''}`, { headers: { Authorization: `Bearer ${token()}` } });
     if (!res.ok) { toast.error('Failed to load ingested books'); return; }
     const d = await res.json();
     setIngested(d.books || []); setIngestedTotal(d.total || 0); setDepartments(d.departments || []); setPage(p);
     setPick(prev => ({ ...Object.fromEntries((d.books || []).map((b: any) => [b.id, b.suggested || ''])), ...prev }));
   };
-  useEffect(() => { if (tab === 'ingested') loadIngested(1); }, [tab]);
+  useEffect(() => { if (tab === 'ingested') loadIngested(1); }, [tab, source]);
 
   const act = async (model: 'article' | 'book', id: string, action: 'approve' | 'reject') => {
     let note = '';
@@ -59,7 +64,8 @@ export function PublisherReviewQueue() {
     } catch (e: any) { toast.error(e.message || 'Action failed'); } finally { setBusy(null); }
   };
 
-  const rows = tab === 'articles' ? articles : tab === 'books' ? books : ingested;
+  // Articles and publisher books arrive as one list, so a chosen source narrows them here; the ingested-books list is narrowed by the server.
+  const rows = tab === 'articles' ? (source ? articles.filter(a => a.source === source) : articles) : tab === 'books' ? (source ? books.filter(b => b.source === source) : books) : ingested;
 
   return (
     <div className="space-y-5">
@@ -67,6 +73,13 @@ export function PublisherReviewQueue() {
         <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2"><ShieldCheck size={24} className="text-emerald-600" /> Content Review</h1>
         <p className="text-sm text-slate-500">Content awaiting approval. Approve to publish, or reject with a reason. “Needs a department” holds harvested books whose subject was not clear enough to place automatically — they are not public until you choose a department.</p>
       </div>
+
+      {source && (
+        <p className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600">
+          Showing only what came from <b className="text-slate-900">{source}</b>
+          <button type="button" aria-label="Show everything again" className="text-slate-400 hover:text-slate-800" onClick={() => { const n = new URLSearchParams(params); n.delete('source'); setParams(n, { replace: true }); }}><X size={13} /></button>
+        </p>
+      )}
 
       <div className="flex gap-1 bg-white border border-slate-200 rounded-xl p-1 w-fit shadow-sm">
         {(['articles', 'books', 'ingested'] as const).map(t => (

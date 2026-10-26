@@ -208,8 +208,9 @@ const CROSSREF_SELECT = 'DOI,title,author,issued,container-title,ISSN,volume,iss
  * file is offered only when the record carries a Creative Commons licence, because a Crossref `link` on
  * anything else is a publisher's text-mining address, not something a reader may be given.
  */
-export async function fetchCrossrefForJournal(journal: { issn: string; eissn?: string | null; title: string; publisherName?: string | null }, fromYear: number, rows: number, offset = 0): Promise<FetchResult> {
-  const filter = `from-pub-date:${fromYear}-01-01,type:journal-article`;
+export async function fetchCrossrefForJournal(journal: { issn: string; eissn?: string | null; title: string; publisherName?: string | null }, fromYear: number, rows: number, offset = 0, indexedSince: string | null = null): Promise<FetchResult> {
+  // `indexedSince` (YYYY-MM-DD): only what Crossref has indexed or re-indexed since that day — an incremental sync of a journal whose window was already read.
+  const filter = `from-pub-date:${fromYear}-01-01,type:journal-article${indexedSince && /^\d{4}-\d{2}-\d{2}$/.test(indexedSince) ? `,from-index-date:${indexedSince}` : ''}`;
   const url = `https://api.crossref.org/journals/${encodeURIComponent(journal.issn)}/works?filter=${encodeURIComponent(filter)}`
     + `&rows=${rows}&offset=${offset}&sort=published&order=desc&select=${encodeURIComponent(CROSSREF_SELECT)}&mailto=${encodeURIComponent(CONTACT)}`;
   const r = await fetchSourceJson(url, { source: 'Crossref', headers: UA, attempts: 3 });

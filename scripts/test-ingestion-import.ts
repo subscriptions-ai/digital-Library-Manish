@@ -193,7 +193,9 @@ section('Settings are validated on the server; clearing a box can no longer chan
   check('negative values are refused', bad({ articlesPerJournal: -1 }).ok === false && bad({ discoverEvery: 0 }).ok === false);
   check('a decimal is refused', bad({ articleMinYear: 2020.5 }).ok === false);
   check('out-of-range values are refused with the range', /between 1990 and \d{4}/.test(bad({ articleMinYear: 99 }).errors[0]));
-  check('"no limit" must be asked for deliberately (0), never reached by clearing a box', bad({ articlesPerJournal: 0 }).ok === true);
+  // The per-journal limit has had a range of 1–100 since the catalogue-expansion work (policy.ts): "no limit" is no longer a setting, so 0 is refused like any other
+  // out-of-range value and clearing a box can still never reach it. (The engine still understands cap 0 internally; nothing sets it.)
+  check('0 is out of range for the per-journal limit and is refused with the range (clearing a box never reaches it either)', bad({ articlesPerJournal: 0 }).ok === false && /between 1 and 100/.test(bad({ articlesPerJournal: 0 }).errors[0]), JSON.stringify(bad({ articlesPerJournal: 0 }).errors));
   check('unknown focus / unknown department are refused', bad({ focus: 'everything' }).ok === false && bad({ departments: ['Nope'] }).ok === false);
   const run = { ...cur, enabled: true };
   const blocked = bad({ articleMinYear: 2021 }, run);

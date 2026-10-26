@@ -142,8 +142,36 @@ export function rotationConfig() {
      * INGESTION_PRODUCTIVITY_BIAS=0 is the rollback to plain round robin (nothing stored is read differently; the averages are simply ignored).
      */
     productivityBias: process.env.INGESTION_PRODUCTIVITY_BIAS !== '0',
+    ...adaptiveConfig(),
   };
 }
+
+/**
+ * The adaptive scheduler (scheduler.ts). All of it is switched off by INGESTION_ADAPTIVE_SCHEDULER=0, which restores the static content-type order and
+ * the one-useful-turn-per-tick rule exactly; nothing stored is read differently.
+ *
+ *   INGESTION_ADAPTIVE_SCHEDULER      on unless "0": content types are ordered by how productive their best available provider is, and a tick keeps
+ *                                     working after a useful turn instead of waiting for the next timer beat.
+ *   INGESTION_TICK_BUDGET_SECONDS     a tick starts no new turn once it has run this long (a turn already under way finishes). Default 40.
+ *   INGESTION_DRAIN_MAX_TURNS         most turns in one tick. Default 8.
+ *   INGESTION_PROVIDER_MIN_GAP_SECONDS  a provider is not asked again inside the SAME tick sooner than this after its last turn. Default 15.
+ *                                     (A per-provider limit; providers with their own pacing inside a turn keep it.)
+ *   INGESTION_STARVATION_TURNS        a content type that has been passed over this many turns in a row leads the next one. Default 6.
+ *   INGESTION_INCREMENTAL_SYNC        on unless "0": Crossref re-visits a finished journal with from-index-date instead of re-reading its whole window.
+ *   INGESTION_MULTI_SOURCE_ENRICHMENT on unless "0": a duplicate from another source fills EMPTY non-rights fields of the held article.
+ */
+export function adaptiveConfig() {
+  return {
+    adaptive: process.env.INGESTION_ADAPTIVE_SCHEDULER !== '0',
+    tickBudgetSeconds: envInt('INGESTION_TICK_BUDGET_SECONDS', 40, 5, 600),
+    drainMaxTurns: envInt('INGESTION_DRAIN_MAX_TURNS', 8, 1, 50),
+    providerMinGapSeconds: envInt('INGESTION_PROVIDER_MIN_GAP_SECONDS', 15, 0, 3600),
+    starvationTurns: envInt('INGESTION_STARVATION_TURNS', 6, 2, 100),
+  };
+}
+
+export const incrementalSyncEnabled = () => process.env.INGESTION_INCREMENTAL_SYNC !== '0';
+export const multiSourceEnrichmentEnabled = () => process.env.INGESTION_MULTI_SOURCE_ENRICHMENT !== '0';
 
 /**
  * The MAINTENANCE lane (maintenance.ts): work on records already held. It has its own cadence, independent of the discovery lane, and never takes a
