@@ -35,7 +35,8 @@ export function HistoricalBackfill({ refreshKey }: { refreshKey: unknown }) {
   const [depts, setDepts] = useState<string[]>([]);
   const [access, setAccess] = useState<'OAFirst' | 'MetadataOnlyAllowed'>('OAFirst');
   const [maxRecords, setMax] = useState(300);
-  const [fixtureTotal, setFixtureTotal] = useState(300);
+  const [adapterVals, setAdapterVals] = useState<Record<string, any>>({});
+  const [desc, setDesc] = useState<{ summary: string } | { error: string } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ id: string; snapshot: string } | null>(null);
   const [confirm, setConfirm] = useState(false);
@@ -46,20 +47,28 @@ export function HistoricalBackfill({ refreshKey }: { refreshKey: unknown }) {
   useEffect(() => { load(); }, [load, refreshKey]);
   useEffect(() => { const t = setInterval(load, active ? 2000 : 15_000); return () => clearInterval(t); }, [load, active]);
 
+  const gate = ov?.enabled === true;
   const adapters: any[] = (ov?.adapters || []).filter((a: any) => a.available && a.contentTypes.includes(type));
   useEffect(() => { if (!adapters.find(a => a.id === provider)) setProvider(adapters[0]?.id || ''); }, [type, ov]);       // eslint-disable-line react-hooks/exhaustive-deps
   const chosen = adapters.find(a => a.id === provider);
 
   const body = useMemo(() => ({
     provider, contentType: type, ...windowFor(preset, from, to), departments: depts, accessPreference: access, maxRecords, preset,
-    adapter: chosen?.fixture ? { seed: 'screen', total: fixtureTotal } : {},
-  }), [provider, type, preset, from, to, depts, access, maxRecords, chosen, fixtureTotal]);
+    adapter: Object.fromEntries((chosen?.params || []).map((p: any) => [p.key, adapterVals[`${provider}.${p.key}`] ?? p.default ?? (p.type === 'boolean' ? false : p.type === 'number' ? 0 : '')]).filter(([, v]: any) => v !== '')),
+  }), [provider, type, preset, from, to, depts, access, maxRecords, chosen, adapterVals]);
   const snapshot = JSON.stringify(body);
+  const adapterKey = JSON.stringify(body.adapter);
+  // What the chosen source looks like (a snapshot's release and size), asked of the server when its settings change. Reads nothing into the catalogue.
+  useEffect(() => {
+    setDesc(null);
+    if (!chosen?.describes || !gate) return;
+    const t = setTimeout(async () => { const r = await api('/api/admin/ingest/backfill/describe', { method: 'POST', body: { provider, adapter: body.adapter } }); setDesc(r.ok ? { summary: r.data.summary } : { error: r.data?.error || 'That source cannot be read.' }); }, 400);
+    return () => clearTimeout(t);
+  }, [provider, adapterKey, chosen?.describes, gate]);       // eslint-disable-line react-hooks/exhaustive-deps
 
   const previewJob = ov?.jobs?.find((j: any) => j.id === preview?.id) ?? null;
   const previewValid = !!preview && preview.snapshot === snapshot && previewJob?.status === 'Completed';
   const previewRunning = !!previewJob && ['Pending', 'Running'].includes(previewJob.status);
-  const gate = ov?.enabled === true;
   const maxCeil = ov?.limits?.maxRecordsPerJob ?? 5000;
 
   const doPreview = async () => {
@@ -92,11 +101,11 @@ export function HistoricalBackfill({ refreshKey }: { refreshKey: unknown }) {
         {!ov ? (failed ? <p role="status" className="mt-3 text-[12.5px] text-muted">Backfill could not be read just now.</p> : <span aria-hidden="true" className="skeleton mt-3 block h-24 w-full" />)
           : ov.tableMissing ? <p role="status" className="mt-3 rounded-lg border border-caution/40 bg-caution-soft px-3.5 py-3 text-[13px] text-ink">This database has not had the backfill table added yet, so nothing can be shown or started. It is added when the schema is pushed.</p>
           : !gate ? <p role="status" className="mt-3 rounded-lg border border-rule bg-surface-2 px-3.5 py-3 text-[13px] text-ink"><b>Historical backfill is switched off on this server.</b> It is enabled only at deployment time (<code className="text-[12px]">INGESTION_BACKFILL_ENABLED</code>); nothing can be previewed or started until then.</p>
-          : noProvider ? <p role="status" className="mt-3 rounded-lg border border-rule bg-surface-2 px-3.5 py-3 text-[13px] text-ink"><b>No backfill provider is connected yet.</b> Real providers arrive in a later phase. Nothing is offered here until one exists.</p>
+          : noProvider ? <p role="status" className="mt-3 rounded-lg border border-rule bg-surface-2 px-3.5 py-3 text-[13px] text-ink"><b>No backfill provider is connected on this server.</b> A provider appears here once its source is set up (for OpenAlex, a staged snapshot folder). Nothing is offered until one is.</p>
           : (
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <Field label="Content type"><select className="input" value={type} onChange={e => { setType(e.target.value); setPreview(null); }}>
-                {ov.types.map((t: any) => <option key={t.id} value={t.id} disabled={!t.providers.length}>{TYPE_HELP[t.id] || t.label}{t.providers.length ? '' : ' — no provider yet'}</option>)}</select></Field>
+                {ov.types.map((t: any) => <option key={t.id} value={t.id} disabled={!t.providers.length}>{TYPE_HELP[t.id] || t.label}{t.reserved ? ' — reserved' : t.providers.length ? '' : ' — no provider yet'}</option>)}</select></Field>
               <Field label="Provider"><select className="input" value={provider} onChange={e => setProvider(e.target.value)} disabled={!adapters.length}>
                 {adapters.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}</select></Field>
               <Field label="Publication period"><select className="input" value={preset} onChange={e => setPreset(e.target.value)}>{PRESETS.map(([id, l]) => <option key={id} value={id}>{l}</option>)}</select></Field>
@@ -114,10 +123,18 @@ export function HistoricalBackfill({ refreshKey }: { refreshKey: unknown }) {
                   {depts.length > 0 && <button type="button" className="mt-1.5 text-[12px] font-semibold text-accent hover:underline" onClick={() => setDepts([])}>Use all departments</button>}
                 </details>
               </div>
-              {chosen?.fixture && (
-                <div className="rounded-lg border border-caution/40 bg-caution-soft px-3.5 py-3 text-[12.5px] text-ink sm:col-span-2">
-                  <b>Test data.</b> This provider is a fixture used to prove the framework. It exists only on development and test servers. Starting it writes fixture articles into this database.
-                  <Field label="Fixture records" className="mt-2 max-w-[10rem]"><input className="input" type="number" min={1} max={2000} value={fixtureTotal} onChange={e => setFixtureTotal(Math.min(2000, Math.max(1, Number(e.target.value) || 1)))} /></Field>
+              {chosen && (chosen.params?.length > 0 || chosen.fixture) && (
+                <div className={`rounded-lg border px-3.5 py-3 text-[12.5px] text-ink sm:col-span-2 ${chosen.fixture ? 'border-caution/40 bg-caution-soft' : 'border-rule bg-surface-2'}`}>
+                  {chosen.fixture && <p><b>Test data.</b> This provider is a fixture used to prove the framework. It exists only on development and test servers. Starting it writes fixture articles into this database.</p>}
+                  <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                    {chosen.params.map((p: any) => {
+                      const k = `${provider}.${p.key}`, v = adapterVals[k] ?? p.default ?? (p.type === 'boolean' ? false : '');
+                      return p.type === 'boolean'
+                        ? <label key={p.key} className="flex items-start gap-2 sm:col-span-2"><input type="checkbox" className="mt-0.5" checked={!!v} onChange={e => setAdapterVals(s => ({ ...s, [k]: e.target.checked }))} /><span>{p.label}{p.help && <span className="block text-[11.5px] text-muted">{p.help}</span>}</span></label>
+                        : <Field key={p.key} label={p.label} help={p.help}><input className="input" type={p.type} min={p.min} max={p.max} placeholder={p.placeholder} value={v as any} onChange={e => setAdapterVals(s => ({ ...s, [k]: p.type === 'number' ? Math.min(p.max ?? Infinity, Math.max(p.min ?? -Infinity, Number(e.target.value) || (p.min ?? 0))) : e.target.value }))} /></Field>;
+                    })}
+                  </div>
+                  {chosen.describes && desc && <p role="status" className={`mt-2 ${'error' in desc ? 'text-alarm' : 'text-ink-2'}`}>{'error' in desc ? desc.error : <><b>Source:</b> {desc.summary}</>}</p>}
                 </div>
               )}
               <div className="sm:col-span-2">

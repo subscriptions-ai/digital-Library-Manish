@@ -4,7 +4,7 @@ import { canonicalDepartmentName } from '../../departmentRegistry.js';
 import { audit } from '../audit.js';
 import { backfillEnabled, backfillLimits, configHash, type BackfillRequest } from './config.js';
 import { getAdapter, listAdapters } from './registry.js';
-import { ACCESS_PREFERENCES, ACTIVE, BACKFILL_TYPES, BackfillError, TERMINAL, TYPE_LABEL, isBackfillType, type JobStatus } from './types.js';
+import { ACCESS_PREFERENCES, ACTIVE, BACKFILL_TYPES, BackfillError, RESERVED_TYPES, TERMINAL, TYPE_LABEL, isBackfillType, isReservedType, type JobStatus } from './types.js';
 import { PAGE_CHANGED } from './chunk.js';
 
 /**
@@ -51,11 +51,14 @@ export async function createJob(body: any, who: any) {
   const adapter = getAdapter(r.provider);
   if (!adapter) throw new BackfillError('NO_SUCH_PROVIDER', 'That provider is not available for backfill.');
   const avail = adapter.available(); if (avail !== true) throw new BackfillError('PROVIDER_UNAVAILABLE', avail);
+  if (isReservedType(r.contentType)) throw new BackfillError('TYPE_RESERVED', `${TYPE_LABEL[r.contentType as keyof typeof TYPE_LABEL]} are reserved: their catalogue model has not been confirmed, so nothing can be backfilled for them yet.`);
   if (!adapter.contentTypes.includes(r.contentType as any)) throw new BackfillError('TYPE_NOT_SUPPORTED', `${adapter.label} cannot backfill ${TYPE_LABEL[r.contentType as keyof typeof TYPE_LABEL]}.`);
   const busy = await db.backfillJob.findFirst({ where: { provider: r.provider, contentType: r.contentType, status: { in: ACTIVE } }, select: { id: true, status: true } });
   if (busy) throw new BackfillError('JOB_ALREADY_ACTIVE', `A ${busy.status.toLowerCase()} backfill already exists for this provider and content type. Finish or cancel it first.`, 409);
 
   const hash = configHash(r);
+  // What the source is, now: a snapshot's identity. A source that cannot be used is refused here, before any job exists.
+  const identity = adapter.sourceIdentity ? await adapter.sourceIdentity(r.adapter) : null;
   let previewJobId: string | null = null;
   if (!r.dryRun) {
     if (!r.previewJobId) throw new BackfillError('PREVIEW_REQUIRED', 'Run Preview Backfill first: a real backfill starts only from a completed dry run of the same settings.');
@@ -63,6 +66,7 @@ export async function createJob(body: any, who: any) {
     if (!pv || !pv.dryRun || pv.status !== 'Completed') throw new BackfillError('PREVIEW_REQUIRED', 'That preview is not a completed dry run. Run Preview Backfill again.');
     if ((pv.config as any)?.hash !== hash) throw new BackfillError('PREVIEW_MISMATCH', 'The settings changed since the preview. Run Preview Backfill again.');
     if (!pv.completedAt || Date.now() - pv.completedAt.getTime() > L.previewValidMinutes * 60_000) throw new BackfillError('PREVIEW_STALE', `The preview is older than ${L.previewValidMinutes} minutes. Run Preview Backfill again.`);
+    if (identity && (pv.config as any)?.identity !== identity) throw new BackfillError('SOURCE_CHANGED_SINCE_PREVIEW', 'The source has changed since the preview (a different snapshot is staged now). Run Preview Backfill again.');
     previewJobId = pv.id;
   }
   // A dry run looks at a bounded sample of what was asked for; the hash is of the request as asked, so the real run can match it.
@@ -72,7 +76,7 @@ export async function createJob(body: any, who: any) {
       provider: r.provider, contentType: r.contentType, status: 'Pending', dryRun: r.dryRun,
       windowStart: r.windowStart ? new Date(r.windowStart) : null, windowEnd: r.windowEnd ? new Date(r.windowEnd) : null,
       departments: r.departments as any, accessPreference: r.accessPreference, maxRecords: effectiveMax,
-      config: { hash, requestedMaxRecords: r.maxRecords, adapter: r.adapter, preset: r.preset, ...(previewJobId ? { previewJobId } : {}) } as any,
+      config: { hash, requestedMaxRecords: r.maxRecords, adapter: r.adapter, preset: r.preset, ...(identity ? { identity } : {}), ...(previewJobId ? { previewJobId } : {}) } as any,
       createdBy: who?.email ?? who?.uid ?? null,
     },
   });
@@ -125,7 +129,7 @@ export function serializeJob(j: any) {
     id: j.id, provider: j.provider, contentType: j.contentType, status: j.status, dryRun: j.dryRun,
     windowStart: j.windowStart, windowEnd: j.windowEnd, departments: j.departments, accessPreference: j.accessPreference, maxRecords: j.maxRecords,
     requestedMaxRecords: j.config?.requestedMaxRecords ?? j.maxRecords, preset: j.config?.preset ?? null, previewJobId: j.config?.previewJobId ?? null, finishedBecause: j.config?.finishedBecause ?? null,
-    replans: j.config?.replans ?? [], activeMs: j.config?.activeMs ?? 0,
+    replans: j.config?.replans ?? [], activeMs: j.config?.activeMs ?? 0, sourceStats: j.config?.sourceStats ?? {}, sourceIdentity: j.config?.identity ?? null,
     cursor: j.cursor, checkpointAt: j.checkpointAt, chunksCompleted: j.chunksCompleted,
     inflight: infl ? { chunkNumber: infl.chunkNumber, records: Array.isArray(infl.planned) ? infl.planned.length : 0, plannedAt: infl.plannedAt, attempts: infl.attempts, counts: infl.counts } : null,
     records: {
@@ -147,13 +151,22 @@ export async function listJobs(limit = 20) {
 /** What the screen needs to draw itself, whether or not backfill is switched on. */
 export async function overview() {
   const L = backfillLimits();
-  const adapters = listAdapters().map(a => ({ id: a.id, label: a.label, contentTypes: a.contentTypes, available: a.available() === true, reason: a.available() === true ? null : a.available(), fixture: !!a.fixture }));
+  const adapters = listAdapters().map(a => ({ id: a.id, label: a.label, contentTypes: a.contentTypes, available: a.available() === true, reason: a.available() === true ? null : a.available(), fixture: !!a.fixture, params: a.params ?? [], describes: !!a.describe }));
   let jobs: any[] = [], tableMissing = false;
   try { jobs = await listJobs(20); } catch { tableMissing = true; }       // a database that has not had the BackfillJob table added yet: say so rather than fail
   return {
     enabled: backfillEnabled(), tableMissing,
     limits: { maxRecordsPerJob: L.maxRecordsPerJob, maxRuntimeMinutes: L.maxRuntimeMinutes, maxBytesPerJob: String(L.maxBytesPerJob), chunkSize: L.chunkSize, workerConcurrency: L.workerConcurrency, previewMaxRecords: L.previewMaxRecords, previewValidMinutes: L.previewValidMinutes, minGapSeconds: L.minGapSeconds },
-    types: BACKFILL_TYPES.map(t => ({ id: t, label: TYPE_LABEL[t], providers: adapters.filter(a => a.available && (a.contentTypes as readonly string[]).includes(t)).map(a => a.id) })),
+    types: BACKFILL_TYPES.map(t => ({ id: t, label: TYPE_LABEL[t], reserved: (RESERVED_TYPES as readonly string[]).includes(t), providers: (RESERVED_TYPES as readonly string[]).includes(t) ? [] : adapters.filter(a => a.available && (a.contentTypes as readonly string[]).includes(t)).map(a => a.id) })),
     adapters, jobs,
   };
+}
+
+/** What the source an adapter would read looks like, for the screen to show before a preview. Reads nothing into the catalogue and writes nothing. */
+export async function describeSource(provider: string, adapterCfg: any) {
+  const a = getAdapter(provider);
+  if (!a) throw new BackfillError('NO_SUCH_PROVIDER', 'That provider is not available for backfill.');
+  const avail = a.available(); if (avail !== true) throw new BackfillError('PROVIDER_UNAVAILABLE', avail);
+  if (!a.describe) return { summary: `${a.label}`, details: {} };
+  return a.describe(adapterCfg && typeof adapterCfg === 'object' && !Array.isArray(adapterCfg) ? adapterCfg : {});
 }

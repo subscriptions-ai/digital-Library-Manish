@@ -6,6 +6,7 @@ import { backfillEnabled, backfillLimits } from './config.js';
 import { getAdapter } from './registry.js';
 import { runBackfillChunk, PAGE_CHANGED } from './chunk.js';
 import { SimulatedCrash } from './testHooks.js';
+import { BackfillStop } from './types.js';
 import type { Judged } from './types.js';
 
 /**
@@ -122,6 +123,11 @@ export async function backfillTick(opts: { workerId?: string } = {}): Promise<Ti
     }
   } catch (e: any) {
     if (e instanceof SimulatedCrash) throw e;                    // a simulated crash leaves the job exactly as a real one would
+    if (e instanceof BackfillStop) {
+      // The source is no longer what the job was started against (a changed snapshot). Not retried, not reset: the cursor and any saved plan stay as evidence, and a person decides.
+      await finish(job.id, 'Failed', { lastError: `${e.code}: ${e.message}`.slice(0, 1000) });
+      return { ran: false, reason: 'failed', jobId: job.id, status: 'Failed' };
+    }
     // Something threw (a source that did not answer, our own bug). The job is released for another try; three in a row fail it, with the reason.
     const cur = await db.backfillJob.findUnique({ where: { id: job.id }, select: { config: true } });
     const streak = (((cur?.config as any)?.errorStreak as number) || 0) + 1;

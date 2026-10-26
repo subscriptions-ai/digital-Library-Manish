@@ -64,7 +64,7 @@ import { validateSettings } from "./src/lib/ingestion/settings.js";
 import { providerYield } from "./src/lib/ingestion/providerYield.js";
 import { reviewQueue } from "./src/lib/ingestion/reviewQueue.js";
 import { pipelineStatus } from "./src/lib/ingestion/pipelineStatus.js";
-import { overview as backfillOverview, createJob as createBackfillJob, controlJob as controlBackfillJob, serializeJob as serializeBackfillJob } from "./src/lib/ingestion/backfill/jobs.js";
+import { overview as backfillOverview, createJob as createBackfillJob, controlJob as controlBackfillJob, serializeJob as serializeBackfillJob, describeSource as describeBackfillSource } from "./src/lib/ingestion/backfill/jobs.js";
 import { startBackfillWorker } from "./src/lib/ingestion/backfill/worker.js";
 import { BackfillError } from "./src/lib/ingestion/backfill/types.js";
 import { engineStatus, last24Hours, repeatedNoChangeAlerts, metrics as ingestionMetrics, runHistory, runSources } from "./src/lib/ingestion/status.js";
@@ -9337,6 +9337,10 @@ async function startServer() {
   };
   app.get("/api/admin/ingest/backfill", authenticateJWT, requireSuperAdmin, async (_req: any, res: any) => {
     try { res.json(await backfillOverview()); } catch (e: any) { backfillFail(res, e, 'read backfill'); }
+  });
+  // POST /api/admin/ingest/backfill/describe { provider, adapter } — what the chosen source looks like (a snapshot's release and size), read-only, before any preview.
+  app.post("/api/admin/ingest/backfill/describe", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try { res.json(await describeBackfillSource(String(req.body?.provider ?? ''), req.body?.adapter)); } catch (e: any) { backfillFail(res, e, 'describe the source'); }
   });
   app.get("/api/admin/ingest/backfill/:id", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
     try {

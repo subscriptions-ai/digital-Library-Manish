@@ -108,14 +108,16 @@ try {
   await db.backfillJob.delete({ where: { id: idle.id } });
   process.env.INGESTION_BACKFILL_ENABLED = 'true';
   process.env.NODE_ENV = 'production';
-  check('in production the fixture does not exist: no adapter is listed, none can be chosen', R.listAdapters().length === 0 && R.getAdapter('fixture') === null && (await J.overview()).adapters.length === 0 && await rejects(J.createJob({ provider: 'fixture', contentType: 'ARTICLE' }, WHO), 'NO_SUCH_PROVIDER'));
+  check('in production the fixture does not exist: it is not listed, cannot be chosen, and no adapter at all is AVAILABLE (so the screen says no provider is connected)', R.listAdapters().filter(a => a.fixture).length === 0 && R.getAdapter('fixture') === null && (await J.overview()).adapters.filter((a: any) => a.available).length === 0 && await rejects(J.createJob({ provider: 'fixture', contentType: 'ARTICLE' }, WHO), 'NO_SUCH_PROVIDER'));
   delete process.env.NODE_ENV;
-  check('outside production, only with BACKFILL_FIXTURE=1', R.listAdapters().length === 1 && (process.env.BACKFILL_FIXTURE = '0', R.listAdapters().length === 0) && (process.env.BACKFILL_FIXTURE = '1', true));
+  check('outside production, the fixture exists only with BACKFILL_FIXTURE=1', R.listAdapters().filter(a => a.fixture).length === 1 && (process.env.BACKFILL_FIXTURE = '0', R.listAdapters().filter(a => a.fixture).length === 0) && (process.env.BACKFILL_FIXTURE = '1', true));
   check('the nine content types exist, Journals among them, and there is NO Periodical type', T.BACKFILL_TYPES.length === 9 && ['JOURNAL', 'ARTICLE', 'BOOK', 'CASE_REPORT', 'THESIS', 'CONFERENCE_PROCEEDING', 'EDUCATIONAL_VIDEO', 'NEWSLETTER', 'MAGAZINE'].every(t => (T.BACKFILL_TYPES as readonly string[]).includes(t)) && !(T.BACKFILL_TYPES as readonly string[]).some(t => /PERIODICAL/i.test(t)));
   check('an unknown type (PERIODICAL) is refused', await rejects(J.createJob({ provider: 'fixture', contentType: 'PERIODICAL' }, WHO), 'BAD_CONTENT_TYPE'));
-  check('a type the adapter cannot bring is refused (the fixture is for articles only)', await rejects(J.createJob({ provider: 'fixture', contentType: 'THESIS' }, WHO), 'TYPE_NOT_SUPPORTED'));
+  check('a type the adapter cannot bring is refused (the fixture is for articles only)', await rejects(J.createJob({ provider: 'fixture', contentType: 'BOOK' }, WHO), 'TYPE_NOT_SUPPORTED'));
+  for (const t of ['CASE_REPORT', 'THESIS', 'CONFERENCE_PROCEEDING', 'EDUCATIONAL_VIDEO', 'NEWSLETTER', 'MAGAZINE']) check(`${t} is RESERVED: recognised, but no job can be created until its catalogue model is confirmed`, await rejects(J.createJob({ provider: 'fixture', contentType: t }, WHO), 'TYPE_RESERVED'));
+  check('JOURNAL and BOOK are not reserved (they have no adapter yet, which is a different refusal)', !T.RESERVED_TYPES.includes('JOURNAL' as any) && !T.RESERVED_TYPES.includes('BOOK' as any) && T.RESERVED_TYPES.length === 6);
   const ov = await J.overview();
-  check('the overview lists all nine types, and only ARTICLE has a provider (fixture) here', ov.types.length === 9 && ov.types.filter(t => t.providers.length).map(t => t.id).join() === 'ARTICLE');
+  check('the overview lists all nine types, the six future ones flagged reserved, and only ARTICLE has an available provider (the fixture; OpenAlex is listed but unavailable without a staged snapshot)', ov.types.length === 9 && ov.types.filter(t => t.providers.length).map(t => t.id).join() === 'ARTICLE' && ov.types.find(t => t.id === 'ARTICLE')!.providers.join() === 'fixture' && ov.types.filter((t: any) => t.reserved).length === 6);
 
   // ═══════════════════════════════════════════════════════════════════════
   section('2. A request is validated, and a dry run is the default');

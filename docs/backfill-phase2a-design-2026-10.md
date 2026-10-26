@@ -12,7 +12,7 @@ Status: **design for approval. Nothing here is applied or built.** Schema: only 
 | JOURNAL | `Journal` (Periodicals **are** Journals: there is no PERIODICAL type, table or pipeline) |
 | ARTICLE | `Article`, `contentType` "Periodicals" (journal articles) |
 | BOOK | `Book` |
-| CASE_REPORT, THESIS, CONFERENCE_PROCEEDING, EDUCATIONAL_VIDEO, NEWSLETTER, MAGAZINE | `Article` with the matching existing `contentType` label (Case Reports, Theses, Conference Proceedings, Educational Videos, Newsletters, Magazines) |
+| CASE_REPORT, THESIS, CONFERENCE_PROCEEDING, EDUCATIONAL_VIDEO, NEWSLETTER, MAGAZINE | **RESERVED** (2026-10-26 ruling): the names are recognised so future adapters have somewhere to land, but no job can be created for them (`TYPE_RESERVED`) and nothing may be written for them — in particular not into `Article` — until the separate content-model audit confirms each one's canonical catalogue model. (The earlier draft of this table mapped them to `Article` labels; that is withdrawn.) |
 
 Existing Journal rows are never touched by the framework; a JOURNAL adapter, when one exists, goes through the same journal judge/writer the engine uses.
 
