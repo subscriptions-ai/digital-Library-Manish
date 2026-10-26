@@ -47,6 +47,13 @@ export function HistoricalBackfill({ refreshKey }: { refreshKey: unknown }) {
   useEffect(() => { load(); }, [load, refreshKey]);
   useEffect(() => { const t = setInterval(load, active ? 2000 : 15_000); return () => clearInterval(t); }, [load, active]);
 
+  // Open on a content type that something can actually be brought in for (with only OAPEN connected that is Books, not "Articles — no provider yet"), unless the person has chosen.
+  const typeChosen = useRef(false);
+  useEffect(() => {
+    if (!ov?.types || typeChosen.current) return;
+    if (!ov.types.find((t: any) => t.id === type)?.providers?.length) { const first = ov.types.find((t: any) => t.providers?.length); if (first) setType(first.id); }
+  }, [ov]);       // eslint-disable-line react-hooks/exhaustive-deps
+
   const gate = ov?.enabled === true;
   const adapters: any[] = (ov?.adapters || []).filter((a: any) => a.available && a.contentTypes.includes(type));
   useEffect(() => { if (!adapters.find(a => a.id === provider)) setProvider(adapters[0]?.id || ''); }, [type, ov]);       // eslint-disable-line react-hooks/exhaustive-deps
@@ -101,10 +108,10 @@ export function HistoricalBackfill({ refreshKey }: { refreshKey: unknown }) {
         {!ov ? (failed ? <p role="status" className="mt-3 text-[12.5px] text-muted">Backfill could not be read just now.</p> : <span aria-hidden="true" className="skeleton mt-3 block h-24 w-full" />)
           : ov.tableMissing ? <p role="status" className="mt-3 rounded-lg border border-caution/40 bg-caution-soft px-3.5 py-3 text-[13px] text-ink">This database has not had the backfill table added yet, so nothing can be shown or started. It is added when the schema is pushed.</p>
           : !gate ? <p role="status" className="mt-3 rounded-lg border border-rule bg-surface-2 px-3.5 py-3 text-[13px] text-ink"><b>Historical backfill is switched off on this server.</b> It is enabled only at deployment time (<code className="text-[12px]">INGESTION_BACKFILL_ENABLED</code>); nothing can be previewed or started until then.</p>
-          : noProvider ? <p role="status" className="mt-3 rounded-lg border border-rule bg-surface-2 px-3.5 py-3 text-[13px] text-ink"><b>No backfill provider is connected on this server.</b> A provider appears here once its source is set up (for OpenAlex, a staged snapshot folder). Nothing is offered until one is.</p>
+          : noProvider ? <p role="status" className="mt-3 rounded-lg border border-rule bg-surface-2 px-3.5 py-3 text-[13px] text-ink"><b>No backfill provider is connected on this server.</b> A provider appears here once its source is set up (for OpenAlex, a staged snapshot folder; for OAPEN, a deployment setting). Nothing is offered until one is.</p>
           : (
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <Field label="Content type"><select className="input" value={type} onChange={e => { setType(e.target.value); setPreview(null); }}>
+              <Field label="Content type"><select className="input" value={type} onChange={e => { typeChosen.current = true; setType(e.target.value); setPreview(null); }}>
                 {ov.types.map((t: any) => <option key={t.id} value={t.id} disabled={!t.providers.length}>{TYPE_HELP[t.id] || t.label}{t.reserved ? ' — reserved' : t.providers.length ? '' : ' — no provider yet'}</option>)}</select></Field>
               <Field label="Provider"><select className="input" value={provider} onChange={e => setProvider(e.target.value)} disabled={!adapters.length}>
                 {adapters.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}</select></Field>
@@ -213,6 +220,7 @@ function JobRow({ j, onControl }: { j: any; onControl: (id: string, a: 'pause' |
       </div>
       <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-2" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Records looked at"><div className="h-full bg-accent" style={{ width: `${pct}%` }} /></div>
       <p className="mt-1 text-[12px] text-muted">{N(r.fetched)} of {N(j.maxRecords)} · {j.dryRun ? 'would publish' : 'published'} {N(r.published)} · review {N(r.review)} · duplicates {N(r.duplicate)} (enriched {N(r.enriched)}, conflicting {N(r.conflicting)}) · refused {N(r.refused)} · failed {N(r.failed)} · chunk {N(j.chunksCompleted)}{j.finishedBecause ? ` · ${j.finishedBecause}` : ''}</p>
+      {j.waiting && live && <p role="status" className="mt-1 text-[12px] text-muted">Waiting for the source{j.waiting.until ? ` until ${new Date(j.waiting.until).toLocaleTimeString()}` : ''}: {j.waiting.reason} Nothing is lost; it carries on by itself.</p>}
       {j.lastError && <p className={`mt-1 text-[12px] ${mismatch ? 'font-medium text-ink' : 'text-muted'}`}>{mismatch ? 'The source returned a different page when this chunk was retried, so nothing was applied. Re-plan to start that chunk afresh. ' : ''}<span className="text-muted">{j.lastError}</span></p>}
       {j.replans?.length > 0 && <p className="mt-1 text-[12px] text-muted">Re-planned {j.replans.length}×: totals for the chunk{j.replans.length > 1 ? 's' : ''} re-planned may count a few already-written records as duplicates.</p>}
     </li>

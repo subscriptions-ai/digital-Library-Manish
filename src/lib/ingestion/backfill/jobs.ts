@@ -129,7 +129,7 @@ export function serializeJob(j: any) {
     id: j.id, provider: j.provider, contentType: j.contentType, status: j.status, dryRun: j.dryRun,
     windowStart: j.windowStart, windowEnd: j.windowEnd, departments: j.departments, accessPreference: j.accessPreference, maxRecords: j.maxRecords,
     requestedMaxRecords: j.config?.requestedMaxRecords ?? j.maxRecords, preset: j.config?.preset ?? null, previewJobId: j.config?.previewJobId ?? null, finishedBecause: j.config?.finishedBecause ?? null,
-    replans: j.config?.replans ?? [], activeMs: j.config?.activeMs ?? 0, sourceStats: j.config?.sourceStats ?? {}, sourceIdentity: j.config?.identity ?? null,
+    replans: j.config?.replans ?? [], waiting: j.config?.waiting ?? null, activeMs: j.config?.activeMs ?? 0, sourceStats: j.config?.sourceStats ?? {}, sourceIdentity: j.config?.identity ?? null,
     cursor: j.cursor, checkpointAt: j.checkpointAt, chunksCompleted: j.chunksCompleted,
     inflight: infl ? { chunkNumber: infl.chunkNumber, records: Array.isArray(infl.planned) ? infl.planned.length : 0, plannedAt: infl.plannedAt, attempts: infl.attempts, counts: infl.counts } : null,
     records: {

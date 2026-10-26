@@ -84,7 +84,8 @@ export interface BackfillAdapter<R = any, N = any> {
   /** Read-only: decide, against the catalogue as it is now, what each record is. */
   judge(items: { id: string; item: N }[], job: JobView): Promise<Judged<N>[]>;
   /**
-   * The writes. `write` = new records to add (published / review / held); `enrich` = duplicates whose empty fields may be filled. Idempotent: writing a
+   * The writes. `write` = new records to add (published / review / held); `enrich` = duplicates whose empty fields may be filled, and conflicting duplicates an adapter may keep bounded
+   * evidence of (never a change to what the held record IS). Idempotent: writing a
    * record that is already there is "present", not a second record. Never touches licence, DOI, file, access or status of a record that already exists.
    */
   apply(write: Judged<N>[], enrich: Judged<N>[], job: JobView): Promise<Map<string, WriteResult>>;
@@ -110,6 +111,16 @@ export type Inflight = {
  */
 export class BackfillStop extends Error {
   constructor(public code: string, message: string) { super(message); }
+}
+
+/**
+ * Thrown by an adapter when the source cannot be asked RIGHT NOW and that is not a fault of the job: the source is resting after errors, or has asked us to slow down (HTTP 429/503
+ * with Retry-After). The chunk is not run, nothing is counted, nothing is retried-and-failed, and no error streak builds: the job stays Running, says why in `config.waiting`, and the
+ * worker looks again after `untilMs` (or a short default). Unlike BackfillStop it never fails the job. An adapter that raises it must NOT write the source's health row: backfill is a
+ * guest of the continuous engine's breaker, never a voice in it.
+ */
+export class BackfillWait extends Error {
+  constructor(public reason: string, public untilMs: number | null = null) { super(reason); }
 }
 
 export class BackfillError extends Error {
