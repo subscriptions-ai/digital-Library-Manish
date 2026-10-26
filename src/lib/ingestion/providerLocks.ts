@@ -10,7 +10,7 @@
  * and a request inside that process. A restart drops every lock, which is right — nothing is running.
  */
 
-export type LockOwner = 'continuous' | 'manual';
+export type LockOwner = 'continuous' | 'manual' | 'backfill';
 
 const held = new Map<string, { owner: LockOwner; since: number }>();
 

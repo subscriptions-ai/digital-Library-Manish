@@ -14,7 +14,9 @@ export type AuditAction =
   | 'QUICK_IMPORT_STARTED' | 'QUICK_IMPORT_FINISHED' | 'QUICK_IMPORT_FAILED'
   | 'BOOK_PRIORITY_CHANGED' | 'TARGETED_BOOKS_STARTED' | 'TARGETED_BOOKS_FINISHED' | 'BULK_SYNC_STARTED' | 'BULK_SYNC_FINISHED' | 'BULK_SYNC_FAILED' | 'BULK_SYNC_PAUSE_REQUESTED' | 'OPENLIBRARY_DUMP_SOURCE_CHANGED' | 'GOOGLE_BOOKS_ENRICHMENT'
   /** The scheduler changed what it does with a provider: it started resting, a fallback took over, it returned. One row per change, never per tick. */
-  | 'SCHEDULER_ROTATION';
+  | 'SCHEDULER_ROTATION'
+  /** Historical backfill: a job was created, and a job was paused / resumed / cancelled / re-planned. Never a record, never a credential. */
+  | 'BACKFILL_JOB_CREATED' | 'BACKFILL_JOB_CONTROL' | 'BACKFILL_JOB_FINISHED';
 
 const SECRET = /pass(word)?|token|secret|authorization|api[_-]?key|credential|cookie/i;
 

@@ -64,6 +64,9 @@ import { validateSettings } from "./src/lib/ingestion/settings.js";
 import { providerYield } from "./src/lib/ingestion/providerYield.js";
 import { reviewQueue } from "./src/lib/ingestion/reviewQueue.js";
 import { pipelineStatus } from "./src/lib/ingestion/pipelineStatus.js";
+import { overview as backfillOverview, createJob as createBackfillJob, controlJob as controlBackfillJob, serializeJob as serializeBackfillJob } from "./src/lib/ingestion/backfill/jobs.js";
+import { startBackfillWorker } from "./src/lib/ingestion/backfill/worker.js";
+import { BackfillError } from "./src/lib/ingestion/backfill/types.js";
 import { engineStatus, last24Hours, repeatedNoChangeAlerts, metrics as ingestionMetrics, runHistory, runSources } from "./src/lib/ingestion/status.js";
 import { INGESTION_POLICY, schedulerV2 } from "./src/lib/ingestion/policy.js";
 import { classifyCandidates, summarise as summariseCandidates, createPreview, loadPreview, commitOneOff, previewToCsv, PreviewError } from "./src/lib/ingestion/importService.js";
@@ -9326,6 +9329,31 @@ async function startServer() {
     catch (e: any) { console.error('GET ingest/pipeline error:', e?.message); res.status(500).json({ error: "Failed to read the pipeline" }); }
   });
 
+  // ── Historical backfill (Phase 2A: the framework; the only provider is a test fixture and it does not exist in production) ──
+  // Reading is always allowed; creating or advancing a job needs INGESTION_BACKFILL_ENABLED. BigInt is sent as a string.
+  const backfillFail = (res: any, e: any, what: string) => {
+    if (e instanceof BackfillError) return res.status(e.status).json({ error: e.message, code: e.code });
+    console.error(`backfill ${what} error:`, e?.message); return res.status(500).json({ error: `Failed to ${what}` });
+  };
+  app.get("/api/admin/ingest/backfill", authenticateJWT, requireSuperAdmin, async (_req: any, res: any) => {
+    try { res.json(await backfillOverview()); } catch (e: any) { backfillFail(res, e, 'read backfill'); }
+  });
+  app.get("/api/admin/ingest/backfill/:id", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const j = await (prisma as any).backfillJob.findUnique({ where: { id: String(req.params.id) } });
+      if (!j) return res.status(404).json({ error: 'No such backfill job.', code: 'NOT_FOUND' });
+      res.json(serializeBackfillJob(j));
+    } catch (e: any) { backfillFail(res, e, 'read the backfill job'); }
+  });
+  app.post("/api/admin/ingest/backfill", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try { res.status(201).json(serializeBackfillJob(await createBackfillJob(req.body, adminOf(req)))); } catch (e: any) { backfillFail(res, e, 'create the backfill job'); }
+  });
+  app.post("/api/admin/ingest/backfill/:id/:action", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    const action = String(req.params.action);
+    if (!['pause', 'resume', 'cancel', 'replan'].includes(action)) return res.status(404).json({ error: 'Unknown action.', code: 'NOT_FOUND' });
+    try { res.json(serializeBackfillJob(await controlBackfillJob(String(req.params.id), action as any, adminOf(req)))); } catch (e: any) { backfillFail(res, e, `${action} the backfill job`); }
+  });
+
   // POST /api/admin/ingest/state — change settings, scope, or switch the engine on/off.
   //
   // Validated here, never defaulted: a value that is not a whole number inside its range is refused and the
@@ -9496,6 +9524,9 @@ async function startServer() {
     catch (e) { console.error('[ingest] pass failed:', e); }
     finally { ingestTimer.busy = false; }
   }, TICK_MS);
+
+  // The historical-backfill worker: one chunk at a time, and nothing at all unless INGESTION_BACKFILL_ENABLED is on (a tick returns before touching the database).
+  startBackfillWorker();
 
   // ── Jobs (in memory). Everything they do is re-runnable and idempotent, so losing one on a redeploy loses progress, never data. ──
   const ingestJobs = new Map<string, any>();

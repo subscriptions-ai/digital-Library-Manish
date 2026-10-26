@@ -45,6 +45,11 @@ export type Candidate = {
   /** False when the file's host is one our server cannot fetch from, so it could not open in the reader. */
   fileOpensHere?: boolean;
   /**
+   * A caller's request that an otherwise-addable record WAIT for a person: it is written as a Draft with a link only, exactly like a record the rules themselves
+   * set aside. It can only make a record stricter — nothing here can publish a record the rules would not — and the engine and Quick Import never set it.
+   */
+  forceReview?: boolean;
+  /**
    * What the source says about the record that has no column of its own. A preprint keeps its identity
    * here (`{ preprint: true, repository: 'arXiv' }`) instead of being given a journal it never had.
    */
@@ -232,17 +237,17 @@ export async function writeClassified(
             publisherId: publisher?.id || null, publisherName: f.publisherName || null,
             volume: f.volume ? String(f.volume) : null, issue: f.issue ? String(f.issue) : null,
             year: f.year || null, domain: (f.department ? canonicalOrSelf(f.department) : null), subject: f.subject || null,
-            accessType: 'OpenAccess', accessStatus: f.access, licence: f.licence || null,
+            accessType: 'OpenAccess', accessStatus: f.forceReview ? 'LinkOnly' : f.access, licence: f.licence || null,
             licenceIsNC: f.licenceVerdict !== 'allows-commercial',
             originalUrl: doi ? `https://doi.org/${doi}` : null,
             // Belongs to its journal, as the engine's own records do.
             ...(journal ? { parentKind: 'Journal', parentId: journal.id } : {}),
             ...(f.extra ? { metadata: f.extra } : {}),
-            status: f.status || 'Published', source: f.source, sourceRecordId: f.sourceRecordId || null,
+            status: f.forceReview ? 'Draft' : f.status || 'Published', source: f.source, sourceRecordId: f.sourceRecordId || null,
             fingerprint: f.key, createdBy: admin?.email || 'Ingestion',
           } });
         });
-        if (f.outcome === 'NEEDS_REVIEW') { items[idx].result = 'review'; sum.reviewWritten++; }
+        if (f.outcome === 'NEEDS_REVIEW' || f.forceReview) { items[idx].result = 'review'; sum.reviewWritten++; }
         else { items[idx].result = 'added'; sum.added++; }
       } catch (e: any) {
         // Losing a race to another writer means the record is held — the system working, not failing.
