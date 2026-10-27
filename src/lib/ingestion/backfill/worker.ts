@@ -6,6 +6,7 @@ import { backfillEnabled, backfillLimits } from './config.js';
 import { getAdapter } from './registry.js';
 import { runBackfillChunk, PAGE_CHANGED } from './chunk.js';
 import { SimulatedCrash } from './testHooks.js';
+import { BackfillStop } from './types.js';
 import type { Judged } from './types.js';
 
 /**
@@ -21,7 +22,7 @@ import type { Judged } from './types.js';
 
 export const WORKER_ID = `${os.hostname()}:${process.pid}:${randomUUID().slice(0, 8)}`;
 
-export type TickResult = { ran: boolean; reason?: 'disabled' | 'no-job' | 'busy' | 'lost' | 'unavailable' | 'error' | 'stopped' | 'failed'; jobId?: string; chunk?: 'committed'; elapsedMs?: number; status?: string };
+export type TickResult = { ran: boolean; reason?: 'disabled' | 'no-job' | 'busy' | 'wait' | 'lost' | 'unavailable' | 'error' | 'stopped' | 'failed'; jobId?: string; chunk?: 'committed'; elapsedMs?: number; status?: string; waitMs?: number };
 
 const staleCutoff = () => new Date(Date.now() - backfillLimits().heartbeatStaleSeconds * 1000);
 
@@ -58,10 +59,12 @@ export function limitReached(job: any): string | null {
 
 const finish = async (id: string, status: 'Completed' | 'Failed' | 'Cancelled' | 'Paused', patch: Record<string, any> = {}, because?: string) => {
   const cur = await db.backfillJob.findUnique({ where: { id }, select: { config: true } });
-  const cfg = because ? { ...((cur?.config as any) ?? {}), finishedBecause: because } : undefined;
+  // A job that stops is no longer "waiting for the source", whatever it was waiting for.
+  const base: Record<string, any> = { ...((cur?.config as any) ?? {}) }; delete base.waiting;
+  const cfg = { ...base, ...(because ? { finishedBecause: because } : {}) };
   await db.backfillJob.updateMany({
     where: { id },
-    data: { status, claimedBy: null, ...(status === 'Completed' || status === 'Cancelled' || status === 'Failed' ? { completedAt: new Date() } : { pausedAt: new Date() }), pauseRequested: false, cancelRequested: false, ...(cfg ? { config: cfg as any } : {}), ...patch },
+    data: { status, claimedBy: null, ...(status === 'Completed' || status === 'Cancelled' || status === 'Failed' ? { completedAt: new Date() } : { pausedAt: new Date() }), pauseRequested: false, cancelRequested: false, config: cfg as any, ...patch },
   });
   if (status === 'Completed' || status === 'Cancelled') await audit(null, 'BACKFILL_JOB_FINISHED', { jobId: id, status, because: because ?? null });
 };
@@ -94,14 +97,28 @@ export async function backfillTick(opts: { workerId?: string } = {}): Promise<Ti
     const lim = limitReached(job); if (lim) { await finish(job.id, 'Completed', {}, lim); return { ran: false, reason: 'stopped', jobId: job.id, status: 'Completed' }; }
   }
 
+  // The source asked us to wait and the wait is not over: do not ask it again yet.
+  const wt = (job.config as any)?.waiting?.until ? Date.parse((job.config as any).waiting.until) : NaN;
+  if (Number.isFinite(wt) && wt > Date.now()) {
+    await db.backfillJob.updateMany({ where: { id: job.id, claimedBy: workerId }, data: { heartbeatAt: new Date() } });
+    return { ran: false, reason: 'wait', jobId: job.id, waitMs: Math.min(5 * 60_000, Math.max(1000, wt - Date.now())) };
+  }
+
   // While the chunk runs the worker says it is alive, so a long fetch or a long apply is never taken for a dead worker.
   const beat = setInterval(() => { db.backfillJob.updateMany({ where: { id: job.id, claimedBy: workerId, status: 'Running' }, data: { heartbeatAt: new Date() } }).catch(() => {}); }, L.heartbeatSeconds * 1000);
   beat.unref?.();
   try {
-    const title = (j: Judged) => (j.item as any)?.candidate?.title ?? (j.item as any)?.title ?? null;
+    const title = (j: Judged) => (j.item as any)?.candidate?.title ?? (j.item as any)?.book?.title ?? (j.item as any)?.title ?? null;
     const r = await runBackfillChunk(job, adapter, { workerId, chunkSize: L.chunkSize, title });
     switch (r.kind) {
       case 'busy': await db.backfillJob.updateMany({ where: { id: job.id, claimedBy: workerId }, data: { heartbeatAt: new Date() } }); return { ran: false, reason: 'busy', jobId: job.id };
+      case 'wait': {
+        // The source asked us to wait (or is resting): not a fault. The job stays Running under this worker, says why, and is looked at again later. No error streak, no failure, no health write.
+        const waitMs = Math.min(5 * 60_000, Math.max(L.minGapSeconds * 1000, 5000, r.until ? r.until - Date.now() : 60_000));
+        const cfg = { ...((job.config as any) ?? {}), waiting: { reason: r.reason.slice(0, 300), until: r.until ? new Date(r.until).toISOString() : null, since: (job.config as any)?.waiting?.since ?? new Date().toISOString() } };
+        await db.backfillJob.updateMany({ where: { id: job.id, claimedBy: workerId }, data: { heartbeatAt: new Date(), config: cfg as any } });
+        return { ran: false, reason: 'wait', jobId: job.id, waitMs };
+      }
       case 'lost': return { ran: false, reason: 'lost', jobId: job.id };
       case 'limit': case 'empty': await finish(job.id, 'Completed', {}, r.kind === 'empty' ? 'end of data' : 'maximum records reached'); return { ran: false, reason: 'stopped', jobId: job.id, status: 'Completed' };
       case 'mismatch':
@@ -122,6 +139,11 @@ export async function backfillTick(opts: { workerId?: string } = {}): Promise<Ti
     }
   } catch (e: any) {
     if (e instanceof SimulatedCrash) throw e;                    // a simulated crash leaves the job exactly as a real one would
+    if (e instanceof BackfillStop) {
+      // The source is no longer what the job was started against (a changed snapshot). Not retried, not reset: the cursor and any saved plan stay as evidence, and a person decides.
+      await finish(job.id, 'Failed', { lastError: `${e.code}: ${e.message}`.slice(0, 1000) });
+      return { ran: false, reason: 'failed', jobId: job.id, status: 'Failed' };
+    }
     // Something threw (a source that did not answer, our own bug). The job is released for another try; three in a row fail it, with the reason.
     const cur = await db.backfillJob.findUnique({ where: { id: job.id }, select: { config: true } });
     const streak = (((cur?.config as any)?.errorStreak as number) || 0) + 1;
@@ -137,6 +159,7 @@ export async function backfillTick(opts: { workerId?: string } = {}): Promise<Ti
 export const nextDelayMs = (r: TickResult): number => {
   const L = backfillLimits();
   if (r.ran) return Math.max(L.minGapSeconds * 1000, r.elapsedMs ?? 0);
+  if (r.reason === 'wait') return r.waitMs ?? 60_000;
   if (r.reason === 'busy' || r.reason === 'error') return Math.max(L.minGapSeconds * 1000, 5000);
   return r.reason === 'stopped' || r.reason === 'failed' || r.reason === 'lost' ? 1000 : L.idlePollSeconds * 1000;
 };

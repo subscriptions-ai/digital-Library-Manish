@@ -1,6 +1,6 @@
 import { ingestionDb } from '../db.js';
 import { bookMinYear, bookYearVerdict } from '../yearPolicy.js';
-import { fetchSourceJson, SourceParseError } from '../sourceHealth.js';
+import { fetchSourceJson, SourceParseError, recordSourceFailure } from '../sourceHealth.js';
 import { parseOaiPage, type OaiRecord } from './oaiXml.js';
 import { normaliseOtlBook, OTL_BASE } from './otl.js';
 import { fetchOpenLibraryPage, normaliseOpenLibraryDoc, OPENLIBRARY_SEARCH } from './openLibrary.js';
@@ -483,12 +483,26 @@ export async function fetchPage(cfg: OaiProviderConfig, token: string | null, fr
       let page: ReturnType<typeof parseOaiPage>;
       try { page = parseOaiPage(String(body)); } catch { throw new SourceParseError('invalid_xml', 'The reply was not valid OAI-PMH XML'); }
       if (!page.error && !page.records.length && !/<OAI-PMH[\s>]/.test(String(body).slice(0, 2000))) throw new SourceParseError('invalid_xml', 'The reply was not an OAI-PMH document');
+      // The set or the format we ask for no longer exists: the source has changed under us, which is not the same as the source failing.
+      if (page.error && ['cannotDisseminateFormat', 'noSetHierarchy'].includes(page.error.code)) throw new SourceParseError('source_changed', `OAI error ${page.error.code}`);
       if (page.error && !['noRecordsMatch', 'badResumptionToken'].includes(page.error.code)) throw new SourceParseError('oai_protocol', `OAI error ${page.error.code}`);
       return page;
     },
   });
   if (!r.ok) return { error: r.error || `HTTP ${r.status}`, paused: !!r.paused, kind: r.errorKind } as const;
   return { page: r.json as ReturnType<typeof parseOaiPage> } as const;
+}
+
+/**
+ * An xoai resumptionToken is stateless and says where it is: `xoai/<from>/<until>/<set>/<offset>`. For DISPLAY only — how far into the
+ * list a harvest has got. It never judges a token: whether the source still honours one is for the source to say (badResumptionToken),
+ * because refusing a token on its shape would block a harvest for good the day the format changes.
+ */
+export function describeOaiToken(_cfg: unknown, token: string | null): { offset: number | null; from: string | null } {
+  if (!token) return { offset: null, from: null };
+  const parts = token.split('/');
+  const offset = /^\d+$/.test(parts[parts.length - 1]) ? Number(parts[parts.length - 1]) : null;
+  return { offset, from: parts[0] === 'xoai' && parts[1] ? parts[1] : null };
 }
 
 /** One page of a provider, in the shape the shared pipeline wants. */
@@ -669,6 +683,8 @@ export async function harvestFeed(cfg: OaiProviderConfig, opts: HarvestOptions =
   let boundary: Date | null = cp?.harvestStartedAt ?? null;
   report.resumedFrom = token;
 
+  if (keepsCheckpoint && token) await db.bookHarvestCheckpoint.updateMany({ where: { provider: cfg.provider }, data: { lastAttemptAt: now() } }).catch(() => {});
+
   if (!token) {
     // A new harvest. Stamp its start now; everything changed after this is the next sync's to find.
     const last: Date | null = ignoreCp ? null : cp?.lastSuccessfulSyncAt ?? null;
@@ -678,8 +694,8 @@ export async function harvestFeed(cfg: OaiProviderConfig, opts: HarvestOptions =
     if (keepsCheckpoint) {
       cp = await db.bookHarvestCheckpoint.upsert({
         where: { provider: cfg.provider },
-        create: { provider: cfg.provider, cursor: null, harvestStartedAt: boundary },
-        update: { harvestStartedAt: boundary, cursor: null },
+        create: { provider: cfg.provider, cursor: null, harvestStartedAt: boundary, lastAttemptAt: boundary },
+        update: { harvestStartedAt: boundary, cursor: null, lastAttemptAt: boundary },
       });
     }
   }
@@ -691,9 +707,25 @@ export async function harvestFeed(cfg: OaiProviderConfig, opts: HarvestOptions =
     const page = got;
 
     if (page.error) {
+      // A FIRST full harvest has no completed sync behind it: its cursor is the only record of how far it got. An empty answer to that very
+      // token ("no records at this offset") is far more likely the repository's index stumbling than the end of a 70,000-record list — the
+      // real last page carries no token — so it is not allowed to mark the harvest complete (which would skip the rest for good).
+      const firstHarvestResume = keepsCheckpoint && n === 0 && !!report.resumedFrom && !cp?.lastSuccessfulSyncAt && (describeOaiToken(cfg, report.resumedFrom).offset ?? 0) > 0;
+      if (page.error.code === 'noRecordsMatch' && firstHarvestResume) {
+        report.sourceError = `INVALID_RESUMPTION_TOKEN: the source answered "no records" at offset ${describeOaiToken(cfg, report.resumedFrom).offset} of an unfinished first harvest. The checkpoint was kept and the harvest was not marked complete; it will be asked again.`;
+        await recordSourceFailure(cfg.provider, report.sourceError, 'invalid_resumption_token');
+        break;
+      }
       if (page.error.code === 'noRecordsMatch') { token = null; report.completed = true; break; }   // nothing new since last sync
       if (page.error.code === 'badResumptionToken') {
-        // The provider no longer honours our token. Start again from the last sync; dedupe absorbs the overlap.
+        if (keepsCheckpoint && !cp?.lastSuccessfulSyncAt) {
+          // First full harvest, token rejected. Restarting would silently re-read everything from the beginning; keep the place instead and say so.
+          const at = describeOaiToken(cfg, token).offset;
+          report.sourceError = `INVALID_RESUMPTION_TOKEN: ${cfg.provider} no longer honours the saved token (offset ${at ?? 'unknown'}). The checkpoint was kept and nothing was restarted; a person must decide.`;
+          await recordSourceFailure(cfg.provider, report.sourceError, 'invalid_resumption_token');
+          break;
+        }
+        // An incremental sync (or a run that never owned the checkpoint): start again from the last successful sync; dedupe absorbs the overlap.
         report.sourceError = 'resumption token expired; restarting from the last successful sync';
         token = null;
         if (keepsCheckpoint) await db.bookHarvestCheckpoint.update({ where: { provider: cfg.provider }, data: { cursor: null } });
@@ -809,7 +841,7 @@ export async function harvestFeed(cfg: OaiProviderConfig, opts: HarvestOptions =
     // The page is done. Only now is it safe to remember where the next one starts.
     token = page.next;
     report.nextCursor = token;
-    if (keepsCheckpoint) await db.bookHarvestCheckpoint.update({ where: { provider: cfg.provider }, data: { cursor: token } });
+    if (keepsCheckpoint) await db.bookHarvestCheckpoint.update({ where: { provider: cfg.provider }, data: { cursor: token, lastPageAt: now() } });
     opts.onPage?.(report);
     if (page.stop) break;                                          // a dry-run sample is complete
     if (page.deferred) break;                                      // a daily limit: resume from the saved position later
@@ -834,6 +866,34 @@ export async function harvestFeed(cfg: OaiProviderConfig, opts: HarvestOptions =
     });
   }
   return report;
+}
+
+/**
+ * Where a continuous harvest stands, in words a card can show. Read-only. `lastPageAt` is the last page that arrived and was fully
+ * processed — the honest "last successful import"; `lastAttemptAt` is the last time the engine tried, which can be today while the
+ * last page was a month ago. `lastRequestOkAt` is the health row's last answered request (a probe or a Quick Import counts there too).
+ */
+export async function harvestDiagnostics(cfg: OaiProviderConfig, db: any = ingestionDb) {
+  if ((cfg.kind ?? 'oai') !== 'oai' && cfg.kind !== 'otl') return null;
+  const [cp, h] = await Promise.all([
+    readCheckpoint(db, cfg.provider).catch(() => null),
+    db.ingestionSourceHealth.findUnique({ where: { source: cfg.provider } }).catch(() => null),
+  ]);
+  const seen = cfg.kind === 'otl' ? { offset: cp?.cursor ? Math.max(0, (Number(cp.cursor) - 1)) : null } : describeOaiToken(cfg, cp?.cursor ?? null);
+  const state: 'not_started' | 'mid_harvest' | 'idle' = cp?.cursor ? 'mid_harvest' : cp?.lastSuccessfulSyncAt ? 'idle' : 'not_started';
+  const iso = (d: Date | null | undefined) => (d ? d.toISOString() : null);
+  return {
+    checkpoint: {
+      state,
+      /** How far into the current harvest's list it has got (OAI: records passed; Open Textbook Library: pages passed). Null when idle. */
+      position: state === 'mid_harvest' ? seen.offset : null,
+      positionUnit: cfg.kind === 'otl' ? 'pages' : 'records',
+      since: iso(cp?.harvestStartedAt), lastSuccessfulSyncAt: iso(cp?.lastSuccessfulSyncAt),
+    },
+    lastPageAt: iso(cp?.lastPageAt), lastAttemptAt: iso(cp?.lastAttemptAt), lastRequestOkAt: iso(h?.lastOkAt), lastFailureAt: iso(h?.lastFailureAt),
+    // There is no second route today: OAI-PMH is the only one in use (DOAB's REST search is a rollback path that refuses unlisted addresses).
+    fallback: { active: false, available: false },
+  };
 }
 
 /** One harvest at a time per provider in this process: the timer, a manual pass and a Quick Import all go through providerLocks. */

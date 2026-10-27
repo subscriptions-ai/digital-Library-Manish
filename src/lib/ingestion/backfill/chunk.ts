@@ -4,7 +4,7 @@ import { tryLockProvider, unlockProvider } from '../providerLocks.js';
 import { sha } from './config.js';
 import { crashPoint } from './testHooks.js';
 import { addToPreview } from './preview.js';
-import { zeroCounts, type BackfillAdapter, type Counts, type Inflight, type JobView, type Judged, type PlanCode, type BackfillType } from './types.js';
+import { zeroCounts, BackfillWait, type BackfillAdapter, type Counts, type Inflight, type JobView, type Judged, type PlanCode, type BackfillType } from './types.js';
 
 /**
  * ONE chunk of ONE job, for ANY adapter. This is the only place a backfill reads a page, writes to the catalogue and moves a checkpoint, and it knows nothing about
@@ -31,6 +31,7 @@ export type ChunkResult =
   | { kind: 'busy' }                                   // the provider lock is held (the continuous engine, a Quick Import): try again later
   | { kind: 'lost' }                                   // this worker no longer holds the job; nothing was counted
   | { kind: 'limit' }                                  // the job's maximum is already reached
+  | { kind: 'wait'; reason: string; until: number | null } // the source asked us to wait (resting, rate limited): nothing was run, nothing counted, not a failure
   | { kind: 'empty' }                                  // the source has nothing at this cursor and nothing after it
   | { kind: 'mismatch'; detail: string };              // the retry's page is not the planned page
 
@@ -43,6 +44,7 @@ export const shortId = (id: string) => (id.length <= 120 ? id : `${id.slice(0, 1
 export function jobView(job: any): JobView {
   return {
     id: job.id, provider: job.provider, contentType: job.contentType as BackfillType, dryRun: !!job.dryRun,
+    createdAt: job.createdAt ?? new Date(), identity: typeof job.config?.identity === 'string' ? job.config.identity : null,
     windowStart: job.windowStart ?? null, windowEnd: job.windowEnd ?? null, departments: Array.isArray(job.departments) ? job.departments : [],
     accessPreference: job.accessPreference, maxRecords: job.maxRecords, adapter: (job.config?.adapter ?? {}) as Record<string, any>,
   };
@@ -90,9 +92,13 @@ export async function runBackfillChunk(job: any, adapter: BackfillAdapter, ctx: 
     if (!inflight && room <= 0) return { kind: 'limit' };
     const limit = inflight ? inflight.limit : Math.min(ctx.chunkSize, room);
     const cursor = inflight ? inflight.cursorBefore : job.cursor ?? null;
-    const page = await adapter.fetchPage(view, cursor, limit);
+    let page: Awaited<ReturnType<typeof adapter.fetchPage>>;
+    try { page = await adapter.fetchPage(view, cursor, limit); }
+    catch (e) { if (e instanceof BackfillWait) return { kind: 'wait', reason: e.reason, until: e.untilMs }; throw e; }
     const ids = page.records.map(r => shortId(adapter.stableId(r)));
-    if (!inflight && !page.records.length && page.nextCursor === null) return { kind: 'empty' };
+    // Nothing at this cursor and nothing after it. A page with no records that nevertheless SCANNED something (a source's trailing, not-relevant lines) is a chunk like any other,
+    // so what it cost is counted and the cursor reaches the end.
+    if (!inflight && !page.records.length && page.nextCursor === null && !Object.values(page.meta ?? {}).some(v => v > 0)) return { kind: 'empty' };
 
     // ── a retry must prove it is the same chunk ──────────────────────────────────────────────────────────
     if (inflight) {
@@ -116,7 +122,7 @@ export async function runBackfillChunk(job: any, adapter: BackfillAdapter, ctx: 
     }
     else {
       const planned: [string, PlanCode][] = ids.map(id => [id, unreadable.has(id) ? 'F' : (byId.get(id) ? planCode(byId.get(id)!) : 'F')] as [string, PlanCode]);
-      plan = { v: 1, chunkNumber: job.chunksCompleted + 1, cursorBefore: cursor, expectedCursorAfter: page.nextCursor, limit, pageHash: pageHashOf(ids, page.nextCursor), planned, counts: countsOf(planned, page.bytes), bytes: page.bytes, plannedAt: new Date().toISOString(), attempts: 0 };
+      plan = { v: 1, chunkNumber: job.chunksCompleted + 1, cursorBefore: cursor, expectedCursorAfter: page.nextCursor, limit, pageHash: pageHashOf(ids, page.nextCursor), planned, counts: countsOf(planned, page.bytes), bytes: page.bytes, ...(page.meta ? { meta: page.meta } : {}), plannedAt: new Date().toISOString(), attempts: 0 };
       crashPoint('before-inflight');
       if (!job.dryRun) {
         const done = await db.backfillJob.updateMany({ where: mine, data: { inflight: plan as any, heartbeatAt: new Date() } });
@@ -137,7 +143,7 @@ export async function runBackfillChunk(job: any, adapter: BackfillAdapter, ctx: 
           if (j.outcome === 'publish' || j.outcome === 'review' || j.outcome === 'held') write.push(j);
           else if (j.outcome === 'duplicate') { /* already in the catalogue — written by an earlier attempt of this very chunk, or just now by someone else */ }
           else { failedIds.add(j.id); failReasons.push({ id: j.id, reason: 'no longer passes the rules at write time' }); }
-        } else if (code === 'E' && j.outcome === 'duplicate' && j.dup === 'enriched') enrich.push(j);
+        } else if (j.outcome === 'duplicate' && ((code === 'E' && j.dup === 'enriched') || (code === 'C' && j.dup === 'conflicting'))) enrich.push(j);       // a conflict is handed over too, so an adapter MAY keep bounded evidence of it; it may never change the held record
       }
       for (const [id, code] of plan.planned) if (NEW.includes(code) && !byId.has(id)) { failedIds.add(id); failReasons.push({ id, reason: 'could not be judged' }); }
       const results = write.length || enrich.length ? await adapter.apply(write, enrich, view) : new Map();
@@ -149,7 +155,11 @@ export async function runBackfillChunk(job: any, adapter: BackfillAdapter, ctx: 
     const counts = countsOf(plan.planned, plan.bytes, failedIds);
     const elapsedMs = Date.now() - t0;
     const preview = job.dryRun ? addToPreview(job.preview, judged, [...unreadable].map(([id, reason]) => ({ id, reason })), ctx.title ?? (() => null)) : undefined;
-    const cfg = { ...(job.config ?? {}), activeMs: ((job.config?.activeMs as number) || 0) + elapsedMs, errorStreak: 0 };
+    // What the source cost (lines scanned, records not relevant …) is added from the PLAN, so a retried chunk adds it once, like every other counter.
+    const sourceStats: Record<string, number> = { ...((job.config?.sourceStats as Record<string, number>) ?? {}) };
+    for (const [k, v] of Object.entries(plan.meta ?? {})) sourceStats[k] = (sourceStats[k] ?? 0) + (Number.isFinite(v) ? v : 0);
+    const cfg: Record<string, any> = { ...(job.config ?? {}), activeMs: ((job.config?.activeMs as number) || 0) + elapsedMs, errorStreak: 0, ...(plan.meta ? { sourceStats } : {}) };
+    delete cfg.waiting;                  // a chunk that commits is no longer waiting for the source
     const last = plan.expectedCursorAfter === null;
     const done = await db.backfillJob.updateMany({
       where: mine,

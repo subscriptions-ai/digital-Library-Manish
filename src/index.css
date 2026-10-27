@@ -890,19 +890,20 @@ body:has(#signup-form :is(input, select, textarea, button):focus) .fab-avoid-for
 /* On a phone the AI assistant takes the whole screen; the WhatsApp button must not float over its form. It comes back when the panel closes. */
 @media (max-width: 639px) { html[data-ai-open] .fab-whatsapp { display: none; } }
 
-/* The AI assistant: STM blue and navy, its own pair. Blue carries white text (5.2:1). On a dark surface blue
-   text would fall under 4.5:1, so its text form lightens there. The launcher sits 16px above the WhatsApp
-   button (48px on a phone, 56px from sm up). */
+/* The AI assistant: the site's teal accent and STM navy, the same pair as the floating launcher. The tokens keep their old names so the
+   panel's markup did not have to change; they now follow --accent, which already lightens on a dark surface, and the filled button carries
+   --accent-on (white on the light theme's teal, near-black on the dark theme's). The launcher sits 16px above the WhatsApp button (48px on a
+   phone, 56px from sm up). */
 :root {
-  --stm-blue: #1b5dfc; --stm-blue-hover: #1449d1; --stm-navy: #0f172b;
-  --stm-blue-ink: #1b5dfc; --stm-blue-soft: #eef3ff;
+  --stm-blue: var(--accent); --stm-blue-hover: var(--accent-hover); --stm-navy: #0f172b;
+  --stm-blue-ink: var(--accent); --stm-blue-soft: var(--accent-soft);
   --fab-wa-size: 56px;
   --ai-launcher-bottom: calc(var(--fab-bottom) + var(--fab-wa-size) + 16px);
 }
 @media (max-width: 639px) { :root { --fab-wa-size: 48px; } }
-.dark { --stm-blue-ink: #9db8ff; --stm-blue-soft: #1a2a52; }
-.ai-btn { background: var(--stm-blue); color: #fff; }
+.ai-btn { background: var(--stm-blue); color: var(--accent-on); }
 .ai-btn:not(:disabled):hover { background: var(--stm-blue-hover); }
+.ai-btn:disabled { background: var(--surface-3); color: var(--faint); opacity: 1; }
 @keyframes ai-dot { 0%, 80%, 100% { opacity: .35; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
 .ai-typing-dot { animation: ai-dot 1.2s ease-in-out infinite; }
 .ai-typing-dot:nth-child(2) { animation-delay: .15s; }

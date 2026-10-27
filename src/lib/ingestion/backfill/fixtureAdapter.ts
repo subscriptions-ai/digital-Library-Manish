@@ -1,9 +1,8 @@
-import { classifyCandidates, writeClassified, type Candidate, type Classified } from '../importService.js';
-import { judgeDuplicates, applyEnrichment } from '../duplicates.js';
+import type { Candidate } from '../importService.js';
+import { judgeArticles, applyArticles, type ArticleItem } from './articleCommon.js';
 import { CANONICAL_NAMES } from '../../departmentRegistry.js';
 import { fixtureAllowed } from './config.js';
-import { crashPoint } from './testHooks.js';
-import type { BackfillAdapter, Judged, JobView, WriteResult } from './types.js';
+import type { BackfillAdapter, JobView } from './types.js';
 
 /**
  * A stand-in provider for proving the backfill framework: a deterministic, in-memory source of a few hundred ARTICLE-shaped records. It exists only where
@@ -41,10 +40,13 @@ export const fixtureRecord = (seed: string, i: number): FixtureRaw => {
 };
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
-const SLICE = 10;
 
-export const fixtureAdapter: BackfillAdapter<FixtureRaw, { candidate: Candidate; raw: FixtureRaw }> = {
+export const fixtureAdapter: BackfillAdapter<FixtureRaw, ArticleItem> = {
   id: 'fixture', label: 'Fixture (test data)', contentTypes: ['ARTICLE'], fixture: true, lock: 'BackfillFixture',
+  params: [
+    { key: 'seed', label: 'Fixture seed', type: 'text', default: 'screen', help: 'Names the fixture records (a different seed is a different set).' },
+    { key: 'total', label: 'Fixture records', type: 'number', default: 300, min: 1, max: 2000 },
+  ],
   available: () => (fixtureAllowed() ? true : 'the test fixture is not enabled here'),
   stableId: r => r.id,
 
@@ -67,34 +69,6 @@ export const fixtureAdapter: BackfillAdapter<FixtureRaw, { candidate: Candidate;
     return { candidate, raw };
   },
 
-  async judge(items, job: JobView) {
-    const cl = await classifyCandidates(items.map(i => i.item.candidate));
-    const heldPairs = cl.map((c, k) => ({ c, k })).filter(({ c }) => c.outcome === 'HELD' && c.heldId)
-      .map(({ c }) => ({ heldId: c.heldId!, incoming: { authors: c.authors, volume: c.volume, issue: c.issue, subject: c.subject, publisherName: c.publisherName, journalName: c.journalName, issn: c.issn, licence: c.licence, doi: c.doi } }));
-    const dups = await judgeDuplicates(heldPairs);
-    return items.map(({ id, item }, k): Judged => {
-      const c: Classified = cl[k];
-      if (c.outcome === 'HELD') { const d = c.heldId ? dups.get(c.heldId) : null; return { id, item, outcome: 'duplicate', dup: d?.kind ?? 'unchanged', reason: d?.kind === 'conflicting' ? 'licence or DOI disagrees with the held record' : null, extra: { heldId: c.heldId, patch: d?.patch } }; }
-      if (c.outcome === 'REJECTED') return { id, item, outcome: 'refused', reason: c.reasons.join('; ') };
-      if (c.outcome === 'NEEDS_REVIEW') return { id, item, outcome: 'review', reason: c.reasons.join('; '), extra: { classified: c } };
-      // Would be added. "OA first": without a verifiable open licence it goes to a person instead of being catalogued as a link. (Stricter than the engine, never looser.)
-      if (job.accessPreference === 'OAFirst' && c.licenceVerdict !== 'allows-commercial') return { id, item, outcome: 'review', reason: 'no verifiable open licence (open access first)', extra: { classified: { ...c, outcome: 'NEEDS_REVIEW', status: 'Draft', access: 'LinkOnly', forceReview: true } } };
-      return { id, item, outcome: 'publish', extra: { classified: c } };
-    });
-  },
-
-  async apply(write, enrich, job) {
-    const out = new Map<string, WriteResult>();
-    let n = 0;
-    for (let s = 0; s < write.length; s += SLICE) {
-      const slice = write.slice(s, s + SLICE);
-      const classified: Classified[] = slice.map(j => j.extra.classified);
-      await writeClassified(classified, { email: `Backfill:${job.id}` }, { writeReview: true });
-      slice.forEach((j, k) => { const r = classified[k].result; out.set(j.id, r === 'added' || r === 'review' ? 'written' : r === 'held' ? 'present' : 'failed'); });
-      n += slice.length;
-      crashPoint('mid-apply', n);
-    }
-    for (const j of enrich) if (j.extra?.heldId && j.extra?.patch) await applyEnrichment(j.extra.heldId, j.extra.patch);
-    return out;
-  },
+  judge: (items, job: JobView) => judgeArticles(items, job),
+  apply: (write, enrich, job) => applyArticles(write, enrich, job),
 };

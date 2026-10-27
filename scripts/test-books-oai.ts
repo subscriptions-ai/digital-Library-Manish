@@ -95,7 +95,7 @@ let ncbiArchives: Record<string, Buffer> = {};
 let ncbiRequests: string[] = [];
 const OTL_PAGE = 2;
 let requests: string[] = [];
-let mode: 'ok' | '429' | 'timeout' | 'expiredToken' = 'ok';
+let mode: 'ok' | '429' | 'timeout' | 'expiredToken' | 'reset' | 'emptyResume' | 'setGone' = 'ok';
 let oapenMode: 'ok' | '429' = 'ok';
 const PAGE = 5;
 let connectTimeouts: Record<string, number | undefined> = {};
@@ -123,8 +123,11 @@ const fake = async (url: string, init?: any, connectMs?: number): Promise<Respon
   const cat = isOapen ? oapen : catalogue;
   if (mode_ === '429') return new Response('slow down', { status: 429, headers: { 'retry-after': '1' } });
   if (!isOapen && mode === 'timeout') { const e: any = new Error('timed out'); e.name = 'TimeoutError'; throw e; }
+  if (!isOapen && mode === 'reset') { const e: any = new TypeError('fetch failed'); e.cause = Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' }); throw e; }
+  if (!isOapen && mode === 'setGone') return new Response('<OAI-PMH><error code="noSetHierarchy">no such set</error></OAI-PMH>', { status: 200 });
   const u = new URL(url);
   const tok = u.searchParams.get('resumptionToken');
+  if (tok && !isOapen && mode === 'emptyResume') return new Response('<OAI-PMH><error code="noRecordsMatch">none</error></OAI-PMH>', { status: 200 });
   if (tok && !isOapen && mode === 'expiredToken') return new Response('<OAI-PMH><error code="badResumptionToken">gone</error></OAI-PMH>', { status: 200 });
   const start = tok ? Number(tok.split('/').pop()) : 0;
   const slice = cat.slice(start, start + PAGE);
@@ -274,14 +277,65 @@ section('Expired token');
 await reset();
 catalogue = Array.from({ length: 8 }, (_, i) => ({ handle: `20.500.12854/${i}`, title: `Law book ${i}`, codes: LAW, kw: ['law'], rights: 'CC-BY' }));
 {
+  // A FIRST full harvest: the cursor is the only record of how far it got, so a rejected token must not wipe it.
   await run({ maxPages: 1 });
+  const before = await db.bookHarvestCheckpoint.findUnique({ where: { provider: 'DOAB' } });
   mode = 'expiredToken';
   const r = await run({ maxPages: 3 });
   const cp = await db.bookHarvestCheckpoint.findUnique({ where: { provider: 'DOAB' } });
-  check('badResumptionToken → cursor dropped, nothing lost', cp?.cursor === null && /expired/.test(r.sourceError || ''));
+  check('first harvest + badResumptionToken → cursor KEPT, nothing restarted', !!before?.cursor && cp?.cursor === before.cursor && /INVALID_RESUMPTION_TOKEN/.test(r.sourceError || ''), `${before?.cursor} → ${cp?.cursor}`);
+  const hz = await db.ingestionSourceHealth.findUnique({ where: { source: 'DOAB' } });
+  check('…and the health row names it (invalid_resumption_token), not "unknown"', hz?.lastErrorKind === 'invalid_resumption_token', String(hz?.lastErrorKind));
   mode = 'ok';
+  await db.ingestionSourceHealth.deleteMany({ where: { source: 'DOAB' } });
   await run({ maxPages: 5 });
-  check('next run re-harvests; dedupe absorbs the overlap', (await db.book.count()) === 8);
+  check('once the source honours the token again the harvest simply carries on from the kept place', (await db.book.count()) === 8);
+
+  // An incremental sync has a completed sync behind it: restarting from that sync is cheap and bounded.
+  await run({ maxPages: 1 });                               // a new window opens …
+  const cpDone = await db.bookHarvestCheckpoint.findUnique({ where: { provider: 'DOAB' } });
+  await db.bookHarvestCheckpoint.update({ where: { provider: 'DOAB' }, data: { cursor: 'xoai///set/5', lastSuccessfulSyncAt: new Date(Date.now() - 86_400_000) } });
+  mode = 'expiredToken';
+  const r2 = await run({ maxPages: 3 });
+  const cp2 = await db.bookHarvestCheckpoint.findUnique({ where: { provider: 'DOAB' } });
+  check('incremental sync + badResumptionToken → restarts from the last successful sync (cursor dropped)', cp2?.cursor === null && /expired/.test(r2.sourceError || '') && !!cp2?.lastSuccessfulSyncAt, String(cpDone?.cursor));
+  mode = 'ok';
+}
+
+section('Connection reset and other mid-harvest failures leave the place alone');
+await reset();
+catalogue = Array.from({ length: 12 }, (_, i) => ({ handle: `20.500.12854/${i}`, title: `Law book ${i}`, codes: LAW, kw: ['law'], rights: 'CC-BY' }));
+{
+  await run({ maxPages: 1 });
+  const before = await db.bookHarvestCheckpoint.findUnique({ where: { provider: 'DOAB' } });
+  const booksBefore = await db.book.count();
+  mode = 'reset';
+  const r = await run({ maxPages: 3 });
+  const after = await db.bookHarvestCheckpoint.findUnique({ where: { provider: 'DOAB' } });
+  check('ECONNRESET: harvest stops with a reason and no page counted', !!r.sourceError && r.pages === 0 && r.fetched === 0, String(r.sourceError));
+  check('…the cursor is exactly where it was (not advanced, not reset)', after?.cursor === before?.cursor && !!after?.cursor, `${before?.cursor} → ${after?.cursor}`);
+  check('…lastPageAt did not move (a failed attempt is not a page) but lastAttemptAt did', after?.lastPageAt?.getTime() === before?.lastPageAt?.getTime() && after!.lastAttemptAt!.getTime() >= before!.lastAttemptAt!.getTime());
+  check('…no book was added or removed', (await db.book.count()) === booksBefore);
+  const hz = await db.ingestionSourceHealth.findUnique({ where: { source: 'DOAB' } });
+  check('the health row says connection_reset', hz?.lastErrorKind === 'connection_reset' && hz.consecutiveFailures >= 1, String(hz?.lastErrorKind));
+  mode = 'setGone';
+  await db.ingestionSourceHealth.deleteMany({ where: { source: 'DOAB' } });
+  const g = await run({ maxPages: 3 });
+  const hg = await db.ingestionSourceHealth.findUnique({ where: { source: 'DOAB' } });
+  const cpg = await db.bookHarvestCheckpoint.findUnique({ where: { provider: 'DOAB' } });
+  check('the set disappearing is "source changed", the checkpoint untouched', hg?.lastErrorKind === 'source_changed' && cpg?.cursor === before?.cursor && !!g.sourceError, String(hg?.lastErrorKind));
+  mode = 'ok';
+  await db.ingestionSourceHealth.deleteMany({ where: { source: 'DOAB' } });
+  const back = await run({ maxPages: 1 });
+  const cpb = await db.bookHarvestCheckpoint.findUnique({ where: { provider: 'DOAB' } });
+  check('when DOAB answers again the same place is resumed (one page forward, lastPageAt stamped)', back.resumedFrom === before?.cursor && back.pages === 1 && cpb?.cursor !== before?.cursor && !!cpb?.lastPageAt);
+
+  // An empty answer to the saved token of an UNFINISHED first harvest is not "the end".
+  mode = 'emptyResume';
+  const e = await run({ maxPages: 3 });
+  const cpe = await db.bookHarvestCheckpoint.findUnique({ where: { provider: 'DOAB' } });
+  check('first harvest + "no records" at the saved offset → NOT marked complete, cursor kept', !e.completed && !!cpe?.cursor && !cpe?.lastSuccessfulSyncAt && /INVALID_RESUMPTION_TOKEN/.test(e.sourceError || ''), String(e.sourceError));
+  mode = 'ok';
 }
 
 // ── M: public count ───────────────────────────────────────────────────────

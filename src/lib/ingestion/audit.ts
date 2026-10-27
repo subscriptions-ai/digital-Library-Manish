@@ -16,7 +16,11 @@ export type AuditAction =
   /** The scheduler changed what it does with a provider: it started resting, a fallback took over, it returned. One row per change, never per tick. */
   | 'SCHEDULER_ROTATION'
   /** Historical backfill: a job was created, and a job was paused / resumed / cancelled / re-planned. Never a record, never a credential. */
-  | 'BACKFILL_JOB_CREATED' | 'BACKFILL_JOB_CONTROL' | 'BACKFILL_JOB_FINISHED';
+  | 'BACKFILL_JOB_CREATED' | 'BACKFILL_JOB_CONTROL' | 'BACKFILL_JOB_FINISHED'
+  /** Review automation: a classification analysis (or v1-vs-v2 comparison) of the "Needs a department" queue was run. Counts only; it does not modify catalogue or content records. */
+  | 'REVIEW_CLASSIFICATION_ANALYSIS' | 'REVIEW_CLASSIFICATION_COMPARISON'
+  /** Review automation R2: a department-assignment batch or job. Counts and short scope only; the books' own audit note lives in metadata.reviewAssignment. */
+  | 'REVIEW_AUTO_ASSIGN_STARTED' | 'REVIEW_AUTO_ASSIGN_FINISHED' | 'REVIEW_BATCH_ASSIGN';
 
 const SECRET = /pass(word)?|token|secret|authorization|api[_-]?key|credential|cookie/i;
 

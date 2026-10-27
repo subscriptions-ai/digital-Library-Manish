@@ -63,6 +63,8 @@ const reviewHref = (type: string, source?: string | null) => {
 export function ReviewQueueCard({ refreshKey }: { refreshKey: unknown }) {
   const { data, failed } = usePolled<any>('/api/admin/ingest/review-queue', refreshKey);
   const lead = data ? [...data.byContentType].filter((c: any) => c.reviewable && c.awaiting > 0).sort((a: any, b: any) => b.awaiting - a.awaiting)[0] : null;
+  // The department-classification analysis, if one has been run. Nothing is shown for it until then: no estimate stands in for a measurement.
+  const cls = usePolled<any>('/api/admin/review/classification/summary?brief=1', refreshKey, 60_000).data?.summary ?? null;
   return (
     <section className="card card-pad" aria-labelledby="review-heading">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -84,10 +86,26 @@ export function ReviewQueueCard({ refreshKey }: { refreshKey: unknown }) {
             {data.byContentType.filter((c: any) => c.awaiting > 0).map((c: any) => (
               <li key={c.type} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 py-1.5">
                 <span><b className="text-ink">{c.type}</b> <span className="text-muted">· {N(c.awaiting)} waiting · {N(c.newToday)} new today{c.oldestAt ? ` · oldest ${ago(c.oldestAt)}` : ''}</span></span>
-                {c.reviewable ? <Link to={reviewHref(c.type)} className="font-semibold text-accent hover:underline">Review {c.type.toLowerCase()}</Link> : <span className="text-muted">no review screen yet</span>}
+                {c.reviewable
+                  ? <span className="flex gap-3"><Link to={reviewHref(c.type)} className="font-semibold text-accent hover:underline">Review {c.type.toLowerCase()}</Link>{c.type === 'Books' && <Link to="/admin/review?tab=auto" className="font-semibold text-accent hover:underline">Auto classify</Link>}</span>
+                  : <span className="text-muted">no review screen yet</span>}
               </li>
             ))}
           </ul>
+          {cls && (
+            <div className="mt-2 rounded-lg border border-rule p-2.5 text-[12.5px]" aria-label="Department classification of the books waiting">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                <b className="text-ink">Department classification</b>
+                <span className="text-muted">{N(cls.analysed)} books analysed {ago(cls.finishedAt)} · classifier {cls.classifier ?? 'v1'} · analysis only</span>
+              </div>
+              <dl className="mt-1 grid grid-cols-2 gap-x-6 gap-y-0.5">
+                {([['High confidence', 'high'], ['Medium confidence', 'medium'], ['Low confidence', 'low'], ['Unclassifiable', 'unclassifiable']] as const).map(([label, k]) => (
+                  <div key={k} className="flex items-baseline justify-between gap-2"><dt className="text-muted">{label}</dt><dd className="font-semibold tabular-nums text-ink">{N(cls.tiers[k])}</dd></div>
+                ))}
+              </dl>
+              <p className="mt-1 text-muted">High-confidence assignments available: <b className="text-ink">{N(cls.tiers.high)}</b> <span>(under the provisional rule; none has been applied, and this analysis assigns and publishes nothing).</span></p>
+            </div>
+          )}
           <details className="mt-2 group">
             <summary className="cursor-pointer select-none text-[12.5px] font-semibold text-ink hover:text-accent">By provider</summary>
             <ul className="mt-1.5 grid gap-x-6 gap-y-1 text-[12.5px] text-ink-2 sm:grid-cols-2">

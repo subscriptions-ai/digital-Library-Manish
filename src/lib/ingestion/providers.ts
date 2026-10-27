@@ -8,6 +8,7 @@ import { ncbiLimits, usedToday } from './books/ncbi.js';
 import { crossrefTurn, openAlexTurn, searchTurn } from './articleTurns.js';
 import { peekSearchDepartment } from './quickImport.js';
 import { fetchCrossrefJournals, fetchOpenAlexSources, writeJournalCandidates, type JournalPage } from './journalSources.js';
+import { historicalEnabled, openAlexJournalsTurn } from './openAlexJournals.js';
 import { SourceError } from './articleSources.js';
 import { recordSourceFailure, classifyFailure } from './sourceHealth.js';
 import { claimSweep, closeSweep, discoverJournalsPage, discoverBooksPage, booksOai } from '../ingestionWorker.js';
@@ -244,7 +245,8 @@ export function buildProviders(): ProviderDef[] {
     },
     {
       id: 'openalexsources', label: 'OpenAlex Sources', group: 'Journals', tier: 'fallback', fallbackFor: ['doaj', 'road', 'crossrefjournals'], role: 'Supplementary journal fallback (open access unverified)', healthKey: 'OpenAlex', lock: 'OpenAlexSources',
-      turn: ctx => journalSourceTurn('OpenAlexSources', 'OpenAlex Sources', 'OpenAlex', (t, pos, n) => fetchOpenAlexSources(t, pos + 1, n), ctx),
+      // OPENALEX_JOURNALS_HISTORICAL=1 walks the whole open-access journal list by cursor from its own checkpoint; unset, this is the department-search turn exactly as before.
+      turn: ctx => (historicalEnabled() ? openAlexJournalsTurn(ctx) : journalSourceTurn('OpenAlexSources', 'OpenAlex Sources', 'OpenAlex', (t, pos, n) => fetchOpenAlexSources(t, pos + 1, n), ctx)),
       cursored: true, peekCursor: peekSweep('OpenAlexSources'),
     },
     // Not a source: the departments with the fewest journal TITLES go first, through whichever of these can be asked (each keeps its own health,

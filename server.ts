@@ -63,8 +63,13 @@ import { audit as ingestionAudit } from "./src/lib/ingestion/audit.js";
 import { validateSettings } from "./src/lib/ingestion/settings.js";
 import { providerYield } from "./src/lib/ingestion/providerYield.js";
 import { reviewQueue } from "./src/lib/ingestion/reviewQueue.js";
+import * as reviewClassification from "./src/lib/ingestion/reviewClassification.js";
+import * as reviewBatch from "./src/lib/ingestion/reviewBatch.js";
+import * as reviewAutoAssign from "./src/lib/ingestion/reviewAutoAssign.js";
+import { reviewHistory } from "./src/lib/ingestion/reviewHistory.js";
+import { reviewJobHolder } from "./src/lib/ingestion/reviewJobLock.js";
 import { pipelineStatus } from "./src/lib/ingestion/pipelineStatus.js";
-import { overview as backfillOverview, createJob as createBackfillJob, controlJob as controlBackfillJob, serializeJob as serializeBackfillJob } from "./src/lib/ingestion/backfill/jobs.js";
+import { overview as backfillOverview, createJob as createBackfillJob, controlJob as controlBackfillJob, serializeJob as serializeBackfillJob, describeSource as describeBackfillSource } from "./src/lib/ingestion/backfill/jobs.js";
 import { startBackfillWorker } from "./src/lib/ingestion/backfill/worker.js";
 import { BackfillError } from "./src/lib/ingestion/backfill/types.js";
 import { engineStatus, last24Hours, repeatedNoChangeAlerts, metrics as ingestionMetrics, runHistory, runSources } from "./src/lib/ingestion/status.js";
@@ -85,6 +90,8 @@ import { enrichFromGoogleBooks } from "./src/lib/ingestion/books/googleBooks.js"
 import { sourceCooldown } from "./src/lib/ingestion/sourceHealth.js";
 import { departmentMetrics, departmentTable, departmentExists } from "./src/lib/ingestion/departmentMetrics.js";
 import { resolveRange } from "./src/lib/ingestion/runFilter.js";
+import { historicalStatus as openAlexJournalsStatus, setPaused as setOpenAlexJournalsPaused } from "./src/lib/ingestion/openAlexJournals.js";
+import { dailySummary, dailyContent, resolveReportDate, previousReportDates, isContentType, MAX_PAGE_SIZE as DAILY_MAX_PAGE } from "./src/lib/ingestion/dailySummary.js";
 import sanitizeHtml from "sanitize-html";
 import { checkCoverImage, failed, cleanAlt, isUsableCoverUrl, isExternalMediaUrl, publishProblems, COVER_MAX_BYTES, COVER_UNAVAILABLE_MESSAGE, type PublishProblems } from "./src/lib/blogCover.js";
 import {
@@ -8243,7 +8250,7 @@ async function startServer() {
       const [rows, total] = await Promise.all([
         (prisma as any).book.findMany({
           where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * take, take,
-          select: { id: true, title: true, authors: true, publisherName: true, year: true, doi: true, isbn: true, subject: true, language: true,
+          select: { id: true, title: true, authors: true, publisherName: true, year: true, doi: true, isbn: true, subject: true, language: true, domain: true,
             licence: true, accessStatus: true, source: true, originalUrl: true, coverUrl: true, metadata: true, createdAt: true },
         }),
         (prisma as any).book.count({ where }),
@@ -8287,6 +8294,106 @@ async function startServer() {
   };
   app.post("/api/admin/review/article/:id", authenticateJWT, requireAdminOrManager, reviewAction('article'));
   app.post("/api/admin/review/book/:id", authenticateJWT, requireAdminOrManager, reviewAction('book'));
+
+  // ── Review automation R1/R1.5: classification analysis of the "Needs a department" queue. It does not modify catalogue/content records; only analysis summaries and audit metadata are stored. ──
+  // GET  summary   — the last analysis (persisted) and the job's progress; null summary means it has never been run.
+  // POST run       — start the analysis in the background (one at a time).
+  // GET  records   — one filtered, paged slice of the last result (held in this process; a restart needs a fresh run).
+  app.get("/api/admin/review/classification/summary", authenticateJWT, requireAdminOrManager, async (_req: any, res: any) => {
+    try {
+      const summary = await reviewClassification.loadSummary();
+      // ?brief=1 is for the Data Ingestion card: the headline numbers only, not the distributions and the threshold grid.
+      const brief = summary && _req.query.brief ? { classifier: summary.classifier ?? 'v1', finishedAt: summary.finishedAt, analysed: summary.analysed, queueTotal: summary.queueTotal, tiers: summary.tiers, rulesVersion: summary.rulesVersion } : summary;
+      res.json({ summary: brief, job: reviewClassification.jobState() });
+    }
+    catch (e: any) { res.status(500).json({ error: "Failed to read the classification analysis" }); }
+  });
+  app.post("/api/admin/review/classification/run", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const wanted = req.body?.classifier;
+      if (wanted !== undefined && wanted !== 'v1' && wanted !== 'v2') return res.status(400).json({ error: "classifier must be v1 or v2" });
+      const started = reviewClassification.startAnalysis(req.user, (s, err) => {
+        ingestionAudit(req.user, 'REVIEW_CLASSIFICATION_ANALYSIS', s
+          ? { catalogueChanged: false, classifier: s.classifier, analysed: s.analysed, tiers: s.tiers, rulesVersion: s.rulesVersion, recommendation: s.recommendation.basis }
+          : { catalogueChanged: false, failed: err }).catch(() => {});
+      }, wanted === 'v2' ? 'v2' : 'v1');
+      if (!started) return res.status(409).json({ error: "An analysis is already running", job: reviewClassification.jobState() });
+      res.status(202).json({ job: reviewClassification.jobState() });
+    } catch (e: any) { res.status(500).json({ error: "Failed to start the classification analysis" }); }
+  });
+  // Classifier v1 vs v2 over the same queue (v2 is analysis-only; the ingestion engine keeps v1). Stores a comparison summary and an audit row; changes no book.
+  app.get("/api/admin/review/classification/comparison", authenticateJWT, requireAdminOrManager, async (_req: any, res: any) => {
+    try { res.json({ comparison: await reviewClassification.loadComparison(), job: reviewClassification.jobState() }); }
+    catch (e: any) { res.status(500).json({ error: "Failed to read the classifier comparison" }); }
+  });
+  app.post("/api/admin/review/classification/compare", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const started = reviewClassification.startComparison(req.user, (c, err) => {
+        ingestionAudit(req.user, 'REVIEW_CLASSIFICATION_COMPARISON', c
+          ? { catalogueChanged: false, analysed: c.analysed, v1Tiers: c.v1Tiers, v2Tiers: c.v2Tiers, changedDepartment: c.changedDepartment }
+          : { catalogueChanged: false, failed: err }).catch(() => {});
+      });
+      if (!started) return res.status(409).json({ error: "An analysis is already running", job: reviewClassification.jobState() });
+      res.status(202).json({ job: reviewClassification.jobState() });
+    } catch (e: any) { res.status(500).json({ error: "Failed to start the classifier comparison" }); }
+  });
+  app.get("/api/admin/review/classification/records", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const q = req.query, num = (v: any) => (v === undefined || v === '' || !Number.isFinite(Number(v)) ? undefined : Number(v));
+      const tiers = ['high', 'medium', 'low', 'unclassifiable'];
+      const filters: reviewClassification.Filters = {
+        source: q.source ? String(q.source).slice(0, 80) : undefined, department: q.department ? String(q.department).slice(0, 120) : undefined,
+        tier: tiers.includes(String(q.tier)) ? q.tier : undefined, minScore: num(q.minScore), maxScore: num(q.maxScore), minMargin: num(q.minMargin), maxMargin: num(q.maxMargin),
+        yearFrom: num(q.yearFrom), yearTo: num(q.yearTo), licence: q.licence ? String(q.licence) as any : undefined, language: q.language ? String(q.language).toLowerCase().slice(0, 40) : undefined,
+      };
+      const take = Math.min(Math.max(parseInt(q.limit as string) || 25, 1), 100), page = Math.max(1, parseInt(q.page as string) || 1);
+      // idsOnly: the ids of the first N matches (N up to the batch limit), which is what "Select first 50 / 100 / 250" means — resolved here, never by rendering rows.
+      if (q.idsOnly) return res.json(reviewClassification.idsFor(filters, Math.min(Math.max(parseInt(q.limit as string) || 50, 1), reviewBatch.BATCH_LIMIT)));
+      res.json(await reviewClassification.recordsPage(filters, page, take));
+    } catch (e: any) { res.status(500).json({ error: "Failed to read the classification result" }); }
+  });
+
+  // ── Review automation R2: department assignment (Books only; never publishes). Every assignment action is off unless REVIEW_AUTO_ASSIGN_ENABLED=true. ──
+  // Reading the configuration, the job, the preview and the history needs no gate. A mass job needs a Super Admin; a batch of at most 250 chosen books needs the same role as Content Review.
+  const assignmentError = (res: any, e: any, fallback: string) => {
+    if (e instanceof reviewBatch.AssignmentDisabledError) return res.status(403).json({ error: e.message, code: 'disabled' });
+    if (e instanceof reviewBatch.BatchRequestError) return res.status(400).json({ error: e.message });
+    if (e instanceof reviewAutoAssign.AutoAssignError) return res.status(e.code === 'busy' ? 409 : 400).json({ error: e.message, code: e.code });
+    console.error('review assignment error:', e?.message); return res.status(500).json({ error: fallback });
+  };
+  app.get("/api/admin/review/assignment/config", authenticateJWT, requireAdminOrManager, (_req: any, res: any) => {
+    res.json({ ...reviewAutoAssign.autoAssignConfig(), departments: reviewBatch.assignableDepartments(), batchLimit: reviewBatch.BATCH_LIMIT, batchTiers: reviewBatch.BATCH_TIERS });
+  });
+  app.get("/api/admin/review/assignment/job", authenticateJWT, requireAdminOrManager, async (_req: any, res: any) => {
+    try { res.json({ job: await reviewAutoAssign.autoAssignStatus(), preview: reviewAutoAssign.previewState(), busy: reviewJobHolder() }); }
+    catch (e: any) { res.status(500).json({ error: "Failed to read the assignment job" }); }
+  });
+  app.post("/api/admin/review/assignment/preview", authenticateJWT, requireAdminOrManager, (req: any, res: any) => {
+    try {
+      if (!reviewAutoAssign.startPreview(req.body?.classifier, req.body?.scope || {})) return res.status(409).json({ error: "Another review job is running", busy: reviewJobHolder() });
+      res.status(202).json({ preview: reviewAutoAssign.previewState() });
+    } catch (e: any) { assignmentError(res, e, "Failed to start the preview"); }
+  });
+  app.post("/api/admin/review/assignment/start", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try { res.status(202).json({ job: await reviewAutoAssign.startAutoAssign(req.user, { classifier: req.body?.classifier, scope: req.body?.scope || {}, eligibleAtStart: typeof req.body?.eligibleAtStart === 'number' ? req.body.eligibleAtStart : null }) }); }
+    catch (e: any) { assignmentError(res, e, "Failed to start the assignment"); }
+  });
+  app.post("/api/admin/review/assignment/resume", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try { res.status(202).json({ job: await reviewAutoAssign.resumeAutoAssign(req.user) }); }
+    catch (e: any) { assignmentError(res, e, "Failed to resume the assignment"); }
+  });
+  app.post("/api/admin/review/assignment/cancel", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try { res.json({ job: await reviewAutoAssign.cancelAutoAssign(req.user) }); }
+    catch (e: any) { assignmentError(res, e, "Failed to cancel the assignment"); }
+  });
+  app.post("/api/admin/review/batch/assign", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try { res.json(await reviewBatch.batchAssign({ ids: req.body?.ids, mode: req.body?.mode, classifier: req.body?.classifier, department: req.body?.department, by: req.user })); }
+    catch (e: any) { assignmentError(res, e, "Failed to assign the selected books"); }
+  });
+  app.get("/api/admin/review/history", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try { res.json(await reviewHistory(parseInt(req.query.page as string) || 1, parseInt(req.query.limit as string) || 25)); }
+    catch (e: any) { res.status(500).json({ error: "Failed to read the review history" }); }
+  });
 
   // ---- Publisher self endpoints (role: Publisher) ----
   app.get("/api/publisher/me", authenticateJWT, requirePublisher, async (req: any, res: any) => {
@@ -9338,6 +9445,10 @@ async function startServer() {
   app.get("/api/admin/ingest/backfill", authenticateJWT, requireSuperAdmin, async (_req: any, res: any) => {
     try { res.json(await backfillOverview()); } catch (e: any) { backfillFail(res, e, 'read backfill'); }
   });
+  // POST /api/admin/ingest/backfill/describe { provider, adapter } — what the chosen source looks like (a snapshot's release and size), read-only, before any preview.
+  app.post("/api/admin/ingest/backfill/describe", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try { res.json(await describeBackfillSource(String(req.body?.provider ?? ''), req.body?.adapter)); } catch (e: any) { backfillFail(res, e, 'describe the source'); }
+  });
   app.get("/api/admin/ingest/backfill/:id", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
     try {
       const j = await (prisma as any).backfillJob.findUnique({ where: { id: String(req.params.id) } });
@@ -9403,6 +9514,32 @@ async function startServer() {
       const period = (['lifetime', '7d', '24h'] as const).find(p => p === req.query.period) || 'lifetime';
       res.json(await ingestionMetrics(await getIngestionState(), period));
     } catch (e: any) { res.status(500).json({ error: "Failed to load metrics" }); }
+  });
+
+  // GET /api/admin/ingest/daily-summary?reportDate=YYYY-MM-DD[&fresh=1] — what NEW content the catalogue gained in one reporting cycle
+  // ((reportDate − 1) 5:01 PM → reportDate 5:00 PM IST; leave reportDate out for the live cycle). Counted from the catalogue rows themselves.
+  // Read-only; nothing is written, reset or recalculated.
+  app.get("/api/admin/ingest/daily-summary", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const d = resolveReportDate(req.query.reportDate);
+      if ('error' in d) return res.status(400).json({ error: d.error });
+      res.json({ ...(await dailySummary(d.reportDate, { fresh: req.query.fresh === '1' })), reports: previousReportDates() });
+    } catch (e: any) { console.error('GET ingest/daily-summary error:', e?.message); res.status(500).json({ error: "Failed to load the daily summary" }); }
+  });
+
+  // GET /api/admin/ingest/daily-summary/content?reportDate=…&department=…&type=journal|article|book|all&page=1&pageSize=50
+  // The exact records one number in the summary is made of. `department` may be "(unassigned)". Read-only.
+  app.get("/api/admin/ingest/daily-summary/content", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const d = resolveReportDate(req.query.reportDate);
+      if ('error' in d) return res.status(400).json({ error: d.error });
+      const type = req.query.type === undefined || req.query.type === '' || req.query.type === 'all' ? 'all' : req.query.type;
+      if (type !== 'all' && !isContentType(type)) return res.status(400).json({ error: 'type must be journal, article, book or all' });
+      const department = typeof req.query.department === 'string' && req.query.department ? req.query.department.trim() : null;
+      if (department && department.length > 120) return res.status(400).json({ error: 'Unknown department' });
+      const num = (v: any, fallback: number) => { const n = Number(v); return Number.isFinite(n) && n >= 1 ? Math.floor(n) : fallback; };
+      res.json(await dailyContent({ reportDate: d.reportDate, department, type, page: num(req.query.page, 1), pageSize: Math.min(DAILY_MAX_PAGE, num(req.query.pageSize, 50)) }));
+    } catch (e: any) { console.error('GET ingest/daily-summary/content error:', e?.message); res.status(500).json({ error: "Failed to load the records" }); }
   });
 
   // GET /api/admin/ingest/department-metrics?department=<name>&range=…&from=&to=&phase=&source=&result=&byDay=1
@@ -9780,8 +9917,30 @@ async function startServer() {
 
   // The cards: every approved source, its limit, and how it is doing right now.
   app.get("/api/admin/ingest/sources", authenticateJWT, requireSuperAdmin, async (_req: any, res: any) => {
-    try { res.json({ sources: await listQuickSources() }); }
+    try {
+      const sources: any[] = await listQuickSources();
+      // The OpenAlex Sources card also carries where its historical journal walk has got to (read-only; null if it cannot be read).
+      const oa = sources.find(x => x.id === 'openalexsources');
+      if (oa) oa.historical = await openAlexJournalsStatus().catch(() => null);
+      res.json({ sources });
+    }
     catch (e: any) { console.error('GET ingest/sources error:', e?.message); res.status(500).json({ error: "Failed to read the sources" }); }
+  });
+
+  // GET /api/admin/ingest/openalex-journals — the checkpoint of the historical OpenAlex journal walk: state, progress, counters, next eligible time.
+  app.get("/api/admin/ingest/openalex-journals", authenticateJWT, requireSuperAdmin, async (_req: any, res: any) => {
+    try { res.json(await openAlexJournalsStatus()); }
+    catch (e: any) { console.error('GET ingest/openalex-journals error:', e?.message); res.status(500).json({ error: "Failed to read the OpenAlex journal checkpoint" }); }
+  });
+
+  // POST /api/admin/ingest/openalex-journals/pause { paused: boolean } — pause or resume the historical walk. Moves no cursor and changes no setting but the pause flag.
+  app.post("/api/admin/ingest/openalex-journals/pause", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      if (typeof req.body?.paused !== 'boolean') return res.status(400).json({ error: 'paused must be true or false' });
+      await setOpenAlexJournalsPaused(req.body.paused);
+      await ingestionAudit(adminOf(req), 'SOURCE_PAUSED', { source: 'OpenAlex Sources (historical journal walk)', paused: req.body.paused });
+      res.json(await openAlexJournalsStatus());
+    } catch (e: any) { console.error('POST ingest/openalex-journals/pause error:', e?.message); res.status(500).json({ error: "Failed to change the pause" }); }
   });
 
   app.post("/api/admin/ingest/quick", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {

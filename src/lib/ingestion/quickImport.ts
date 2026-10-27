@@ -14,7 +14,7 @@ import { ensureProviders, getRoadAdapter } from './engine.js';
 import {
   SourceError, articlePause, checkFiles, fetchArxiv, fetchCrossrefForJournal, fetchEuropePmc, fetchOpenAlexForJournal, type RawCandidate,
 } from './articleSources.js';
-import { harvestFeed, DOAB_OAI, OAPEN_OAI, OTL_FEED, NCBI_FEED, CROSSREF_BOOKS_FEED, NLM_FEED, PRESSBOOKS_FEED, type OaiProviderConfig, type HarvestReport } from './books/oaiHarvest.js';
+import { harvestFeed, harvestDiagnostics, DOAB_OAI, OAPEN_OAI, OTL_FEED, NCBI_FEED, CROSSREF_BOOKS_FEED, NLM_FEED, PRESSBOOKS_FEED, type OaiProviderConfig, type HarvestReport } from './books/oaiHarvest.js';
 import { ncbiLimits, usedToday } from './books/ncbi.js';
 import { checkDoajCatalogue, importCheckedJournals, DOAJ_CSV_URL } from '../doajCatalogue.js';
 import { getState } from '../ingestionWorker.js';
@@ -673,6 +673,8 @@ export async function listQuickSources() {
     const last = recent.find(r => (r.meta as any)?.provider === id);
     const limit = quickLimit(id);
     const rp = rot.providers.find(p => p.id === id) || null;
+    // Books read through a checkpoint: where the harvest stands, last page vs last attempt, and whether a second route is in use.
+    const harvest = id in BOOK_CFG ? await harvestDiagnostics((BOOK_CFG as any)[id]).catch(() => null) : null;
     out.push({
       id, label: def.label, group: def.group, description: def.description, badge: def.badge ?? null,
       role: rp?.role ?? null, tier: rp?.tier ?? null,
@@ -689,6 +691,7 @@ export async function listQuickSources() {
         state: st.health.health, failures: st.health.failures, threshold: st.health.threshold, until: st.health.until ? st.health.until.toISOString() : null, lastError: st.health.lastError,
         reason: st.health.reason, lastErrorKind: st.health.lastErrorKind, lifetimeFailures: st.health.lifetimeFailures,
       },
+      harvest,
       yield: rp?.yield ?? null,
       // What a productive source is productive FOR, the departments / searches it is leaving alone, the one-sentence reading, and review-only.
       yieldFor: rp?.yieldFor ?? null, reviewOnly: rp?.reviewOnly ?? false, plain: rp?.plain ?? null, cursors: rp?.cursors ?? null,

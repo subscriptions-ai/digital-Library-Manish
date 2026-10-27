@@ -16,7 +16,7 @@ const startsWithSegment = (path: string, prefix: string) =>
   path === prefix || path.startsWith(`${prefix}/`);
 
 const SESSION_KEY = 'ai-assistant-session';
-/** The greeting bubble is shown once per browser session. */
+/** Set when the launcher's bubble has been closed (or the chat opened): it stays away for the rest of the browser session. */
 const GREETING_KEY = 'ai-assistant-greeted';
 
 type ChatMessage = { id: string; role: 'user' | 'assistant'; text: string; action?: 'quote' };
@@ -31,8 +31,6 @@ type Failure = { kind: 'timeout' | 'unavailable' | 'busy'; text: string; message
 const CLIENT_TIMEOUT_MS = 20_000;
 /** Long enough to see the last answer land, short enough not to make the visitor wait for the form. */
 const HANDOFF_DELAY_MS = 900;
-/** The greeting waits a moment, so it is not the first thing that moves on a page that is still loading. */
-const GREETING_DELAY_MS = 1500;
 const WHATSAPP_HREF = `https://wa.me/${COMPANY_DETAILS.whatsapp.replace(/\D/g, '')}`;
 
 const PURPOSES = [
@@ -92,33 +90,42 @@ function greetedThisSession(): boolean {
   try { return sessionStorage.getItem(GREETING_KEY) === '1'; } catch { return true; }
 }
 function markGreeted() {
-  try { sessionStorage.setItem(GREETING_KEY, '1'); } catch { /* the bubble just shows again next page load */ }
+  try { sessionStorage.setItem(GREETING_KEY, '1'); } catch { /* the bubble just shows again on the next page load */ }
 }
 
 /** The assistant's face: a white robot with a navy visor. Decorative; the control around it carries the name. */
-function RobotIcon({ className, visor = 'var(--stm-navy)' }: { className?: string; visor?: string }) {
+function RobotIcon({ className, visor = 'var(--stm-navy)', body = '#fff', eyes = '#fff' }: { className?: string; visor?: string; body?: string; eyes?: string }) {
   return (
     <svg viewBox="0 0 32 32" fill="none" className={className} aria-hidden="true" focusable="false">
-      <circle cx="16" cy="4.6" r="1.9" fill="#fff" />
-      <path d="M16 6.4v3" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" />
-      <rect x="2.6" y="14.6" width="2.6" height="6" rx="1.3" fill="#fff" />
-      <rect x="26.8" y="14.6" width="2.6" height="6" rx="1.3" fill="#fff" />
-      <rect x="5.6" y="9.4" width="20.8" height="16.6" rx="6" fill="#fff" />
+      <circle cx="16" cy="4.6" r="1.9" fill={body} />
+      <path d="M16 6.4v3" stroke={body} strokeWidth="1.8" strokeLinecap="round" />
+      <rect x="2.6" y="14.6" width="2.6" height="6" rx="1.3" fill={body} />
+      <rect x="26.8" y="14.6" width="2.6" height="6" rx="1.3" fill={body} />
+      <rect x="5.6" y="9.4" width="20.8" height="16.6" rx="6" fill={body} />
       <rect x="8.6" y="12.6" width="14.8" height="10.2" rx="4.2" fill={visor} />
-      <circle cx="12.9" cy="17.1" r="1.75" fill="#fff" />
-      <circle cx="19.1" cy="17.1" r="1.75" fill="#fff" />
-      <path d="M13.6 20.2c1.35.9 3.45.9 4.8 0" stroke="#fff" strokeWidth="1.4" strokeLinecap="round" />
+      <circle cx="12.9" cy="17.1" r="1.75" fill={eyes} />
+      <circle cx="19.1" cy="17.1" r="1.75" fill={eyes} />
+      <path d="M13.6 20.2c1.35.9 3.45.9 4.8 0" stroke={eyes} strokeWidth="1.4" strokeLinecap="round" />
     </svg>
   );
 }
 
-/** The robot in a blue disc: header, launcher and beside each assistant message. */
-function RobotAvatar({ size }: { size: 'sm' | 'md' }) {
-  const box = size === 'sm' ? 'h-7 w-7' : 'h-9 w-9 sm:h-10 sm:w-10';
-  const icon = size === 'sm' ? 'h-[18px] w-[18px]' : 'h-[22px] w-[22px] sm:h-6 sm:w-6';
+/**
+ * The assistant's identity, the launcher's look at three sizes: a white disc with a thin teal ring and the teal robot. `md` (header, welcome) adds the
+ * amber AI badge and the green online dot; `sm` (beside each reply) is the disc alone. Decorative; the control or heading around it carries the name.
+ */
+function RobotAvatar({ size, welcome, icon: Icon }: { size: 'sm' | 'md'; welcome?: boolean; icon?: typeof FileText }) {
+  const box = size === 'sm' ? 'h-7 w-7' : welcome ? 'h-12 w-12' : 'h-9 w-9 sm:h-10 sm:w-10';
+  const glyph = size === 'sm' ? 'h-[18px] w-[18px]' : welcome ? 'h-7 w-7' : 'h-[22px] w-[22px] sm:h-6 sm:w-6';
   return (
-    <span className={`flex ${box} shrink-0 items-center justify-center rounded-full bg-[var(--stm-blue)]`} aria-hidden="true">
-      <RobotIcon className={icon} />
+    <span className={`relative flex ${box} shrink-0 items-center justify-center rounded-full border-2 border-[var(--accent)] bg-surface`} aria-hidden="true">
+      {Icon ? <Icon className={`${glyph} text-[var(--accent)]`} /> : <RobotIcon className={glyph} body="var(--accent)" visor="#fff" eyes="var(--accent)" />}
+      {size === 'md' && !Icon && (
+        <>
+          <span className={`absolute -left-1.5 -top-1.5 rounded-full bg-[#f59e0b] px-1 text-[8px] font-bold leading-[14px] tracking-wide text-[#1c1917] ring-2 ${welcome ? 'ring-[var(--surface)]' : 'ring-[var(--stm-navy)]'}`}>AI</span>
+          <span className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 bg-[#22c55e] ${welcome ? 'border-[var(--surface)]' : 'border-[var(--stm-navy)]'}`} />
+        </>
+      )}
     </span>
   );
 }
@@ -230,15 +237,11 @@ export function AIAssistantChat() {
     return () => { vv.removeEventListener('resize', sync); vv.removeEventListener('scroll', sync); };
   }, [open]);
 
-  // The greeting: once per browser session, only while the assistant is on, gone the moment the chat opens.
+  // The "Ask me anything" bubble: there from the start while the assistant is on, until it is closed or the chat is opened.
+  // Closing it is remembered for this browser session only (the same session key as before); the button itself is never affected.
   useEffect(() => {
-    if (!aiOn || hidden || greetedThisSession()) return;
-    const t = setTimeout(() => {
-      if (openRef.current) return;
-      markGreeted();
-      setGreeting(true);
-    }, GREETING_DELAY_MS);
-    return () => clearTimeout(t);
+    if (!aiOn || hidden || greetedThisSession()) { setGreeting(false); return; }
+    setGreeting(true);
   }, [aiOn, hidden]);
   useEffect(() => { if (open) setGreeting(false); }, [open]);
 
@@ -569,6 +572,7 @@ export function AIAssistantChat() {
 
   const offsets = 'mb-[max(var(--pwa-offset,0px),var(--cookie-offset,0px))]';
   const avoidForm = pathname === '/signup' ? 'fab-avoid-form ' : '';
+  const aboveFeedback = ['/dashboard', '/institution'].some(p => pathname === p || pathname.startsWith(`${p}/`));
   const focusRing = 'focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--stm-blue)] focus-visible:ring-offset-2';
   const headerBtn =
     'flex h-9 w-9 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/10 hover:text-white ' +
@@ -591,23 +595,26 @@ export function AIAssistantChat() {
   return (
     <>
       {!open && (
-        <div className={`${avoidForm}fixed right-[var(--fab-right)] bottom-[var(--ai-launcher-bottom)] ${offsets} z-40 flex flex-col items-end gap-2`}>
-          {greeting && (
-            <div
-              role="status"
-              className="ai-pop relative flex max-w-[calc(100vw-2rem)] items-center gap-1 rounded-2xl rounded-br-md border border-rule bg-surface py-2 pl-3.5 pr-1.5 text-sm font-medium text-ink shadow-[var(--shadow-pop)]"
-            >
+        // One vertical stack on the WhatsApp button's centre line: bubble, AI badge, the round button. WhatsApp sits 12px below it.
+        // Dashboard and institution pages carry the Feedback widget under WhatsApp, so the stack rises by the same amount there.
+        <div className={`${avoidForm}fixed right-[var(--fab-right)] ${aboveFeedback ? 'bottom-[calc(var(--fab-bottom)+var(--fab-wa-size)+12px+48px+var(--fab-gap))]' : 'bottom-[calc(var(--fab-bottom)+var(--fab-wa-size)+12px)]'} ${offsets} z-40 flex w-[var(--fab-wa-size)] flex-col items-center`}>
+          {(greeting || !aiOn) && (
+            <div role="status" className="relative mb-2.5 flex max-w-[calc(100vw-2rem)] items-center self-end whitespace-nowrap rounded-xl border border-rule bg-surface py-1.5 pl-3 pr-1 text-[13px] font-medium text-ink shadow-[var(--shadow-pop)] sm:text-sm">
               <button type="button" onClick={openPanel} className={`rounded-md text-left ${focusRing}`}>
-                Hi! How can I help you?
+                {aiOn ? 'Ask me anything' : 'Get a quote'}
               </button>
-              <button
-                type="button"
-                onClick={() => setGreeting(false)}
-                aria-label="Dismiss greeting"
-                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-ink ${focusRing}`}
-              >
-                <X size={14} aria-hidden="true" />
-              </button>
+              {aiOn ? (
+                <button
+                  type="button"
+                  onClick={() => { markGreeted(); setGreeting(false); }}
+                  aria-label="Close AI suggestion"
+                  className={`ml-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-ink ${focusRing}`}
+                >
+                  <X size={13} aria-hidden="true" />
+                </button>
+              ) : <span className="w-2" aria-hidden="true" />}
+              {/* The pointer, over the middle of the button below. */}
+              <span aria-hidden="true" className="absolute -bottom-[6px] right-[calc(var(--fab-wa-size)/2_-_6px)] h-3 w-3 rotate-45 border-b border-r border-rule bg-surface" />
             </div>
           )}
           <button
@@ -617,16 +624,17 @@ export function AIAssistantChat() {
             aria-label={aiOn ? `Ask AI — open the STM AI Assistant${unread ? ' (new reply)' : ''}` : 'Get a quote'}
             aria-expanded={false}
             aria-controls="ai-assistant-panel"
-            className={`group flex items-center gap-2.5 rounded-full ${focusRing}`}
+            className={`group relative flex flex-col items-center rounded-full ${focusRing}`}
           >
-            <span className="rounded-full bg-[var(--stm-navy)] px-3 py-1.5 text-sm font-semibold text-white shadow-[var(--shadow-pop)] transition-transform duration-200 group-hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-y-0">
-              {aiOn ? 'Ask AI' : 'Get a quote'}
-            </span>
-            <span className="relative flex h-[52px] w-[52px] items-center justify-center rounded-full bg-[var(--stm-blue)] shadow-[0_6px_20px_rgba(27,93,252,0.35),0_1px_3px_rgba(15,23,43,0.2)] transition-[transform,background-color,box-shadow] duration-200 group-hover:-translate-y-0.5 group-hover:bg-[var(--stm-blue-hover)] group-hover:shadow-[0_10px_26px_rgba(27,93,252,0.42),0_2px_4px_rgba(15,23,43,0.2)] motion-reduce:transition-none motion-reduce:group-hover:translate-y-0 sm:h-[60px] sm:w-[60px]">
+            {aiOn && (
+              <span className="relative z-10 -mb-2.5 rounded-full bg-[#f59e0b] px-2 py-[1px] text-[10px] font-bold leading-4 tracking-wide text-[#1c1917] shadow-sm ring-2 ring-surface" aria-hidden="true">AI</span>
+            )}
+            <span className="relative flex h-[54px] w-[54px] items-center justify-center rounded-full border-2 border-[var(--accent)] bg-surface shadow-[0_0_0_4px_color-mix(in_srgb,var(--accent)_16%,transparent),0_6px_16px_rgba(15,23,43,0.18)] transition-[transform,box-shadow] duration-200 group-hover:scale-[1.04] group-hover:shadow-[0_0_0_4px_color-mix(in_srgb,var(--accent)_22%,transparent),0_10px_22px_rgba(15,23,43,0.26)] motion-reduce:transition-none motion-reduce:group-hover:scale-100 sm:h-[62px] sm:w-[62px]">
               {aiOn
-                ? <RobotIcon className="h-8 w-8 sm:h-9 sm:w-9" visor="var(--stm-navy)" />
-                : <FileText size={24} className="text-white" aria-hidden="true" />}
-              {unread && <span className="absolute right-0.5 top-0.5 h-3 w-3 rounded-full border-2 border-white bg-[#f59e0b]" aria-hidden="true" />}
+                ? <RobotIcon className="h-8 w-8 sm:h-9 sm:w-9" body="var(--accent)" visor="#fff" eyes="var(--accent)" />
+                : <FileText size={24} className="text-[var(--accent)]" aria-hidden="true" />}
+              {aiOn && <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-surface bg-[#22c55e]" aria-hidden="true" />}
+              {unread && <span className="absolute right-0 top-0 h-3 w-3 rounded-full border-2 border-surface bg-[#f59e0b]" aria-hidden="true" />}
             </span>
           </button>
         </div>
@@ -647,9 +655,7 @@ export function AIAssistantChat() {
           {/* Header — fixed; only the body below scrolls */}
           <div className="flex shrink-0 items-center gap-2.5 bg-[var(--stm-navy)] px-3 py-2 text-white sm:gap-3 sm:px-4 sm:py-3">
             {aiOn ? <RobotAvatar size="md" /> : (
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--stm-blue)] sm:h-10 sm:w-10" aria-hidden="true">
-                <FileText size={20} />
-              </span>
+              <RobotAvatar size="md" icon={FileText} />
             )}
             <div className="min-w-0 flex-1">
               <h2 id="ai-assistant-title" className="truncate text-[15px] font-semibold leading-tight text-white">
@@ -825,7 +831,7 @@ export function AIAssistantChat() {
               >
                 {!hasConversation ? (
                   <div className="flex flex-col items-center text-center sm:pt-2">
-                    <span className="hidden sm:block"><RobotAvatar size="md" /></span>
+                    <span className="hidden sm:block"><RobotAvatar size="md" welcome /></span>
                     {visitor?.firstName ? (
                       <p className="text-base font-semibold text-ink sm:mt-3">
                         Hello, {visitor.firstName}!<br />How can I help you today?
@@ -861,7 +867,7 @@ export function AIAssistantChat() {
                         <div
                           className={`min-w-0 max-w-[82%] break-words rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
                             m.role === 'user'
-                              ? 'rounded-br-md bg-[var(--stm-blue)] text-white'
+                              ? 'rounded-br-md bg-[var(--stm-blue)] text-[var(--accent-on)]'
                               : 'rounded-bl-md border border-rule bg-surface-2 text-ink'
                           }`}
                         >
@@ -960,7 +966,7 @@ export function AIAssistantChat() {
                     />
                     <button
                       type="submit"
-                      className={`flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-xl ai-btn transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${focusRing}`}
+                      className={`flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-xl ai-btn transition-colors disabled:cursor-not-allowed ${focusRing}`}
                       disabled={sending || !draft.trim()}
                       aria-label="Send message"
                     >

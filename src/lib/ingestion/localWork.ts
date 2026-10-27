@@ -23,7 +23,7 @@ import type { Group } from './rotationState.js';
  *                        4. duplicates      the same book already published under another record;
  *                        5. publish         ONLY if every one of those now passes — exactly as the harvest would have published it.
  *                      Anything that does not stays held (or, where the classifier names a department with moderate confidence, is counted as
- *                      waiting for review). Books from review-first sources, and books a person has decided, are never touched. A full pass is made once
+ *                      waiting for review). Books from review-first sources, books a person has decided, and books that already have a department (placed by hand or by Review Automation) are never touched. A full pass is made once
  *                      per rules version and again every INGESTION_HELD_RECHECK_DAYS (7) so new evidence is picked up; nothing is published without
  *                      passing all five steps. Counts kept: held checked, new evidence found, promoted, waiting for review, still held.
  *   journal-departments Journals listed by Crossref / OpenAlex / ROAD that the importer could not place are offered to the same journal rule again,
@@ -103,8 +103,15 @@ const feedOf = (source: string | null) => FEEDS.find(f => f.provider === source)
 /** Sources whose strong, in-policy books the harvest publishes by itself. Review-first sources never publish on their own; nor does this job for them. */
 export const SELF_PUBLISHING_SOURCES = FEEDS.filter(f => !f.reviewFirst).map(f => f.provider);
 
-/** Held books this job may judge: undecided Drafts the harvest created, from a self-publishing source. A rejected book is 'Rejected', never 'Draft'. */
-const heldBookWhere = () => ({ status: 'Draft', ownershipSource: 'Ingested', rejectionNote: null, source: { in: SELF_PUBLISHING_SOURCES } });
+/**
+ * A department that is still genuinely unset. A book that already has one — chosen by a person, or assigned by Review Automation — is a decision
+ * this job must never overwrite, so it is not selected at all, and the write that promotes a book repeats the condition (a department assigned in the
+ * moment between reading a book and writing it still wins). Kept in AND so it does not collide with the cursor's OR.
+ */
+const NO_DEPARTMENT = { OR: [{ domain: null }, { domain: '' }] };
+
+/** Held books this job may judge: undecided Drafts the harvest created, from a self-publishing source, with no department yet. A rejected book is 'Rejected', never 'Draft'. */
+const heldBookWhere = () => ({ status: 'Draft', ownershipSource: 'Ingested', rejectionNote: null, source: { in: SELF_PUBLISHING_SOURCES }, AND: [NO_DEPARTMENT] });
 
 // ── Job 1: held books, judged again under the current rules ────────────────
 
@@ -171,7 +178,7 @@ export const heldBooksJob: LocalJob = {
         const harvest = { ...h, department: { band: verdict.band, score: verdict.score, reasons: verdict.reasons, suggested: verdict.suggested, runnerUp: verdict.runnerUp },
           promoted: { at: new Date().toISOString(), from: 'review', rules: CLASSIFIER_RULES_VERSION, minYear } };
         // Updated only while still an undecided Draft: a person who acted on it a moment ago wins.
-        const r = await db.book.updateMany({ where: { id: b.id, status: 'Draft', rejectionNote: null }, data: { status: 'Published', domain: verdict.department, metadata: { ...meta, harvest } } });
+        const r = await db.book.updateMany({ where: { id: b.id, status: 'Draft', rejectionNote: null, AND: [NO_DEPARTMENT] }, data: { status: 'Published', domain: verdict.department, metadata: { ...meta, harvest } } });
         if (r.count) { o.promoted++; byDept[verdict.department] = (byDept[verdict.department] || 0) + 1; } else o.stillHeld++;
       } catch { o.failed++; }
     }

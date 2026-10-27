@@ -15,6 +15,8 @@
  *   · TCP ok, TLS reset                  → something between us and them drops the handshake (a WAF or a firewall that dislikes this address).
  *   · TLS ok, Identify reset before reply→ the provider accepts the connection then closes it on this request (an address / user-agent block).
  *   · Identify ok, ListRecords reset     → only the big request fails: a timeout in the path, or the provider cutting long responses.
+ *   · ListRecords 200 but "NOT a complete OAI-PMH document" → the response was cut short or replaced (a proxy / WAF page).
+ *   · REST 403 "address is not allowed" → DOAB's REST API is restricted by address; it is the rollback route only, not a fallback.
  *   · everything ok                      → it is not failing right now; the earlier resets were a passing condition (check the times).
  */
 import dns from 'node:dns/promises';
@@ -56,15 +58,17 @@ function tlsHandshake(host: string, address: string, timeoutMs = 10000) {
 }
 
 /** One GET on its own connection. Reports status and size, or where it broke; the body is counted and thrown away. */
-function get(host: string, path: string, timeoutMs: number) {
+function get(host: string, path: string, timeoutMs: number, inspect?: (body: string) => string) {
   return new Promise<string>(resolve => {
     const t0 = Date.now();
     let stage = 'before any response';
     let bytes = 0;
+    const chunks: Buffer[] = [];
     const req = https.request({ host, path, method: 'GET', headers: { 'User-Agent': UA, Connection: 'close' }, agent: false, timeout: timeoutMs }, res => {
       stage = 'while reading the response';
-      res.on('data', c => { bytes += c.length; });
-      res.on('end', () => resolve(`HTTP ${res.statusCode}, ${bytes} bytes (${ms(t0)})`));
+      res.on('data', c => { bytes += c.length; if (inspect) chunks.push(c); });
+      // The body is read only to be checked (well-formed? a resumptionToken?) and is thrown away; only the verdict is printed.
+      res.on('end', () => resolve(`HTTP ${res.statusCode}, ${bytes} bytes (${ms(t0)})${inspect ? ' — ' + inspect(Buffer.concat(chunks).toString('utf8')) : ''}`));
       res.on('error', e => resolve(`FAILED ${code(e)} ${stage} after ${bytes} bytes (${ms(t0)})`));
       res.on('aborted', () => resolve(`ABORTED ${stage} after ${bytes} bytes (${ms(t0)})`));
     });
@@ -83,7 +87,15 @@ for (const t of targets) {
   const first = addrs.find(a => a.family === 4) || addrs[0];
   console.log(`  2. TCP :443    ${await tcp(host, first.address)}   (${first.address})`);
   console.log(`  3. TLS         ${await tlsHandshake(host, first.address)}`);
-  console.log(`  4. Identify    ${await get(host, `${path}?verb=Identify`, 20_000)}`);
-  console.log(`  5. ListRecords ${await get(host, `${path}?verb=ListRecords&metadataPrefix=xoai&set=${t === 'doab' ? 'com_20.500.12854_5' : 'com_20.500.12657_5'}`, 90_000)}`);
+  const oai = (body: string) => {
+    const wellFormed = /^\s*(<\?[\s\S]*?\?>\s*)*<OAI-PMH[\s>]/.test(body) && /<\/OAI-PMH>\s*$/.test(body);
+    const tok = /<resumptionToken[^>]*>([^<]+)<\/resumptionToken>/.exec(body);
+    const err = /<error code="([^"]+)"/.exec(body);
+    return `${wellFormed ? 'complete OAI-PMH document' : 'NOT a complete OAI-PMH document (truncated, or not OAI at all)'}; ${err ? `OAI error ${err[1]}` : 'no OAI error'}; ${tok ? `resumptionToken present (${tok[1].split('/').pop()} = next offset)` : 'no resumptionToken'}`;
+  };
+  console.log(`  4. Identify    ${await get(host, `${path}?verb=Identify`, 20_000, oai)}`);
+  console.log(`  5. Formats     ${await get(host, `${path}?verb=ListMetadataFormats`, 20_000, b => `xoai ${/<metadataPrefix>xoai<\/metadataPrefix>/.test(b) ? 'offered' : 'NOT offered'}`)}`);
+  console.log(`  6. ListRecords ${await get(host, `${path}?verb=ListRecords&metadataPrefix=xoai&set=${t === 'doab' ? 'com_20.500.12854_5' : 'com_20.500.12657_5'}`, 90_000, oai)}`);
+  if (t === 'doab') console.log(`  7. REST (legacy rollback route, informational) ${await get(host, '/rest/search?query=*&limit=1&offset=0', 20_000, b => b.slice(0, 80).replace(/\s+/g, ' '))}`);
 }
 console.log('');
