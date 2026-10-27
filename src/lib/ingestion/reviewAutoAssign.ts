@@ -63,14 +63,17 @@ export async function autoAssignStatus(): Promise<AutoAssignJob | null> {
 const matchesScope = (r: { source: string; dept: string | null }, s: Scope) => (!s.source || r.source === s.source) && (!s.department || r.dept === s.department);
 
 async function finish(j: AutoAssignJob, status: AutoAssignJob['status'], error: string | null = null) {
-  j.status = status; j.finishedAt = new Date().toISOString(); j.error = error;
-  await persist(j).catch(() => {});
+  // The terminal state is made visible (in memory and in the saved record) only together with the release of the job lock, never before it:
+  // anything that reads "done" and immediately starts the next job (a preview, a start) must not find the lock still held.
+  const closed: AutoAssignJob = { ...j, status, finishedAt: new Date().toISOString(), error };
+  await persist(closed).catch(() => {});
   await audit(j.by ? { email: j.by } : null, 'REVIEW_AUTO_ASSIGN_FINISHED', {
     jobId: j.id, status, classifier: j.classifier, classifierVersion: j.classifierVersion, thresholds: { highMinScore: j.thresholds.highMinScore, highMinMargin: j.thresholds.highMinMargin, highRequiresCode: j.thresholds.highRequiresCode },
     scope: j.scope, requested: j.requested, assigned: j.assigned, skipped: j.skipped, failed: j.failed, skippedReasons: j.skippedReasons, cancelled: status === 'cancelled', publishes: false, error,
     // What a cancelled job left unprocessed, when the preview's count is known (an estimate: the queue may have moved since).
     eligibleAtStart: j.eligibleAtStart, cancelledRemaining: status === 'cancelled' && j.eligibleAtStart != null ? Math.max(0, j.eligibleAtStart - j.requested) : null,
   });
+  Object.assign(j, closed);   // the caller's object turns terminal at the same moment the lock goes
   live = null; releaseReviewJob('auto-assign');
 }
 

@@ -115,8 +115,10 @@ export async function autoPublishStatus(): Promise<PublishJob | null> {
 }
 
 async function finish(j: PublishJob, status: PublishJob['status'], error: string | null = null) {
-  j.status = status; j.finishedAt = new Date().toISOString(); j.error = error;
-  await persist(j).catch(() => {});
+  // The terminal state is made visible (in memory and in the saved record) only together with the release of the job lock, never before it:
+  // anything that reads "done" and immediately starts the next job (a preview, a start) must not find the lock still held.
+  const closed: PublishJob = { ...j, status, finishedAt: new Date().toISOString(), error };
+  await persist(closed).catch(() => {});
   await audit(j.by ? { email: j.by } : null, 'REVIEW_PUBLISH_FINISHED', {
     jobId: j.id, status, tier: j.tier, classifier: j.classifier, classifierVersion: j.classifierVersion,
     thresholds: { highMinScore: j.thresholds.highMinScore, highMinMargin: j.thresholds.highMinMargin, highRequiresCode: j.thresholds.highRequiresCode }, scope: j.scope,
@@ -124,6 +126,7 @@ async function finish(j: PublishJob, status: PublishJob['status'], error: string
     skipped: j.skipped, failed: j.failed, skippedReasons: j.skippedReasons, cancelled: status === 'cancelled', publishes: true, error,
     cancelledRemaining: status === 'cancelled' && j.candidatesAtPreview != null ? Math.max(0, j.candidatesAtPreview - j.requested) : null,
   });
+  Object.assign(j, closed);   // the caller's object turns terminal at the same moment the lock goes
   live = null; releaseReviewJob('auto-publish');
 }
 

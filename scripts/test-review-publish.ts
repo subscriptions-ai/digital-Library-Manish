@@ -61,7 +61,11 @@ const reset = async () => { J.__resetPublish(); Lock.__resetReviewJobLock(); awa
 const clearQueue = async () => { await db.book.deleteMany({ where: { id: { in: made }, status: 'Draft' } }); };
 const waitJob = async () => { for (let i = 0; i < 800; i++) { const s = await J.autoPublishStatus(); if (s && s.status !== 'running') return s; await new Promise(r => setTimeout(r, 50)); } throw new Error('job did not finish'); };
 const waitPreview = async () => { while (J.publishPreviewState().status === 'running') await new Promise(r => setTimeout(r, 30)); return J.publishPreviewState(); };
-const preview = async (tier: 'high' | 'medium', classifier: 'v1' | 'v2' = 'v1', scope = {}) => { J.startPublishPreview(classifier, tier, scope); return waitPreview(); };
+const preview = async (tier: 'high' | 'medium', classifier: 'v1' | 'v2' = 'v1', scope = {}) => {
+  // A preview that was refused (another job holds the lock) must fail loudly, never fall through to a stale one.
+  if (!J.startPublishPreview(classifier, tier, scope)) throw new Error(`preview refused: ${Lock.reviewJobHolder()} holds the review lock`);
+  return waitPreview();
+};
 const rejects = async (p: Promise<any>) => { try { await p; return null; } catch (e: any) { return e.name; } };
 const RULE_H = { classifier: 'v1' as const, tiers: ['high' as const], thresholds: { ...CURRENT_THRESHOLDS } };
 const state = async () => JSON.stringify([await db.ingestionState.findMany(), await db.bookHarvestCheckpoint.findMany(), await db.ingestionSourceHealth.findMany(), await db.departmentSweep.findMany()]);
@@ -238,6 +242,8 @@ eq('the job starts with the classifier, tier and the preview\'s numbers recorded
 eq('a second start while it runs is refused', await rejects(J.startAutoPublish(ADMIN, { classifier: 'v1', tier: 'high' })), 'AutoPublishError');
 const done = await waitJob();
 eq('it finishes', done.status, 'done');
+eq('the moment a job reads as finished, the review lock is already free (a preview started straight away is accepted)', [Lock.reviewJobHolder(), (() => { const ok = J.startPublishPreview('v1', 'high'); return ok; })()], [null, true]);
+await waitPreview();
 eq('requested = published + skipped + failed; 30 published, 4 skipped', [done.requested, done.published, done.skipped, done.failed, done.requested === done.published + done.skipped + done.failed], [34, 30, 4, 0, true]);
 eq('30 departments were assigned in the same step', done.departmentsAssigned, 30);
 eq('all 30 eligible High books are Published with Dental', (await db.$queryRawUnsafe(`select count(*)::int n from "Book" where id = any($1::text[]) and status = 'Published' and domain = 'Dental'`, pH))[0].n, 30);

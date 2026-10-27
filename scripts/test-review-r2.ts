@@ -209,6 +209,7 @@ eq('a second start while it runs is refused', await rejects(J.startAutoAssign(AD
 check('analysis cannot run at the same time (one heavy job at a time)', R.startAnalysis(ADMIN) === false);
 const done = await waitJob();
 eq('the job finishes', done.status, 'done');
+eq('the moment the job reads as finished, the review lock is already free', Lock.reviewJobHolder(), null);
 eq('every High book was assigned and the job was bounded into chunks of 100', [done.assigned >= 130, done.scanned >= 130, J.CHUNK], [true, true, 100]);
 eq('assigned + skipped + failed = requested', done.assigned + done.skipped + done.failed, done.requested);
 eq('the 130 High books have their department and are still Draft', (await db.$queryRawUnsafe(`select count(*)::int n from "Book" where id = any($1::text[]) and domain = 'Dental' and status = 'Draft'`, jobHigh))[0].n, 130);
