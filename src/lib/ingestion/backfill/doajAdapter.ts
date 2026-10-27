@@ -40,13 +40,22 @@ async function heldByIssns(issns: string[]): Promise<E.Held[]> {
   }
   return [...out.values()];
 }
-/** Only when a row matched no ISSN: who holds this title? (id, ISSNs, title, publisher: nothing else is read.) */
-async function heldByTitle(): Promise<Map<string, E.Held[]>> {
+/**
+ * Only when a row matched no ISSN: who holds this title? (id, ISSNs, title, publisher: nothing else is read.) The whole-table read is made ONCE PER JOB and kept for two idle minutes,
+ * not once per chunk: a title-only match is only ever REPORTED (the record is refused, never written), so a map a few minutes old can change a count's label, never a write.
+ */
+let titleCache: { jobId: string; map: Map<string, E.Held[]>; timer: NodeJS.Timeout } | null = null;
+async function heldByTitle(jobId: string): Promise<Map<string, E.Held[]>> {
+  if (titleCache?.jobId === jobId) { titleCache.timer.refresh(); return titleCache.map; }
   const rows: any[] = await db.$queryRawUnsafe(`select id, issn, eissn, title, "publisherName" from "Journal"`);
   const m = new Map<string, E.Held[]>();
   for (const r of rows) { const k = E.fold(r.title); if (k) (m.get(k) ?? m.set(k, []).get(k)!).push({ ...r, subjects: [] } as E.Held); }
+  if (titleCache) clearTimeout(titleCache.timer);
+  const timer = setTimeout(() => { if (titleCache?.jobId === jobId) titleCache = null; }, 120_000); timer.unref();
+  titleCache = { jobId, map: m, timer };
   return m;
 }
+export const __clearTitleCache = () => { if (titleCache) clearTimeout(titleCache.timer); titleCache = null; };
 
 export const doajAdapter: BackfillAdapter<Raw, Item> = {
   id: 'doaj', label: 'DOAJ journal enrichment (staged CSV snapshot)', contentTypes: ['JOURNAL'], enrichOnly: true,
@@ -59,7 +68,7 @@ export const doajAdapter: BackfillAdapter<Raw, Item> = {
 
   async sourceIdentity(a) { return loadSnapshot(locateSnapshot(a?.file).abs).identity; },
   async describe(a) {
-    const s = locateSnapshot(a?.file); const l = loadSnapshot(s.abs); const idx = fileIndexOf(l);
+    const s = locateSnapshot(a?.file); const l = loadSnapshot(s.abs); const idx = await fileIndexOf(l);
     return { summary: `Snapshot ${l.date} (${l.name}) · ${idx.rows.toLocaleString('en-US')} journals · ${(l.size / 1048576).toFixed(1)} MB · sha-256 ${l.sha256.slice(0, 12)}…`, details: { file: l.name, date: l.date, rows: idx.rows, size: l.size, sha256: l.sha256, identity: l.identity } };
   },
 
@@ -67,10 +76,10 @@ export const doajAdapter: BackfillAdapter<Raw, Item> = {
     // The staged file is read and hashed again on EVERY page: if it is not the file this job was created against, the job stops, its checkpoint kept.
     let l; try { l = loadSnapshot(locateSnapshot(job.adapter.file).abs); } catch (e: any) { if (e instanceof BackfillError) throw new BackfillStop('DOAJ_SNAPSHOT_CHANGED', `The staged snapshot can no longer be used as it was: ${e.message} The checkpoint was kept.`); throw e; }
     if (job.identity && job.identity !== l.identity) throw new BackfillStop('DOAJ_SNAPSHOT_CHANGED', `The staged snapshot is not the one this job was created against (was ${job.identity}, now ${l.identity}: ${l.name}). The checkpoint was kept; start a new job (with a new preview) against the new file.`);
-    const cur = cursor ? parseCursor(cursor) : { v: 1 as const, id: l.identity, i: 0, o: 0 };
+    const cur = cursor ? parseCursor(cursor) : { v: 2 as const, id: l.identity, i: 0, o: 0 };
     if (cur.id !== l.identity) throw new BackfillStop('DOAJ_SNAPSHOT_CHANGED', 'The staged snapshot changed while this job was paused. The checkpoint was kept; start a new job (with a new preview).');
-    fileIndexOf(l);
-    const { rows, next, chars } = readRows(l.text, cur.o, limit, headerOf(l.text));
+    await fileIndexOf(l);
+    const { rows, next, bytes } = readRows(l.abs, l.size, cur.o, limit, headerOf(l.abs));
     const from = job.windowStart ? job.windowStart.toISOString().slice(0, 10) : null, to = job.windowEnd ? job.windowEnd.toISOString().slice(0, 10) : null;
     const meta = { scanned: rows.length, outsideWindow: 0, noDate: 0 }; const records: Raw[] = [];
     rows.forEach((raw, k) => {
@@ -81,7 +90,7 @@ export const doajAdapter: BackfillAdapter<Raw, Item> = {
       }
       records.push({ i: cur.i + k, raw });
     });
-    return { records, nextCursor: next === null ? null : cursorOf({ v: 1, id: l.identity, i: cur.i + rows.length, o: next }), bytes: chars, meta };
+    return { records, nextCursor: next === null ? null : cursorOf({ v: 2, id: l.identity, i: cur.i + rows.length, o: next }), bytes, meta };
   },
 
   normalize(r) {
@@ -90,7 +99,7 @@ export const doajAdapter: BackfillAdapter<Raw, Item> = {
   },
 
   async judge(items, job): Promise<Judged<Item>[]> {
-    const fileIdx = cachedIndex(job.identity) ?? fileIndexOf(loadSnapshot(locateSnapshot(job.adapter.file).abs));
+    const fileIdx = cachedIndex(job.identity) ?? await fileIndexOf(loadSnapshot(locateSnapshot(job.adapter.file).abs));
     const held = await heldByIssns([...new Set(items.flatMap(i => i.item.row.issns))]);
     const heldIdx = E.indexHeld(held);
     let titles: Map<string, E.Held[]> | null = null;
@@ -98,7 +107,7 @@ export const doajAdapter: BackfillAdapter<Raw, Item> = {
     const out: Judged<Item>[] = [];
     for (const { id, item } of items) {
       const r = item.row;
-      if (!r.issns.some(k => heldIdx.byIssn.has(k)) && !titles) titles = await heldByTitle();
+      if (!r.issns.some(k => heldIdx.byIssn.has(k)) && !titles) titles = await heldByTitle(job.id);
       const v = E.matchRow(r, { byIssn: heldIdx.byIssn, byTitle: titles ?? heldIdx.byTitle }, fileIdx);
       switch (v.kind) {
         case 'unusable': out.push({ id, item, outcome: 'refused', reason: 'no title or no valid ISSN', tags: ['unusable'] }); break;

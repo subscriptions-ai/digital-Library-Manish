@@ -24,5 +24,5 @@ for (let i = 0; i < 2000; i++) {
   if (!r.ran && (r.reason === 'no-job' || r.reason === 'disabled')) break;
 }
 clearInterval(rssTimer);
-if (process.env.BACKFILL_CHILD_REPORT_RSS) console.log(`RSS:${JSON.stringify({ base: rssBase, peak: Math.max(rssPeak, process.memoryUsage().rss), heapBase, heapEnd: gcNow(), rssEnd: process.memoryUsage().rss, ticks: rssTrace.length, rssTrace: rssTrace.filter((_, i) => i % 10 === 9) })}`);
+if (process.env.BACKFILL_CHILD_REPORT_RSS) console.log(`RSS:${JSON.stringify({ base: rssBase, peak: Math.max(rssPeak, process.memoryUsage().rss), heapBase, heapEnd: gcNow(), rssEnd: process.memoryUsage().rss, mem: Object.fromEntries(Object.entries(process.memoryUsage()).map(([k, v]) => [k, Math.round(v / 1048576)])), ticks: rssTrace.length, rssTrace: rssTrace.filter((_, i) => i % 10 === 9) })}`);
 process.exit(0);
