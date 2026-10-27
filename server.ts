@@ -100,7 +100,8 @@ import { sourceCooldown } from "./src/lib/ingestion/sourceHealth.js";
 import { departmentMetrics, departmentTable, departmentExists } from "./src/lib/ingestion/departmentMetrics.js";
 import { resolveRange } from "./src/lib/ingestion/runFilter.js";
 import { historicalStatus as openAlexJournalsStatus, setPaused as setOpenAlexJournalsPaused } from "./src/lib/ingestion/openAlexJournals.js";
-import { dailySummary, dailyContent, resolveReportDate, previousReportDates, isContentType, MAX_PAGE_SIZE as DAILY_MAX_PAGE } from "./src/lib/ingestion/dailySummary.js";
+import { dailySummary, dailyContent, dailyPublishedContent, resolveReportDate, previousReportDates, isContentType, MAX_PAGE_SIZE as DAILY_MAX_PAGE } from "./src/lib/ingestion/dailySummary.js";
+import { recordPublications } from "./src/lib/ingestion/publicationEvents.js";
 import sanitizeHtml from "sanitize-html";
 import { checkCoverImage, failed, cleanAlt, isUsableCoverUrl, isExternalMediaUrl, publishProblems, COVER_MAX_BYTES, COVER_UNAVAILABLE_MESSAGE, type PublishProblems } from "./src/lib/blogCover.js";
 import {
@@ -8285,17 +8286,22 @@ async function startServer() {
       const { action, note } = req.body;
       if (action === 'approve') {
         const data: any = { status: 'Published', rejectionNote: null };
+        let heldStatus: string | null = null;
         if (model === 'book') {
           // A book the harvest set aside has no department. Publishing one without a department would count it in
           // the library but leave it on no shelf, so approval names the department — only ever one that exists.
-          const held = await (prisma as any).book.findUnique({ where: { id }, select: { domain: true, ownershipSource: true } });
+          const held = await (prisma as any).book.findUnique({ where: { id }, select: { domain: true, ownershipSource: true, status: true } });
           if (!held) return res.status(404).json({ error: "No such book" });
+          heldStatus = held.status;
           const department = typeof req.body.department === 'string' ? (canonicalDepartmentName(req.body.department) ?? req.body.department) : null;
           if (department && !ALL_DEPARTMENTS.includes(department)) return res.status(400).json({ error: "Unknown department" });
           if (department) data.domain = department;
           else if (held.ownershipSource === 'Ingested' && !held.domain) return res.status(400).json({ error: "Choose a department to approve this book" });
         }
+        // The moment it becomes public is recorded once, and only if it was not public already (the Daily Summary's "Published" is counted from this).
+        const wasPublic = model === 'book' ? (heldStatus === 'Published') : ((await (prisma as any).article.findUnique({ where: { id }, select: { status: true } }))?.status === 'Published');
         const updated = await (prisma as any)[model].update({ where: { id }, data });
+        if (!wasPublic) await recordPublications(req.user, [{ type: model, id, department: updated.domain ?? null, via: 'approve' }]);
         return res.json(updated);
       } else if (action === 'reject') {
         const updated = await (prisma as any)[model].update({ where: { id }, data: { status: 'Rejected', rejectionNote: note || 'Rejected by reviewer' } });
@@ -9273,7 +9279,14 @@ async function startServer() {
       const data = action === 'approve'
         ? { status: 'Published', rejectionNote: null }
         : { status: 'Rejected', rejectionNote: note || 'Rejected by reviewer' };
+      // Only a record that was not public yet gets a publication event; approving one that already is writes nothing.
+      const before: any[] = action === 'approve' ? await (prisma as any)[model].findMany({ where: { id: { in: ids } }, select: { id: true, status: true } }) : [];
       const r = await (prisma as any)[model].updateMany({ where: { id: { in: ids } }, data });
+      if (action === 'approve') {
+        const moved = before.filter(b => b.status !== 'Published');
+        const dom: any[] = moved.length ? await (prisma as any)[model].findMany({ where: { id: { in: moved.map(m => m.id) } }, select: { id: true, domain: true } }) : [];
+        await recordPublications(req.user, moved.map(m => ({ type: model, id: m.id, department: dom.find(d => d.id === m.id)?.domain ?? null, via: 'bulk-approve' as const })));
+      }
       res.json({ ok: true, count: r.count });
     } catch (e: any) { res.status(500).json({ error: "Bulk review failed" }); }
   });
@@ -9642,8 +9655,8 @@ async function startServer() {
     } catch (e: any) { console.error('GET ingest/daily-summary error:', e?.message); res.status(500).json({ error: "Failed to load the daily summary" }); }
   });
 
-  // GET /api/admin/ingest/daily-summary/content?reportDate=…&department=…&type=journal|article|book|all&page=1&pageSize=50
-  // The exact records one number in the summary is made of. `department` may be "(unassigned)". Read-only.
+  // GET /api/admin/ingest/daily-summary/content?reportDate=…&department=…&type=journal|article|book|all&basis=added|published&page=1&pageSize=50
+  // The exact records one number in the summary is made of: `basis=added` (default) the records CREATED in the cycle, `basis=published` the records that BECAME PUBLIC in it. `department` may be "(unassigned)". Read-only.
   app.get("/api/admin/ingest/daily-summary/content", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
     try {
       const d = resolveReportDate(req.query.reportDate);
@@ -9653,7 +9666,9 @@ async function startServer() {
       const department = typeof req.query.department === 'string' && req.query.department ? req.query.department.trim() : null;
       if (department && department.length > 120) return res.status(400).json({ error: 'Unknown department' });
       const num = (v: any, fallback: number) => { const n = Number(v); return Number.isFinite(n) && n >= 1 ? Math.floor(n) : fallback; };
-      res.json(await dailyContent({ reportDate: d.reportDate, department, type, page: num(req.query.page, 1), pageSize: Math.min(DAILY_MAX_PAGE, num(req.query.pageSize, 50)) }));
+      const basis = req.query.basis === 'published' ? 'published' : 'added';
+      const args = { reportDate: d.reportDate, department, type, page: num(req.query.page, 1), pageSize: Math.min(DAILY_MAX_PAGE, num(req.query.pageSize, 50)) };
+      res.json(basis === 'published' ? await dailyPublishedContent(args) : await dailyContent(args));
     } catch (e: any) { console.error('GET ingest/daily-summary/content error:', e?.message); res.status(500).json({ error: "Failed to load the records" }); }
   });
 
@@ -9729,7 +9744,7 @@ async function startServer() {
     try {
       const take = Math.min(parseInt(req.query.limit as string) || 20, 100);
       const action = typeof req.query.action === 'string' && /^[A-Z_]{3,60}$/.test(req.query.action) ? req.query.action : null;
-      const where = action ? { action } : req.query.includeRoutine === '1' ? {} : { action: { notIn: ['NCBI_ARCHIVE_DOWNLOADED'] } };
+      const where = action ? { action } : req.query.includeRoutine === '1' ? {} : { action: { notIn: ['NCBI_ARCHIVE_DOWNLOADED', 'CONTENT_PUBLISHED'] } };
       const events = await (prisma as any).ingestionAudit.findMany({ where, orderBy: { at: 'desc' }, take });
       const day = new Date(); day.setUTCHours(0, 0, 0, 0);
       const [n]: any[] = await (prisma as any).$queryRawUnsafe(

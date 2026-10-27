@@ -40,7 +40,7 @@ export function Metrics({ state }: { state: any }) {
   return (
     <section aria-labelledby="metrics-heading">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-        <h2 id="metrics-heading" className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">Ingestion activity — {period === 'lifetime' ? 'lifetime' : period === '7d' ? 'last 7 days' : 'last 24 hours'}</h2>
+        <h2 id="metrics-heading" className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">Ingestion activity — {period === 'lifetime' ? 'lifetime' : period === '7d' ? 'last 7 days (rolling)' : 'last 24 hours (rolling)'}</h2>
         <div className="segmented" role="group" aria-label="Time period">
           {PERIODS.map(([id, label]) => <button key={id} type="button" aria-pressed={period === id} onClick={() => onPeriod(id)}>{label}</button>)}
         </div>
@@ -58,7 +58,7 @@ export function Metrics({ state }: { state: any }) {
       </div>
       <p className="mt-2 text-[11.5px] text-muted">These count what the engine did — each time a record was added or seen again — so they are not catalogue totals and will not match what the library holds. “Current catalogue” on the department summary is counted from the catalogue itself.</p>
       {failed && <p role="status" className="mt-2 text-[12px] text-muted">These figures could not be loaded just now, so none are shown rather than a zero that would mean nothing.</p>}
-      {period !== 'lifetime' && <p className="mt-2 text-[11.5px] text-muted">Summed from the run log for the last {period === '24h' ? '24 hours' : '7 days'}. Lifetime totals are the engine's own running counters and are never recalculated.</p>}
+      {period !== 'lifetime' && <p className="mt-2 text-[11.5px] text-muted">Summed from the run log for the last {period === '24h' ? '24 hours' : '7 days'} — a window that slides with the clock, not the fixed 5:01 PM → 5:00 PM cycle of the daily summary. Lifetime totals are the engine's own running counters and are never recalculated.</p>}
     </section>
   );
 }

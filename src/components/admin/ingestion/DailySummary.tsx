@@ -7,7 +7,11 @@ import { N, dayLabel } from './format';
 import { InfoTip } from './InfoTip';
 
 /**
- * Daily ingestion summary — what NEW content the catalogue gained in one reporting cycle (previous day 5:01 PM → this day 5:00 PM IST).
+ * Daily ingestion summary — what the catalogue gained in one reporting cycle (previous day 5:01 PM → this day 5:00 PM IST), as TWO separate questions:
+ *   New records added — records the engine CREATED in the cycle that are public now.
+ *   Published        — records that BECAME PUBLIC in the cycle (the real transition: a person's approval, Review Automation, or the engine creating a record already public),
+ *                      so a Draft from last week approved today is counted here today.
+ * The cycle is a fixed window; the "Last 24 hours" figures elsewhere on the page are a rolling window that moves every minute. They are not the same thing.
  *
  * Every number is counted on the server from the catalogue rows themselves, and the list behind a number is read from the same rows, so
  * what you click is what was counted. The cycle is a window over timestamps: nothing is reset at 5:01 PM. This is a separate question from
@@ -18,6 +22,8 @@ import { InfoTip } from './InfoTip';
 
 const UNASSIGNED = '(unassigned)';
 const IST = 'Asia/Kolkata';
+type Basis = 'added' | 'published';
+const BASIS_WORD: Record<Basis, string> = { added: 'added', published: 'published' };
 const KINDS = [['journal', 'Journals', 'journals'], ['article', 'Articles', 'articles'], ['book', 'Books', 'books']] as const;
 type Kind = typeof KINDS[number][0];
 const SINGULAR: Record<Kind, string> = { journal: 'journal', article: 'article', book: 'book' };
@@ -28,7 +34,7 @@ const stamp = (iso: string) => {
   return `${d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: IST })}, ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: IST })}`;
 };
 const clockOf = (iso: string) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: IST });
-const addedAt = (iso: string) => {
+const stampShort = (iso: string) => {
   const d = new Date(iso);
   return `${d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', timeZone: IST })}, ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: IST })}`;
 };
@@ -55,6 +61,7 @@ export function DailySummary({ refreshKey }: { refreshKey: unknown }) {
   const rawType = sp.get('type') || '';
   const type: Kind | 'all' | '' = rawType === 'all' || KINDS.some(k => k[0] === rawType) ? (rawType as Kind | 'all') : '';
   const page = Math.max(1, Number(sp.get('page')) || 1);
+  const basis: Basis = sp.get('basis') === 'published' ? 'published' : 'added';
   const drilling = !!department || !!type;
 
   const [data, setData] = useState<any>(null);
@@ -67,7 +74,7 @@ export function DailySummary({ refreshKey }: { refreshKey: unknown }) {
     setSp(prev => {
       const n = new URLSearchParams(prev);
       for (const [k, v] of Object.entries(patch)) v ? n.set(k, v) : n.delete(k);
-      if (n.get('department') || n.get('type') || n.get('reportDate')) n.set('report', 'daily'); else n.delete('report');
+      if (n.get('department') || n.get('type') || n.get('reportDate') || n.get('basis')) n.set('report', 'daily'); else n.delete('report');
       return n;
     });
   }, [setSp]);
@@ -87,7 +94,11 @@ export function DailySummary({ refreshKey }: { refreshKey: unknown }) {
   }, [load, refreshKey, reportDate]);
 
   const live = !!data?.isCurrentCycle;
-  const rows: any[] = data ? [...data.departments].sort((a, b) => (order === 'name'
+  // The department table and the lists follow the chosen question; the tiles show both at once.
+  const view = !data ? null : basis === 'published'
+    ? { departments: data.published.departments as any[], total: data.published.total as number, journals: data.published.journals as number, articles: data.published.articles as number, books: data.published.books as number }
+    : { departments: data.departments as any[], total: data.totalAdded as number, journals: data.journalsAdded as number, articles: data.articlesAdded as number, books: data.booksAdded as number };
+  const rows: any[] = view ? [...view.departments].sort((a, b) => (order === 'name'
     ? (a.department === UNASSIGNED ? 1 : b.department === UNASSIGNED ? -1 : a.department.localeCompare(b.department))
     : b.total - a.total || a.department.localeCompare(b.department))) : [];
   const row = rows.find(r => r.department === department);
@@ -96,8 +107,8 @@ export function DailySummary({ refreshKey }: { refreshKey: unknown }) {
   const expected: number | null = !data ? null
     : department && type && type !== 'all' ? (row ? row[`${type}s`] : 0)
     : department ? (row ? row.total : 0)
-    : type === 'all' ? data.totalAdded
-    : type ? data[`${type}sAdded`] : null;
+    : type === 'all' ? view!.total
+    : type ? (view as any)[`${type}s`] : null;
 
   return (
     <section className="card card-pad" aria-labelledby="daily-heading">
@@ -106,7 +117,7 @@ export function DailySummary({ refreshKey }: { refreshKey: unknown }) {
           <h2 id="daily-heading" className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">
             Daily ingestion summary
             <InfoTip label="the daily summary">
-              New catalogue content only: records the engine created in this cycle that are public now. Records waiting for review, refused ones, records already held and enrichments of old records are not counted here. A cycle runs from 5:01 PM to 5:00 PM India time and is worked out from timestamps — nothing is reset or deleted at 5:01 PM.
+              Two separate questions. “New records added”: records the engine created in this cycle that are public now. “Published”: records that became public in this cycle, whenever they were created — an approved Draft counts here on the day it is approved. Records waiting for review, refused ones and enrichments of old records are in neither. A cycle runs from 5:01 PM to 5:00 PM India time and is worked out from timestamps — nothing is reset or deleted at 5:01 PM. It is a fixed window, not the rolling “Last 24 hours” shown elsewhere on this page.
             </InfoTip>
           </h2>
           {data ? (
@@ -121,6 +132,7 @@ export function DailySummary({ refreshKey }: { refreshKey: unknown }) {
               <p className="mt-0.5 text-[12px] text-muted">
                 {live ? <>Closes today at {clockOf(data.lastMinute)} IST · next cycle starts {stamp(data.nextCycleStart)}</> : <>Finalized {stamp(data.lastMinute)} IST</>}
               </p>
+              <p className="mt-0.5 text-[12px] text-muted">Fixed daily cycle — not the rolling “Last 24 hours” figures elsewhere on this page, which slide with the clock.</p>
             </div>
           ) : <span aria-hidden="true" className="skeleton mt-2 block h-9 w-72 max-w-full" />}
         </div>
@@ -144,47 +156,73 @@ export function DailySummary({ refreshKey }: { refreshKey: unknown }) {
 
       {data && (
         <>
-          <div className="mt-3 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-rule bg-rule sm:grid-cols-5">
-            <Tile wide label="Total added" n={data.totalAdded} onOpen={() => go({ type: 'all', department: null, page: null })} openLabel={`View all ${plural(data.totalAdded, 'record')} added in this report`} />
+          <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">New records added <span className="font-normal normal-case tracking-normal">· created in this cycle</span></p>
+          <div className="mt-1.5 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-rule bg-rule sm:grid-cols-5">
+            <Tile wide label="Total added" n={data.totalAdded} onOpen={() => go({ basis: null, type: 'all', department: null, page: null })} openLabel={`View all ${plural(data.totalAdded, 'record')} added in this report`} />
             {KINDS.map(([k, label, key]) => (
-              <Tile key={k} label={label} n={data[`${key}Added`]} onOpen={() => go({ type: k, department: null, page: null })} openLabel={`View ${plural(data[`${key}Added`], 'added ' + SINGULAR[k])} in this report`} />
+              <Tile key={k} label={label} n={data[`${key}Added`]} onOpen={() => go({ basis: null, type: k, department: null, page: null })} openLabel={`View ${plural(data[`${key}Added`], 'added ' + SINGULAR[k])} in this report`} />
             ))}
             <Tile label="Departments" n={data.departmentsWithActivity} />
           </div>
 
-          {data.totalAdded === 0 ? (
+          <p className="mt-3 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">
+            Published <span className="font-normal normal-case tracking-normal">· made public in this cycle</span>
+            <InfoTip label="published">The real moment a record became public: a person approving it, Review Automation publishing it, or the engine creating it already public. A record created earlier and approved in this cycle is counted here and not under “added”; one still waiting for review is in neither. Editing a published record afterwards does not count it again.</InfoTip>
+          </p>
+          <div className="mt-1.5 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-rule bg-rule sm:grid-cols-5" data-testid="published-tiles">
+            <Tile wide label="Published" n={data.published.total} onOpen={() => go({ basis: 'published', type: 'all', department: null, page: null })} openLabel={`View all ${plural(data.published.total, 'record')} published in this report`} />
+            {KINDS.map(([k, label, key]) => (
+              <Tile key={k} label={label} n={data.published[key]} onOpen={() => go({ basis: 'published', type: k, department: null, page: null })} openLabel={`View ${plural(data.published[key], 'published ' + SINGULAR[k])} in this report`} />
+            ))}
+            <Tile label="Departments" n={data.published.departmentsWithActivity} />
+          </div>
+          <p className="mt-1.5 flex flex-wrap gap-x-4 gap-y-0.5 text-[12px] text-muted" data-testid="published-methods">
+            <span>By method:</span>
+            <span>Ingestion <b className="font-semibold tabular-nums text-ink-2">{N(data.published.byMethod.ingestion)}</b></span>
+            <span>Manual approval <b className="font-semibold tabular-nums text-ink-2">{N(data.published.byMethod.manual)}</b></span>
+            <span>Review Automation <b className="font-semibold tabular-nums text-ink-2">{N(data.published['byMethod']['review-automation'])}</b></span>
+          </p>
+
+          <div className="segmented mt-3" role="group" aria-label="Department table shows">
+            <button type="button" aria-pressed={basis === 'added'} onClick={() => go({ basis: null, department: null, type: null, page: null })}>New records added</button>
+            <button type="button" aria-pressed={basis === 'published'} onClick={() => go({ basis: 'published', department: null, type: null, page: null })}>Published</button>
+          </div>
+
+          {view!.total === 0 ? (
             <div className="mt-3 rounded-xl border border-rule bg-surface-2 px-4 py-5 text-center">
               <p className="text-[13.5px] font-medium text-ink">
-                {live ? 'No new catalogue records have been added during this reporting cycle yet.' : 'No new catalogue records were added during this reporting cycle.'}
+                {basis === 'published'
+                  ? (live ? 'No records have been published during this reporting cycle yet.' : 'No records were published during this reporting cycle.')
+                  : (live ? 'No new catalogue records have been added during this reporting cycle yet.' : 'No new catalogue records were added during this reporting cycle.')}
               </p>
               <p className="mt-1 text-[12.5px] text-muted">{live ? 'Current cycle' : 'Cycle'}: {stamp(data.windowStart)} → {stamp(data.lastMinute)} IST</p>
             </div>
           ) : (
             <>
-            <ul className="mt-3 divide-y divide-rule rounded-xl border border-rule bg-surface sm:hidden" aria-label="New catalogue records added in this cycle, by department">
+            <ul className="mt-3 divide-y divide-rule rounded-xl border border-rule bg-surface sm:hidden" aria-label={`${basis === 'published' ? 'Records published' : 'New catalogue records added'} in this cycle, by department`}>
               {rows.map(r => {
                 const name = deptLabel(r.department);
                 return (
                   <li key={r.department} className={`px-3.5 py-2.5 ${department === r.department ? 'bg-accent-soft/40' : ''}`}>
                     <div className="flex items-baseline justify-between gap-3">
-                      <button type="button" aria-pressed={department === r.department} aria-label={`View the ${plural(r.total, 'record')} added to ${name} during this report`}
+                      <button type="button" aria-pressed={department === r.department} aria-label={`View the ${plural(r.total, 'record')} ${basis === 'published' ? 'published in' : 'added to'} ${name} during this report`}
                         onClick={() => go({ department: r.department, type: null, page: null })}
                         className={`min-w-0 text-left text-[13.5px] font-medium underline-offset-2 hover:underline ${r.department === UNASSIGNED ? 'italic text-ink-2' : 'text-accent'}`}>{name}</button>
-                      <span className="shrink-0 text-[13px] text-muted"><Count bold n={r.total} label={`View all ${plural(r.total, 'record')} added to ${name} during this report`} onOpen={() => go({ department: r.department, type: null, page: null })} /> total</span>
+                      <span className="shrink-0 text-[13px] text-muted"><Count bold n={r.total} label={`View all ${plural(r.total, 'record')} ${basis === 'published' ? 'published in' : 'added to'} ${name} during this report`} onOpen={() => go({ department: r.department, type: null, page: null })} /> total</span>
                     </div>
                     <p className="mt-1 flex flex-wrap gap-x-4 text-[12.5px] text-muted">
                       {KINDS.map(([k, label, key]) => (
-                        <span key={k}>{label} <Count n={r[key]} label={`View ${plural(r[key], SINGULAR[k])} added to ${name} during this report`} onOpen={() => go({ department: r.department, type: k, page: null })} /></span>
+                        <span key={k}>{label} <Count n={r[key]} label={`View ${plural(r[key], SINGULAR[k])} ${basis === 'published' ? 'published in' : 'added to'} ${name} during this report`} onOpen={() => go({ department: r.department, type: k, page: null })} /></span>
                       ))}
                     </p>
                   </li>
                 );
               })}
-              <li className="flex justify-between bg-surface-2 px-3.5 py-2 text-[13px] font-semibold text-ink"><span>All departments</span><span className="tabular-nums">{N(data.totalAdded)}</span></li>
+              <li className="flex justify-between bg-surface-2 px-3.5 py-2 text-[13px] font-semibold text-ink"><span>All departments</span><span className="tabular-nums">{N(view!.total)}</span></li>
             </ul>
             <div className="mt-3 hidden overflow-x-auto rounded-xl border border-rule bg-surface sm:block">
               <table className="w-full min-w-[460px] text-left text-[13px]">
-                <caption className="sr-only">New catalogue records added in this cycle, by department</caption>
+                <caption className="sr-only">{basis === 'published' ? 'Records published' : 'New catalogue records added'} in this cycle, by department</caption>
                 <thead className="bg-surface-2 text-[11px] uppercase tracking-wide text-muted">
                   <tr>
                     <th scope="col" className="px-4 py-2 font-semibold">
@@ -206,16 +244,16 @@ export function DailySummary({ refreshKey }: { refreshKey: unknown }) {
                     return (
                       <tr key={r.department} className={sel ? 'bg-accent-soft/40' : ''}>
                         <th scope="row" className="px-4 py-2 text-left font-medium">
-                          <button type="button" aria-pressed={sel} title={`View everything added to ${name}`} aria-label={`View the ${plural(r.total, 'record')} added to ${name} during this report`}
+                          <button type="button" aria-pressed={sel} title={`View everything ${basis === 'published' ? 'published in' : 'added to'} ${name}`} aria-label={`View the ${plural(r.total, 'record')} ${basis === 'published' ? 'published in' : 'added to'} ${name} during this report`}
                             onClick={() => go({ department: r.department, type: null, page: null })}
                             className={`text-left underline-offset-2 hover:underline focus-visible:underline ${r.department === UNASSIGNED ? 'italic text-ink-2' : 'text-accent'}`}>{name}</button>
                         </th>
                         {KINDS.map(([k, , key]) => (
                           <td key={k} className="px-3 py-2 text-right">
-                            <Count n={r[key]} label={`View ${plural(r[key], SINGULAR[k])} added to ${name} during this report`} onOpen={() => go({ department: r.department, type: k, page: null })} />
+                            <Count n={r[key]} label={`View ${plural(r[key], SINGULAR[k])} ${basis === 'published' ? 'published in' : 'added to'} ${name} during this report`} onOpen={() => go({ department: r.department, type: k, page: null })} />
                           </td>
                         ))}
-                        <td className="px-4 py-2 text-right"><Count bold n={r.total} label={`View all ${plural(r.total, 'record')} added to ${name} during this report`} onOpen={() => go({ department: r.department, type: null, page: null })} /></td>
+                        <td className="px-4 py-2 text-right"><Count bold n={r.total} label={`View all ${plural(r.total, 'record')} ${basis === 'published' ? 'published in' : 'added to'} ${name} during this report`} onOpen={() => go({ department: r.department, type: null, page: null })} /></td>
                       </tr>
                     );
                   })}
@@ -223,8 +261,8 @@ export function DailySummary({ refreshKey }: { refreshKey: unknown }) {
                 <tfoot className="bg-surface-2 font-semibold text-ink">
                   <tr>
                     <th scope="row" className="px-4 py-2 text-left">All departments</th>
-                    <td className="px-3 py-2 text-right tabular-nums">{N(data.journalsAdded)}</td><td className="px-3 py-2 text-right tabular-nums">{N(data.articlesAdded)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{N(data.booksAdded)}</td><td className="px-4 py-2 text-right tabular-nums">{N(data.totalAdded)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{N(view!.journals)}</td><td className="px-3 py-2 text-right tabular-nums">{N(view!.articles)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{N(view!.books)}</td><td className="px-4 py-2 text-right tabular-nums">{N(view!.total)}</td>
                   </tr>
                 </tfoot>
               </table>
@@ -232,7 +270,7 @@ export function DailySummary({ refreshKey }: { refreshKey: unknown }) {
             </>
           )}
 
-          {drilling && <Records reportDate={data.reportDate} department={department} type={type || 'all'} page={page} expected={expected} finalized={!!data.isFinalized} summary={row}
+          {drilling && <Records basis={basis} reportDate={data.reportDate} department={department} type={type || 'all'} page={page} expected={expected} finalized={!!data.isFinalized} summary={row}
             onType={t => go({ type: t === 'all' ? null : t, page: null })} onPage={p => go({ page: p > 1 ? String(p) : null })} onClose={() => go({ department: null, type: null, page: null })} />}
 
           <div className="mt-3 border-t border-rule/60 pt-2.5">
@@ -248,7 +286,8 @@ export function DailySummary({ refreshKey }: { refreshKey: unknown }) {
             </dl>
           </div>
           <p className="mt-2 text-[11.5px] text-muted">
-            Counted from the catalogue: ingested records that were created in this cycle and are public now (journals: accepted). The department is the record’s department as it stands today, and a record approved from review later is counted in the cycle it was created in.
+            New records added: ingested records created in this cycle that are public now (journals: accepted). Published: records that became public in this cycle, from the publication event, Review Automation’s own record, or the engine creating the record already public — never from a last-edited time. A record is counted once, however often it is edited afterwards. The department is the record’s department as it stands today.
+            {data.published.notRecorded > 0 && <> {N(data.published.notRecorded)} public {data.published.notRecorded === 1 ? 'record was' : 'records were'} approved by hand before publication times were recorded and {data.published.notRecorded === 1 ? 'is' : 'are'} not counted in any cycle’s “Published”.</>}
           </p>
         </>
       )}
@@ -269,8 +308,8 @@ function Tile({ label, n, onOpen, openLabel, wide }: { label: string; n: number;
 
 const TYPE_WORD: Record<Kind, string> = { journal: 'Journal', article: 'Article', book: 'Book' };
 
-function Records({ reportDate, department, type, page, expected, finalized, summary, onType, onPage, onClose }: {
-  reportDate: string; department: string; type: Kind | 'all'; page: number; expected: number | null; finalized: boolean; summary?: any;
+function Records({ basis, reportDate, department, type, page, expected, finalized, summary, onType, onPage, onClose }: {
+  basis: Basis; reportDate: string; department: string; type: Kind | 'all'; page: number; expected: number | null; finalized: boolean; summary?: any;
   onType: (t: Kind | 'all') => void; onPage: (p: number) => void; onClose: () => void;
 }) {
   const [res, setRes] = useState<any>(null);
@@ -281,16 +320,16 @@ function Records({ reportDate, department, type, page, expected, finalized, summ
   useEffect(() => {
     let alive = true; setError(null);
     (async () => {
-      const q = new URLSearchParams({ reportDate, type, page: String(page), pageSize: String(PAGE), ...(department ? { department } : {}) });
+      const q = new URLSearchParams({ reportDate, type, basis, page: String(page), pageSize: String(PAGE), ...(department ? { department } : {}) });
       const r = await api(`/api/admin/ingest/daily-summary/content?${q}`);
       if (!alive) return;
       if (r.ok) setRes(r.data); else { setRes(null); setError(r.data?.error || 'The records could not be loaded.'); }
     })();
     return () => { alive = false; };
-  }, [reportDate, department, type, page]);
+  }, [reportDate, department, type, page, basis]);
 
   // Bring the list into view when it opens, including from a copied link.
-  useEffect(() => { box.current?.scrollIntoView({ block: 'start' }); }, [department, type]);
+  useEffect(() => { box.current?.scrollIntoView({ block: 'start' }); }, [department, type, basis]);
 
   const title = department ? deptLabel(department) : 'All departments';
   const total = res?.total ?? expected;
@@ -304,7 +343,7 @@ function Records({ reportDate, department, type, page, expected, finalized, summ
       <div className="flex flex-wrap items-start justify-between gap-2 border-b border-rule px-4 py-3">
         <div className="min-w-0">
           <h3 className="text-[15px] font-semibold text-ink">{title}{single ? ` · ${TYPE_WORD[single]}s` : ''}</h3>
-          <p className="mt-0.5 text-[12.5px] text-muted">{total != null ? `${plural(total, 'record')} added during this reporting cycle` : 'Loading…'}</p>
+          <p className="mt-0.5 text-[12.5px] text-muted">{total != null ? `${plural(total, 'record')} ${basis === 'published' ? 'published (made public)' : 'added'} during this reporting cycle` : 'Loading…'}</p>
         </div>
         <button type="button" className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Close the record list"><X size={14} aria-hidden="true" /> Close</button>
       </div>
@@ -330,7 +369,7 @@ function Records({ reportDate, department, type, page, expected, finalized, summ
 
       {res && (rows.length === 0 ? <p className="px-4 py-5 text-center text-[13px] text-muted">No records match this selection.</p> : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] text-left text-[12.5px]">
+          <table className="w-full min-w-[780px] text-left text-[12.5px]">
             <thead className="text-[11px] uppercase tracking-wide text-muted">
               <tr className="border-b border-rule">
                 {!single && <th className="px-4 py-2 font-semibold">Type</th>}
@@ -339,7 +378,8 @@ function Records({ reportDate, department, type, page, expected, finalized, summ
                 <th className="px-3 py-2 font-semibold">{single === 'journal' ? 'ISSN / eISSN' : single === 'book' ? 'ISBN / DOI' : single === 'article' ? 'DOI' : 'Identifier'}</th>
                 <th className="px-3 py-2 font-semibold">{single === 'journal' ? 'Source' : 'Provider'}</th>
                 {!department && <th className="px-3 py-2 font-semibold">Department</th>}
-                <th className="px-3 py-2 font-semibold">Added at</th>
+                <th className="px-3 py-2 font-semibold">{basis === 'published' ? 'Published at' : 'Added at'}</th>
+                {basis === 'published' && <th className="px-3 py-2 font-semibold">Method</th>}
                 {single !== 'article' && <th className="px-3 py-2 font-semibold">{single === 'journal' ? 'Licence' : 'Access'}</th>}
                 <th className="px-4 py-2 font-semibold">Status</th>
               </tr>
@@ -359,9 +399,10 @@ function Records({ reportDate, department, type, page, expected, finalized, summ
                     <td className="px-3 py-2 tabular-nums text-ink-2 [overflow-wrap:anywhere]">{ident || '—'}</td>
                     <td className="px-3 py-2 text-ink-2">{r.provider || '—'}</td>
                     {!department && <td className="px-3 py-2 text-ink-2">{deptLabel(r.department)}</td>}
-                    <td className="whitespace-nowrap px-3 py-2 text-ink-2">{addedAt(r.addedAt)}</td>
+                    <td className="whitespace-nowrap px-3 py-2 text-ink-2">{stampShort(basis === 'published' ? r.publishedAt : r.addedAt)}</td>
+                    {basis === 'published' && <td className="whitespace-nowrap px-3 py-2 text-ink-2">{r.methodLabel}</td>}
                     {single !== 'article' && <td className="px-3 py-2 text-ink-2">{(r.access && (ACCESS[r.access] || r.access)) || '—'}</td>}
-                    <td className="px-4 py-2"><Badge tone="success">Added</Badge></td>
+                    <td className="px-4 py-2"><Badge tone="success">{basis === 'published' ? 'Published' : 'Added'}</Badge></td>
                   </tr>
                 );
               })}
