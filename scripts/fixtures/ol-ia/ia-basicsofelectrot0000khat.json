@@ -1,0 +1,59 @@
+{
+ "metadata": {
+  "identifier": "basicsofelectrot0000khat",
+  "access-restricted-item": "true",
+  "collection": [
+   "internetarchivebooks",
+   "inlibrary",
+   "printdisabled"
+  ],
+  "mediatype": "texts",
+  "openlibrary_edition": "OL29474976M",
+  "openlibrary_work": "OL21670807W",
+  "isbn": [
+   "9788180611711",
+   "818061171X"
+  ],
+  "title": "Basics of Electrotherapy",
+  "date": "2003"
+ },
+ "files": [
+  {
+   "name": "basicsofelectrot0000khat.epub",
+   "format": "EPUB",
+   "size": "1766871",
+   "source": "derivative"
+  },
+  {
+   "name": "basicsofelectrot0000khat.lcpdf",
+   "format": "LCP Encrypted PDF",
+   "size": "5880564",
+   "source": "derivative"
+  },
+  {
+   "name": "basicsofelectrot0000khat.pdf",
+   "format": "Text PDF",
+   "size": "5610830",
+   "source": "derivative"
+  },
+  {
+   "name": "basicsofelectrot0000khat_encrypted.epub",
+   "format": "ACS Encrypted EPUB",
+   "size": "1699214",
+   "source": "derivative"
+  },
+  {
+   "name": "basicsofelectrot0000khat_encrypted.pdf",
+   "format": "ACS Encrypted PDF",
+   "size": "5528978",
+   "source": "derivative"
+  },
+  {
+   "name": "basicsofelectrot0000khat_lcp.epub",
+   "format": "LCP Encrypted EPUB",
+   "size": "1851501",
+   "source": "derivative"
+  }
+ ],
+ "files_count": 32
+}
