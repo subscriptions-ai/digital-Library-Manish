@@ -74,6 +74,8 @@ import { reviewJobHolder } from "./src/lib/ingestion/reviewJobLock.js";
 import * as reviewPublish from "./src/lib/ingestion/reviewPublish.js";
 import * as reviewAutoPublish from "./src/lib/ingestion/reviewAutoPublish.js";
 import * as reviewIngestRouting from "./src/lib/ingestion/reviewIngestRouting.js";
+import * as journalReviewAnalysis from "./src/lib/ingestion/journalReviewAnalysis.js";
+import * as journalReviewAssign from "./src/lib/ingestion/journalReviewAssign.js";
 import { pipelineStatus } from "./src/lib/ingestion/pipelineStatus.js";
 import { overview as backfillOverview, createJob as createBackfillJob, controlJob as controlBackfillJob, serializeJob as serializeBackfillJob, describeSource as describeBackfillSource } from "./src/lib/ingestion/backfill/jobs.js";
 import { startBackfillWorker } from "./src/lib/ingestion/backfill/worker.js";
@@ -8402,6 +8404,44 @@ async function startServer() {
   app.post("/api/admin/review/batch/assign", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
     try { res.json(await reviewBatch.batchAssign({ ids: req.body?.ids, mode: req.body?.mode, classifier: req.body?.classifier, department: req.body?.department, by: req.user })); }
     catch (e: any) { assignmentError(res, e, "Failed to assign the selected books"); }
+  });
+  // ── Review automation R3B: journals. Classification analysis + controlled department assignment for journals that have none. Nothing here publishes, approves, rejects
+  // or changes a journal's status, rights, ISSN or publisher; the only thing an assignment writes is the department. Writing is behind REVIEW_JOURNAL_ASSIGN_ENABLED (off by default);
+  // the analysis, the record list and the previews only read. ──
+  const journalError = (res: any, e: any, fallback: string) => {
+    if (e instanceof journalReviewAssign.JournalAssignDisabledError) return res.status(403).json({ error: e.message, code: 'disabled' });
+    if (e instanceof journalReviewAssign.JournalBatchError) return res.status(400).json({ error: e.message });
+    console.error('journal review error:', e?.message); return res.status(500).json({ error: fallback });
+  };
+  app.get("/api/admin/review/journals/summary", authenticateJWT, requireAdminOrManager, async (_req: any, res: any) => {
+    try { res.json({ summary: await journalReviewAnalysis.loadJournalSummary(), job: journalReviewAnalysis.journalJobState(), recordsAvailable: journalReviewAnalysis.journalRowsAvailable(), config: journalReviewAssign.journalAssignConfig() }); }
+    catch (e: any) { res.status(500).json({ error: "Failed to read the journal analysis" }); }
+  });
+  app.post("/api/admin/review/journals/run", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const started = journalReviewAnalysis.startJournalAnalysis(req.user, journalReviewAssign.journalThresholds().thresholds, (s, err) => {
+        ingestionAudit(req.user, 'REVIEW_JOURNAL_ANALYSIS', s ? { catalogueChanged: false, analysed: s.analysed, tiers: s.tiers, classifierVersion: s.classifierVersion, thresholds: s.thresholds } : { catalogueChanged: false, failed: err }).catch(() => {});
+      });
+      if (!started) return res.status(409).json({ error: "A review job is already running", job: journalReviewAnalysis.journalJobState() });
+      res.status(202).json({ job: journalReviewAnalysis.journalJobState() });
+    } catch (e: any) { res.status(500).json({ error: "Failed to start the journal analysis" }); }
+  });
+  app.get("/api/admin/review/journals/records", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const q = req.query, tier = String(q.tier || '');
+      res.json(journalReviewAnalysis.journalRecords({
+        tier: ['high', 'medium', 'low', 'unclassifiable'].includes(tier) ? tier as any : undefined, department: q.department ? String(q.department) : undefined, origin: q.origin ? String(q.origin) : undefined,
+        status: q.status ? String(q.status) : undefined, q: q.q ? String(q.q).slice(0, 80) : undefined, minScore: q.minScore !== undefined && q.minScore !== '' && Number.isFinite(Number(q.minScore)) ? Number(q.minScore) : undefined,
+      }, parseInt(String(q.page)) || 1, parseInt(String(q.take)) || 50));
+    } catch (e: any) { res.status(500).json({ error: "Failed to read the journal records" }); }
+  });
+  app.post("/api/admin/review/journals/batch/preview", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try { res.json(await journalReviewAssign.batchAssignJournals({ ids: req.body?.ids, mode: req.body?.mode, department: req.body?.department, by: req.user }, { dryRun: true })); }
+    catch (e: any) { journalError(res, e, "Failed to preview the selected journals"); }
+  });
+  app.post("/api/admin/review/journals/batch/assign", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try { res.json(await journalReviewAssign.batchAssignJournals({ ids: req.body?.ids, mode: req.body?.mode, department: req.body?.department, by: req.user })); }
+    catch (e: any) { journalError(res, e, "Failed to assign the selected journals"); }
   });
   // ── Review automation R3A: future-ingestion routing. Read-only here: the gate is a deployment setting, and the harvest does the routing as it writes new Drafts.
   app.get("/api/admin/review/routing", authenticateJWT, requireAdminOrManager, async (_req: any, res: any) => {
