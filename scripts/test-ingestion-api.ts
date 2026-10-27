@@ -1,6 +1,8 @@
 /**
- * Ingestion API tests: the real Express server, talking to the throwaway database `stm_ingestion_test`.
- * Refuses to run against anything else. The server is started with a preload that blocks all outbound network
+ * Ingestion API tests: the real Express server, talking to its OWN throwaway database `stm_ingestion_api_test`
+ * (createdb stm_ingestion_api_test && DATABASE_URL=.../stm_ingestion_api_test npx prisma db push).
+ * Refuses to run against anything else. It no longer shares `stm_ingestion_test`: other suites and other sessions write catalogue rows there,
+ * and this suite compares catalogue row counts before and after ("writes nothing"), which a concurrent writer breaks. The server is started with a preload that blocks all outbound network
  * and answers Europe PMC with fixed records, so no test touches the internet or the real catalogue.
  *
  *   npx tsx scripts/test-ingestion-api.ts
@@ -15,14 +17,23 @@ import jwt from 'jsonwebtoken';
 const env = readFileSync(new URL('../.env', import.meta.url), 'utf8');
 const envVal = (k: string) => new RegExp(`^${k}=(.*)$`, 'm').exec(env)?.[1]?.replace(/^["']|["']$/g, '');
 const real = envVal('DATABASE_URL'); if (!real) throw new Error('no DATABASE_URL in .env');
-const TEST_URL = real.replace(/\/[^/?]+(\?.*)?$/, '/stm_ingestion_test');
+const TEST_URL = real.replace(/\/[^/?]+(\?.*)?$/, '/stm_ingestion_api_test');
 process.env.DATABASE_URL = TEST_URL;
 const { ingestionDb: db } = await import('../src/lib/ingestion/db.js');
 const dbName = (await db.$queryRawUnsafe('select current_database() d'))[0].d;
-if (dbName !== 'stm_ingestion_test') throw new Error(`refusing to run against "${dbName}"`);
+if (dbName !== 'stm_ingestion_api_test') throw new Error(`refusing to run against "${dbName}"`);
 const { DOMAINS } = await import('../src/constants.js');
 
-const PORT = 3101, FILE_PORT = 3199, BASE = `http://127.0.0.1:${PORT}`;
+// A fresh database for every run. This database is private to this suite, and the engine is stateful (the rotation remembers the provider it served last, the
+// pass counter, each department's sweep, the journals and articles earlier runs created), so a run on a used database is not the same run as the first one:
+// the forced pass in "Manual pass" would ingest the fixed Europe PMC records before the "already held" step creates one of them. Emptying every table makes every
+// run the first run. (Refused above unless the database is stm_ingestion_api_test.)
+{
+  const tables: { tablename: string }[] = await db.$queryRawUnsafe(`select tablename from pg_tables where schemaname = 'public' and tablename not like '\\_prisma%'`);
+  if (tables.length) await db.$executeRawUnsafe(`truncate table ${tables.map(t => `"${t.tablename}"`).join(', ')} restart identity cascade`);
+}
+
+const PORT = Number(process.env.API_TEST_PORT) || 3181, FILE_PORT = Number(process.env.API_TEST_FILE_PORT_BASE) || 3189, BASE = `http://127.0.0.1:${PORT}`;
 const RUN = Date.now().toString(36);
 const ISSN = `${Math.floor(Math.random() * 9000) + 1000}-${Math.floor(Math.random() * 9000) + 1000}`;
 const SECRET = envVal('JWT_SECRET') || 'your-fallback-secret-for-dev-only';
@@ -115,6 +126,10 @@ try {
   const codes = pair.map(p => p.status).sort();
   check('two clicks at once start one pass; the other is refused with 409', codes[1] === 409 && codes[0] !== 409, codes.join(','));
   await sleep(1500);
+  // The forced pass is a real pass over the fixture source, so on a fresh engine it ingests this run's four fixed records. The sections below start from "the catalogue
+  // holds none of them" (and create the one they need held), so the pass's own writes for THIS run are removed first. Nothing else is touched.
+  await db.article.deleteMany({ where: { doi: { startsWith: `10.7777/${RUN}.` } } });
+  await db.journal.deleteMany({ where: { title: `API Test Journal ${RUN}` } });
 
   section('Dry run writes nothing to the catalogue');
   check('no department → "Select at least one department to continue."', (await A('/api/admin/ingest/dry-run', 'POST', { source: 'europepmc', departments: [] })).data?.error === 'Select at least one department to continue.');
@@ -204,7 +219,7 @@ try {
   check('the engine state carries one sentence of status and the 24-hour efficiency fields', st2.status === 200 && typeof st2.data.status.summary === 'string' && 'uniqueYieldPct' in st2.data.last24h && 'duplicateEnriched' in st2.data.last24h);
   check('each provider card has a score, its rates and a standing', (st2.data.status.rotation?.providers || []).every((p: any) => typeof p.score === 'number' && p.rates && 'quality' in p));
 } catch (e: any) {
-  fail++; console.log('  FAIL  test crashed:', e?.message);
+  fail++; console.log('  FAIL  test crashed:', e?.message || JSON.stringify(e));
   console.log(serverLog.slice(-1500));
 } finally {
   await db.userSession.updateMany({ where: { sessionId: { startsWith: `sid-${RUN}` } }, data: { revokedAt: new Date() } });
