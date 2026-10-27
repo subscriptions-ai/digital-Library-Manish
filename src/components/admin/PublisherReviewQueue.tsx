@@ -4,6 +4,7 @@ import { CheckCircle, XCircle, FileText, BookOpen, ExternalLink, ShieldCheck, X 
 import { useSearchParams } from 'react-router-dom';
 import { AutoClassification } from './review/AutoClassification';
 import { BatchReview } from './review/BatchReview';
+import { JournalReview } from './review/JournalReview';
 import { ReviewHistory } from './review/ReviewHistory';
 
 export function PublisherReviewQueue() {
@@ -14,7 +15,7 @@ export function PublisherReviewQueue() {
   const [params, setParams] = useSearchParams();
   const wantTab = params.get('tab');
   const source = params.get('source') || '';
-  const [tab, setTab] = useState<'articles' | 'books' | 'ingested' | 'auto' | 'batch' | 'history'>(wantTab === 'ingested' || wantTab === 'books' || wantTab === 'articles' || wantTab === 'auto' || wantTab === 'batch' || wantTab === 'history' ? wantTab : 'articles');
+  const [tab, setTab] = useState<'articles' | 'books' | 'ingested' | 'auto' | 'batch' | 'journals' | 'history'>(wantTab === 'ingested' || wantTab === 'books' || wantTab === 'articles' || wantTab === 'auto' || wantTab === 'batch' || wantTab === 'journals' || wantTab === 'history' ? wantTab : 'articles');
   const [ingested, setIngested] = useState<any[]>([]);
   const [ingestedTotal, setIngestedTotal] = useState(0);
   const [departments, setDepartments] = useState<string[]>([]);
@@ -95,11 +96,13 @@ export function PublisherReviewQueue() {
           className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${tab === 'auto' ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-800'}`}>Auto Classification</button>
         <button onClick={() => setTab('batch')}
           className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${tab === 'batch' ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-800'}`}>Batch Review</button>
+        <button onClick={() => setTab('journals')}
+          className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${tab === 'journals' ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-800'}`}>Journals</button>
         <button onClick={() => setTab('history')}
           className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${tab === 'history' ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-800'}`}>Review History</button>
       </div>
 
-      {tab === 'auto' ? <AutoClassification /> : tab === 'batch' ? <BatchReview /> : tab === 'history' ? <ReviewHistory /> : (
+      {tab === 'auto' ? <AutoClassification /> : tab === 'batch' ? <BatchReview /> : tab === 'journals' ? <JournalReview /> : tab === 'history' ? <ReviewHistory /> : (
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         {loading ? (
           <div className="py-12 flex justify-center"><div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" /></div>

@@ -1,5 +1,6 @@
 /**
- * What the public site counts as a journal, and that the admin and public figures are two different, explicit things.
+ * What the public site counts as a journal (status Accepted or MetadataOnly, with or without a published article), and that the admin and public
+ * figures are two different, explicit things.
  *
  *   npx tsx scripts/test-public-journals.ts
  *
@@ -68,6 +69,11 @@ try {
   const sid = `sid-pj-${RUN}`;
   await db.userSession.create({ data: { userId: admin.id, sessionId: sid, expiresAt: new Date(Date.now() + 3600_000) } });
   const adminTok = jwt.sign({ uid: admin.id, sid, role: 'SuperAdmin', email: admin.email }, SECRET, { expiresIn: '1h' });
+  const sub = await db.user.create({ data: { email: `pj-sub-${RUN}@pj-test.invalid`, password: 'x', role: 'Subscriber', displayName: 'pj subscriber' } as any });
+  created.users.push(sub.id);
+  const sid2 = `sid-pj2-${RUN}`;
+  await db.userSession.create({ data: { userId: sub.id, sessionId: sid2, expiresAt: new Date(Date.now() + 3600_000) } });
+  const subTok = jwt.sign({ uid: sub.id, sid: sid2, role: 'Subscriber', email: sub.email }, SECRET, { expiresIn: '1h' });
   srv = await start();
 
   const headline = async () => (await get('/api/public/content-type-counts')).data?.Journals as number;
@@ -78,61 +84,111 @@ try {
 
   const h0 = await headline(), d0 = await deptCount(), a0 = await adminFigures();
 
-  section('Seeding: seven journals that differ only in what decides whether the public sees them');
+  section('Seeding: nine journals that differ only in what decides whether the public sees them');
   const j1 = await mkJournal('accepted-two-articles', 'Accepted'); await mkArticle(j1.id, 'Published', 2);
-  const j2 = await mkJournal('metadata-only', 'MetadataOnly'); await mkArticle(j2.id, 'Published');
+  const j2 = await mkJournal('metadata-only', 'MetadataOnly'); const [a2] = await mkArticle(j2.id, 'Published');
   const j3 = await mkJournal('pending-review', 'NeedsReview'); await mkArticle(j3.id, 'Published');
   const j4 = await mkJournal('rejected', 'Rejected'); await mkArticle(j4.id, 'Published');
   const j5 = await mkJournal('accepted-no-articles', 'Accepted');
   const j6 = await mkJournal('accepted-draft-only', 'Accepted'); const [draftArticle] = await mkArticle(j6.id, 'Draft');
   const j7 = await mkJournal('unknown-status', 'SomethingNew'); await mkArticle(j7.id, 'Published');
-  void j5; void draftArticle;
+  const j8 = await mkJournal('metadata-only-no-articles', 'MetadataOnly');
+  const j9 = await mkJournal('draft', 'Draft');
+  void draftArticle;
+  // a long abstract, to prove the full text never travels on the public routes
+  await db.article.update({ where: { id: a2 }, data: { abstract: 'FULLTEXT-MARKER ' + 'lorem ipsum '.repeat(120) } });
 
   section('The public figure');
   {
     const h1 = await headline();
-    check('Public total rose by exactly 2: the Accepted and the MetadataOnly journal that hold a published article', h1 - h0 === 2, [h0, h1]);
-    const ids = new Set((await filterList()).map((j: any) => j.id));
-    check('the journal filter lists the Accepted and MetadataOnly journals', ids.has(j1.id) && ids.has(j2.id));
-    check('a pending-review journal is not public, even with a published article', !ids.has(j3.id));
-    check('a rejected journal is not public', !ids.has(j4.id));
-    check('a journal with a status nobody defined is not public', !ids.has(j7.id));
-    check('an Accepted journal with no article, or only a draft, is not public', !ids.has(j5.id) && !ids.has(j6.id));
+    check('Public total rose by exactly 5: Accepted + articles, MetadataOnly + articles, Accepted + none, Accepted + only a draft, MetadataOnly + none', h1 - h0 === 5, [h0, h1]);
     const list = new Set((await deptList()).map((j: any) => j.id));
-    check('the department page lists exactly the same journals', list.has(j1.id) && list.has(j2.id) && !list.has(j3.id) && !list.has(j4.id) && !list.has(j7.id) && !list.has(j5.id) && !list.has(j6.id));
+    check('Accepted with articles is listed', list.has(j1.id));
+    check('MetadataOnly with an article is listed', list.has(j2.id));
+    check('Accepted with ZERO articles is listed', list.has(j5.id));
+    check('MetadataOnly with ZERO articles is listed', list.has(j8.id));
+    check('Accepted with only a Draft article is listed (a draft is not a published article)', list.has(j6.id));
+    check('NeedsReview is hidden, even with a published article', !list.has(j3.id));
+    check('Rejected is hidden', !list.has(j4.id));
+    check('Draft is hidden', !list.has(j9.id));
+    check('a status nobody defined is hidden', !list.has(j7.id));
+    const row = (await deptList()).find((j: any) => j.id === j5.id);
+    check('a zero-article journal reports articleCount 0 (the page then says "No published articles available yet")', row?.articleCount === 0, row);
     const d1 = await deptCount();
-    check('the department figure rose by the same 2, by the same rule', d1 - d0 === 2, [d0, d1]);
-    check('the library filter, the department page and the headline agree on these seven', [j1, j2].every(j => ids.has(j.id) && list.has(j.id)));
+    check('the department figure rose by the same 5, by the same rule', d1 - d0 === 5, [d0, d1]);
+    const filter = new Set((await filterList()).map((j: any) => j.id));
+    check('the ARTICLE-SEARCH filter is unchanged: it lists only journals that hold a published article (picking an empty one returns nothing)', filter.has(j1.id) && filter.has(j2.id) && !filter.has(j5.id) && !filter.has(j8.id) && !filter.has(j3.id));
+    const pubPage = (await get(`/api/library/publisher/pj-publisher-${RUN}`)).data;
+    check('the publisher page lists the same five public journals', (pubPage?.journals || []).length === 5 && !(pubPage.journals).some((j: any) => [j3.id, j4.id, j7.id, j9.id].includes(j.id)), pubPage?.journals?.length);
+    check('and orders those that hold articles before those that hold none', (pubPage?.journals || []).slice(0, 2).every((j: any) => j.articleCount > 0) && (pubPage?.journals || []).slice(2).every((j: any) => j.articleCount === 0));
+  }
+
+  section('Journal detail');
+  {
+    const d5 = await get(`/api/library/journal/${j5.id}`);
+    check('a zero-article journal opens (200), with no articles, volumes or recent items', d5.status === 200 && d5.data?.articleCount === 0 && d5.data?.volumes?.length === 0 && d5.data?.recent?.length === 0, d5.status);
+    const d8 = await get(`/api/library/journal/${j8.id}`);
+    check('a MetadataOnly journal with zero articles opens', d8.status === 200 && d8.data?.articleCount === 0);
+    const d6 = await get(`/api/library/journal/${j6.id}`);
+    check('a journal with only a draft article opens, and the draft is not counted or shown', d6.status === 200 && d6.data?.articleCount === 0 && d6.data?.recent?.length === 0);
+    const d1 = await get(`/api/library/journal/${j1.id}`);
+    check('an Accepted journal with articles still opens with its real count', d1.status === 200 && d1.data?.articleCount === 2);
+    check('NeedsReview is not found', (await get(`/api/library/journal/${j3.id}`)).status === 404);
+    check('Rejected is not found', (await get(`/api/library/journal/${j4.id}`)).status === 404);
+    check('Draft is not found', (await get(`/api/library/journal/${j9.id}`)).status === 404);
+    check('a status nobody defined is not found', (await get(`/api/library/journal/${j7.id}`)).status === 404);
+    check('the volume route follows the same rule', (await get(`/api/library/journal/${j3.id}/volume/1`)).status === 404 && (await get(`/api/library/journal/${j5.id}/volume/1`)).status === 200);
+  }
+
+  section('Full text and access rules are unchanged');
+  {
+    const art = await get(`/api/library/article/${a2}`);
+    check('an article of a public journal still carries only a capped preview, never the full abstract', art.status === 200 && !('abstract' in (art.data || {})) && !/FULLTEXT-MARKER[\s\S]{450}/.test(art.text) && (art.data?.abstractPreview || '').length <= 400, art.text.length);
+    check('the document routes still need a login', (await get(`/api/content/${a2}/proxy-pdf`)).status === 401 && (await get(`/api/content/${a2}/view`)).status === 401);
+    const sd = await get(`/api/library/journal/${j5.id}`, subTok);
+    check('a signed-in member whose plan covers no department still gets 403 on a zero-article journal', sd.status === 403, sd.status);
+    check('...and 403 on an article in that department', (await get(`/api/library/article/${a2}`, subTok)).status === 403);
   }
 
   section('The admin figure is a different, explicit thing');
   {
     const a1 = await adminFigures();
-    check('admin "records in database" rose by all seven rows', a1.catalogue - a0.catalogue === 7, [a0.catalogue, a1.catalogue]);
+    check('admin "records in database" rose by all nine rows', a1.catalogue - a0.catalogue === 9, [a0.catalogue, a1.catalogue]);
     check('admin also reports the public figure, and it equals the public site\'s', a1.publicTitles === (await headline()), [a1.publicTitles, await headline()]);
     check('the two are not the same number', a1.catalogue !== a1.publicTitles);
+    check('the admin public figure rose by the 5 public journals, the records figure by all 9', a1.publicTitles - a0.publicTitles === 5 && a1.catalogue - a0.catalogue === 9);
     const mine = await adminFigures(`PJ ${RUN}`);
-    check('"with published articles" is read from the articles (the counter is 0 on every one of these)', mine.total === 7 && mine.withArticles === 5 && mine.journals.every((j: any) => j.articleCount === 0), [mine.total, mine.withArticles]);
+    check('"with published articles" is read from the articles (the counter is 0 on every one of these)', mine.total === 9 && mine.withArticles === 5 && mine.journals.every((j: any) => j.articleCount === 0), [mine.total, mine.withArticles]);
     const without = (await get(`/api/admin/journals?limit=200&q=${encodeURIComponent('PJ ' + RUN)}&articles=without`, adminTok)).data;
     const withIt = (await get(`/api/admin/journals?limit=200&q=${encodeURIComponent('PJ ' + RUN)}&articles=with`, adminTok)).data;
-    check('"has articles" and "no articles yet" split the seven 5 / 2', withIt.total === 5 && without.total === 2, [withIt.total, without.total]);
+    check('"has articles" and "no articles yet" split the nine 5 / 4', withIt.total === 5 && without.total === 4, [withIt.total, without.total]);
     check('the Articles column shows the real number of published articles', mine.journals.find((j: any) => j.id === j1.id)?.publishedArticles === 2 && mine.journals.find((j: any) => j.id === j6.id)?.publishedArticles === 0);
     check('no internal review or rejected count is in the PUBLIC response', !JSON.stringify((await get('/api/public/content-type-counts')).data).match(/review|reject/i));
   }
 
-  section('Unpublishing and approving move the public figure');
+  section('Only the status moves the public figure, never the articles');
   {
     const before = await headline(), deptBefore = await deptCount();
     await db.article.updateMany({ where: { journalId: j1.id }, data: { status: 'Draft' } });
-    check('unpublishing the journal\'s articles lowers the public count by 1', (await headline()) === before - 1 && (await deptCount()) === deptBefore - 1);
-    check('and it leaves the department page and the filter', !(await deptList()).some((j: any) => j.id === j1.id) && !(await filterList()).some((j: any) => j.id === j1.id));
+    check('unpublishing every article of a journal does NOT remove it: the count is unchanged', (await headline()) === before && (await deptCount()) === deptBefore);
+    const row = (await deptList()).find((j: any) => j.id === j1.id);
+    check('it stays on the department page, now holding none', row?.articleCount === 0);
     await db.article.updateMany({ where: { journalId: j1.id }, data: { status: 'Published' } });
-    check('publishing them again restores it', (await headline()) === before);
+    check('publishing them again changes nothing in the count', (await headline()) === before);
     await db.journal.update({ where: { id: j3.id }, data: { status: 'Accepted' } });
     check('approving the pending-review journal raises the public count by 1', (await headline()) === before + 1 && (await deptCount()) === deptBefore + 1);
     check('and it joins the department page', (await deptList()).some((j: any) => j.id === j3.id));
     await db.journal.update({ where: { id: j2.id }, data: { status: 'Rejected' } });
     check('rejecting a public journal lowers it by 1', (await headline()) === before);
+    await db.journal.update({ where: { id: j5.id }, data: { status: 'NeedsReview' } });
+    check('sending a zero-article journal back to review hides it', (await headline()) === before - 1 && (await get(`/api/library/journal/${j5.id}`)).status === 404);
+  }
+
+  section('The public count matches the query');
+  {
+    const q = Number((await db.$queryRawUnsafe<any[]>(`select count(*)::int n from "Journal" where status in ('Accepted','MetadataOnly')`))[0].n);
+    check('headline = count of Accepted + MetadataOnly rows, whatever else the database holds', (await headline()) === q, [await headline(), q]);
+    check('and the admin public-titles figure agrees', (await adminFigures()).publicTitles === q);
   }
 } finally {
   await stop(srv);

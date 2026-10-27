@@ -18,7 +18,7 @@ export type AuditAction =
   /** Historical backfill: a job was created, and a job was paused / resumed / cancelled / re-planned. Never a record, never a credential. */
   | 'BACKFILL_JOB_CREATED' | 'BACKFILL_JOB_CONTROL' | 'BACKFILL_JOB_FINISHED'
   /** DOAJ journal enrichment: one chunk wrote descriptive fields into journals already held (counts, the fields and at most 50 ISSNs; never a value, never a credential). */
-  | 'DOAJ_ENRICHMENT_APPLIED'
+  | 'DOAJ_ENRICHMENT_APPLIED' | 'DOAJ_CONFLICT_DECISION'
   /** Full-text candidate review: a person approved, held or rejected a candidate. A record only — nothing is downloaded and the Book is not changed. */
   | 'FULLTEXT_CANDIDATE_DECISION'
   /** Review automation: a classification analysis (or v1-vs-v2 comparison) of the "Needs a department" queue was run. Counts only; it does not modify catalogue or content records. */

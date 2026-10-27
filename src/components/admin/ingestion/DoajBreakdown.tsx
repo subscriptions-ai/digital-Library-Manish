@@ -27,7 +27,7 @@ const STATUS_TONE: Record<string, BadgeTone> = { Accepted: 'success', MetadataOn
 const BY: Record<string, string> = { issn: 'ISSN', eissn: 'e-ISSN', both: 'ISSN and e-ISSN' };
 
 export const CATEGORY_LABEL: Record<string, string> = {
-  new: 'New', heldPublic: 'Already held — public', heldNoArticles: 'Already held — catalogued, no published article yet', heldReview: 'Already held — draft or review',
+  new: 'New', heldPublic: 'Already held — public, with articles', heldNoArticles: 'Already held — public, no published article yet', heldReview: 'Already held — draft or review',
   heldRejected: 'Already held — rejected', ambiguous: 'Identifiers match two held journals', listedTwice: 'Listed twice in the file', sameTitle: 'Same title, different ISSN',
   unusable: 'No usable ISSN or title', outsideScope: 'New, outside the departments asked for', beyondLimit: 'New, past the limit', titleDiffers: 'Matched by ISSN, but the title differs',
 };
@@ -59,8 +59,8 @@ export function DoajBreakdown({ breakdown: b, previewId, added }: { breakdown: D
       <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-rule bg-rule sm:grid-cols-3 lg:grid-cols-6">
         <div className="bg-surface px-3.5 py-3"><dd className="text-lg font-semibold tabular-nums text-ink">{N(b.checked)}</dd><dt className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted">Checked</dt></div>
         {c('New', b.new, 'new', added == null ? 'Would be added' : `${N(added)} added by this run`)}
-        {c('Held — public', b.heldPublic, 'heldPublic', 'On the public catalogue now')}
-        {c('Held — no article yet', b.heldNoArticles, 'heldNoArticles', 'Catalogued, but no published article, so not on a public shelf')}
+        {c('Held — public, with articles', b.heldPublic, 'heldPublic', 'On the public catalogue, with published articles')}
+        {c('Held — public, no article yet', b.heldNoArticles, 'heldNoArticles', 'On the public catalogue; no published article yet')}
         {c('Held — draft / review', b.heldReview, 'heldReview', 'Waiting for a person; not public')}
         {c('Held — rejected', b.heldRejected, 'heldRejected', 'Never shown')}
       </dl>

@@ -10,6 +10,7 @@ import { RunActivity } from './ingestion/RunActivity';
 import { EngineSettings } from './ingestion/EngineSettings';
 import { ScopePanel } from './ingestion/ScopePanel';
 import { DoajImport } from './ingestion/DoajImport';
+import { DoajConflicts } from './ingestion/DoajConflicts';
 import { DoajEnrichment } from './ingestion/DoajEnrichment';
 import { FullTextCandidates } from './ingestion/FullTextCandidates';
 import { OneOffImport } from './ingestion/OneOffImport';
@@ -91,6 +92,7 @@ export function DataIngestion() {
 
       <EngineSettings state={state} onChanged={changed} />
       <DoajImport onDone={changed} />
+      <DoajConflicts />
       <DoajEnrichment onDone={changed} />
       <OneOffImport engineRunning={!!state.enabled} onDone={changed} />
     </div>

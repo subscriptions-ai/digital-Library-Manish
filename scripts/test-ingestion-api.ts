@@ -85,7 +85,7 @@ try {
 
   section('Access: every ingestion route is for the super admin only, enforced on the server');
   const routes: [string, string][] = [['GET', '/api/admin/ingest/state'], ['POST', '/api/admin/ingest/state'], ['GET', '/api/admin/ingest/history'], ['GET', '/api/admin/ingest/metrics'], ['GET', '/api/admin/ingest/coverage'], ['GET', '/api/admin/ingest/department-metrics'], ['GET', '/api/admin/ingest/audit'],
-    ['POST', '/api/admin/ingest/tick'], ['POST', '/api/admin/ingest/dry-run'], ['POST', '/api/admin/ingest/run'], ['POST', '/api/admin/ingest/doaj-catalogue'], ['GET', '/api/admin/ingest/doaj-catalogue'], ['GET', '/api/admin/ingest/doaj-catalogue/inspect'], ['GET', '/api/admin/ingest/jobs/active']];
+    ['POST', '/api/admin/ingest/tick'], ['POST', '/api/admin/ingest/dry-run'], ['POST', '/api/admin/ingest/run'], ['POST', '/api/admin/ingest/doaj-catalogue'], ['GET', '/api/admin/ingest/doaj-catalogue'], ['GET', '/api/admin/ingest/doaj-catalogue/inspect'], ['GET', '/api/admin/ingest/doaj-conflicts'], ['POST', '/api/admin/ingest/doaj-conflicts/decision'], ['GET', '/api/admin/ingest/jobs/active']];
   for (const [m, p] of routes) {
     const none = await call(p, { method: m, body: m === 'POST' ? {} : undefined });
     const bad = await call(p, { method: m, token: 'not-a-token', body: m === 'POST' ? {} : undefined });

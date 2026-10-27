@@ -126,7 +126,7 @@ type HeldJournal = { id: string; title: string; issn: string | null; eissn: stri
  */
 async function readHeld() {
   const issns = new Set<string>(); const titles = new Map<string, string>(); const byIssn = new Map<string, HeldJournal[]>();
-  // A journal is shown to the public only with a published article (publicJournals.ts), so which of them have one is part of what "held" means to a person.
+  // A public journal may hold no published article yet (publicJournals.ts); which of them have one is kept apart so a person can see where articles are still to arrive.
   const withArticles = new Set<string>((await p.$queryRawUnsafe(`select distinct "journalId" from "Article" where status = 'Published' and "journalId" is not null`) as any[]).map(r => r.journalId));
   for (const j of await p.journal.findMany({ select: { id: true, issn: true, eissn: true, title: true, status: true, domain: true } })) {
     const h: HeldJournal = { id: j.id, title: j.title, issn: j.issn, eissn: j.eissn, status: j.status, domain: j.domain, published: withArticles.has(j.id) };
@@ -142,8 +142,9 @@ async function readHeld() {
 /**
  * Every row of the file ends in exactly one of these. They explain the difference between "held" and "public":
  *
- *   heldPublic       held, and on the public catalogue now (status Accepted or MetadataOnly AND at least one published article)
- *   heldNoArticles   held with a public status, but no published article yet — it is in the database, not on any shelf (publicJournals.ts)
+ *   heldPublic       held and public (status Accepted or MetadataOnly), with at least one published article
+ *   heldNoArticles   held and public (same statuses), but no published article yet. Both are on the public catalogue (publicJournals.ts); the split
+ *                    is an ingestion diagnostic: where articles have still to arrive
  *   heldReview       held as NeedsReview, Draft or any other status the public catalogue does not offer
  *   heldRejected     held as Rejected
  *   ambiguous        the row's ISSN and e-ISSN belong to two DIFFERENT held journals; held, and listed here so a person can look

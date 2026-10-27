@@ -61,6 +61,7 @@ import { getState as getIngestionState, normaliseIssn } from "./src/lib/ingestio
 import { runEnginePass, wakeEngine } from "./src/lib/ingestion/engine.js";
 import { importDoajCatalogue, checkDoajCatalogue, importCheckedJournals } from "./src/lib/doajCatalogue.js";
 import { checkItems as doajCheckItems, listInspection as listDoajInspection, InspectionError as DoajInspectionError } from "./src/lib/ingestion/doajInspection.js";
+import { listConflicts as listDoajConflicts, decideConflict as decideDoajConflict, ConflictError as DoajConflictError } from "./src/lib/ingestion/doajConflicts.js";
 import { audit as ingestionAudit } from "./src/lib/ingestion/audit.js";
 import { validateSettings } from "./src/lib/ingestion/settings.js";
 import { providerYield } from "./src/lib/ingestion/providerYield.js";
@@ -73,6 +74,8 @@ import { reviewJobHolder } from "./src/lib/ingestion/reviewJobLock.js";
 import * as reviewPublish from "./src/lib/ingestion/reviewPublish.js";
 import * as reviewAutoPublish from "./src/lib/ingestion/reviewAutoPublish.js";
 import * as reviewIngestRouting from "./src/lib/ingestion/reviewIngestRouting.js";
+import * as journalReviewAnalysis from "./src/lib/ingestion/journalReviewAnalysis.js";
+import * as journalReviewAssign from "./src/lib/ingestion/journalReviewAssign.js";
 import { pipelineStatus } from "./src/lib/ingestion/pipelineStatus.js";
 import { overview as backfillOverview, createJob as createBackfillJob, controlJob as controlBackfillJob, serializeJob as serializeBackfillJob, describeSource as describeBackfillSource } from "./src/lib/ingestion/backfill/jobs.js";
 import { startBackfillWorker } from "./src/lib/ingestion/backfill/worker.js";
@@ -613,7 +616,7 @@ async function startServer() {
     // proceedings, videos, newsletters. A reader opens those too, so a figure
     // called "the whole library" has to count them.
     const [journalTitles, newArticles, legacyPeriodicals, newBooks, legacyBooks, legacyOther] = await Promise.all([
-      publicJournalCount(prisma, { articleDomains: domains }),
+      publicJournalCount(prisma, { domains }),
       (prisma as any).article.count({ where: { status: 'Published', ...inDomains } }),
       prisma.content.count({ where: { contentType: "Periodicals", ...live, ...inDomains } }),
       (prisma as any).book.count({ where: { status: 'Published', ...inDomains } }),
@@ -7363,7 +7366,7 @@ async function startServer() {
         }),
         (prisma as any).article.count({ where: { domain: { in: spelled }, status: 'Published' } }),
         (prisma as any).book.count({ where: { domain: { in: spelled }, status: 'Published' } }),
-        publicJournalCount(prisma, { articleDomains: spelled }),
+        publicJournalCount(prisma, { domains: spelled }),
       ]);
 
       const byType: Record<string, number> = {};
@@ -8401,6 +8404,44 @@ async function startServer() {
   app.post("/api/admin/review/batch/assign", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
     try { res.json(await reviewBatch.batchAssign({ ids: req.body?.ids, mode: req.body?.mode, classifier: req.body?.classifier, department: req.body?.department, by: req.user })); }
     catch (e: any) { assignmentError(res, e, "Failed to assign the selected books"); }
+  });
+  // ── Review automation R3B: journals. Classification analysis + controlled department assignment for journals that have none. Nothing here publishes, approves, rejects
+  // or changes a journal's status, rights, ISSN or publisher; the only thing an assignment writes is the department. Writing is behind REVIEW_JOURNAL_ASSIGN_ENABLED (off by default);
+  // the analysis, the record list and the previews only read. ──
+  const journalError = (res: any, e: any, fallback: string) => {
+    if (e instanceof journalReviewAssign.JournalAssignDisabledError) return res.status(403).json({ error: e.message, code: 'disabled' });
+    if (e instanceof journalReviewAssign.JournalBatchError) return res.status(400).json({ error: e.message });
+    console.error('journal review error:', e?.message); return res.status(500).json({ error: fallback });
+  };
+  app.get("/api/admin/review/journals/summary", authenticateJWT, requireAdminOrManager, async (_req: any, res: any) => {
+    try { res.json({ summary: await journalReviewAnalysis.loadJournalSummary(), job: journalReviewAnalysis.journalJobState(), recordsAvailable: journalReviewAnalysis.journalRowsAvailable(), config: journalReviewAssign.journalAssignConfig() }); }
+    catch (e: any) { res.status(500).json({ error: "Failed to read the journal analysis" }); }
+  });
+  app.post("/api/admin/review/journals/run", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const started = journalReviewAnalysis.startJournalAnalysis(req.user, journalReviewAssign.journalThresholds().thresholds, (s, err) => {
+        ingestionAudit(req.user, 'REVIEW_JOURNAL_ANALYSIS', s ? { catalogueChanged: false, analysed: s.analysed, tiers: s.tiers, classifierVersion: s.classifierVersion, thresholds: s.thresholds } : { catalogueChanged: false, failed: err }).catch(() => {});
+      });
+      if (!started) return res.status(409).json({ error: "A review job is already running", job: journalReviewAnalysis.journalJobState() });
+      res.status(202).json({ job: journalReviewAnalysis.journalJobState() });
+    } catch (e: any) { res.status(500).json({ error: "Failed to start the journal analysis" }); }
+  });
+  app.get("/api/admin/review/journals/records", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const q = req.query, tier = String(q.tier || '');
+      res.json(journalReviewAnalysis.journalRecords({
+        tier: ['high', 'medium', 'low', 'unclassifiable'].includes(tier) ? tier as any : undefined, department: q.department ? String(q.department) : undefined, origin: q.origin ? String(q.origin) : undefined,
+        status: q.status ? String(q.status) : undefined, q: q.q ? String(q.q).slice(0, 80) : undefined, minScore: q.minScore !== undefined && q.minScore !== '' && Number.isFinite(Number(q.minScore)) ? Number(q.minScore) : undefined,
+      }, parseInt(String(q.page)) || 1, parseInt(String(q.take)) || 50));
+    } catch (e: any) { res.status(500).json({ error: "Failed to read the journal records" }); }
+  });
+  app.post("/api/admin/review/journals/batch/preview", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try { res.json(await journalReviewAssign.batchAssignJournals({ ids: req.body?.ids, mode: req.body?.mode, department: req.body?.department, by: req.user }, { dryRun: true })); }
+    catch (e: any) { journalError(res, e, "Failed to preview the selected journals"); }
+  });
+  app.post("/api/admin/review/journals/batch/assign", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try { res.json(await journalReviewAssign.batchAssignJournals({ ids: req.body?.ids, mode: req.body?.mode, department: req.body?.department, by: req.user })); }
+    catch (e: any) { journalError(res, e, "Failed to assign the selected journals"); }
   });
   // ── Review automation R3A: future-ingestion routing. Read-only here: the gate is a deployment setting, and the harvest does the routing as it writes new Drafts.
   app.get("/api/admin/review/routing", authenticateJWT, requireAdminOrManager, async (_req: any, res: any) => {
@@ -10241,6 +10282,21 @@ async function startServer() {
     }
   });
 
+  // DOAJ identity conflicts: DOAJ journals set aside because their TITLE is a journal we hold under other ISSNs, with the evidence compared and a verdict. Reading and a RECORDED decision
+  // only: nothing here creates or changes a Journal.
+  const doajConflictFail = async (res: any, e: any, what: string) => {
+    if (e instanceof DoajConflictError) return res.status(e.status).json({ error: e.message, code: e.code });
+    const qe = await asQuickError(e, 'DOAJ').catch(() => null);
+    if (qe && qe.code !== undefined && (e instanceof QuickError || e instanceof SourceError)) return res.status(qe.status || 503).json({ error: qe.message, code: qe.code });
+    console.error(`doaj-conflicts ${what} error:`, e?.message); res.status(500).json({ error: `Could not ${what}` });
+  };
+  app.get("/api/admin/ingest/doaj-conflicts", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try { res.json(await listDoajConflicts({ refresh: req.query?.refresh === '1' })); } catch (e: any) { await doajConflictFail(res, e, 'read the identity conflicts'); }
+  });
+  app.post("/api/admin/ingest/doaj-conflicts/decision", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try { const b = req.body || {}; res.json(await decideDoajConflict(adminOf(req), b.issn, b.decision, b.note, b.fingerprint)); } catch (e: any) { await doajConflictFail(res, e, 'record the decision'); }
+  });
+
   // ==========================================
   // PUBLIC LIBRARY BROWSE — NEW structured dataset (published only)
   // Cascading filters: department -> journal -> year -> volume -> issue -> article
@@ -10403,9 +10459,10 @@ async function startServer() {
       const key = decodeURIComponent(req.params.issn);
       // Accept whichever spelling the caller has; ours are stored inconsistently.
       const norm = normaliseIssn(key);
-      // A journal awaiting review (found by Crossref or OpenAlex, open access unverified) is not part of the library yet.
+      // Only a journal the catalogue offers (src/lib/publicJournals.ts). A candidate awaiting review (Crossref or OpenAlex, open access
+      // unverified), a rejected one or a draft is not part of the library; a journal with no published article still is.
       const journal = await (prisma as any).journal.findFirst({
-        where: { AND: [{ status: { not: 'NeedsReview' } }, { OR: [{ issn: key }, { eissn: key }, { id: key },
+        where: { AND: [publicJournalStatusWhere, { OR: [{ issn: key }, { eissn: key }, { id: key },
                       ...(norm ? [{ issn: norm }, { eissn: norm }] : [])] }] },
       });
       if (!journal) return res.status(404).json({ error: "Journal not found" });
@@ -10466,7 +10523,7 @@ async function startServer() {
       const volume = decodeURIComponent(req.params.volume);
       const norm = normaliseIssn(key);
       const journal = await (prisma as any).journal.findFirst({
-        where: { AND: [{ status: { not: 'NeedsReview' } }, { OR: [{ issn: key }, { eissn: key }, { id: key },
+        where: { AND: [publicJournalStatusWhere, { OR: [{ issn: key }, { eissn: key }, { id: key },
                       ...(norm ? [{ issn: norm }, { eissn: norm }] : [])] }] },
         select: { id: true, title: true, domain: true, issn: true, licence: true },
       });
@@ -10677,6 +10734,7 @@ async function startServer() {
       // Journals derived from the articles they hold, not from Journal.articleCount.
       // The counter is written by two jobs and is zero wherever neither has run,
       // which showed "0 journals" beside 2,506 articles on the same page.
+      // A journal with no published article is still listed (left join), with a count of 0, after those that hold some.
       const shelfSql = (clause: string) => `
         select j.id, j.title, j.issn, j.domain, j."publisherName", j.licence, j."licenceIsNC",
                count(a.id)::int as "articleCount",
@@ -10685,10 +10743,10 @@ async function startServer() {
                min(a."year")::int as "firstYear",
                max(a."year")::int as "lastYear"
         from "Journal" j
-        join "Article" a on a."journalId" = j.id and a.status = 'Published'
+        left join "Article" a on a."journalId" = j.id and a.status = 'Published'
         where ${publicJournalStatusSql('j')} and ${clause}
         group by j.id
-        order by "articleCount" desc`;
+        order by "articleCount" desc, j.title asc`;
 
       // How many people wrote what this department holds. The names are stored
       // as one printed string per item, so they are split on the comma and
@@ -10709,7 +10767,6 @@ async function startServer() {
         (prisma as any).$queryRawUnsafe(
           `select j."publisherName" as name, count(distinct j.id)::int as journals
            from "Journal" j
-           join "Article" a on a."journalId" = j.id and a.status = 'Published'
            where ${publicJournalStatusSql('j')} and j.domain = any($1) and j."publisherName" is not null
            group by 1 order by 2 desc`, spelled),
         (prisma as any).$queryRawUnsafe(authorsSql, spelled),
@@ -10761,10 +10818,10 @@ async function startServer() {
                 count(distinct nullif(a."volume",'') || '|' || coalesce(nullif(a."issue",''),''))::int as "issueCount",
                 min(a."year")::int as "firstYear", max(a."year")::int as "lastYear"
          from "Journal" j
-         join "Article" a on a."journalId" = j.id and a.status = 'Published'
+         left join "Article" a on a."journalId" = j.id and a.status = 'Published'
          where ${publicJournalStatusSql('j')} and j."publisherName" = $1 ${scope !== null ? 'and j.domain = any($2)' : ''}
          group by j.id
-         order by "articleCount" desc`,
+         order by "articleCount" desc, j.title asc`,
         ...(scope !== null ? [publisherName, scope] : [publisherName]));
 
       // A publisher the reader's subscription reaches none of is not an error —
@@ -10801,7 +10858,7 @@ async function startServer() {
       const journals = await (prisma as any).$queryRawUnsafe(
         `select j.subjects, count(a.id)::int as "articleCount"
          from "Journal" j
-         join "Article" a on a."journalId" = j.id and a.status = 'Published'
+         left join "Article" a on a."journalId" = j.id and a.status = 'Published'
          where ${publicJournalStatusSql('j')} ${scope !== null ? 'and j.domain = any($1)' : ''}
          group by j.id`,
         ...(scope !== null ? [scope] : []));
@@ -10860,12 +10917,12 @@ async function startServer() {
       });
       if (!subject) return res.status(404).json({ error: "Subject not found" });
       // The page exists for any subject we hold, but it lists only journals the catalogue offers (see src/lib/publicJournals.ts):
-      // a candidate waiting for review, or a journal with no published article, is not an entry a visitor can use.
+      // a candidate waiting for review is not an entry a visitor can use. A journal with no published article is, and sorts last.
       for (let i = journals.length - 1; i >= 0; i--) {
-        if (!(PUBLIC_JOURNAL_STATUSES as readonly string[]).includes(journals[i].status) || !(journals[i].articleCount > 0)) journals.splice(i, 1);
+        if (!(PUBLIC_JOURNAL_STATUSES as readonly string[]).includes(journals[i].status)) journals.splice(i, 1);
       }
 
-      journals.sort((a: any, b: any) => (b.articleCount || 0) - (a.articleCount || 0));
+      journals.sort((a: any, b: any) => (b.articleCount || 0) - (a.articleCount || 0) || String(a.title).localeCompare(String(b.title)));
       const years = journals.flatMap((j: any) => [j.firstYear, j.lastYear]).filter(Boolean) as number[];
       const byDomain = new Map<string, number>();
       for (const j of journals) if (j.domain) byDomain.set(j.domain, (byDomain.get(j.domain) || 0) + 1);

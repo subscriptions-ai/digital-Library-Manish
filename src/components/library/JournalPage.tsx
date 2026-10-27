@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from '../../lib/head';
 import { ChevronRight, ChevronDown, ExternalLink, Lock } from 'lucide-react';
 import { Badge, Skeleton, buttonClass } from '../ui';
+import { NO_PUBLISHED_ARTICLES } from '../../lib/journalCopy';
 
 /**
  * A journal, and its run of volumes.
@@ -251,18 +252,24 @@ export function JournalPage({
             <p className="mt-5 max-w-2xl text-[14.5px] leading-relaxed text-ink-2">{j.description}</p>
           )}
 
-          <dl className="mt-7 flex flex-wrap gap-x-10 gap-y-3">
-            {([['Articles', j.articleCount], ['Volumes', j.volumeCount], ['Issues', j.issueCount]] as const).map(([label, n]) => (
-              <div key={label}>
-                <dt className={LABEL}>{label}</dt>
-                <dd className="tnum mt-0.5 font-mono text-[17px] text-ink">{typeof n === 'number' ? n.toLocaleString() : '—'}</dd>
-              </div>
-            ))}
-          </dl>
+          {/* A catalogued journal may hold no published article yet: say so, rather than showing three zeros. */}
+          {j.articleCount === 0 ? (
+            <p className="mt-7 text-[14px] text-muted" role="status">{NO_PUBLISHED_ARTICLES}</p>
+          ) : (
+            <dl className="mt-7 flex flex-wrap gap-x-10 gap-y-3">
+              {([['Articles', j.articleCount], ['Volumes', j.volumeCount], ['Issues', j.issueCount]] as const).map(([label, n]) => (
+                <div key={label}>
+                  <dt className={LABEL}>{label}</dt>
+                  <dd className="tnum mt-0.5 font-mono text-[17px] text-ink">{typeof n === 'number' ? n.toLocaleString() : '—'}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
         </div>
       </header>
 
-      {/* The run */}
+      {/* The run. A journal holding no published article already said so under its title; an empty shelf is not drawn a second time. */}
+      {j.articleCount !== 0 && (
       <section className="mx-auto max-w-5xl px-5 py-8">
         <h2 className={LABEL}>Volumes</h2>
 
@@ -279,6 +286,7 @@ export function JournalPage({
           </div>
         )}
       </section>
+      )}
     </div>
   );
 }

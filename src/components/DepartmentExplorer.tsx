@@ -76,7 +76,8 @@ export function DepartmentExplorer({ totals, selectedId, onSelect }: {
     buttons[Math.min(buttons.length - 1, Math.max(0, at + (e.key === 'ArrowDown' ? 1 : -1)))]?.focus();
   };
 
-  const top = d ? d.journals.slice().sort((a, b) => b.articleCount - a.articleCount).slice(0, 5) : [];
+  // This list is about holdings, so it names only journals that hold articles; a catalogued journal with none is on the department's own page.
+  const top = d ? d.journals.filter(j => j.articleCount > 0).sort((a, b) => b.articleCount - a.articleCount).slice(0, 5) : [];
 
   return (
     <section id="explorer" aria-labelledby="explorer-heading" className="scroll-mt-24 border-y section-spacing"
