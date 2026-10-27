@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from '../../lib/head';
 import { ChevronRight } from 'lucide-react';
 import { Badge, Skeleton, buttonClass } from '../ui';
-import { JournalHoldings, Windowed } from './JournalHoldings';
+import { JournalHoldings, PagedJournals, type JournalPageData } from './JournalHoldings';
 
 /**
  * A publisher, and the journals of theirs we hold.
@@ -21,9 +21,8 @@ type Journal = {
   firstYear?: number | null; lastYear?: number | null;
 };
 
-type Publisher = {
+type Publisher = JournalPageData<Journal> & {
   publisherName: string; slug: string;
-  journals: Journal[];
   articles: number;
   firstYear?: number | null; lastYear?: number | null;
   departments: { name: string; journals: number }[];
@@ -89,7 +88,7 @@ export function PublisherPage({
     <div className="min-h-full bg-ground">
       <Helmet>
         <title>{p.publisherName} | STM Digital Library</title>
-        <meta name="description" content={`${p.journals.length} journals from ${p.publisherName} held in the library.`} />
+        <meta name="description" content={`${p.journalTotal.toLocaleString()} journals from ${p.publisherName} held in the library.`} />
       </Helmet>
 
       <header className="border-b border-rule bg-surface">
@@ -107,7 +106,7 @@ export function PublisherPage({
           <dl className="mt-6 flex flex-wrap gap-x-10 gap-y-4">
             <div>
               <dt className={LABEL}>Journals held</dt>
-              <dd className="tnum mt-0.5 font-mono text-[22px] text-ink">{p.journals.length.toLocaleString()}</dd>
+              <dd className="tnum mt-0.5 font-mono text-[22px] text-ink">{p.journalTotal.toLocaleString()}</dd>
             </div>
             <div>
               <dt className={LABEL}>Articles</dt>
@@ -142,7 +141,7 @@ export function PublisherPage({
       <section className="mx-auto max-w-5xl px-5 py-8">
         <h2 className={LABEL}>Journals</h2>
 
-        {p.journals.length === 0 ? (
+        {p.journalTotal === 0 ? (
           <div className="mt-3 card p-10 text-center">
             <p className="text-sm text-muted">Nothing from this publisher is in your subscription.</p>
             <Link to="/contact" className={buttonClass('outline', 'sm', 'mt-4')}>
@@ -150,8 +149,9 @@ export function PublisherPage({
             </Link>
           </div>
         ) : (
-          <div className="mt-3 divide-y divide-rule overflow-hidden card">
-            <Windowed items={p.journals}>{(j, i) => (
+          <PagedJournals key={p.slug} url={`/api/library/publisher/${encodeURIComponent(slug || p.slug)}`} first={p} headers={auth()}
+              empty={<div className="mt-3 card p-10 text-center text-sm text-muted">No journals are listed here yet.</div>}>
+              {(j, i) => (
               <div key={j.id} className="flex gap-4 px-4 py-4 sm:px-5">
                 <span className="tnum hidden w-7 shrink-0 pt-1 font-mono text-[11px] text-faint sm:block">{i + 1}</span>
 
@@ -179,8 +179,9 @@ export function PublisherPage({
 
                 <JournalHoldings j={j} part="desktop" />
               </div>
-            )}</Windowed>
-          </div>
+              )}
+            </PagedJournals>
+          
         )}
       </section>
     </div>

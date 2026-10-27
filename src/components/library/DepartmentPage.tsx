@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from '../../lib/head';
 import { ChevronRight, Lock, Search } from 'lucide-react';
 import { Badge, Skeleton, buttonClass } from '../ui';
-import { JournalHoldings, Windowed } from './JournalHoldings';
+import { JournalHoldings, PagedJournals, type JournalPageData } from './JournalHoldings';
 
 /**
  * A department, as a shelf of journals.
@@ -22,9 +22,10 @@ type Journal = {
   firstYear?: number | null; lastYear?: number | null;
 };
 
-type Department = {
+type Department = JournalPageData<Journal> & {
   domain: string; slug: string;
-  journals: Journal[];
+  /** How many publishers there are; `publishers` is only the biggest fifty. */
+  publisherTotal?: number;
   articles: number; books: number;
   firstYear?: number | null; lastYear?: number | null;
   publishers: { name: string; journals: number }[];
@@ -47,6 +48,7 @@ export function DepartmentPage({
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const [d, setD] = useState<Department | null>(null);
+  const [matches, setMatches] = useState<number | null>(null);
   const [state, setState] = useState<'loading' | 'ok' | 'missing' | 'denied'>('loading');
   const [q, setQ] = useState('');
 
@@ -100,17 +102,11 @@ export function DepartmentPage({
     );
   }
 
-  const shown = q
-    ? d.journals.filter(j =>
-        j.title.toLowerCase().includes(q.toLowerCase()) ||
-        (j.publisherName || '').toLowerCase().includes(q.toLowerCase()))
-    : d.journals;
-
   return (
     <div className="min-h-full bg-ground">
       <Helmet>
         <title>{d.domain} | STM Digital Library</title>
-        <meta name="description" content={`${d.journals.length} journals and ${d.articles.toLocaleString()} articles in ${d.domain}.`} />
+        <meta name="description" content={`${d.journalTotal.toLocaleString()} journals and ${d.articles.toLocaleString()} articles in ${d.domain}.`} />
       </Helmet>
 
       <header className="border-b border-rule bg-surface">
@@ -128,7 +124,7 @@ export function DepartmentPage({
           {/* The question a college asks first */}
           <dl className="mt-6 flex flex-wrap gap-x-10 gap-y-4">
             {([
-              ['Journal Titles', d.journals.length],
+              ['Journal Titles', d.journalTotal],
               ['Research Articles', d.articles],
               ...(d.books > 0 ? [['Books', d.books] as const] : []),
             ] as const).map(([label, n]) => (
@@ -173,7 +169,7 @@ export function DepartmentPage({
       <section className="mx-auto max-w-5xl px-5 py-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className={LABEL} aria-live="polite">
-            Journals held {q && <span className="normal-case tracking-normal">&mdash; {shown.length} of {d.journals.length}</span>}
+            Journals held {q.trim() && <span className="normal-case tracking-normal">&mdash; {matches === null ? '…' : matches.toLocaleString()} of {d.journalTotal.toLocaleString()}</span>}
           </h2>
           <div className="relative w-full sm:w-64">
             <Search size={16} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
@@ -187,13 +183,9 @@ export function DepartmentPage({
           </div>
         </div>
 
-        {shown.length === 0 ? (
-          <div className="mt-3 card p-10 text-center text-sm text-muted">
-            No journal matches that.
-          </div>
-        ) : (
-          <div className="mt-3 divide-y divide-rule overflow-hidden card">
-            <Windowed items={shown}>{(j, i) => (
+        <PagedJournals key={d.slug} url={`/api/library/department/${encodeURIComponent(slug || d.slug)}`} first={d} q={q} headers={auth()} onTotal={setMatches}
+          empty={<div className="mt-3 card p-10 text-center text-sm text-muted">{q.trim() ? 'No journal matches that.' : 'No journals are listed in this department yet.'}</div>}>
+          {(j, i) => (
               <div key={j.id} className="flex gap-4 px-4 py-4 sm:px-5">
                 <span className="tnum hidden w-7 shrink-0 pt-1 font-mono text-[11px] text-faint sm:block">{i + 1}</span>
 
@@ -217,9 +209,8 @@ export function DepartmentPage({
 
                 <JournalHoldings j={j} part="desktop" />
               </div>
-            )}</Windowed>
-          </div>
-        )}
+          )}
+        </PagedJournals>
       </section>
     </div>
   );

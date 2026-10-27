@@ -17,6 +17,8 @@ type DepartmentDetail = {
   firstYear: number | null; lastYear: number | null;
   journals: { id: string; title: string; publisherName: string | null; articleCount: number }[];
   publishers: { name: string; journals: number }[];
+  /** How many publishers there are; `publishers` is the biggest fifty. */
+  publisherTotal?: number;
 };
 
 /** The departments, A to Z, as the navigation menu lists them. */
@@ -55,7 +57,8 @@ export function DepartmentExplorer({ totals, selectedId, onSelect }: {
     if (cache[dept.id]) return;
     let live = true;
     setFailed(null);
-    fetch(`/api/library/department/${encodeURIComponent(dept.id)}`)
+    // Five journals are all this panel names, so five is all it asks for; the department's own page reads the rest, a page at a time.
+    fetch(`/api/library/department/${encodeURIComponent(dept.id)}?limit=5`)
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then(body => {
         if (!live) return;
@@ -144,7 +147,7 @@ export function DepartmentExplorer({ totals, selectedId, onSelect }: {
                 // Not the number of journals: it is the smallest figure here and
                 // the least of what a department actually amounts to.
                 ['Research Articles', d?.articles], ['Books', d?.books],
-                ['Authors', d?.authors], ['Publishers', d?.publishers.length],
+                ['Authors', d?.authors], ['Publishers', d ? (d.publisherTotal ?? d.publishers.length) : undefined],
               ].map(([label, value]) => (
                 <div key={label as string} className="min-w-0 border-r px-4 py-4 last:border-r-0 sm:px-5" style={{ borderColor: 'var(--np-line)' }}>
                   <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--np-body)' }}>{label}</p>
