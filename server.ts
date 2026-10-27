@@ -44,7 +44,7 @@ import { mediaStorageRoot, mediaDir as mediaDirPath, mediaDriver, mediaStorageSt
 import { aiConfig } from "./src/server/aiAssistantConfig.js";
 import { searchContent } from "./src/lib/catalogueSearch.js";
 import { contentTypeCounts } from "./src/lib/publicCounts.js";
-import { abstractPreviewFor } from "./src/lib/abstractPreview.js";
+import { abstractPreviewFor, publicArticle, publicBook, publicContent } from "./src/lib/abstractPreview.js";
 import { buildQuotationEmailHtml } from "./src/lib/quotation/quotationEmail.js";
 import { publicJournalCount, publicJournalStatusSql, publicJournalStatusWhere, PUBLIC_JOURNAL_STATUSES } from "./src/lib/publicJournals.js";
 import { COMPANY_DETAILS, currentIssuer } from "./src/config.js";
@@ -4266,15 +4266,16 @@ async function startServer() {
         idsOf('Book').length ? (prisma as any).book.findMany({ where: { id: { in: idsOf('Book') } } }) : [],
       ]);
       const byId = new Map<string, any>();
-      for (const c of contents) byId.set(c.id, { ...c, itemType: 'Content' });
+      // `description` here is what a reader sees on a saved card, so it is the capped preview, never the whole abstract.
+      for (const c of contents) byId.set(c.id, { ...publicContent(c), itemType: 'Content' });
       for (const a of articles) byId.set(a.id, {
-        ...a, itemType: 'Article',
-        description: a.abstract || null,
+        ...publicArticle(a), itemType: 'Article',
+        description: abstractPreviewFor('article', a),
         thumbnailUrl: null,
       });
       for (const b of books) byId.set(b.id, {
-        ...b, itemType: 'Book',
-        description: b.description || null,
+        ...publicBook(b), itemType: 'Book',
+        description: abstractPreviewFor('book', b),
         thumbnailUrl: b.coverUrl || null,
         contentType: 'Books',
       });
@@ -4868,7 +4869,7 @@ async function startServer() {
         }
 
         return res.json({ 
-          data: contents.map(c => ({ ...c, locked: false })), 
+          data: contents.map(c => ({ ...publicContent(c), locked: false })), 
           total, 
           page: parseInt(page as string), 
           limit: take 
@@ -4893,7 +4894,7 @@ async function startServer() {
 
       if (!userDetails) {
         return res.json({
-          data: contents.map(c => ({ ...c, locked: true, fileUrl: null })),
+          data: contents.map(c => ({ ...publicContent(c), locked: true, fileUrl: null })),
           total, page: parseInt(page as string), limit: take
         });
       }
@@ -4905,9 +4906,9 @@ async function startServer() {
         const hasAccess = checkContentAccess(c, ent!, activeSubs);
         if (!hasAccess) {
           // Hide sensitive URL and mark locked
-          return { ...c, fileUrl: null, locked: true };
+          return { ...publicContent(c), fileUrl: null, locked: true };
         }
-        return { ...c, locked: false };
+        return { ...publicContent(c), locked: false };
       });
 
       res.json({ data: protectedContents, total, page: parseInt(page), limit: take });
@@ -10360,7 +10361,7 @@ async function startServer() {
         });
       }
 
-      res.json({ data, total, page: parseInt(page as string) || 1, limit: take });
+      res.json({ data: data.map(publicArticle), total, page: parseInt(page as string) || 1, limit: take });
     } catch (e: any) { console.error("library articles:", e); res.status(500).json({ error: "Failed to load articles" }); }
   });
 
@@ -10554,12 +10555,9 @@ async function startServer() {
         take: 30,
       }) : [];
 
-      // The content viewer asks for `?abstract=preview`: it shows a short preview, so it is sent the preview
-      // and not the abstract. The record page asks for nothing and still receives the whole record.
-      const previewOnly = req.query.abstract === 'preview';
+      // Every reader surface (viewer, record pages) is sent the preview, never the abstract. Editors read it from /api/admin.
       res.json({
-        ...article,
-        ...(previewOnly ? { abstract: undefined, abstractPreview: abstractPreviewFor('article', article) } : {}),
+        ...publicArticle(article),
         authors_structured: article.authorLinks.map((l: any) => ({ ...l.author, position: l.position })),
         authorLinks: undefined,
         siblings,
@@ -10607,7 +10605,7 @@ async function startServer() {
       });
 
       const relatedLabel = `More ${String(c.contentType || 'items').toLowerCase()} in ${c.domain || 'this department'}`;
-      res.json({ ...c, related, relatedLabel });
+      res.json({ ...publicContent(c), related, relatedLabel });
     } catch (e) {
       res.status(500).json({ error: "Failed to load record" });
     }
@@ -11434,6 +11432,8 @@ async function startServer() {
           country: true, description: true, coverUrl: true, chapterCount: true, createdAt: true,
           // Already public in the book list: how this book is offered, and where its source is.
           accessStatus: true, originalUrl: true,
+          // Read only to decide whether a preview of the description may be shown; not sent (see bookOut).
+          source: true, ownershipSource: true, licence: true, licenceIsNC: true, rightsStatus: true,
         },
       });
       if (!book) return res.status(404).json({ error: "No such book" });
@@ -11449,13 +11449,15 @@ async function startServer() {
         if (inner) d = inner[1].trim();
         book.description = d;
       }
+      // The brief above is cleaned first, then only a preview of it leaves (and only where the licence allows).
+      const { source: _s, ownershipSource: _o, licence: _l, licenceIsNC: _n, rightsStatus: _r, ...bookOut } = publicBook(book);
 
       const alongside = await (prisma as any).book.findMany({
         where: { status: 'Published', id: { not: book.id }, ...(book.domain ? { domain: book.domain } : {}) },
         orderBy: { createdAt: 'desc' }, take: 4,
         select: { id: true, title: true, authors: true, coverUrl: true, domain: true, year: true },
       });
-      res.json({ book, alongside });
+      res.json({ book: bookOut, alongside });
     } catch (e: any) {
       console.error('book record error', e?.message);
       res.status(500).json({ error: "Failed to read that book" });
@@ -11708,7 +11710,7 @@ async function startServer() {
         const { metadata, ...rest } = b;
         return b.accessStatus === 'ViewableHere' ? rest : { ...rest, pdfUrl: null };
       };
-      res.json({ data: data.map(forPublic), total, page: parseInt(page as string) || 1, limit: take });
+      res.json({ data: data.map((b: any) => publicBook(forPublic(b))), total, page: parseInt(page as string) || 1, limit: take });
     } catch (e: any) { res.status(500).json({ error: "Failed to load books" }); }
   });
 
@@ -16387,7 +16389,7 @@ async function startServer() {
       });
       if (!content) return res.status(404).json({ error: "Content not found" });
       res.json({
-        ...content,
+        ...publicContent(content),
         author: content.authors,
         coverImage: content.thumbnailUrl,
         publishedYear: content.publishedAt && Number.isFinite(new Date(content.publishedAt).getTime()) ? new Date(content.publishedAt).getFullYear() : undefined

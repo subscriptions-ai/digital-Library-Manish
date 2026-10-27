@@ -4,6 +4,7 @@ import { Helmet } from '../../lib/head';
 import { ArrowLeft, ArrowRight, BookOpen, Building2, Calendar, FileText, Hash, Layers } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { buttonClass } from '../ui';
+import { FullAbstractLink } from '../FullAbstractLink';
 import { getLibraryPaths } from '../../lib/libraryRoute';
 
 /**
@@ -133,7 +134,7 @@ export function ArticleRecord() {
     <Shell>
       <Helmet>
         <title>{`${item.title} — STM Digital Library`}</title>
-        {item.abstract && <meta name="description" content={String(item.abstract).slice(0, 300)} />}
+        {item.abstractPreview && <meta name="description" content={String(item.abstractPreview)} />}
       </Helmet>
 
       <Link to="/digital-library?kind=articles" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-muted hover:text-ink">
@@ -147,8 +148,11 @@ export function ArticleRecord() {
       {item.authors && <p className="mt-3 text-[15px] leading-relaxed text-ink-2">{item.authors}</p>}
       {where && <p className="tnum mt-1.5 font-mono text-[12px] text-muted">{where}</p>}
 
-      {item.abstract && (
-        <p className="mt-6 whitespace-pre-line text-[15px] leading-relaxed text-muted">{item.abstract}</p>
+      {item.abstractPreview && (
+        <div className="mt-6">
+          <p className="text-[15px] leading-relaxed [overflow-wrap:anywhere] text-muted">{item.abstractPreview}</p>
+          <FullAbstractLink urls={[item.originalUrl]} />
+        </div>
       )}
 
       <OpenIt to={`/library/article/${item.id}`} label="Read it in the library" />
@@ -206,7 +210,7 @@ export function BookRecord() {
     <Shell>
       <Helmet>
         <title>{`${b.title} — STM Digital Library`}</title>
-        {b.description && <meta name="description" content={String(b.description).slice(0, 300)} />}
+        {b.abstractPreview && <meta name="description" content={String(b.abstractPreview)} />}
       </Helmet>
 
       <Link to="/digital-library?kind=books" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-muted hover:text-ink">
@@ -234,8 +238,11 @@ export function BookRecord() {
         </div>
       </div>
 
-      {b.description && (
-        <p className="mt-6 whitespace-pre-line text-[15px] leading-relaxed text-muted">{b.description}</p>
+      {b.abstractPreview && (
+        <div className="mt-6">
+          <p className="text-[15px] leading-relaxed [overflow-wrap:anywhere] text-muted">{b.abstractPreview}</p>
+          <FullAbstractLink urls={[b.originalUrl]} />
+        </div>
       )}
 
       <OpenBook book={b} />

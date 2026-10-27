@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from '../../lib/head';
 import { ChevronRight, ExternalLink, Lock, Copy, Check } from 'lucide-react';
 import { Skeleton, buttonClass } from '../ui';
+import { FullAbstractLink } from '../FullAbstractLink';
 
 /**
  * One article, and everything around it.
@@ -20,7 +21,7 @@ import { Skeleton, buttonClass } from '../ui';
 type Author = { id: string; name: string; identitySource?: string; articleCount?: number; position: number };
 
 type Article = {
-  id: string; title: string; abstract?: string | null; authors?: string | null;
+  id: string; title: string; abstractPreview?: string | null; authors?: string | null;
   doi?: string | null; pdfUrl?: string | null; originalUrl?: string | null;
   volume?: string | null; issue?: string | null; year?: number | null; pages?: string | null;
   domain?: string | null; subject?: string | null; contentType?: string | null;
@@ -147,7 +148,7 @@ export function ArticlePage({
     <div className="min-h-full bg-ground">
       <Helmet>
         <title>{a.title} | STM Digital Library</title>
-        {a.abstract && <meta name="description" content={a.abstract.slice(0, 155)} />}
+        {a.abstractPreview && <meta name="description" content={a.abstractPreview.slice(0, 155)} />}
       </Helmet>
 
       <header className="border-b border-rule bg-surface">
@@ -233,9 +234,12 @@ export function ArticlePage({
           {/* Said plainly when there is none, so the column never sits empty
               beside the record's facts. */}
           <Panel label="Abstract">
-            {a.abstract
-              ? <p className="whitespace-pre-wrap text-[14.5px] leading-relaxed text-ink-2">{a.abstract}</p>
-              : <p className="text-[14px] leading-relaxed text-muted">The publisher did not supply an abstract for this record.</p>}
+            {a.abstractPreview
+              ? <>
+                  <p className="text-[14.5px] leading-relaxed [overflow-wrap:anywhere] text-ink-2">{a.abstractPreview}</p>
+                  <FullAbstractLink urls={[a.originalUrl]} />
+                </>
+              : <p className="text-[14px] leading-relaxed text-muted">No abstract preview is available for this record.</p>}
           </Panel>
 
           {/* The rest of the rack */}
