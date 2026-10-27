@@ -61,6 +61,7 @@ import { getState as getIngestionState, normaliseIssn } from "./src/lib/ingestio
 import { runEnginePass, wakeEngine } from "./src/lib/ingestion/engine.js";
 import { importDoajCatalogue, checkDoajCatalogue, importCheckedJournals } from "./src/lib/doajCatalogue.js";
 import { checkItems as doajCheckItems, listInspection as listDoajInspection, InspectionError as DoajInspectionError } from "./src/lib/ingestion/doajInspection.js";
+import { listConflicts as listDoajConflicts, decideConflict as decideDoajConflict, ConflictError as DoajConflictError } from "./src/lib/ingestion/doajConflicts.js";
 import { audit as ingestionAudit } from "./src/lib/ingestion/audit.js";
 import { validateSettings } from "./src/lib/ingestion/settings.js";
 import { providerYield } from "./src/lib/ingestion/providerYield.js";
@@ -10239,6 +10240,21 @@ async function startServer() {
       if (e instanceof DoajInspectionError) return res.status(e.status).json({ error: e.message });
       console.error('GET doaj-catalogue inspect error:', e?.message); res.status(500).json({ error: 'Could not read the journals' });
     }
+  });
+
+  // DOAJ identity conflicts: DOAJ journals set aside because their TITLE is a journal we hold under other ISSNs, with the evidence compared and a verdict. Reading and a RECORDED decision
+  // only: nothing here creates or changes a Journal.
+  const doajConflictFail = async (res: any, e: any, what: string) => {
+    if (e instanceof DoajConflictError) return res.status(e.status).json({ error: e.message, code: e.code });
+    const qe = await asQuickError(e, 'DOAJ').catch(() => null);
+    if (qe && qe.code !== undefined && (e instanceof QuickError || e instanceof SourceError)) return res.status(qe.status || 503).json({ error: qe.message, code: qe.code });
+    console.error(`doaj-conflicts ${what} error:`, e?.message); res.status(500).json({ error: `Could not ${what}` });
+  };
+  app.get("/api/admin/ingest/doaj-conflicts", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try { res.json(await listDoajConflicts({ refresh: req.query?.refresh === '1' })); } catch (e: any) { await doajConflictFail(res, e, 'read the identity conflicts'); }
+  });
+  app.post("/api/admin/ingest/doaj-conflicts/decision", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try { const b = req.body || {}; res.json(await decideDoajConflict(adminOf(req), b.issn, b.decision, b.note, b.fingerprint)); } catch (e: any) { await doajConflictFail(res, e, 'record the decision'); }
   });
 
   // ==========================================
