@@ -24,7 +24,9 @@ export type AuditAction =
   /** Review automation R2: a department-assignment batch or job. Counts and short scope only; the books' own audit note lives in metadata.reviewAssignment. */
   | 'REVIEW_AUTO_ASSIGN_STARTED' | 'REVIEW_AUTO_ASSIGN_FINISHED' | 'REVIEW_BATCH_ASSIGN'
   /** Review automation: eligible Books were made public (a bulk job, or a selection). Counts and a short scope only. */
-  | 'REVIEW_PUBLISH_STARTED' | 'REVIEW_PUBLISH_FINISHED' | 'REVIEW_PUBLISH_SELECTED';
+  | 'REVIEW_PUBLISH_STARTED' | 'REVIEW_PUBLISH_FINISHED' | 'REVIEW_PUBLISH_SELECTED'
+  /** Review automation R3A: newly ingested Drafts were given a department by future-ingestion routing (one row per page of a harvest, counts only). Publishes nothing. */
+  | 'REVIEW_INGEST_ROUTING';
 
 const SECRET = /pass(word)?|token|secret|authorization|api[_-]?key|credential|cookie/i;
 

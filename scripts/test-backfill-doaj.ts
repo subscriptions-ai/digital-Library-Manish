@@ -12,7 +12,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 const env = readFileSync(new URL('../.env', import.meta.url), 'utf8');
 const real = /^DATABASE_URL=(.*)$/m.exec(env)?.[1]?.replace(/^["']|["']$/g, '');
@@ -159,13 +159,27 @@ try {
   const l1 = SN.loadSnapshot(SN.locateSnapshot(f100.file).abs); const csvText = fs.readFileSync(path.join(ROOT, f100.file), 'utf8');
   const other = path.join(ROOT, 'doaj_journalcsv_20260926_9999_utf8.csv'); fs.writeFileSync(other, csvText + ' '); const l2 = SN.loadSnapshot(other); fs.unlinkSync(other);
   check('the snapshot identity is stable for the same bytes and changes with one byte (name + size + sha-256)', l1.identity === SN.loadSnapshot(SN.locateSnapshot(f100.file).abs).identity && l1.identity !== l2.identity && l1.identity.length === 24 && l1.date === '2026-09-26');
+  { const bytes = fs.readFileSync(path.join(ROOT, f100.file)); const sha = createHash('sha256').update(bytes).digest('hex'); const ident = createHash('sha256').update(`doaj-csv|${f100.file}|${bytes.length}|${sha}`).digest('hex').slice(0, 24);
+    check('the STREAMED identity equals the one-shot name + size + sha-256 of the whole file (nothing weaker than hashing every byte), and the file is hashed again on every call', l1.sha256 === sha && l1.size === bytes.length && l1.identity === ident); }
 
   // ═══════════════════════════════════════════════════════════════════════
   section('2. Reading the file page by page is exact (a quoted line break must not move a position)');
-  { const full = Papa.parse<Record<string, string>>(csvText, { header: true, skipEmptyLines: true }).data; const fields = SN.headerOf(csvText);
-    for (const size of [1, 7, 33, 100, 250]) { let off = 0, got: Record<string, string>[] = []; for (let g = 0; g < 400; g++) { const r = SN.readRows(csvText, off, size, fields); got.push(...r.rows); if (r.next === null) break; off = r.next; } check(`pages of ${size} rows reproduce a full parse exactly (${got.length} rows, including the rows with a quoted line break and comma)`, same(got, full) && got.length === 100); }
-    check('the file index knows which ISSNs are shared in the whole file (rows 13 and 14)', (() => { const idx = SN.fileIndexOf(l1); return idx.rows === 100 && (idx.rowsByIssn.get(S.sharedE(f100.seed, 13)) ?? []).length === 2; })()); }
-  check('SAFETY (#23 setup): the checkpoint is a bounded string {v, identity, row index, offset}', (() => { const c = JSON.parse(SN.cursorOf({ v: 1, id: l1.identity, i: 100, o: 12345 })); return c.v === 1 && c.id === l1.identity && c.i === 100 && c.o === 12345; })());
+  { const full = Papa.parse<Record<string, string>>(csvText, { header: true, skipEmptyLines: true }).data; const fields = SN.headerOf(l1.abs);
+    for (const size of [1, 7, 33, 100, 250]) { let off = 0, got: Record<string, string>[] = []; for (let g = 0; g < 400; g++) { const r = SN.readRows(l1.abs, l1.size, off, size, fields); got.push(...r.rows); if (r.next === null) break; off = r.next; } check(`pages of ${size} rows reproduce a full parse exactly (${got.length} rows, including the rows with a quoted line break and comma)`, same(got, full) && got.length === 100); }
+    check('the file index knows which ISSNs are shared in the whole file (rows 13 and 14)', await (async () => { const idx = await SN.fileIndexOf(l1); return idx.rows === 100 && (idx.rowsByIssn.get(S.sharedE(f100.seed, 13)) ?? []).length === 2; })());
+    // A file whose rows are far larger than the first read window, in a multi-byte script, with a BOM and quoted line breaks: byte offsets must land on row starts and no character may be cut.
+    { const hdr = S.COLUMNS; const mk = (i: number) => Object.fromEntries(hdr.map(c => [c, c === 'Journal title' ? `Журнал №${i} 日本語 ✓ "кавычки", запятая` : c === 'Alternative title' ? ('ж'.repeat(5000) + '\nline\r\nbreak ' + 'ü'.repeat(4000)) : c === 'Journal ISSN (print version)' ? `9${String(500 + i).slice(-3)}-0000` : '']));
+      const big = '\uFEFF' + Papa.unparse({ fields: hdr, data: Array.from({ length: 260 }, (_, i) => hdr.map(c => (mk(i) as any)[c])) }) + '\r\n'; const bigPath = path.join(ROOT, 'doaj_journalcsv_20260926_8888_utf8.csv'); fs.writeFileSync(bigPath, big, 'utf8');
+      const lb = SN.loadSnapshot(bigPath); const want = Papa.parse<Record<string, string>>(big.replace(/^\uFEFF/, ''), { header: true, skipEmptyLines: true }).data; const hf = SN.headerOf(bigPath);
+      for (const size of [1, 7, 100, 250]) { let off = 0, got: Record<string, string>[] = [], starts: number[] = []; for (let g = 0; g < 400; g++) { starts.push(off); const r = SN.readRows(bigPath, lb.size, off, size, hf); got.push(...r.rows); if (r.next === null) break; off = r.next; }
+        check(`a ${mb(lb.size)} MB multi-byte file with a BOM, 9,000-character fields and quoted line breaks, in pages of ${size}: byte offsets reproduce a full parse exactly (${got.length} rows)`, same(got, want) && got.length === 260 && starts.every(o => o === 0 || big.length > 0)); }
+      // …and resuming from a byte offset in the middle gives the same rows as reading straight through
+      const mid = SN.readRows(bigPath, lb.size, 0, 100, hf); const rest = SN.readRows(bigPath, lb.size, mid.next!, 1000, hf);
+      check('resuming from a saved byte offset (a checkpoint) returns exactly the rows after it', same([...mid.rows, ...rest.rows], want) && rest.next === null);
+      fs.unlinkSync(bigPath); }
+  }
+  check('SAFETY (#23 setup): the checkpoint is a bounded string {v, identity, row index, offset}', (() => { const c = JSON.parse(SN.cursorOf({ v: 2, id: l1.identity, i: 100, o: 12345 })); return c.v === 2 && c.id === l1.identity && c.i === 100 && c.o === 12345; })());
+  check('a checkpoint from the earlier (character-offset) version is refused, not guessed at: the job would stop with its checkpoint kept', (() => { try { SN.parseCursor(JSON.stringify({ v: 1, id: l1.identity, i: 1, o: 1 })); return false; } catch (e: any) { return e?.code === 'DOAJ_BAD_CURSOR'; } })());
 
   // ═══════════════════════════════════════════════════════════════════════
   section('3. Test A — 100 rows: preview, then enrichment, shape by shape');
@@ -232,7 +246,7 @@ try {
   const filledCount = (f: Fx) => db.journal.count({ where: { id: { in: [...f.ids.values()].flat() }, homepage: { not: null } } });
   const baseFilled = await filledCount(f1k);
   await W.backfillTick({ workerId: 'w-b' }); let mB = (await reload(realB.id))!; const cur1 = JSON.parse(mB.cursor!);
-  check('the checkpoint after one chunk is {snapshot identity, row index 100, a character offset}: a bounded string', cur1.v === 1 && cur1.id === (mB.config as any).identity && cur1.i === 100 && cur1.o > 0 && mB.cursor!.length < 120, mB.cursor);
+  check('the checkpoint after one chunk is {snapshot identity, row index 100, a BYTE offset}: a bounded string', cur1.v === 2 && cur1.id === (mB.config as any).identity && cur1.i === 100 && cur1.o > 0 && mB.cursor!.length < 120, mB.cursor);
   await J.controlJob(realB.id, 'pause', WHO); await W.backfillTick({ workerId: 'w-b' }); mB = (await reload(realB.id))!;
   const writtenAtPause = (await filledCount(f1k)) - baseFilled;
   check('paused at a chunk boundary with its checkpoint saved and nothing half-done', mB.status === 'Paused' && mB.inflight === null && mB.recordsFetched === 100);
@@ -310,15 +324,16 @@ try {
   const takes = (process.env.DOAJ_MEMORY_TAKES ?? '500,2000,5000').split(',').map(Number); const series: Awaited<ReturnType<typeof measure>>[] = [];
   for (const [k, t] of takes.entries()) series.push(await measure(`m${k}`, 24000, t));
   const all = [small, ...series];
-  for (const m of all) console.log(`  [info] worker process, a ${mb(m.size)} MB file, ${m.j.recordsFetched} rows (${m.j.recordsEnriched} journals enriched) in ${m.j.chunksCompleted} chunks: ${mb(m.rss.base)} MB resident before, ${mb(m.rss.peak)} MB at its peak (growth ${mb(m.rss.peak - m.rss.base)} MB); live heap after a forced GC ${mb(m.rss.heapBase)} → ${mb(m.rss.heapEnd)} MB; resident after that GC ${mb(m.rss.rssEnd ?? 0)} MB; trace every 10 chunks (MB) ${(m.rss.rssTrace ?? []).map(mb).join(' ')}`);
+  for (const m of all) console.log(`  [info] worker process, a ${mb(m.size)} MB file, ${m.j.recordsFetched} rows (${m.j.recordsEnriched} journals enriched) in ${m.j.chunksCompleted} chunks: ${mb(m.rss.base)} MB resident before, ${mb(m.rss.peak)} MB at its peak (growth ${mb(m.rss.peak - m.rss.base)} MB); live heap after a forced GC ${mb(m.rss.heapBase)} → ${mb(m.rss.heapEnd)} MB; resident after that GC ${mb(m.rss.rssEnd ?? 0)} MB (${JSON.stringify(m.rss.mem ?? {})} MB); trace every 10 chunks (MB) ${(m.rss.rssTrace ?? []).map(mb).join(' ')}`);
   const growth = (m: typeof small) => m.rss.peak - m.rss.base, heapKept = (m: typeof small) => m.rss.heapEnd - m.rss.heapBase;
   check('(#25) every measured job completed and looked at exactly the rows asked for', all.every(m => m.j.status === 'Completed' && m.j.recordsFetched === m.take), all.map(m => [m.take, m.j.status, m.j.recordsFetched]));
   check('(#25) MEMORY, job size: enriching 500, 2,000 and 5,000 journals from the same large file keeps the live heap (after a forced GC) within 25 MB of one another and growing by under 80 MB — nothing the job read or wrote is kept, so it does not scale with the number of records', Math.max(...series.map(m => m.rss.heapEnd)) - Math.min(...series.map(m => m.rss.heapEnd)) < 25 * 1048576 && series.every(m => heapKept(m) < 80 * 1048576), series.map(m => [m.take, mb(m.rss.heapEnd), mb(heapKept(m))]));
   check('(#25) MEMORY, file size: the first 1,000 rows of a small file and of one eight times larger leave the live heap the same after a forced GC (within 25 MB)', Math.abs(series[0].rss.heapEnd - small.rss.heapEnd) < 25 * 1048576, { small: mb(small.rss.heapEnd), large: mb(series[0].rss.heapEnd) });
-  // Resident memory is NOT flat while a job runs: every chunk re-reads, hashes and decodes the whole staged file to re-check its identity, and that off-heap garbage is returned to the OS
-  // late, so RSS climbs for the first ~150 chunks and then sawtooths on a plateau (measured: a 24 MB file plateaus near 470 MB; the live heap stays at ~19 MB throughout). What is asserted is
-  // therefore (1) a ceiling proportional to the FILE (plus the runtime's own ~100 MB), not to the load of the machine, and (2) for a long job, no upward trend once it is on its plateau.
-  check('…and resident growth stays proportional to the file (under 100 MB of runtime overhead plus 20× the file\'s size above the process\'s own start, for every job size): the cost is the whole-file identity re-read per chunk, not the number of records', all.every(m => growth(m) < 100 * 1048576 + 20 * m.size), all.map(m => [m.take, mb(growth(m)), mb(m.size)]));
+  // What a job costs. The staged file is hashed again on every page (identity) by STREAMING it through a 1 MB buffer and each page is a bounded window of bytes, so the file is never held;
+  // the held-journal title map is read once per job, not once per chunk. Measured on a complete 24,000-row pass over a 24 MB file: live heap 15 → ~45 MB (the title map, which follows the
+  // catalogue, not the file), resident memory a start-up peak near 310 MB and then ~235 MB, against ~500 MB and ~440 MB when every chunk re-read and decoded the whole file and re-read
+  // the whole title table. What is asserted is (1) a ceiling proportional to the FILE (plus the runtime's own ~100 MB), not to the load of the machine, and (2) for a long job, no upward trend.
+  check('…and resident growth stays proportional to the file (under 100 MB of runtime overhead plus 12× the file\'s size above the process\'s own start, for every job size)', all.every(m => growth(m) < 100 * 1048576 + 12 * m.size), all.map(m => [m.take, mb(growth(m)), mb(m.size)]));
   const longest = series[series.length - 1];
   if (longest.j.chunksCompleted >= 150) { const tr: number[] = longest.rss.rssTrace ?? []; const cut = Math.floor(tr.length * 2 / 3); check('…and on a long job (150+ chunks) there is no upward trend once the plateau is reached: the last third of the run never exceeds the earlier two thirds by more than 60 MB', Math.max(...tr.slice(cut)) <= Math.max(...tr.slice(0, cut)) + 60 * 1048576, tr.map(mb)); }
   await noStrangers('after the resource measurements');

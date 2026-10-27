@@ -1,0 +1,33 @@
+{
+ "metadata": {
+  "identifier": "intercontinental_records_registration_warranty_card_",
+  "licenseurl": "http://creativecommons.org/publicdomain/zero/1.0/",
+  "rights": "Public Domain.",
+  "access-restricted-item": "true",
+  "collection": [
+   "arthusgerardwarrantyguaranteeandserviceagreements",
+   "arthusgerard",
+   "loggedin",
+   "deemphasize",
+   "patron-library-collection"
+  ],
+  "mediatype": "texts",
+  "title": "intercontinental_records_registration_warranty_card_",
+  "date": "1975"
+ },
+ "files": [
+  {
+   "name": "intercontinental_records_registration_warranty_card_.pdf",
+   "format": "Image Container PDF",
+   "size": "1135748",
+   "source": "original"
+  },
+  {
+   "name": "intercontinental_records_registration_warranty_card__text.pdf",
+   "format": "Additional Text PDF",
+   "size": "90732",
+   "source": "derivative"
+  }
+ ],
+ "files_count": 13
+}

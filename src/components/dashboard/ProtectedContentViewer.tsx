@@ -272,7 +272,7 @@ export function ProtectedContentViewer() {
     if (!id || !content || content.kind === 'book') return;
     const url = content.kind === 'content'
       ? `/api/library/content/${id}`
-      : `/api/library/article/${id}`;
+      : `/api/library/article/${id}?abstract=preview`; // the viewer shows a preview, so it is not sent the whole abstract
     fetch(url, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
       .then(r => (r.ok ? r.json() : null))
       .then(d => d && setRecord(d))
@@ -540,6 +540,11 @@ export function ProtectedContentViewer() {
   const doi: string | null = record?.doi || content?.doi || null;
   const isOapenPdf = /library\.oapen\.org\/rest\/bitstreams\//.test(wayOut || '');
 
+  // A short preview, cut on the server. The link beside it goes to the record's own landing page — never to the
+  // file, and never to an address built here — so it is absent when the source gave us none.
+  const abstractPreview: string | null = content?.abstractPreview || record?.abstractPreview || null;
+  const landingPage: string | null = [record?.originalUrl, content?.originalUrl].find(u => typeof u === 'string' && /^https?:\/\//i.test(u)) || null;
+
   // ────────────────────────────────────────────────────
   //  Render: Main viewer
   // ────────────────────────────────────────────────────
@@ -783,10 +788,16 @@ export function ProtectedContentViewer() {
               {content?.journalIssn && <><span className="text-slate-300 dark:text-faint">·</span><span>ISSN {content.journalIssn}</span></>}
             </p>
 
-            {record?.abstract && (
-              <div className={`mt-6 border-t pt-5 border-slate-200 dark:border-rule`}>
+            {abstractPreview && (
+              <div data-testid="abstract-preview" className={`mt-6 border-t pt-5 border-slate-200 dark:border-rule`}>
                 <p className={`font-mono text-[11px] uppercase tracking-wider text-slate-500 dark:text-muted`}>Abstract</p>
-                <p className={`mt-2 whitespace-pre-wrap text-[14.5px] leading-relaxed text-slate-700 dark:text-ink-2`}>{record.abstract}</p>
+                <p className={`mt-2 text-[14.5px] leading-relaxed [overflow-wrap:anywhere] text-slate-700 dark:text-ink-2`}>{abstractPreview}</p>
+                {landingPage && (
+                  <a href={landingPage} target="_blank" rel="noreferrer noopener"
+                    className="mt-2 inline-flex items-center gap-1.5 text-[13px] font-medium text-accent hover:underline">
+                    Read full abstract at publisher <ExternalLink size={12} aria-hidden="true" />
+                  </a>
+                )}
               </div>
             )}
 
