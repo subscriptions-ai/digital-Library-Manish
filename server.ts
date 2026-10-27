@@ -75,6 +75,7 @@ import * as reviewIngestRouting from "./src/lib/ingestion/reviewIngestRouting.js
 import { pipelineStatus } from "./src/lib/ingestion/pipelineStatus.js";
 import { overview as backfillOverview, createJob as createBackfillJob, controlJob as controlBackfillJob, serializeJob as serializeBackfillJob, describeSource as describeBackfillSource } from "./src/lib/ingestion/backfill/jobs.js";
 import { startBackfillWorker } from "./src/lib/ingestion/backfill/worker.js";
+import { listCandidates as listFulltextCandidates, decide as decideFulltextCandidate, CandidateError as FulltextCandidateError } from "./src/lib/ingestion/books/fulltextCandidates.js";
 import { BackfillError } from "./src/lib/ingestion/backfill/types.js";
 import { engineStatus, last24Hours, repeatedNoChangeAlerts, metrics as ingestionMetrics, runHistory, runSources } from "./src/lib/ingestion/status.js";
 import { INGESTION_POLICY, schedulerV2 } from "./src/lib/ingestion/policy.js";
@@ -9516,6 +9517,22 @@ async function startServer() {
     try { res.status(201).json(serializeBackfillJob(await createBackfillJob(req.body, adminOf(req)))); } catch (e: any) { backfillFail(res, e, 'create the backfill job'); }
   });
   app.post("/api/admin/ingest/backfill/:id/:action", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+  // ── Full-text candidate review (Phase 2G): the Books the Open Library / Internet Archive audit found openly readable under a reuse licence, and a person's decision on each. ──
+  // Reading is a list; a decision is a RECORD (Approve for future ingestion / Hold / Reject). Nothing is downloaded and no Book is changed.
+  app.get("/api/admin/books/fulltext-candidates", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const q = req.query || {};
+      res.json(await listFulltextCandidates(prisma, { state: q.state ? String(q.state) : undefined, department: q.department ? String(q.department) : undefined, source: q.source ? String(q.source) : undefined, q: q.q ? String(q.q) : undefined, page: Number(q.page) || 1, pageSize: Number(q.pageSize) || 25 }));
+    } catch (e: any) { console.error('GET fulltext-candidates error:', e?.message); res.status(500).json({ error: 'Failed to read the candidates' }); }
+  });
+  app.post("/api/admin/books/fulltext-candidates/:bookId/decision", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try { res.json(await decideFulltextCandidate(prisma, String(req.params.bookId), req.body?.decision, adminOf(req), req.body?.note, req.body?.expectedFingerprint)); }
+    catch (e: any) {
+      if (e instanceof FulltextCandidateError) return res.status(e.status).json({ error: e.message, code: e.code, problems: e.problems });
+      console.error('POST fulltext-candidates decision error:', e?.message); res.status(500).json({ error: 'Failed to record the decision' });
+    }
+  });
+
     const action = String(req.params.action);
     if (!['pause', 'resume', 'cancel', 'replan'].includes(action)) return res.status(404).json({ error: 'Unknown action.', code: 'NOT_FOUND' });
     try { res.json(serializeBackfillJob(await controlBackfillJob(String(req.params.id), action as any, adminOf(req)))); } catch (e: any) { backfillFail(res, e, `${action} the backfill job`); }
