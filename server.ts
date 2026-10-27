@@ -44,6 +44,7 @@ import { mediaStorageRoot, mediaDir as mediaDirPath, mediaDriver, mediaStorageSt
 import { aiConfig } from "./src/server/aiAssistantConfig.js";
 import { searchContent } from "./src/lib/catalogueSearch.js";
 import { contentTypeCounts } from "./src/lib/publicCounts.js";
+import { abstractPreviewFor } from "./src/lib/abstractPreview.js";
 import { buildQuotationEmailHtml } from "./src/lib/quotation/quotationEmail.js";
 import { publicJournalCount, publicJournalStatusSql, publicJournalStatusWhere, PUBLIC_JOURNAL_STATUSES } from "./src/lib/publicJournals.js";
 import { COMPANY_DETAILS, currentIssuer } from "./src/config.js";
@@ -5096,6 +5097,8 @@ async function startServer() {
         // The reader fetched it from the *article* record endpoint whatever the
         // item was, so for a book that request was a 404, the link never arrived,
         // and every one of the DOAB books — none of which has a file we serve —
+        // At most 400 characters of plain text, cut here: the complete abstract never reaches the reader.
+        abstractPreview: abstractPreviewFor(resolved.kind, it),
         // opened onto a blank page.
         originalUrl: it.originalUrl ?? null,
         doi: it.doi ?? null,
@@ -10546,8 +10549,12 @@ async function startServer() {
       console.error('GET library/article error:', e?.message);
       res.status(500).json({ error: "Failed to load article" });
     }
+      // The content viewer asks for `?abstract=preview`: it shows a short preview, so it is sent the preview
+      // and not the abstract. The record page asks for nothing and still receives the whole record.
+      const previewOnly = req.query.abstract === 'preview';
   });
 
+        ...(previewOnly ? { abstract: undefined, abstractPreview: abstractPreviewFor('article', article) } : {}),
   // GET /api/library/content/:id — the record behind a legacy item, so the
   // reader's rail is not empty for the 9,024 rows that predate the catalogue.
   // publishedAt is deliberately absent: it defaults to now(), so every one of
