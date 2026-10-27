@@ -37,8 +37,22 @@ export type SourceCard = {
   /** When it was set aside as exhausted, and when it is due to be tried again. */
   exhaustedAt?: string | null; refreshAfter?: string | null;
   quota: { archivesLeft: number; archivesPerDay: number } | null;
+  /** OpenAlex Sources only: where its historical journal walk has got to (read from its own checkpoint). */
+  historical?: Historical | null;
   runningJobId: string | null; canQuickImport: boolean; blockedBy: string | null;
   last: { at: string; checked?: number; added?: number } | null;
+};
+
+export type Historical = {
+  enabled: boolean; paused: boolean; apiKey: boolean;
+  state: 'not-started' | 'historical' | 'complete' | 'incremental-running' | 'paused' | 'cooling' | 'needs-attention' | 'needs-key';
+  headline: string;
+  progress: { checked: number; total: number | null; percent: number | null };
+  page: number; cursorTail: string | null;
+  counters: { checked: number; new: number; duplicates: number; enriched: number; conflicts: number; review: number; strong: number; unassigned: number };
+  lastProductiveAt: string | null; lastProductive: { at: string; checked: number; created: number; enriched: number } | null;
+  nextEligibleAt: string | null; nextWalkDue: string | null; baselineCompletedAt: string | null; incrementalRuns: number;
+  lastError: { at: string; message: string; kind: string } | null; needsAttention: string | null; conflictSamples: string[];
 };
 
 export type Kind = 'all' | 'Journals' | 'Articles' | 'Books';
@@ -65,6 +79,8 @@ function availabilityLine(s: SourceCard): { text: string; tone: string } | null 
   const a = s.availability;
   // A failing source is already described by its Health line (reason and retry time); this line is for the other reasons it cannot be asked.
   if (!a || a.kind === 'available' || a.kind === 'cooling' || a.kind === 'rate_limited' || a.kind === 'unavailable') return null;
+  // A completed historical sweep is not "exhausted for now": the card says what it is (see the history block).
+  if (a.kind === 'exhausted' && s.historical?.state === 'complete') return null;
   const at = a.until ? clock(a.until) : null;
   const text = a.kind === 'probe' ? 'Test request due — one request will check whether it has recovered'
     : a.kind === 'running' ? `Running now${a.detail ? ` — ${a.detail}` : ''}`
@@ -76,6 +92,34 @@ function availabilityLine(s: SourceCard): { text: string; tone: string } | null 
 /** Checked, added, held, review, skipped — and provider request failures on their own, never folded into the record figures. */
 function batchLine(b: Batch) {
   return `Checked ${N(b.checked)} · Added ${N(b.added)} · Held ${N(b.held)} · Review ${N(b.sentToReview)} · Skipped ${N(b.skipped ?? 0)} · Provider request failures ${N(b.requestFailures ?? 0)}`;
+}
+
+
+/** The checkpoint of the historical OpenAlex journal walk, on the OpenAlex Sources card. Words, not just colour; nothing here is a control. */
+function HistoricalBlock({ h }: { h: Historical }) {
+  const tone = h.state === 'complete' ? 'badge-success' : h.state === 'historical' || h.state === 'incremental-running' ? 'badge-accent' : h.state === 'not-started' ? 'badge-neutral' : 'badge-caution';
+  const c = h.counters;
+  return (
+    <div className="mt-2.5 rounded-lg border border-rule bg-surface-2 px-3 py-2.5 text-[12px] text-ink-2" aria-label="Historical journal discovery">
+      <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span className="font-medium text-ink">Historical discovery</span>
+        <span className={`badge badge-dot ${tone}`}>{h.state === 'complete' ? 'Complete' : h.state === 'historical' ? 'In progress' : h.state === 'incremental-running' ? 'Re-checking' : h.state === 'not-started' ? 'Not started' : h.state === 'paused' ? 'Paused' : h.state === 'cooling' ? 'Cooling down' : h.state === 'needs-key' ? 'API key needed' : 'Needs a person'}</span>
+        {!h.enabled && <span className="text-muted" title="OPENALEX_JOURNALS_HISTORICAL is not set, so the engine still uses its department searches.">Not switched on in the engine</span>}
+      </p>
+      <p className="mt-1 text-[12px] text-ink">{h.headline}</p>
+      {h.progress.total != null && h.state !== 'complete' && (
+        <p className="mt-1 text-muted">Checkpoint: {N(h.progress.checked)} of {N(h.progress.total)} sources{h.progress.percent != null ? ` (${h.progress.percent}%)` : ''} · page {N(h.page)}{h.cursorTail ? ` · cursor …${h.cursorTail}` : ''}</p>
+      )}
+      <p className="mt-1 text-muted">Checked {N(c.checked)} · New {N(c.new)} ({N(c.strong)} DOAJ-listed) · Duplicates {N(c.duplicates)} · Enriched {N(c.enriched)} · Conflicts {N(c.conflicts)} · Review {N(c.review)} · No department {N(c.unassigned)}</p>
+      <p className="mt-0.5 text-muted">
+        Last productive batch: {h.lastProductive ? `${ago(h.lastProductive.at)} — ${N(h.lastProductive.created)} new, ${N(h.lastProductive.enriched)} enriched from ${N(h.lastProductive.checked)}` : 'none yet'}
+        {h.nextEligibleAt ? ` · next eligible ${clock(h.nextEligibleAt)}` : h.nextWalkDue ? ` · next incremental re-check ${new Date(h.nextWalkDue).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}` : ''}
+      </p>
+      {h.state === 'needs-key' && <p className="mt-1 text-ink-2">OpenAlex only pages past the first 100 sources for a caller with a free API key. Set OPENALEX_API_KEY on the server; no request is made until then.</p>}
+      {h.needsAttention && <p role="alert" className="mt-1 text-ink">{h.needsAttention}</p>}
+      {h.lastError && !h.needsAttention && h.state !== 'needs-key' && <p className="mt-1 text-muted">Last problem: {h.lastError.message}</p>}
+    </div>
+  );
 }
 
 export function SourceCards({ sources, failed, onRetry, filter, onFilter, selected, onQuick, onConfigure, starting }: {
@@ -138,7 +182,7 @@ export function SourceCards({ sources, failed, onRetry, filter, onFilter, select
                     {/* Health and yield are different things: a source can be perfectly healthy and give nothing new. */}
                     {(s.yield || (s.health && (s.health.failures > 0 || (s.health.lifetimeFailures ?? 0) > 0))) && (
                       <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-muted">
-                        {s.yield && !(s.yield === 'exhausted' && s.availability?.kind === 'exhausted') && <span className={`badge ${s.yield === 'productive' ? (s.yieldFor === 'review' ? 'badge-neutral' : 'badge-success') : 'badge-neutral'}`}>{s.yield === 'productive' ? (s.yieldFor === 'review' || s.reviewOnly ? 'Productive for review' : s.yieldFor === 'published' ? 'Productive for published catalogue' : 'Productive') : s.yield === 'low' ? 'Low yield' : 'Exhausted for now'}</span>}
+                        {s.yield && !(s.yield === 'exhausted' && (s.availability?.kind === 'exhausted' || s.historical?.state === 'complete')) && <span className={`badge ${s.yield === 'productive' ? (s.yieldFor === 'review' ? 'badge-neutral' : 'badge-success') : 'badge-neutral'}`}>{s.yield === 'productive' ? (s.yieldFor === 'review' || s.reviewOnly ? 'Productive for review' : s.yieldFor === 'published' ? 'Productive for published catalogue' : 'Productive') : s.yield === 'low' ? 'Low yield' : 'Exhausted for now'}</span>}
                         {s.health && s.health.failures > 0 && <span>{s.health.failures} consecutive failure{s.health.failures === 1 ? '' : 's'}</span>}
                         {s.health && (s.health.lifetimeFailures ?? 0) > 0 && <span title="Every failed request this source has ever had; it is never reset">{N(s.health.lifetimeFailures)} lifetime request failure{s.health.lifetimeFailures === 1 ? '' : 's'}</span>}
                       </p>
@@ -164,6 +208,7 @@ export function SourceCards({ sources, failed, onRetry, filter, onFilter, select
                         Resting: {s.cursors.resting.slice(0, 4).map(c => `${c.department || c.query || c.key} (until ${clock(c.until)})`).join(', ')}{s.cursors.resting.length > 4 ? ` and ${s.cursors.resting.length - 4} more` : ''}
                       </p>
                     )}
+                    {s.historical && <HistoricalBlock h={s.historical} />}
                     {s.lastBatch && <p className="mt-1.5 text-[12px] text-muted">Last batch: {batchLine(s.lastBatch)}</p>}
                     {s.lastProductiveBatch && s.lastBatch && s.lastProductiveBatch.at !== s.lastBatch.at && (
                       <p className="mt-0.5 text-[12px] text-muted">Last productive batch ({ago(s.lastProductiveBatch.at)}): {N(s.lastProductiveBatch.added)} added / {N(s.lastProductiveBatch.checked)} checked</p>

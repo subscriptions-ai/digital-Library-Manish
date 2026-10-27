@@ -90,6 +90,7 @@ import { enrichFromGoogleBooks } from "./src/lib/ingestion/books/googleBooks.js"
 import { sourceCooldown } from "./src/lib/ingestion/sourceHealth.js";
 import { departmentMetrics, departmentTable, departmentExists } from "./src/lib/ingestion/departmentMetrics.js";
 import { resolveRange } from "./src/lib/ingestion/runFilter.js";
+import { historicalStatus as openAlexJournalsStatus, setPaused as setOpenAlexJournalsPaused } from "./src/lib/ingestion/openAlexJournals.js";
 import sanitizeHtml from "sanitize-html";
 import { checkCoverImage, failed, cleanAlt, isUsableCoverUrl, isExternalMediaUrl, publishProblems, COVER_MAX_BYTES, COVER_UNAVAILABLE_MESSAGE, type PublishProblems } from "./src/lib/blogCover.js";
 import {
@@ -9889,8 +9890,30 @@ async function startServer() {
 
   // The cards: every approved source, its limit, and how it is doing right now.
   app.get("/api/admin/ingest/sources", authenticateJWT, requireSuperAdmin, async (_req: any, res: any) => {
-    try { res.json({ sources: await listQuickSources() }); }
+    try {
+      const sources: any[] = await listQuickSources();
+      // The OpenAlex Sources card also carries where its historical journal walk has got to (read-only; null if it cannot be read).
+      const oa = sources.find(x => x.id === 'openalexsources');
+      if (oa) oa.historical = await openAlexJournalsStatus().catch(() => null);
+      res.json({ sources });
+    }
     catch (e: any) { console.error('GET ingest/sources error:', e?.message); res.status(500).json({ error: "Failed to read the sources" }); }
+  });
+
+  // GET /api/admin/ingest/openalex-journals — the checkpoint of the historical OpenAlex journal walk: state, progress, counters, next eligible time.
+  app.get("/api/admin/ingest/openalex-journals", authenticateJWT, requireSuperAdmin, async (_req: any, res: any) => {
+    try { res.json(await openAlexJournalsStatus()); }
+    catch (e: any) { console.error('GET ingest/openalex-journals error:', e?.message); res.status(500).json({ error: "Failed to read the OpenAlex journal checkpoint" }); }
+  });
+
+  // POST /api/admin/ingest/openalex-journals/pause { paused: boolean } — pause or resume the historical walk. Moves no cursor and changes no setting but the pause flag.
+  app.post("/api/admin/ingest/openalex-journals/pause", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      if (typeof req.body?.paused !== 'boolean') return res.status(400).json({ error: 'paused must be true or false' });
+      await setOpenAlexJournalsPaused(req.body.paused);
+      await ingestionAudit(adminOf(req), 'SOURCE_PAUSED', { source: 'OpenAlex Sources (historical journal walk)', paused: req.body.paused });
+      res.json(await openAlexJournalsStatus());
+    } catch (e: any) { console.error('POST ingest/openalex-journals/pause error:', e?.message); res.status(500).json({ error: "Failed to change the pause" }); }
   });
 
   app.post("/api/admin/ingest/quick", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
