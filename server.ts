@@ -9517,6 +9517,11 @@ async function startServer() {
     try { res.status(201).json(serializeBackfillJob(await createBackfillJob(req.body, adminOf(req)))); } catch (e: any) { backfillFail(res, e, 'create the backfill job'); }
   });
   app.post("/api/admin/ingest/backfill/:id/:action", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    const action = String(req.params.action);
+    if (!['pause', 'resume', 'cancel', 'replan'].includes(action)) return res.status(404).json({ error: 'Unknown action.', code: 'NOT_FOUND' });
+    try { res.json(serializeBackfillJob(await controlBackfillJob(String(req.params.id), action as any, adminOf(req)))); } catch (e: any) { backfillFail(res, e, `${action} the backfill job`); }
+  });
+
   // ── Full-text candidate review (Phase 2G): the Books the Open Library / Internet Archive audit found openly readable under a reuse licence, and a person's decision on each. ──
   // Reading is a list; a decision is a RECORD (Approve for future ingestion / Hold / Reject). Nothing is downloaded and no Book is changed.
   app.get("/api/admin/books/fulltext-candidates", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
@@ -9531,11 +9536,6 @@ async function startServer() {
       if (e instanceof FulltextCandidateError) return res.status(e.status).json({ error: e.message, code: e.code, problems: e.problems });
       console.error('POST fulltext-candidates decision error:', e?.message); res.status(500).json({ error: 'Failed to record the decision' });
     }
-  });
-
-    const action = String(req.params.action);
-    if (!['pause', 'resume', 'cancel', 'replan'].includes(action)) return res.status(404).json({ error: 'Unknown action.', code: 'NOT_FOUND' });
-    try { res.json(serializeBackfillJob(await controlBackfillJob(String(req.params.id), action as any, adminOf(req)))); } catch (e: any) { backfillFail(res, e, `${action} the backfill job`); }
   });
 
   // POST /api/admin/ingest/state — change settings, scope, or switch the engine on/off.
