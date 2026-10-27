@@ -290,6 +290,21 @@ void realUpdate;
 eq('routing that cannot read a book is counted as skipped and the harvest still completes with the same counts', [counts(repBoom).slice(0, 4), repBoom.completed, repBoom.routing?.routedHigh], [counts(repOff).slice(0, 4), true, 0]);
 off();
 
+// ── 7b. Every place that creates Books ──────────────────────────────────────
+section('Coverage: every Book-creating path is accounted for');
+{
+  const { readdirSync, statSync } = await import('node:fs');
+  const root = new URL('../src/', import.meta.url).pathname;
+  const walk = (d: string): string[] => readdirSync(d).flatMap(f => { const p = d + f; return statSync(p).isDirectory() ? walk(p + '/') : /\.tsx?$/.test(f) ? [p] : []; });
+  const creators = walk(root).filter(f => /\.book\.(create|createMany|upsert)\(|insert into "?Book"?\b/i.test(readFileSync(f, 'utf8'))).map(f => f.slice(root.length)).sort();
+  eq('Books are created in exactly these files under src/ (routed: oaiHarvest; excluded: backfill/bookCommon and the legacy ingestionWorker)', creators, ['lib/ingestion/backfill/bookCommon.ts', 'lib/ingestion/books/oaiHarvest.ts', 'lib/ingestionWorker.ts']);
+  const harvest = readFileSync(root + 'lib/ingestion/books/oaiHarvest.ts', 'utf8');
+  check('the live harvest routes right after it creates a Draft', /const created = await db\.book\.create\(\{ data: row \}\);\s*\n\s*if \(!publishes\) await routing\.route\(created\.id\)/.test(harvest));
+  check('the historical backfill does not route', !/reviewIngestRouting|routingSession/.test(readFileSync(root + 'lib/ingestion/backfill/bookCommon.ts', 'utf8')));
+  check('the legacy DOAB REST sweep is a rollback path: reached only with BOOKS_OAI=0 or INGESTION_ROTATION=0', /id === 'doab' && !booksOai\(\)\) return legacyDoabSweepTurn/.test(readFileSync(root + 'lib/ingestion/providers.ts', 'utf8')) && /if \(!rotationEnabled\(\)\) return runIngestionPass/.test(readFileSync(root + 'lib/ingestion/engine.ts', 'utf8')));
+  check('…and neither switch is set by default', process.env.BOOKS_OAI !== '0' && process.env.INGESTION_ROTATION !== '0');
+}
+
 // ── 8. Nothing else moved ───────────────────────────────────────────────────
 section('Nothing else moved');
 check('routing writes no publication audit and starts no review job', (await db.ingestionAudit.count({ where: { action: { in: ['REVIEW_PUBLISH_STARTED', 'REVIEW_PUBLISH_SELECTED', 'REVIEW_AUTO_ASSIGN_STARTED'] } } })) === 0);

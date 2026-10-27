@@ -20,6 +20,15 @@ import { CLASSIFIER_RULES_VERSION, ANALYSIS_CLASSIFIER_V2, type ClassifierVarian
  * It applies only to books written by a harvest that is running now: the harvest hands over the id of the row it has just created. It never walks the
  * existing queue (that is Auto-assign High Confidence, a separate and separately gated action).
  *
+ * Coverage (audited 2026-10-27; scripts/test-review-routing.ts fails if a new place that creates Books appears, so the audit is repeated):
+ *   routed      the live harvest, `harvestFeed` in books/oaiHarvest.ts: DOAB, OAPEN, Open Textbook Library, NCBI, NLM, Crossref Books, Pressbooks, Open Library
+ *               (and its dump) and Quick Import. This is the one place continuous ingestion writes Books.
+ *   excluded    historical backfill (backfill/bookCommon.ts): old books are not "future" books, and a backfill never runs this.
+ *   excluded    the legacy DOAB REST sweep (ingestionWorker.ts, `discoverBooksPage`). It is a rollback path, not a live one: it runs only when BOOKS_OAI=0
+ *               (rotation) or INGESTION_ROTATION=0, both off by default and set nowhere in the repository. With BOOKS_OAI on, even the legacy pass harvests through
+ *               `harvestFeed`. It writes only year-policy Drafts, which would simply stay in the review queue; it is left untouched on purpose.
+ *   not ingestion  server.ts: a publisher's or an administrator's own entry.
+ *
  * A gate of its own, REVIEW_INGEST_ROUTING_ENABLED (default off), and independent of REVIEW_AUTO_ASSIGN_ENABLED: enabling historical assignment does not
  * switch this on, and this does not switch that on. It also needs an approved rule (REVIEW_AUTO_ASSIGN_THRESHOLDS) and a chosen classifier
  * (REVIEW_INGEST_ROUTING_CLASSIFIER = v1 | v2); without either it does nothing and says why.
