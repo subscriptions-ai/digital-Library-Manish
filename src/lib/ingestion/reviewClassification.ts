@@ -1,6 +1,7 @@
 import { ingestionDb as db } from './db.js';
 import { classifyDepartment, CLASSIFIER_RULES_VERSION, ANALYSIS_CLASSIFIER_V2, STRONG_MIN, STRONG_MARGIN, REVIEW_MIN, type ClassifierVariant } from './books/classifier.js';
 import { ddcEvidence } from './ddc.js';
+import { acquireReviewJob, releaseReviewJob, __resetReviewJobLock } from './reviewJobLock.js';
 
 /**
  * Review automation, phases R1 / R1.5: an analysis of the "Needs a department" queue that does not modify catalogue or content records.
@@ -66,18 +67,19 @@ export type Row = {
 // ── Reading the queue ───────────────────────────────────────────────────────
 
 /** The queue the review screen calls "Needs a department". One definition, shared with reviewQueue.ts' Books count. */
-const QUEUE = `status = 'Draft' and "ownershipSource" = 'Ingested' and domain is null and "rejectionNote" is null`;
+export const QUEUE = `status = 'Draft' and "ownershipSource" = 'Ingested' and domain is null and "rejectionNote" is null`;
 
 const arr = (v: any): string[] => (Array.isArray(v) ? v.map(String) : []);
 const CHUNK = 500;
 
-async function readChunk(afterId: string, extraWhere = QUEUE): Promise<any[]> {
+/** The next `limit` books of the queue after `afterId` (by id), with the evidence each classifier reads. */
+export async function readChunk(afterId: string, extraWhere = QUEUE, limit = CHUNK): Promise<any[]> {
   return db.$queryRawUnsafe(
     `select id, title, left(description, 1200) description, year, source, language, licence, "licenceIsNC",
             metadata->'harvest'->'classifications' codes, metadata->'harvest'->'keywords' keywords,
             metadata->'harvest'->'provider'->'lcc' lcc, metadata->'harvest'->'provider'->'nlmClass' nlm, metadata->'harvest'->'provider'->'ddc' ddc,
             metadata->'harvest'->'department'->>'suggested' "storedDept", metadata->'harvest'->'department'->>'score' "storedScore"
-       from "Book" where ${extraWhere} and id > $1 order by id limit ${CHUNK}`, afterId).catch(() => []);
+       from "Book" where ${extraWhere} and id > $1 order by id limit ${limit}`, afterId).catch(() => []);
 }
 
 export function judge(b: any, variant: ClassifierVariant = 'v1'): Row {
@@ -112,7 +114,7 @@ export type Recommendation = {
 };
 
 export type Summary = {
-  asOf: string; startedAt: string; finishedAt: string; rulesVersion: number; thresholds: Thresholds;
+  asOf: string; startedAt: string; finishedAt: string; /** Which classifier judged the queue. Absent in summaries written before R2: that was v1. */ classifier?: ClassifierVariant; rulesVersion: number; thresholds: Thresholds;
   /** Drafts in the queue when the analysis started, and the ones left out of it (already placed / carrying a rejection note). */
   queueTotal: number; analysed: number; alreadyPlaced: number; withRejectionNote: number;
   tiers: Record<Tier, number>;
@@ -145,17 +147,17 @@ const REVIEWED = `status = 'Published' and "ownershipSource" = 'Ingested' and do
                   and metadata->'harvest'->'department' is not null and metadata->'harvest'->'promoted' is null
                   and coalesce(metadata->'harvest'->'department'->>'band', '') <> 'strong'`;
 
-async function calibrationRows(): Promise<{ row: Row; chosen: string }[]> {
+async function calibrationRows(variant: ClassifierVariant = 'v1'): Promise<{ row: Row; chosen: string }[]> {
   const out: { row: Row; chosen: string }[] = [];
   let last = '';
   for (;;) {
     const rows: any[] = await db.$queryRawUnsafe(
       `select id, title, left(description, 1200) description, year, source, language, licence, "licenceIsNC", domain chosen,
               metadata->'harvest'->'classifications' codes, metadata->'harvest'->'keywords' keywords,
-              metadata->'harvest'->'provider'->'lcc' lcc, metadata->'harvest'->'provider'->'nlmClass' nlm
+              metadata->'harvest'->'provider'->'lcc' lcc, metadata->'harvest'->'provider'->'nlmClass' nlm, metadata->'harvest'->'provider'->'ddc' ddc
          from "Book" where ${REVIEWED} and id > $1 order by id limit ${CHUNK}`, last).catch(() => []);
     if (!rows.length) break;
-    for (const b of rows) out.push({ row: judge(b), chosen: b.chosen });
+    for (const b of rows) out.push({ row: judge(b, variant), chosen: b.chosen });
     last = rows[rows.length - 1].id;
     await new Promise(r => setImmediate(r));
     if (out.length >= 20_000) break;
@@ -204,7 +206,7 @@ export function recommend(grid: GridCell[], queueTotal: number, reviewedTotal: n
   };
 }
 
-export function summarise(rows: Row[], meta: { startedAt: Date; queueTotal: number; alreadyPlaced: number; withRejectionNote: number }, reviewed: { row: Row; chosen: string }[]): Summary {
+export function summarise(rows: Row[], meta: { startedAt: Date; queueTotal: number; alreadyPlaced: number; withRejectionNote: number; classifier?: ClassifierVariant }, reviewed: { row: Row; chosen: string }[]): Summary {
   const tiers = emptyTiers();
   const scoreDistribution: Record<string, number> = {}, marginDistribution: Record<string, number> = {}, byYear: Record<string, number> = {}, byLicence: Record<string, number> = {}, byLanguage: Record<string, number> = {};
   const bySource: Record<string, Record<Tier, number>> = {}, dept: Record<string, { high: number; medium: number; low: number }> = {};
@@ -237,7 +239,7 @@ export function summarise(rows: Row[], meta: { startedAt: Date; queueTotal: numb
   const analysed = rows.length;
   return {
     asOf: new Date().toISOString(), startedAt: meta.startedAt.toISOString(), finishedAt: new Date().toISOString(),
-    rulesVersion: CLASSIFIER_RULES_VERSION, thresholds: CURRENT_THRESHOLDS,
+    classifier: meta.classifier ?? 'v1', rulesVersion: meta.classifier === 'v2' ? ANALYSIS_CLASSIFIER_V2 : CLASSIFIER_RULES_VERSION, thresholds: CURRENT_THRESHOLDS,
     queueTotal: meta.queueTotal, analysed, alreadyPlaced: meta.alreadyPlaced, withRejectionNote: meta.withRejectionNote,
     tiers,
     share: shares(tiers, analysed),
@@ -254,10 +256,21 @@ const SETTING_KEY = 'REVIEW_CLASSIFICATION_ANALYSIS';
 export type JobState = { mode: 'analysis' | 'comparison'; status: 'idle' | 'running' | 'done' | 'failed'; startedAt: string | null; finishedAt: string | null; processed: number; total: number; phase: string; error: string | null };
 let job: JobState = { mode: 'analysis', status: 'idle', startedAt: null, finishedAt: null, processed: 0, total: 0, phase: '', error: null };
 /** The full per-book result of the last run, in this process only. The summary survives a restart; browsing records needs a fresh run. */
-let cache: { rows: Row[]; asOf: string } | null = null;
+let cache: { rows: Row[]; asOf: string; classifier: ClassifierVariant; gone: Set<string> } | null = null;
+/**
+ * A book that has left the queue since the analysis (assigned, rejected, published) is dropped from the browsable result, so a list does not keep
+ * offering — or, worse, show as empty a page of — books that are no longer there. The analysis summary keeps the numbers as they were when it ran.
+ */
+export function forgetRows(ids: Iterable<string>) {
+  if (!cache) return;
+  for (const id of ids) cache.gone.add(id);
+  if (cache.gone.size > 2000) { cache.rows = cache.rows.filter(r => !cache!.gone.has(r.id)); cache.gone.clear(); }
+}
+const liveRows = (): Row[] => (cache ? (cache.gone.size ? cache.rows.filter(r => !cache!.gone.has(r.id)) : cache.rows) : []);
+export const cachedClassifier = (): ClassifierVariant | null => cache?.classifier ?? null;
 
 export const jobState = (): JobState => ({ ...job });
-export const __resetClassification = () => { job = { mode: 'analysis', status: 'idle', startedAt: null, finishedAt: null, processed: 0, total: 0, phase: '', error: null }; cache = null; };
+export const __resetClassification = () => { __resetReviewJobLock(); job = { mode: 'analysis', status: 'idle', startedAt: null, finishedAt: null, processed: 0, total: 0, phase: '', error: null }; cache = null; };
 
 export async function loadSummary(): Promise<Summary | null> {
   const r = await db.appSetting.findUnique({ where: { key: SETTING_KEY } }).catch(() => null);
@@ -265,8 +278,8 @@ export async function loadSummary(): Promise<Summary | null> {
 }
 
 /** Start the analysis. Returns false if one is already running. The work continues in the background; poll jobState(). */
-export function startAnalysis(admin: { uid?: string; email?: string } | null, onDone?: (s: Summary | null, err?: string) => void): boolean {
-  if (job.status === 'running') return false;
+export function startAnalysis(admin: { uid?: string; email?: string } | null, onDone?: (s: Summary | null, err?: string) => void, variant: ClassifierVariant = 'v1'): boolean {
+  if (job.status === 'running' || !acquireReviewJob('analysis')) return false;
   const startedAt = new Date();
   job = { mode: 'analysis', status: 'running', startedAt: startedAt.toISOString(), finishedAt: null, processed: 0, total: 0, phase: 'Counting the queue', error: null };
   (async () => {
@@ -282,22 +295,24 @@ export function startAnalysis(admin: { uid?: string; email?: string } | null, on
       for (;;) {
         const chunk = await readChunk(last);
         if (!chunk.length) break;
-        for (const b of chunk) rows.push(judge(b));
+        for (const b of chunk) rows.push(judge(b, variant));
         last = chunk[chunk.length - 1].id;
         job.processed = rows.length;
         // Give the event loop back between chunks: the ingestion engine and the admin screens share this process.
         await new Promise(r => setTimeout(r, 5));
       }
       job.phase = 'Measuring against human decisions';
-      const reviewed = await calibrationRows();
+      const reviewed = await calibrationRows(variant);
       job.phase = 'Summarising';
-      const summary = summarise(rows, { startedAt, queueTotal: Number(c?.queue ?? 0), alreadyPlaced: Number(c?.placed ?? 0), withRejectionNote: Number(c?.noted ?? 0) }, reviewed);
+      const summary = summarise(rows, { startedAt, queueTotal: Number(c?.queue ?? 0), alreadyPlaced: Number(c?.placed ?? 0), withRejectionNote: Number(c?.noted ?? 0), classifier: variant }, reviewed);
       await db.appSetting.upsert({ where: { key: SETTING_KEY }, create: { key: SETTING_KEY, value: summary as any, updatedBy: admin?.email || 'review-classification' }, update: { value: summary as any, updatedBy: admin?.email || 'review-classification' } });
-      cache = { rows, asOf: summary.asOf };
+      cache = { rows, asOf: summary.asOf, classifier: variant, gone: new Set() };
       job = { ...job, status: 'done', finishedAt: new Date().toISOString(), processed: rows.length, phase: 'Done' };
+      releaseReviewJob('analysis');
       onDone?.(summary);
     } catch (e: any) {
       job = { ...job, status: 'failed', finishedAt: new Date().toISOString(), error: String(e?.message || e).slice(0, 300), phase: 'Failed' };
+      releaseReviewJob('analysis');
       onDone?.(null, job.error!);
     }
   })();
@@ -387,7 +402,7 @@ export async function loadComparison(): Promise<Comparison | null> {
 
 /** Start the v1-vs-v2 comparison over the same queue. Shares the single-flight guard with the analysis. Changes no Book. */
 export function startComparison(admin: { uid?: string; email?: string } | null, onDone?: (c: Comparison | null, err?: string) => void): boolean {
-  if (job.status === 'running') return false;
+  if (job.status === 'running' || !acquireReviewJob('comparison')) return false;
   const startedAt = new Date();
   job = { mode: 'comparison', status: 'running', startedAt: startedAt.toISOString(), finishedAt: null, processed: 0, total: 0, phase: 'Counting the queue', error: null };
   (async () => {
@@ -413,9 +428,11 @@ export function startComparison(admin: { uid?: string; email?: string } | null, 
       }
       await db.appSetting.upsert({ where: { key: COMPARISON_KEY }, create: { key: COMPARISON_KEY, value: cmp as any, updatedBy: admin?.email || 'review-classification' }, update: { value: cmp as any, updatedBy: admin?.email || 'review-classification' } });
       job = { ...job, status: 'done', finishedAt: new Date().toISOString(), processed: pairs.length, phase: 'Done' };
+      releaseReviewJob('comparison');
       onDone?.(cmp);
     } catch (e: any) {
       job = { ...job, status: 'failed', finishedAt: new Date().toISOString(), error: String(e?.message || e).slice(0, 300), phase: 'Failed' };
+      releaseReviewJob('comparison');
       onDone?.(null, job.error!);
     }
   })();
@@ -453,22 +470,31 @@ export type RecordPage = { available: boolean; total: number; page: number; take
 /** One page of the last result. Only the page's own books are read back from the database, and any that have left the queue since are dropped, not shown. */
 export async function recordsPage(f: Filters, page: number, take: number): Promise<RecordPage> {
   if (!cache) return { available: false, total: 0, page, take, asOf: null, records: [], dropped: 0 };
-  const hit = applyFilters(cache.rows, f).sort((a, b) => b.score - a.score || b.margin - a.margin || (a.id < b.id ? -1 : 1));
+  const hit = applyFilters(liveRows(), f).sort((a, b) => b.score - a.score || b.margin - a.margin || (a.id < b.id ? -1 : 1));
   const slice = hit.slice((page - 1) * take, page * take);
   const live: any[] = slice.length ? await db.$queryRawUnsafe(
     `select id, title, authors, "publisherName", year, source, language, licence, "licenceIsNC", "originalUrl",
             metadata->'harvest'->'classifications' codes, metadata->'harvest'->'keywords' keywords, left(description, 1200) description,
-            metadata->'harvest'->'provider'->'lcc' lcc, metadata->'harvest'->'provider'->'nlmClass' nlm
+            metadata->'harvest'->'provider'->'lcc' lcc, metadata->'harvest'->'provider'->'nlmClass' nlm, metadata->'harvest'->'provider'->'ddc' ddc
        from "Book" where ${QUEUE} and id = any($1::text[])`, slice.map(r => r.id)).catch(() => []) : [];
   const byId = new Map(live.map(b => [b.id, b]));
   const records = slice.flatMap(r => {
     const b = byId.get(r.id);
     if (!b) return [];
     // Re-judged for the page only, so the reasons shown are the current rules' and cheap to produce.
-    const v = classifyDepartment({ classifications: arr(b.codes), subjects: arr(b.keywords), title: b.title, description: b.description, lcc: b.lcc ? arr(b.lcc) : undefined, nlm: b.nlm ? arr(b.nlm) : undefined });
+    const v = classifyDepartment({ classifications: arr(b.codes), subjects: arr(b.keywords), title: b.title, description: b.description, lcc: b.lcc ? arr(b.lcc) : undefined, nlm: b.nlm ? arr(b.nlm) : undefined, ddc: b.ddc ? arr(b.ddc) : undefined }, { variant: cache!.classifier });
     return [{ id: r.id, title: b.title, authors: b.authors, publisherName: b.publisherName, year: b.year, source: r.source, language: b.language, licenceState: r.licence, licence: b.licence,
       originalUrl: b.originalUrl, suggested: r.dept, score: r.score, margin: r.margin, next: r.next ? { department: r.next, score: r.nextScore } : null, tier: r.tier,
-      evidence: famNames(r.fam), reasons: v.reasons.slice(0, 6) }];
+      evidence: famNames(r.fam), ddc: r.ddcUsed, classifier: cache!.classifier, reasons: v.reasons.slice(0, 6) }];
   });
-  return { available: true, total: hit.length, page, take, asOf: cache.asOf, records, dropped: slice.length - records.length };
+  const missing = slice.filter(r => !byId.has(r.id)).map(r => r.id);
+  forgetRows(missing);   // they have left the queue; the next page of the same list will not stumble over them
+  return { available: true, total: hit.length - missing.length, page, take, asOf: cache.asOf, records, dropped: missing.length };
+}
+
+/** The ids of the first `limit` books (best evidence first) matching a filter in the last analysis: the server-side meaning of "select the first 50 / 100 / 250". */
+export function idsFor(f: Filters, limit: number): { ids: string[]; total: number; classifier: ClassifierVariant | null; asOf: string | null } {
+  if (!cache) return { ids: [], total: 0, classifier: null, asOf: null };
+  const hit = applyFilters(liveRows(), f).sort((a, b) => b.score - a.score || b.margin - a.margin || (a.id < b.id ? -1 : 1));
+  return { ids: hit.slice(0, limit).map(r => r.id), total: hit.length, classifier: cache.classifier, asOf: cache.asOf };
 }

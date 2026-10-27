@@ -64,6 +64,10 @@ import { validateSettings } from "./src/lib/ingestion/settings.js";
 import { providerYield } from "./src/lib/ingestion/providerYield.js";
 import { reviewQueue } from "./src/lib/ingestion/reviewQueue.js";
 import * as reviewClassification from "./src/lib/ingestion/reviewClassification.js";
+import * as reviewBatch from "./src/lib/ingestion/reviewBatch.js";
+import * as reviewAutoAssign from "./src/lib/ingestion/reviewAutoAssign.js";
+import { reviewHistory } from "./src/lib/ingestion/reviewHistory.js";
+import { reviewJobHolder } from "./src/lib/ingestion/reviewJobLock.js";
 import { pipelineStatus } from "./src/lib/ingestion/pipelineStatus.js";
 import { overview as backfillOverview, createJob as createBackfillJob, controlJob as controlBackfillJob, serializeJob as serializeBackfillJob, describeSource as describeBackfillSource } from "./src/lib/ingestion/backfill/jobs.js";
 import { startBackfillWorker } from "./src/lib/ingestion/backfill/worker.js";
@@ -8244,7 +8248,7 @@ async function startServer() {
       const [rows, total] = await Promise.all([
         (prisma as any).book.findMany({
           where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * take, take,
-          select: { id: true, title: true, authors: true, publisherName: true, year: true, doi: true, isbn: true, subject: true, language: true,
+          select: { id: true, title: true, authors: true, publisherName: true, year: true, doi: true, isbn: true, subject: true, language: true, domain: true,
             licence: true, accessStatus: true, source: true, originalUrl: true, coverUrl: true, metadata: true, createdAt: true },
         }),
         (prisma as any).book.count({ where }),
@@ -8289,8 +8293,6 @@ async function startServer() {
   app.post("/api/admin/review/article/:id", authenticateJWT, requireAdminOrManager, reviewAction('article'));
   app.post("/api/admin/review/book/:id", authenticateJWT, requireAdminOrManager, reviewAction('book'));
 
-  // ---- Publisher self endpoints (role: Publisher) ----
-  app.get("/api/publisher/me", authenticateJWT, requirePublisher, async (req: any, res: any) => {
   // ── Review automation R1/R1.5: classification analysis of the "Needs a department" queue. It does not modify catalogue/content records; only analysis summaries and audit metadata are stored. ──
   // GET  summary   — the last analysis (persisted) and the job's progress; null summary means it has never been run.
   // POST run       — start the analysis in the background (one at a time).
@@ -8299,18 +8301,20 @@ async function startServer() {
     try {
       const summary = await reviewClassification.loadSummary();
       // ?brief=1 is for the Data Ingestion card: the headline numbers only, not the distributions and the threshold grid.
-      const brief = summary && _req.query.brief ? { finishedAt: summary.finishedAt, analysed: summary.analysed, queueTotal: summary.queueTotal, tiers: summary.tiers, rulesVersion: summary.rulesVersion } : summary;
+      const brief = summary && _req.query.brief ? { classifier: summary.classifier ?? 'v1', finishedAt: summary.finishedAt, analysed: summary.analysed, queueTotal: summary.queueTotal, tiers: summary.tiers, rulesVersion: summary.rulesVersion } : summary;
       res.json({ summary: brief, job: reviewClassification.jobState() });
     }
     catch (e: any) { res.status(500).json({ error: "Failed to read the classification analysis" }); }
   });
   app.post("/api/admin/review/classification/run", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
     try {
+      const wanted = req.body?.classifier;
+      if (wanted !== undefined && wanted !== 'v1' && wanted !== 'v2') return res.status(400).json({ error: "classifier must be v1 or v2" });
       const started = reviewClassification.startAnalysis(req.user, (s, err) => {
         ingestionAudit(req.user, 'REVIEW_CLASSIFICATION_ANALYSIS', s
-          ? { catalogueChanged: false, analysed: s.analysed, tiers: s.tiers, rulesVersion: s.rulesVersion, recommendation: s.recommendation.basis }
+          ? { catalogueChanged: false, classifier: s.classifier, analysed: s.analysed, tiers: s.tiers, rulesVersion: s.rulesVersion, recommendation: s.recommendation.basis }
           : { catalogueChanged: false, failed: err }).catch(() => {});
-      });
+      }, wanted === 'v2' ? 'v2' : 'v1');
       if (!started) return res.status(409).json({ error: "An analysis is already running", job: reviewClassification.jobState() });
       res.status(202).json({ job: reviewClassification.jobState() });
     } catch (e: any) { res.status(500).json({ error: "Failed to start the classification analysis" }); }
@@ -8341,10 +8345,56 @@ async function startServer() {
         yearFrom: num(q.yearFrom), yearTo: num(q.yearTo), licence: q.licence ? String(q.licence) as any : undefined, language: q.language ? String(q.language).toLowerCase().slice(0, 40) : undefined,
       };
       const take = Math.min(Math.max(parseInt(q.limit as string) || 25, 1), 100), page = Math.max(1, parseInt(q.page as string) || 1);
+      // idsOnly: the ids of the first N matches (N up to the batch limit), which is what "Select first 50 / 100 / 250" means — resolved here, never by rendering rows.
+      if (q.idsOnly) return res.json(reviewClassification.idsFor(filters, Math.min(Math.max(parseInt(q.limit as string) || 50, 1), reviewBatch.BATCH_LIMIT)));
       res.json(await reviewClassification.recordsPage(filters, page, take));
     } catch (e: any) { res.status(500).json({ error: "Failed to read the classification result" }); }
   });
 
+  // ── Review automation R2: department assignment (Books only; never publishes). Every assignment action is off unless REVIEW_AUTO_ASSIGN_ENABLED=true. ──
+  // Reading the configuration, the job, the preview and the history needs no gate. A mass job needs a Super Admin; a batch of at most 250 chosen books needs the same role as Content Review.
+  const assignmentError = (res: any, e: any, fallback: string) => {
+    if (e instanceof reviewBatch.AssignmentDisabledError) return res.status(403).json({ error: e.message, code: 'disabled' });
+    if (e instanceof reviewBatch.BatchRequestError) return res.status(400).json({ error: e.message });
+    if (e instanceof reviewAutoAssign.AutoAssignError) return res.status(e.code === 'busy' ? 409 : 400).json({ error: e.message, code: e.code });
+    console.error('review assignment error:', e?.message); return res.status(500).json({ error: fallback });
+  };
+  app.get("/api/admin/review/assignment/config", authenticateJWT, requireAdminOrManager, (_req: any, res: any) => {
+    res.json({ ...reviewAutoAssign.autoAssignConfig(), departments: reviewBatch.assignableDepartments(), batchLimit: reviewBatch.BATCH_LIMIT, batchTiers: reviewBatch.BATCH_TIERS });
+  });
+  app.get("/api/admin/review/assignment/job", authenticateJWT, requireAdminOrManager, async (_req: any, res: any) => {
+    try { res.json({ job: await reviewAutoAssign.autoAssignStatus(), preview: reviewAutoAssign.previewState(), busy: reviewJobHolder() }); }
+    catch (e: any) { res.status(500).json({ error: "Failed to read the assignment job" }); }
+  });
+  app.post("/api/admin/review/assignment/preview", authenticateJWT, requireAdminOrManager, (req: any, res: any) => {
+    try {
+      if (!reviewAutoAssign.startPreview(req.body?.classifier, req.body?.scope || {})) return res.status(409).json({ error: "Another review job is running", busy: reviewJobHolder() });
+      res.status(202).json({ preview: reviewAutoAssign.previewState() });
+    } catch (e: any) { assignmentError(res, e, "Failed to start the preview"); }
+  });
+  app.post("/api/admin/review/assignment/start", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try { res.status(202).json({ job: await reviewAutoAssign.startAutoAssign(req.user, { classifier: req.body?.classifier, scope: req.body?.scope || {}, eligibleAtStart: typeof req.body?.eligibleAtStart === 'number' ? req.body.eligibleAtStart : null }) }); }
+    catch (e: any) { assignmentError(res, e, "Failed to start the assignment"); }
+  });
+  app.post("/api/admin/review/assignment/resume", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try { res.status(202).json({ job: await reviewAutoAssign.resumeAutoAssign(req.user) }); }
+    catch (e: any) { assignmentError(res, e, "Failed to resume the assignment"); }
+  });
+  app.post("/api/admin/review/assignment/cancel", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try { res.json({ job: await reviewAutoAssign.cancelAutoAssign(req.user) }); }
+    catch (e: any) { assignmentError(res, e, "Failed to cancel the assignment"); }
+  });
+  app.post("/api/admin/review/batch/assign", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try { res.json(await reviewBatch.batchAssign({ ids: req.body?.ids, mode: req.body?.mode, classifier: req.body?.classifier, department: req.body?.department, by: req.user })); }
+    catch (e: any) { assignmentError(res, e, "Failed to assign the selected books"); }
+  });
+  app.get("/api/admin/review/history", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try { res.json(await reviewHistory(parseInt(req.query.page as string) || 1, parseInt(req.query.limit as string) || 25)); }
+    catch (e: any) { res.status(500).json({ error: "Failed to read the review history" }); }
+  });
+
+  // ---- Publisher self endpoints (role: Publisher) ----
+  app.get("/api/publisher/me", authenticateJWT, requirePublisher, async (req: any, res: any) => {
     try {
       const publisher = await resolvePublisherForUser(req);
       if (!publisher) return res.status(404).json({ error: "No publisher profile linked to this account" });

@@ -4,6 +4,7 @@ import { Badge, type BadgeTone } from '../../ui';
 import { api } from '../ingestion/api';
 import { N, exactTime } from '../ingestion/format';
 import { ClassifierComparison } from './ClassifierComparison';
+import { AutoAssignment } from './AutoAssignment';
 
 /**
  * Review automation R1 — Auto Classification. An analysis of the "Needs a department" queue that does not modify catalogue or content records: how many books the existing department classifier
@@ -46,6 +47,7 @@ function Bars({ data, order, onPick }: { data: Record<string, number>; order?: s
 export function AutoClassification() {
   const [summary, setSummary] = useState<any>(null);
   const [cmp, setCmp] = useState<any>(null);
+  const [variant, setVariant] = useState<'v1' | 'v2'>('v1');
     const [job, setJob] = useState<any>(null);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,7 +75,7 @@ export function AutoClassification() {
   }, [job?.status]);
 
   const run = async () => {
-    const r = await api('/api/admin/review/classification/run', { method: 'POST', body: {} });
+    const r = await api('/api/admin/review/classification/run', { method: 'POST', body: { classifier: variant } });
     if (r.ok || r.status === 409) { setJob(r.data.job); setError(null); } else setError(r.data?.error || 'Could not start the analysis.');
   };
 
@@ -115,7 +117,11 @@ export function AutoClassification() {
               It assigns nothing, approves nothing and publishes nothing. Assigning a department and publishing a book are separate decisions, and only a person publishes.
             </p>
           </div>
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="field"><span className="field-label">Classifier</span>
+              <select className="input" value={variant} onChange={e => setVariant(e.target.value as any)} disabled={running}><option value="v1">v1 (the engine’s)</option><option value="v2">v2 (Dewey + rehabilitation fix)</option></select></label>
           <button type="button" className="btn btn-primary btn-sm" onClick={run} disabled={running}><Play size={13} aria-hidden="true" /> {running && job.mode !== 'comparison' ? 'Analysing…' : S ? 'Run again' : 'Run Classification Analysis'}</button>
+          </div>
         </div>
         {running && (
           <div role="status" className="mt-3">
@@ -135,7 +141,7 @@ export function AutoClassification() {
           <section className="card card-pad" aria-label="Classification analysis">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h3 className="text-[15px] font-semibold text-ink">{N(S.analysed)} books analysed</h3>
-              <span className="text-[12px] text-muted">Analysed {exactTime(S.finishedAt)} · classifier rules v{S.rulesVersion}</span>
+              <span className="text-[12px] text-muted">Analysed {exactTime(S.finishedAt)} · classifier {S.classifier ?? 'v1'} (rules v{S.rulesVersion})</span>
             </div>
             <p className="mt-0.5 text-[12px] text-muted">
               {N(S.queueTotal)} waiting for a department when it started.{S.alreadyPlaced ? ` ${N(S.alreadyPlaced)} more already have a department and were left alone.` : ''}{S.withRejectionNote ? ` ${N(S.withRejectionNote)} carry a rejection note and were left out.` : ''}
@@ -196,6 +202,8 @@ export function AutoClassification() {
               </div>
             </details>
           </section>
+
+          <AutoAssignment summary={S} />
 
           <section className="card card-pad" aria-label="Suggested departments">
             <h3 className="text-[15px] font-semibold text-ink">By suggested department</h3>

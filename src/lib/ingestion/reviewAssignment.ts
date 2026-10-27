@@ -1,17 +1,18 @@
 import { ingestionDb as db } from './db.js';
 import { canonicalDepartmentName } from '../departmentRegistry.js';
 import { CLASSIFIER_RULES_VERSION, ANALYSIS_CLASSIFIER_V2, type ClassifierVariant } from './books/classifier.js';
-import { judge, readOneForJudging, tierOf, CURRENT_THRESHOLDS, type Thresholds, type Tier } from './reviewClassification.js';
+import { judge, readOneForJudging, tierOf, famNames, CURRENT_THRESHOLDS, type Thresholds, type Tier } from './reviewClassification.js';
 
 /**
- * "Assign Department, Stay Draft" — the contract R2's batch actions will be built on. NOT wired to any route, screen or job: nothing calls it
- * outside its tests, and no historical record is touched until R2 is approved.
+ * "Assign Department, Stay Draft" — the single-record contract every Review Automation assignment goes through.
+ *
+ * R2 puts this behind the batch actions and the high-confidence job (reviewBatch.ts, reviewAutoAssign.ts); both are gated by REVIEW_AUTO_ASSIGN_ENABLED.
  *
  * It is deliberately NOT "Approve". Approve publishes the book (status → Published, and with it the book's access); this does one thing:
  * it writes the department. A book that is assigned this way is exactly the book it was before, plus a department and a note of who assigned it
  * and on what evidence:
  *
- *   changes      domain; metadata.reviewAssignment (department, score, margin, tier, classifier, rules version, source, who, when)
+ *   changes      domain; metadata.reviewAssignment (department, topScore, secondDepartment, secondScore, margin, tier, classifier, classifierVersion, evidence, assignmentSource, performedBy, performedAt)
  *   preserves    status (stays Draft), licence, licenceIsNC, accessType, accessStatus, rightsStatus and its basis, rejectionNote, source, year,
  *                fingerprint, every other metadata key, and every ingestion checkpoint (it never reads or writes one)
  *
@@ -67,21 +68,24 @@ export async function assignDepartmentStayDraft(req: AssignmentRequest, opts: { 
 
   // 3. If the classifier is the reason, does it still say so? Judged again now, under the rule that was approved.
   let tier: Tier | null = null, score: number | null = null, margin: number | null = null;
+  let second: { department: string | null; score: number } | null = null, evidence: string[] | null = null;
   const rule = req.rule;
   if (req.basis === 'classifier') {
     if (!rule) return skip(bookId, 'rule-required');
     const row = judge(b, rule.classifier);
     tier = tierOf(row.score, row.margin, row.fam, rule.thresholds ?? CURRENT_THRESHOLDS); score = row.score; margin = row.margin;
+    second = { department: row.next, score: row.nextScore }; evidence = [...famNames(row.fam), ...(row.ddcUsed ? ['ddc'] : [])];
     if (!rule.tiers.includes(tier)) return skip(bookId, 'below-rule', `now ${tier} (${row.score}, margin ${row.margin})`);
     if (row.dept !== department) return skip(bookId, 'classification-changed', `now suggests ${row.dept ?? 'nothing'}`);
   }
   if (opts.dryRun) return { bookId, result: 'assigned', department, tier, score };
 
   // 4. One conditional write: the department and the note, nothing else. If anything about the book changed since step 1, no row matches.
+  // Bounded by construction: a handful of scalars and one short list. No reasons, no text from the book.
   const record = {
-    department, basis: req.basis, source: req.source, tier, score, margin,
-    classifier: rule ? { variant: rule.classifier, version: rule.classifier === 'v2' ? ANALYSIS_CLASSIFIER_V2 : CLASSIFIER_RULES_VERSION } : null,
-    by: req.by?.email || req.by?.uid || null, at: new Date().toISOString(),
+    department, basis: req.basis, assignmentSource: req.source, tier, topScore: score, secondDepartment: second?.department ?? null, secondScore: second?.score ?? null, margin,
+    classifier: rule?.classifier ?? null, classifierVersion: rule ? (rule.classifier === 'v2' ? ANALYSIS_CLASSIFIER_V2 : CLASSIFIER_RULES_VERSION) : null, evidence,
+    performedBy: req.by?.email || req.by?.uid || null, performedAt: new Date().toISOString(),
   };
   const done: any[] = await db.$queryRawUnsafe(
     `update "Book" set domain = $2, "updatedAt" = now(), metadata = jsonb_set(coalesce(metadata, '{}'::jsonb), '{reviewAssignment}', $3::jsonb, true)

@@ -3,6 +3,8 @@ import { toast } from 'react-hot-toast';
 import { CheckCircle, XCircle, FileText, BookOpen, ExternalLink, ShieldCheck, X } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { AutoClassification } from './review/AutoClassification';
+import { BatchReview } from './review/BatchReview';
+import { ReviewHistory } from './review/ReviewHistory';
 
 export function PublisherReviewQueue() {
   const [articles, setArticles] = useState<any[]>([]);
@@ -12,7 +14,7 @@ export function PublisherReviewQueue() {
   const [params, setParams] = useSearchParams();
   const wantTab = params.get('tab');
   const source = params.get('source') || '';
-  const [tab, setTab] = useState<'articles' | 'books' | 'ingested' | 'auto'>(wantTab === 'ingested' || wantTab === 'books' || wantTab === 'articles' || wantTab === 'auto' ? wantTab : 'articles');
+  const [tab, setTab] = useState<'articles' | 'books' | 'ingested' | 'auto' | 'batch' | 'history'>(wantTab === 'ingested' || wantTab === 'books' || wantTab === 'articles' || wantTab === 'auto' || wantTab === 'batch' || wantTab === 'history' ? wantTab : 'articles');
   const [ingested, setIngested] = useState<any[]>([]);
   const [ingestedTotal, setIngestedTotal] = useState(0);
   const [departments, setDepartments] = useState<string[]>([]);
@@ -40,7 +42,7 @@ export function PublisherReviewQueue() {
     if (!res.ok) { toast.error('Failed to load ingested books'); return; }
     const d = await res.json();
     setIngested(d.books || []); setIngestedTotal(d.total || 0); setDepartments(d.departments || []); setPage(p);
-    setPick(prev => ({ ...Object.fromEntries((d.books || []).map((b: any) => [b.id, b.suggested || ''])), ...prev }));
+    setPick(prev => ({ ...Object.fromEntries((d.books || []).map((b: any) => [b.id, b.domain || b.suggested || ''])), ...prev }));
   };
   useEffect(() => { if (tab === 'ingested') loadIngested(1); }, [tab, source]);
 
@@ -91,9 +93,13 @@ export function PublisherReviewQueue() {
         ))}
         <button onClick={() => setTab('auto')}
           className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${tab === 'auto' ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-800'}`}>Auto Classification</button>
+        <button onClick={() => setTab('batch')}
+          className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${tab === 'batch' ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-800'}`}>Batch Review</button>
+        <button onClick={() => setTab('history')}
+          className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${tab === 'history' ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-800'}`}>Review History</button>
       </div>
 
-      {tab === 'auto' ? <AutoClassification /> : (
+      {tab === 'auto' ? <AutoClassification /> : tab === 'batch' ? <BatchReview /> : tab === 'history' ? <ReviewHistory /> : (
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         {loading ? (
           <div className="py-12 flex justify-center"><div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" /></div>
@@ -123,6 +129,7 @@ export function PublisherReviewQueue() {
                       {r.suggested && <span>suggested: <b>{r.suggested}</b> ({r.score}){r.runnerUp ? `, next: ${r.runnerUp.department} (${r.runnerUp.score})` : ''}</span>}
                     </div>
                   )}
+                  {tab === 'ingested' && r.domain && <div className="mt-1 text-[11px] font-semibold text-emerald-700">Department assigned: {r.domain} (still a Draft until approved)</div>}
                   {tab === 'ingested' && r.originalUrl && <a href={r.originalUrl} target="_blank" rel="noreferrer" className="text-[11px] text-blue-600 font-semibold inline-flex items-center gap-1 mt-1"><ExternalLink size={11} /> Open at source</a>}
                   {r.pdfUrl && <a href={r.pdfUrl} target="_blank" rel="noreferrer" className="text-[11px] text-blue-600 font-semibold inline-flex items-center gap-1 mt-1"><ExternalLink size={11} /> View PDF</a>}
                 </div>

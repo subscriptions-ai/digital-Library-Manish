@@ -96,7 +96,7 @@ export function ReviewQueueCard({ refreshKey }: { refreshKey: unknown }) {
             <div className="mt-2 rounded-lg border border-rule p-2.5 text-[12.5px]" aria-label="Department classification of the books waiting">
               <div className="flex flex-wrap items-baseline justify-between gap-x-3">
                 <b className="text-ink">Department classification</b>
-                <span className="text-muted">{N(cls.analysed)} books analysed {ago(cls.finishedAt)} · analysis only</span>
+                <span className="text-muted">{N(cls.analysed)} books analysed {ago(cls.finishedAt)} · classifier {cls.classifier ?? 'v1'} · analysis only</span>
               </div>
               <dl className="mt-1 grid grid-cols-2 gap-x-6 gap-y-0.5">
                 {([['High confidence', 'high'], ['Medium confidence', 'medium'], ['Low confidence', 'low'], ['Unclassifiable', 'unclassifiable']] as const).map(([label, k]) => (

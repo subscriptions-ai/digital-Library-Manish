@@ -206,7 +206,7 @@ eq('it STAYS a Draft (not published)', after.status, 'Draft');
 eq('licence, access, rights and rejection state are exactly as they were', [after.licence, after.licenceIsNC, after.accessType, after.accessStatus, after.rightsStatus, after.rejectionNote], [before.licence, before.licenceIsNC, before.accessType, before.accessStatus, before.rightsStatus, before.rejectionNote]);
 eq('every other column and metadata key is untouched', strict(after), strict(before));
 const ra = after.metadata.reviewAssignment;
-eq('the assignment records score, tier, classifier, version, source and who', [ra.department, ra.tier, typeof ra.score, ra.classifier, ra.source, ra.by, !!ra.at], ['Dental', 'high', 'number', { variant: 'v1', version: 1 }, 'high-confidence', 'admin@example.com', true]);
+eq('the assignment records department, scores, tier, classifier and version, evidence, source and who', [ra.department, ra.tier, typeof ra.topScore, typeof ra.margin, ra.secondScore === null || typeof ra.secondScore === 'number', ra.classifier, ra.classifierVersion, Array.isArray(ra.evidence) && ra.evidence.includes('code'), ra.assignmentSource, ra.performedBy, !!ra.performedAt], ['Dental', 'high', 'number', 'number', true, 'v1', 1, true, 'high-confidence', 'admin@example.com', true]);
 eq('assigning again is refused: it already has a department', (await A.assignDepartmentStayDraft({ bookId: idDental, department: 'Law', basis: 'person', source: 'single', by })), { bookId: idDental, result: 'skipped', reason: 'already-has-department', detail: 'Dental' });
 
 const refused = async (label: string, req: any, reason: string) => { const o: any = await A.assignDepartmentStayDraft({ source: 'test', by, ...req }); eq(label, [o.result, o.reason], ['skipped', reason]); };
