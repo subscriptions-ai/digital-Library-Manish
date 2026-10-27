@@ -60,6 +60,7 @@ import { GOOGLE, googleConfigured, googleClientIdForBrowser, googleStatus, verif
 import { getState as getIngestionState, normaliseIssn } from "./src/lib/ingestionWorker.js";
 import { runEnginePass, wakeEngine } from "./src/lib/ingestion/engine.js";
 import { importDoajCatalogue, checkDoajCatalogue, importCheckedJournals } from "./src/lib/doajCatalogue.js";
+import { checkItems as doajCheckItems, listInspection as listDoajInspection, InspectionError as DoajInspectionError } from "./src/lib/ingestion/doajInspection.js";
 import { audit as ingestionAudit } from "./src/lib/ingestion/audit.js";
 import { validateSettings } from "./src/lib/ingestion/settings.js";
 import { providerYield } from "./src/lib/ingestion/providerYield.js";
@@ -9812,9 +9813,9 @@ async function startServer() {
             const summary = {
               journals: true, source, departments, found: c.inFile, eligible: c.new, viewable: c.fullTextEligible, metadataOnly: c.metadataOnly,
               alreadyHeld: c.alreadyHeld, needsReview: c.needsReview, rejected: c.rejected, errors: 0, noDepartment: c.noDepartment,
-              byDepartment: c.byDepartment, outsideScope: c.outsideScope || 0, beyondLimit: c.beyondLimit || 0,
+              byDepartment: c.byDepartment, outsideScope: c.outsideScope || 0, beyondLimit: c.beyondLimit || 0, breakdown: check.breakdown,
             };
-            const row = await createPreview('DOAJ_CATALOGUE', adminOf(req), job.params, summary, { newIssns: check.newIssns, reviewSample: check.reviewSample } as any);
+            const row = await createPreview('DOAJ_CATALOGUE', adminOf(req), job.params, summary, doajCheckItems(check) as any);
             Object.assign(job, { status: 'done', previewId: row.id, summary, expiresAt: row.expiresAt, finishedAt: Date.now() });
             return;
           }
@@ -10193,8 +10194,8 @@ async function startServer() {
         (async () => {
           try {
             const check = await checkDoajCatalogue();
-            const row = await createPreview('DOAJ_CATALOGUE', who, { source: 'DOAJ catalogue' }, check.summary, { newIssns: check.newIssns, reviewSample: check.reviewSample } as any);
-            Object.assign(job, { running: false, finishedAt: new Date().toISOString(), previewId: row.id, expiresAt: row.expiresAt, result: { ...check.summary, reviewSample: check.reviewSample } });
+            const row = await createPreview('DOAJ_CATALOGUE', who, { source: 'DOAJ catalogue' }, { ...check.summary, breakdown: check.breakdown }, doajCheckItems(check) as any);
+            Object.assign(job, { running: false, finishedAt: new Date().toISOString(), previewId: row.id, expiresAt: row.expiresAt, result: { ...check.summary, breakdown: check.breakdown, reviewSample: check.reviewSample } });
           } catch (e: any) { Object.assign(job, { running: false, finishedAt: new Date().toISOString(), error: String(e?.message || e) }); }
         })();
         return;
@@ -10228,6 +10229,16 @@ async function startServer() {
   });
   app.get("/api/admin/ingest/doaj-catalogue", authenticateJWT, requireSuperAdmin, (_req: any, res: any) => {
     res.json({ job: doajCatalogueJob });
+  });
+  // The journals behind a DOAJ check's counts: which ones are held, under which ISSN, and what status each is in now. A read; nothing is written.
+  app.get("/api/admin/ingest/doaj-catalogue/inspect", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const q = req.query || {};
+      res.json(await listDoajInspection(String(q.previewId || ''), { category: String(q.category || ''), q: q.q ? String(q.q) : undefined, page: parseInt(String(q.page)) || 1, take: parseInt(String(q.take)) || 50 }));
+    } catch (e: any) {
+      if (e instanceof DoajInspectionError) return res.status(e.status).json({ error: e.message });
+      console.error('GET doaj-catalogue inspect error:', e?.message); res.status(500).json({ error: 'Could not read the journals' });
+    }
   });
 
   // ==========================================

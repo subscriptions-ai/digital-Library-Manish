@@ -3,6 +3,7 @@ import { toast } from 'react-hot-toast';
 import { Button, ConfirmDialog } from '../../ui';
 import { api } from './api';
 import { N } from './format';
+import { DoajBreakdown } from './DoajBreakdown';
 
 /**
  * Every journal DOAJ lists: Check First, read the result, then "Import {N} Journals" behind a confirmation.
@@ -68,17 +69,15 @@ export function DoajImport({ onDone }: { onDone: () => void }) {
       {job?.error && <p role="alert" className="mt-4 rounded-lg bg-alarm-soft px-3 py-2 text-[13px] text-ink">{job.error}</p>}
       {loaded && !job && <p className="mt-4 text-[12.5px] text-muted">No check has been run since the server started.</p>}
 
-      {checked && (
+      {checked && result.breakdown && (
         <div className="mt-5">
-          <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-rule bg-rule sm:grid-cols-4">
-            {[
-              ['In the DOAJ file', result.inFile], ['Already held', result.alreadyHeld], ['New to add', result.new], ['Full text allowed', result.fullTextEligible],
-              ['Metadata only', result.metadataOnly], ['Needs review', result.needsReview], ['Rejected', result.rejected], ['No department match', result.noDepartment],
-            ].map(([l, v]: any) => (
-              <div key={l} className="bg-surface px-3.5 py-3"><dd className="text-lg font-semibold tabular-nums text-ink">{N(v)}</dd><dt className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted">{l}</dt></div>
+          <DoajBreakdown breakdown={result.breakdown} previewId={job.previewId || null} />
+          <dl className="mt-2 grid grid-cols-3 gap-px overflow-hidden rounded-xl border border-rule bg-rule">
+            {[['Full text allowed', result.fullTextEligible], ['Metadata only', result.metadataOnly], ['No department match', result.noDepartment]].map(([l, v]: any) => (
+              <div key={l} className="bg-surface px-3.5 py-3"><dd className="text-lg font-semibold tabular-nums text-ink">{N(v)}</dd><dt className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted">{l} <span className="normal-case tracking-normal">(of the new)</span></dt></div>
             ))}
           </dl>
-          {toImport === 0 && <p className="mt-3 text-[13px] text-ink-2">Nothing new to add — every importable journal is already in the catalogue.</p>}
+          {toImport === 0 && <p className="mt-3 text-[13px] text-ink-2">Nothing new to add. “Already held” is not the same as public: the counts above show how many of the held journals are public, have no published article yet, are in review, or were rejected.</p>}
           {result.reviewSample?.length > 0 && (
             <details className="mt-3 text-[13px]">
               <summary className="cursor-pointer font-medium text-ink">Needs review — sample ({result.reviewSample.length})</summary>

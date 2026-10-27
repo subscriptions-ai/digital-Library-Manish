@@ -417,10 +417,13 @@ section('F. DOAJ: journals — bounded, licence-filtered, nothing held is change
   check('the journal already held is exactly as it was', JSON.stringify(before) === JSON.stringify(after));
   check('the continuous engine\'s DOAJ department sweeps (its position) are untouched', sweepsBefore === JSON.stringify(await db.departmentSweep.findMany({ orderBy: { id: 'asc' } })));
   check('the run says more is available', j1.result.moreAvailable === true);
+  check('the result accounts for the whole file: 5 checked, 2 added, 1 already held, the 2 new ones left for next time', j1.result.checked === 5 && j1.result.alreadyHeld === 1 && j1.result.skipped === 2, JSON.stringify([j1.result.checked, j1.result.added, j1.result.alreadyHeld, j1.result.skipped]));
+  check('it carries the breakdown and a snapshot the rows can be opened from', j1.result.doaj?.breakdown?.new === 4 && j1.result.doaj.breakdown.heldNoArticles === 1 && !!j1.result.doaj.previewId && !!(await db.ingestionPreview.findUnique({ where: { id: j1.result.doaj.previewId } })));
   const j2 = await run('doaj');
   check('Import More carries on with the next journals — never the same ones', j2.result.added === 2 && (await db.journal.count({ where: { title: { startsWith: `${RUN} ` }, NOT: { issn: heldIssn } } })) === 4);
   const j3 = await run('doaj');
   check('when everything is held it says so and adds nothing', j3.result.added === 0 && j3.result.moreAvailable === false);
+  check('…and says how the held journals are placed, not just "all held": none public, five catalogued with no article', j3.result.checked === 5 && j3.result.alreadyHeld === 5 && j3.result.doaj?.breakdown?.heldNoArticles === 5 && j3.result.notes.some((n: string) => /No new journals/.test(n)) && j3.result.notes.some((n: string) => /5 are already held.*0 public now.*5 catalogued but with no published article/.test(n)), JSON.stringify(j3.result.notes));
   check('the list was read once through the breaker and cached, not downloaded each time', hits('doaj.org/csv') === 1);
   const rr = await db.ingestionRun.findFirst({ where: { phase: 'Journals', note: { startsWith: 'Manual · Quick Import' } }, orderBy: { at: 'desc' } });
   check('logged as a Manual Journals run', !!rr);

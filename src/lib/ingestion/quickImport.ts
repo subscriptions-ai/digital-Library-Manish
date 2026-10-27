@@ -16,7 +16,8 @@ import {
 } from './articleSources.js';
 import { harvestFeed, harvestDiagnostics, DOAB_OAI, OAPEN_OAI, OTL_FEED, NCBI_FEED, CROSSREF_BOOKS_FEED, NLM_FEED, PRESSBOOKS_FEED, type OaiProviderConfig, type HarvestReport } from './books/oaiHarvest.js';
 import { ncbiLimits, usedToday } from './books/ncbi.js';
-import { checkDoajCatalogue, importCheckedJournals, DOAJ_CSV_URL } from '../doajCatalogue.js';
+import { checkDoajCatalogue, importCheckedJournals, DOAJ_CSV_URL, type DoajBreakdown } from '../doajCatalogue.js';
+import { saveInspection } from './doajInspection.js';
 import { getState } from '../ingestionWorker.js';
 import { DOMAINS } from '../../constants.js';
 
@@ -79,6 +80,8 @@ export type QuickOutcome = {
   partial?: string | null;
   moreAvailable: boolean;
   counters?: { accepted?: number; metadataOnly?: number; seen?: number };
+  /** DOAJ journals: where every row of DOAJ's file ended, and the snapshot its rows can be opened from (doajInspection.ts). */
+  doaj?: { breakdown: DoajBreakdown; previewId: string | null };
   /** The breakdown by department (books and articles): written beside the run, so a department sees what was added to it. */
   byDepartment?: DeptStats;
   /** Department-search sources: every department was resting, so nothing was asked. */
@@ -193,20 +196,28 @@ async function runDoaj(ctx: Ctx): Promise<QuickOutcome> {
   const text = await loadDoajCsv();
   ctx.progress({ stage: 'Working out which journals are new…' });
   const check = await checkDoajCatalogue({ csvText: text });
+  const bd = check.breakdown;
+  const previewId = await saveInspection(check, ctx.admin);
+  const heldTotal = bd.heldPublic + bd.heldNoArticles + bd.heldReview + bd.heldRejected;
   const batch = check.newIssns.slice(0, ctx.limit);
   ctx.progress({ stage: `Adding ${batch.length} journals…`, checked: batch.length, limit: ctx.limit, open: false });
+  // "Held" is not "public": say how the journals DOAJ lists that we already hold are placed, so a run that adds nothing is never read as a run that found nothing.
+  const heldNote = `Of ${bd.checked.toLocaleString('en-IN')} journals in DOAJ's list, ${heldTotal.toLocaleString('en-IN')} are already held: ${bd.heldPublic.toLocaleString('en-IN')} public now, ${bd.heldNoArticles.toLocaleString('en-IN')} catalogued but with no published article yet (so not on a public shelf), ${bd.heldReview.toLocaleString('en-IN')} draft or in review, ${bd.heldRejected.toLocaleString('en-IN')} rejected.`;
+  const skippedNote = bd.skippedConflicting ? `${bd.skippedConflicting.toLocaleString('en-IN')} were skipped or in conflict: ${[bd.skipped.sameTitle && `${bd.skipped.sameTitle} share a title with a held journal under other ISSNs`, bd.skipped.unusable && `${bd.skipped.unusable} have no usable ISSN or title`, bd.skipped.ambiguous && `${bd.skipped.ambiguous} match two held journals`, bd.skipped.listedTwice && `${bd.skipped.listedTwice} are listed twice in the file`].filter(Boolean).join('; ')}.` : null;
+  const doaj = { breakdown: bd, previewId };
   if (!batch.length) {
-    return { checked: 0, added: 0, alreadyHeld: 0, needsReview: 0, skipped: 0, failed: 0, notes: ['Every journal in DOAJ\'s list is already held.'], nextPosition: null, moreAvailable: false };
+    return { checked: bd.checked, added: 0, alreadyHeld: heldTotal, needsReview: bd.skipped.sameTitle, skipped: bd.skipped.unusable + bd.skipped.ambiguous + bd.skipped.listedTwice, failed: 0,
+      notes: ['No new journals to add.', heldNote, ...(skippedNote ? [skippedNote] : [])], nextPosition: null, moreAvailable: false, doaj };
   }
   const r = await importCheckedJournals(batch, { csvText: text });
-  const notes = [`${r.accepted} cleared for full text, ${r.metadataOnly} catalogued as metadata only.`];
-  if (check.summary.needsReview) notes.push(`${check.summary.needsReview} more share a title with a journal we hold under a different ISSN and were left for a person.`);
+  const notes = [`${r.accepted} cleared for full text, ${r.metadataOnly} catalogued as metadata only.`, heldNote];
+  if (skippedNote) notes.push(skippedNote);
   return {
-    checked: batch.length, added: r.added, alreadyHeld: r.alreadyHeldNow, needsReview: 0,
-    skipped: Math.max(0, batch.length - r.added - r.alreadyHeldNow), failed: 0, notes, nextPosition: null,
+    checked: bd.checked, added: r.added, alreadyHeld: heldTotal + r.alreadyHeldNow, needsReview: bd.skipped.sameTitle,
+    skipped: bd.skipped.unusable + bd.skipped.ambiguous + bd.skipped.listedTwice + Math.max(0, check.newIssns.length - batch.length) + Math.max(0, batch.length - r.added - r.alreadyHeldNow), failed: 0, notes, nextPosition: null,
     // What is still new is simply what is not held yet: the catalogue itself is the position.
     moreAvailable: check.newIssns.length > batch.length,
-    counters: { accepted: r.accepted, metadataOnly: r.metadataOnly },
+    counters: { accepted: r.accepted, metadataOnly: r.metadataOnly }, doaj,
   };
 }
 
