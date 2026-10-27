@@ -247,14 +247,16 @@ await db.book.deleteMany({ where: { id: { in: made }, domain: null, status: 'Dra
 await reset(); openGate();
 const many = await seedMany(350, high({ title: 'Cancel me' }));
 await analyse('v1');
-await J.startAutoAssign(ADMIN, { classifier: 'v1' });
+await J.startAutoAssign(ADMIN, { classifier: 'v1', eligibleAtStart: 350 });
 const cancelling = await J.cancelAutoAssign(ADMIN);
 eq('cancel is accepted while it runs', cancelling.cancelRequested, true);
 const cancelled = await waitJob();
 const assignedSoFar = (await db.$queryRawUnsafe(`select count(*)::int n from "Book" where id = any($1::text[]) and domain is not null`, many))[0].n;
 eq('it stopped after the chunk in hand: some assigned, not all', [cancelled.status, assignedSoFar > 0, assignedSoFar < 350, cancelled.assigned], ['cancelled', true, true, assignedSoFar]);
 eq('what was assigned stays assigned (no rollback), and the rest is untouched', [(await db.$queryRawUnsafe(`select count(*)::int n from "Book" where id = any($1::text[]) and domain is null and status = 'Draft'`, many))[0].n], [350 - assignedSoFar]);
-eq('the cancellation is in the history', (await H.reviewHistory(1, 50)).rows.some(r => r.action === 'REVIEW_AUTO_ASSIGN_FINISHED' && r.cancelled && r.assigned === assignedSoFar), true);
+const cancelRow = (await H.reviewHistory(1, 50)).rows.find(r => r.action === 'REVIEW_AUTO_ASSIGN_FINISHED' && r.cancelled && r.assigned === assignedSoFar);
+eq('the cancellation is in the history', !!cancelRow, true);
+eq('…with the books it did not get to, and the rule it ran under', [cancelRow?.cancelledRemaining, cancelRow?.thresholds], [350 - cancelled.requested, 'High: score ≥ 6, margin ≥ 3, controlled code + title/subject']);
 
 section('Restart and resume');
 // A crash leaves the persisted row saying "running" with the cursor where the last finished chunk put it.

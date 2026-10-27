@@ -14,7 +14,7 @@ const LABEL: Record<string, string> = {
 
 export type HistoryRow = {
   id: string; at: string; admin: string | null; action: string; label: string; detail: string | null; classifier: string | null; scope: string;
-  assigns: boolean; requested: number | null; assigned: number | null; skipped: number | null; failed: number | null; cancelled: boolean; skippedReasons: Record<string, number>;
+  assigns: boolean; /** The approved High-confidence rule a job ran under, in words. Null for other actions. */ thresholds: string | null; /** Books a cancelled job had not got to (estimate), or null. */ cancelledRemaining: number | null; requested: number | null; assigned: number | null; skipped: number | null; failed: number | null; cancelled: boolean; skippedReasons: Record<string, number>;
 };
 
 const scopeOf = (a: string, m: any): string => {
@@ -45,7 +45,8 @@ export async function reviewHistory(page = 1, take = 25): Promise<{ total: numbe
           : r.action === 'REVIEW_CLASSIFICATION_ANALYSIS' ? `${num(m.analysed) ?? '—'} books analysed` : r.action === 'REVIEW_CLASSIFICATION_COMPARISON' ? `${num(m.analysed) ?? '—'} books compared` : null,
         classifier: m.classifier ?? (r.action === 'REVIEW_CLASSIFICATION_ANALYSIS' ? 'v1' : null), scope: scopeOf(r.action, m), assigns,
         requested: assigns ? num(m.requested) : null, assigned: assigns ? num(m.assigned) : null, skipped: assigns ? num(m.skipped) : null, failed: assigns ? num(m.failed) : null,
-        cancelled: m.status === 'cancelled', skippedReasons: assigns && m.skippedReasons && typeof m.skippedReasons === 'object' ? m.skippedReasons : {},
+        thresholds: r.action === 'REVIEW_AUTO_ASSIGN_FINISHED' && m.thresholds ? `High: score ≥ ${m.thresholds.highMinScore}, margin ≥ ${m.thresholds.highMinMargin}${m.thresholds.highRequiresCode ? ', controlled code + title/subject' : ''}` : null,
+        cancelledRemaining: typeof m.cancelledRemaining === 'number' ? m.cancelledRemaining : null, cancelled: m.status === 'cancelled', skippedReasons: assigns && m.skippedReasons && typeof m.skippedReasons === 'object' ? m.skippedReasons : {},
       };
     }),
   };

@@ -27,14 +27,14 @@ export function ReviewHistory() {
                 <span className="text-[12px] text-muted">{exactTime(r.at)}</span>
                 <span className="text-[12px] text-muted">{r.admin || 'System'}</span>
               </div>
-              <div className="mt-0.5 flex flex-wrap items-center gap-2"><span className="font-semibold text-ink">{r.label}</span>{r.cancelled && <Badge tone="caution">Cancelled</Badge>}{r.detail && <span className="text-[12px] text-muted">{r.detail}</span>}</div>
+              <div className="mt-0.5 flex flex-wrap items-center gap-2"><span className="font-semibold text-ink">{r.label}</span>{r.cancelled && <Badge tone="caution">Cancelled{r.cancelledRemaining != null ? ` · about ${N(r.cancelledRemaining)} not reached` : ''}</Badge>}{r.detail && <span className="text-[12px] text-muted">{r.detail}</span>}</div>
               {r.assigns && (
                 <dl className="mt-1.5 grid grid-cols-2 gap-x-6 gap-y-0.5 text-[12.5px] sm:grid-cols-4">
                   {([['Requested', r.requested], ['Assigned', r.assigned], ['Skipped', r.skipped], ['Failed', r.failed]] as const).map(([l, v]) => <div key={l} className="flex justify-between gap-2"><dt className="text-muted">{l}</dt><dd className="font-semibold tabular-nums text-ink">{N(v)}</dd></div>)}
                 </dl>
               )}
               {Object.keys(r.skippedReasons || {}).length > 0 && <p className="mt-1 text-[11.5px] text-muted">Skipped: {Object.entries<number>(r.skippedReasons).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} ${N(n)}`).join(' · ')}</p>}
-              <p className="mt-1 text-[11.5px] text-muted">{r.classifier ? `Classifier ${r.classifier}` : ''}{r.classifier && r.scope ? ' · ' : ''}{r.scope}</p>
+              <p className="mt-1 text-[11.5px] text-muted">{r.classifier ? `Classifier ${r.classifier}` : ''}{r.classifier && (r.thresholds || r.scope) ? ' · ' : ''}{r.thresholds ? `${r.thresholds}${r.scope ? ' · ' : ''}` : ''}{r.scope}</p>
             </li>
           ))}
         </ul>
