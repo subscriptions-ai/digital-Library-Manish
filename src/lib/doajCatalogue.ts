@@ -115,15 +115,80 @@ async function readCsv(csvText?: string) {
   return Papa.parse<Record<string, string>>(text, { header: true, skipEmptyLines: true }).data;
 }
 
-/** Everything held, read once: by every ISSN it is known by, and by title (for the review count only). */
+/** One journal we hold, as far as matching and classifying a DOAJ row needs. */
+type HeldJournal = { id: string; title: string; issn: string | null; eissn: string | null; status: string; domain: string | null; published: boolean };
+
+/**
+ * Everything held, read once: by every ISSN it is known by, and by title (for the review count only).
+ *
+ * `byIssn` maps an ISSN to EVERY journal that carries it as its ISSN or its e-ISSN, so a DOAJ row that touches two different journals can be told
+ * apart from one that touches one. `issns` and `titles` are what the rules have always used and still decide what is "held".
+ */
 async function readHeld() {
-  const issns = new Set<string>(); const titles = new Map<string, string>();
-  for (const j of await p.journal.findMany({ select: { issn: true, eissn: true, title: true } })) {
-    if (j.issn) issns.add(j.issn);
-    if (j.eissn) issns.add(j.eissn);
+  const issns = new Set<string>(); const titles = new Map<string, string>(); const byIssn = new Map<string, HeldJournal[]>();
+  // A journal is shown to the public only with a published article (publicJournals.ts), so which of them have one is part of what "held" means to a person.
+  const withArticles = new Set<string>((await p.$queryRawUnsafe(`select distinct "journalId" from "Article" where status = 'Published' and "journalId" is not null`) as any[]).map(r => r.journalId));
+  for (const j of await p.journal.findMany({ select: { id: true, issn: true, eissn: true, title: true, status: true, domain: true } })) {
+    const h: HeldJournal = { id: j.id, title: j.title, issn: j.issn, eissn: j.eissn, status: j.status, domain: j.domain, published: withArticles.has(j.id) };
+    // A journal held with the same value as its ISSN and its e-ISSN (an online-only title) is one entry under that key, not two.
+    for (const k of new Set([j.issn, j.eissn])) if (k) { issns.add(k); const l = byIssn.get(k); l ? l.push(h) : byIssn.set(k, [h]); }
     titles.set(j.title.trim().toLowerCase(), j.issn || '');
   }
-  return { issns, titles };
+  return { issns, titles, byIssn };
+}
+
+// ── What each "already held" journal is, to a person ──────────────────────
+
+/**
+ * Every row of the file ends in exactly one of these. They explain the difference between "held" and "public":
+ *
+ *   heldPublic       held, and on the public catalogue now (status Accepted or MetadataOnly AND at least one published article)
+ *   heldNoArticles   held with a public status, but no published article yet — it is in the database, not on any shelf (publicJournals.ts)
+ *   heldReview       held as NeedsReview, Draft or any other status the public catalogue does not offer
+ *   heldRejected     held as Rejected
+ *   ambiguous        the row's ISSN and e-ISSN belong to two DIFFERENT held journals; held, and listed here so a person can look
+ *   listedTwice      the same journal twice in the file: held by the first
+ *   sameTitle        a new ISSN whose title matches a held journal under other ISSNs (reported, never imported)
+ *   unusable         no ISSN or no title: it cannot be catalogued
+ *   outsideScope / beyondLimit   new, but not asked for (department, or past the limit)
+ *   new              will be added
+ */
+export type DoajCategory = 'new' | 'heldPublic' | 'heldNoArticles' | 'heldReview' | 'heldRejected' | 'ambiguous' | 'listedTwice' | 'sameTitle' | 'unusable' | 'outsideScope' | 'beyondLimit';
+export const DOAJ_CATEGORIES: DoajCategory[] = ['new', 'heldPublic', 'heldNoArticles', 'heldReview', 'heldRejected', 'ambiguous', 'listedTwice', 'sameTitle', 'unusable', 'outsideScope', 'beyondLimit'];
+
+/** One row of the file as an inspectable record. Short keys: a whole file's worth is stored beside a check. */
+export type DoajEntry = {
+  /** The DOAJ title (clipped), its ISSN and its e-ISSN. */
+  t: string; i: string; e: string;
+  /** The held journal(s) the row matched. */
+  j?: string[];
+  /** Which of the row's identifiers matched. */
+  by?: 'issn' | 'eissn' | 'both';
+  /** 1 when the held journal's title shares almost nothing with DOAJ's: matched by identifier, but worth a second look. */
+  d?: 1;
+};
+export type DoajInspection = { v: 1; categories: Partial<Record<DoajCategory, DoajEntry[]>> };
+
+export type DoajBreakdown = {
+  checked: number; new: number;
+  heldPublic: number; heldNoArticles: number; heldReview: number; heldRejected: number;
+  /** Rows that were neither new nor simply held: unusable, same title under other ISSNs, identifiers shared by two journals, listed twice. */
+  skippedConflicting: number;
+  skipped: { unusable: number; sameTitle: number; ambiguous: number; listedTwice: number };
+  outsideScope: number; beyondLimit: number;
+  /** Held matches whose title shares almost nothing with the journal DOAJ lists under that identifier (a subset of the held counts, not an addition). */
+  titleDiffers: number;
+  /** The exact status of every held journal a row matched. */
+  heldByStatus: Record<string, number>;
+};
+
+const words = (s: string) => new Set(s.toLowerCase().normalize('NFKD').replace(/[^\p{L}\p{N}]+/gu, ' ').split(' ').filter(w => w.length > 1));
+/** True when two titles share a good part of their words (or one holds the other). A journal that was renamed or re-spelled still agrees; an unrelated one does not. */
+export function titlesAgree(a: string, b: string): boolean {
+  const x = words(a), y = words(b);
+  if (!x.size || !y.size) return true;                                         // nothing to compare is not a disagreement
+  let shared = 0; for (const w of x) if (y.has(w)) shared++;
+  return shared / Math.min(x.size, y.size) >= 0.5;
 }
 
 export type CatalogueCheck = {
@@ -136,6 +201,10 @@ export type CatalogueCheck = {
   /** The ISSNs a confirmed import is allowed to add — exactly the "new" ones, and nothing else. */
   newIssns: string[];
   reviewSample: { title: string; issn: string }[];
+  /** Where every row of the file ended, with counts a person can follow. Information only: it changes nothing the import does. */
+  breakdown: DoajBreakdown;
+  /** The rows behind those counts, by category, so each can be opened. Kept beside the check (see doajInspection.ts). */
+  inspect: DoajInspection;
 };
 
 /**
@@ -154,33 +223,57 @@ export async function checkDoajCatalogue(opts: {
   limit?: number;
 } = {}): Promise<CatalogueCheck> {
   const rows = await readCsv(opts.csvText);
-  const { issns: held, titles: heldTitles } = await readHeld();
+  const { issns: held, titles: heldTitles, byIssn } = await readHeld();
   const out: CatalogueCheck = {
     summary: { inFile: rows.length, alreadyHeld: 0, new: 0, fullTextEligible: 0, metadataOnly: 0, rejected: 0, needsReview: 0, noDepartment: 0, byDepartment: {} },
     newIssns: [], reviewSample: [],
+    breakdown: { checked: rows.length, new: 0, heldPublic: 0, heldNoArticles: 0, heldReview: 0, heldRejected: 0, skippedConflicting: 0, skipped: { unusable: 0, sameTitle: 0, ambiguous: 0, listedTwice: 0 }, outsideScope: 0, beyondLimit: 0, titleDiffers: 0, heldByStatus: {} },
+    inspect: { v: 1, categories: {} },
   };
-  const s = out.summary;
+  const s = out.summary, bd = out.breakdown;
+  const note = (cat: DoajCategory, e: DoajEntry) => { (out.inspect.categories[cat] ||= []).push(e); };
   for (const row of rows) {
     const j = doajRowToJournal(row);
-    if (!j) { s.rejected++; continue; }
-    if (held.has(j.issn) || (j.eissn && held.has(j.eissn))) { s.alreadyHeld++; continue; }
+    if (!j) { s.rejected++; bd.skipped.unusable++; note('unusable', { t: (row['Journal title'] || '').trim().slice(0, 100), i: (row['Journal ISSN (print version)'] || '').trim(), e: (row['Journal EISSN (online version)'] || '').trim() }); continue; }
+    const entry: DoajEntry = { t: j.title.slice(0, 100), i: j.issn, e: j.eissn || '' };
+    if (held.has(j.issn) || (j.eissn && held.has(j.eissn))) {
+      s.alreadyHeld++;
+      // Same rule as ever (any held ISSN or e-ISSN); this only works out WHICH journal, and what it is. The row's own ISSN decides first: two journals
+      // that merely share an e-ISSN (DOAJ lists some) are told apart by their print ISSN. Only when no identifier singles out one journal is it ambiguous.
+      const byPrimary = byIssn.get(j.issn) || [], byOnline = (j.eissn && byIssn.get(j.eissn)) || [];
+      const list = byPrimary.length ? byPrimary : byOnline;
+      if (!list.length) { bd.skipped.listedTwice++; note('listedTwice', entry); continue; }          // held only because an earlier row of this file was counted as new
+      const first = list[0];
+      const viaIssn = list.length === 1 ? [first.issn, first.eissn].includes(j.issn) : byPrimary.length > 0;
+      const viaEissn = list.length === 1 ? !!j.eissn && [first.issn, first.eissn].includes(j.eissn) : !!byOnline.length;
+      entry.j = list.map(h => h.id); entry.by = viaIssn && viaEissn ? 'both' : viaIssn ? 'issn' : 'eissn';
+      for (const h of list) bd.heldByStatus[h.status] = (bd.heldByStatus[h.status] || 0) + 1;
+      if (list.some(h => !titlesAgree(j.title, h.title))) { entry.d = 1; bd.titleDiffers++; }
+      if (list.length > 1) { bd.skipped.ambiguous++; note('ambiguous', entry); continue; }
+      const h = list[0];
+      const cat: DoajCategory = h.status === 'Rejected' ? 'heldRejected' : (h.status === 'Accepted' || h.status === 'MetadataOnly') ? (h.published ? 'heldPublic' : 'heldNoArticles') : 'heldReview';
+      bd[cat]++; note(cat, entry);
+      continue;
+    }
     const sameTitle = heldTitles.get(j.title.toLowerCase());
     if (sameTitle !== undefined) {
-      s.needsReview++;
+      s.needsReview++; bd.skipped.sameTitle++;
+      note('sameTitle', entry);
       if (out.reviewSample.length < 20) out.reviewSample.push({ title: j.title, issn: j.issn });
       continue;
     }
-    if (opts.departments?.length && !opts.departments.includes(j.domain as string)) { s.outsideScope = (s.outsideScope || 0) + 1; continue; }
-    if (opts.limit != null && out.newIssns.length >= opts.limit) { s.beyondLimit = (s.beyondLimit || 0) + 1; continue; }
+    if (opts.departments?.length && !opts.departments.includes(j.domain as string)) { s.outsideScope = (s.outsideScope || 0) + 1; bd.outsideScope++; note('outsideScope', entry); continue; }
+    if (opts.limit != null && out.newIssns.length >= opts.limit) { s.beyondLimit = (s.beyondLimit || 0) + 1; bd.beyondLimit++; note('beyondLimit', entry); continue; }
     // The same title can appear twice in the file under its two ISSNs.
     held.add(j.issn); if (j.eissn) held.add(j.eissn); heldTitles.set(j.title.toLowerCase(), j.issn);
     out.newIssns.push(j.issn);
-    s.new++;
+    s.new++; bd.new++; note('new', entry);
     j.status === 'Accepted' ? s.fullTextEligible++ : s.metadataOnly++;
     if (!j.domain) s.noDepartment++;
     const k = j.domain || '(none)';
     s.byDepartment[k] = (s.byDepartment[k] || 0) + 1;
   }
+  bd.skippedConflicting = bd.skipped.unusable + bd.skipped.sameTitle + bd.skipped.ambiguous + bd.skipped.listedTwice;
   return out;
 }
 

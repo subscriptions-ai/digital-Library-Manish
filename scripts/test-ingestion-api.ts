@@ -85,7 +85,7 @@ try {
 
   section('Access: every ingestion route is for the super admin only, enforced on the server');
   const routes: [string, string][] = [['GET', '/api/admin/ingest/state'], ['POST', '/api/admin/ingest/state'], ['GET', '/api/admin/ingest/history'], ['GET', '/api/admin/ingest/metrics'], ['GET', '/api/admin/ingest/coverage'], ['GET', '/api/admin/ingest/department-metrics'], ['GET', '/api/admin/ingest/audit'],
-    ['POST', '/api/admin/ingest/tick'], ['POST', '/api/admin/ingest/dry-run'], ['POST', '/api/admin/ingest/run'], ['POST', '/api/admin/ingest/doaj-catalogue'], ['GET', '/api/admin/ingest/doaj-catalogue'], ['GET', '/api/admin/ingest/jobs/active']];
+    ['POST', '/api/admin/ingest/tick'], ['POST', '/api/admin/ingest/dry-run'], ['POST', '/api/admin/ingest/run'], ['POST', '/api/admin/ingest/doaj-catalogue'], ['GET', '/api/admin/ingest/doaj-catalogue'], ['GET', '/api/admin/ingest/doaj-catalogue/inspect'], ['GET', '/api/admin/ingest/jobs/active']];
   for (const [m, p] of routes) {
     const none = await call(p, { method: m, body: m === 'POST' ? {} : undefined });
     const bad = await call(p, { method: m, token: 'not-a-token', body: m === 'POST' ? {} : undefined });
@@ -179,6 +179,18 @@ try {
   const jc0 = await counts();
   let job: any; for (let i = 0; i < 40; i++) { await sleep(500); job = (await A('/api/admin/ingest/doaj-catalogue')).data.job; if (!job?.running) break; }
   check('with the network blocked the check ends in an error, visibly, and writes nothing', !!job?.error && JSON.stringify(await counts()) === JSON.stringify(jc0), job?.error);
+
+  // The rows behind a DOAJ check's counts: read through the real route, from a snapshot the test plants (the network is blocked here, so no check can make one).
+  {
+    const held = await db.journal.create({ data: { title: `Held Draft ${RUN}`, issn: `7${RUN.replace(/\D/g, '1').slice(0, 3).padEnd(3, '1')}-2220`, status: 'NeedsReview', rightsBasis: 'Crossref listing — OA unverified' } });
+    const snap = await db.ingestionPreview.create({ data: { kind: 'DOAJ_CATALOGUE', expiresAt: new Date(Date.now() + 3600_000), params: {}, summary: {}, items: { newIssns: [], inspect: { v: 1, categories: { heldReview: [{ t: `DOAJ title ${RUN}`, i: held.issn, e: '', j: [held.id], by: 'issn' }] } } } as any } });
+    const jb = await counts();
+    const r = await A(`/api/admin/ingest/doaj-catalogue/inspect?previewId=${snap.id}&category=heldReview`);
+    check('inspect: the journal behind "already held — draft / review", with its status, ISSN and whether it is public', r.status === 200 && r.data.total === 1 && r.data.rows[0].journals[0].status === 'NeedsReview' && r.data.rows[0].journals[0].issn === held.issn && r.data.rows[0].journals[0].public === false && r.data.rows[0].matchedBy === 'issn', JSON.stringify(r.data).slice(0, 200));
+    check('inspect: an unknown category is 400, an unknown check 404, no check 400', (await A(`/api/admin/ingest/doaj-catalogue/inspect?previewId=${snap.id}&category=nope`)).status === 400 && (await A('/api/admin/ingest/doaj-catalogue/inspect?previewId=nope&category=new')).status === 404 && (await A('/api/admin/ingest/doaj-catalogue/inspect?category=new')).status === 400);
+    check('inspect only reads: no journal, article or book changed', JSON.stringify(await counts()) === JSON.stringify(jb) && (await db.journal.findUnique({ where: { id: held.id } })).status === 'NeedsReview');
+    await db.ingestionPreview.delete({ where: { id: snap.id } }); await db.journal.delete({ where: { id: held.id } });
+  }
 
   section('Run log, metrics, coverage, audit');
   for (const q of ['result=all', 'result=added', 'result=held', 'result=failed', 'result=skipped', 'phase=articles', 'phase=books', 'phase=journals', 'result=added&phase=articles', 'limit=2']) {

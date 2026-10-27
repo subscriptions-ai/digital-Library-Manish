@@ -1,6 +1,7 @@
 import { CheckCircle2, ListChecks, Zap } from 'lucide-react';
 import { Button } from '../../ui';
 import { clock, N } from './format';
+import { DoajBreakdown, type DoajBreakdownData } from './DoajBreakdown';
 
 /**
  * A Quick Import while it runs, and what it did when it finished.
@@ -15,6 +16,8 @@ export type QuickJobView = {
   result: null | {
     checked: number; added: number; alreadyHeld: number; needsReview: number; skipped: number; failed: number; enriched?: number;
     notes: string[]; partial?: string | null; moreAvailable: boolean;
+    /** DOAJ journals: where every row of DOAJ's file ended, and the snapshot its rows can be opened from. */
+    doaj?: { breakdown: DoajBreakdownData; previewId: string | null };
   };
   error: null | { code: string; message: string; until: string | null; written: number };
 };
@@ -73,6 +76,7 @@ export function QuickImportPanel({ job, onMore, onDone, onActivity }: { job: Qui
           <p className="mt-2 text-[13px] font-semibold text-ink">Quick Import complete</p>
           <p className="text-[12.5px] text-muted">Source: {job.label}</p>
           <Counts rows={[[isNcbi ? 'Archives read' : 'Checked', job.result.checked], ['Added', job.result.added], ['Already held', job.result.alreadyHeld], ['Needs review', job.result.needsReview], ['Skipped', job.result.skipped]]} />
+          {job.result.doaj && <DoajBreakdown breakdown={job.result.doaj.breakdown} previewId={job.result.doaj.previewId} added={job.result.added} />}
           {(job.result.failed > 0 || (job.result.enriched ?? 0) > 0) && (
             <p className="mt-2 text-[12.5px] text-ink-2">
               {(job.result.enriched ?? 0) > 0 && <>{N(job.result.enriched)} existing records enriched. </>}

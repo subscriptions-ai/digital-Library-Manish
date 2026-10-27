@@ -7,6 +7,7 @@ import { N } from './format';
 import { DepartmentPicker } from './ScopePanel';
 import { SourceCards, type Kind, type SourceCard } from './SourceCards';
 import { QuickImportPanel, type QuickJobView } from './QuickImportPanel';
+import { DoajBreakdown } from './DoajBreakdown';
 
 /**
  * Bringing material in by hand.
@@ -236,11 +237,15 @@ export function OneOffImport({ engineRunning, onDone }: { engineRunning: boolean
             {dry?.status === 'error' && <p role="alert" className="rounded-lg bg-alarm-soft px-3 py-2 text-[13px] text-ink">{dry.error}</p>}
             {dry?.status === 'done' && s && (
               <>
-                <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-rule bg-rule sm:grid-cols-3 lg:grid-cols-6">
-                  {tiles.map(([l, v]) => (
-                    <div key={l} className="bg-surface px-3.5 py-3"><dd className="text-lg font-semibold tabular-nums text-ink">{N(v)}</dd><dt className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted">{l}</dt></div>
-                  ))}
-                </dl>
+                {group === 'Journals' && s.breakdown
+                  ? <DoajBreakdown breakdown={s.breakdown} previewId={dry.previewId || null} />
+                  : (
+                    <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-rule bg-rule sm:grid-cols-3 lg:grid-cols-6">
+                      {tiles.map(([l, v]) => (
+                        <div key={l} className="bg-surface px-3.5 py-3"><dd className="text-lg font-semibold tabular-nums text-ink">{N(v)}</dd><dt className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted">{l}</dt></div>
+                      ))}
+                    </dl>
+                  )}
                 <p className="mt-2 text-[12.5px] text-muted">
                   {group === 'Articles' && <>Of the {N(s.eligible)} eligible, {N(s.viewable)} would open in the viewer and {N(s.metadataOnly)} would link to the publisher. </>}
                   {group === 'Journals' && <>Of the {N(s.eligible)} new journals, {N(s.viewable)} are cleared for full text and {N(s.metadataOnly)} would be metadata only{s.noDepartment ? `; ${N(s.noDepartment)} have no department yet` : ''}. </>}
