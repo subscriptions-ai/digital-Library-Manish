@@ -71,6 +71,7 @@ import { reviewHistory } from "./src/lib/ingestion/reviewHistory.js";
 import { reviewJobHolder } from "./src/lib/ingestion/reviewJobLock.js";
 import * as reviewPublish from "./src/lib/ingestion/reviewPublish.js";
 import * as reviewAutoPublish from "./src/lib/ingestion/reviewAutoPublish.js";
+import * as reviewIngestRouting from "./src/lib/ingestion/reviewIngestRouting.js";
 import { pipelineStatus } from "./src/lib/ingestion/pipelineStatus.js";
 import { overview as backfillOverview, createJob as createBackfillJob, controlJob as controlBackfillJob, serializeJob as serializeBackfillJob, describeSource as describeBackfillSource } from "./src/lib/ingestion/backfill/jobs.js";
 import { startBackfillWorker } from "./src/lib/ingestion/backfill/worker.js";
@@ -8397,6 +8398,20 @@ async function startServer() {
   app.post("/api/admin/review/batch/assign", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
     try { res.json(await reviewBatch.batchAssign({ ids: req.body?.ids, mode: req.body?.mode, classifier: req.body?.classifier, department: req.body?.department, by: req.user })); }
     catch (e: any) { assignmentError(res, e, "Failed to assign the selected books"); }
+  });
+  // ── Review automation R3A: future-ingestion routing. Read-only here: the gate is a deployment setting, and the harvest does the routing as it writes new Drafts.
+  app.get("/api/admin/review/routing", authenticateJWT, requireAdminOrManager, async (_req: any, res: any) => {
+    try {
+      const c = reviewIngestRouting.routingConfig();
+      const st = await reviewIngestRouting.routingStats();
+      const sum = (days: string[]) => { const t = reviewIngestRouting.newRoutingTally(); for (const d of days) if (st?.daily[d]) reviewIngestRouting.addRoutingTally(t, st.daily[d]); return t; };
+      const day = (back: number) => new Date(Date.now() - back * 86_400_000).toISOString().slice(0, 10);
+      res.json({
+        config: { enabled: c.enabled, ready: c.ready, message: c.message, classifier: c.classifier,
+          thresholds: c.thresholds ? { highMinScore: c.thresholds.highMinScore, highMinMargin: c.thresholds.highMinMargin, highRequiresCode: c.thresholds.highRequiresCode } : null },
+        stats: st ? { since: st.since, lastRunAt: st.lastRunAt, today: sum([day(0)]), last7: sum([0, 1, 2, 3, 4, 5, 6].map(day)), totals: st.totals, byProvider: st.byProvider } : null,
+      });
+    } catch (e: any) { res.status(500).json({ error: "Failed to read future-ingestion routing" }); }
   });
   // ── Review automation: Publish Eligible. Confidence in a department is not a right to publish: every book must also pass the application's own publication
   // eligibility, at the moment of writing. A gate of its own (REVIEW_AUTO_PUBLISH_ENABLED) that assignment being enabled does not open. Previews read only and need no gate. ──

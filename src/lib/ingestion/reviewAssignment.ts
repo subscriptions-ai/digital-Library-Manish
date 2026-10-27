@@ -36,9 +36,11 @@ export type AssignmentRequest = {
   /** 'classifier': the assignment is the classifier's suggestion and must still pass the rule. 'person': an admin chose this department themselves. */
   basis: 'classifier' | 'person';
   rule?: AssignmentRule;
-  /** What kind of action asked, for the record: 'high-confidence', 'batch-suggested', 'batch-chosen', 'single'. */
+  /** What kind of action asked, for the record: 'high-confidence', 'batch-suggested', 'batch-chosen', 'single', 'future-ingestion-routing'. */
   source: string;
   by: { uid?: string; email?: string } | null;
+  /** The provider the book came from, kept on the note when the action is about newly ingested books. */
+  provider?: string | null;
 };
 
 export type SkipReason =
@@ -56,10 +58,11 @@ const skip = (bookId: string, reason: SkipReason, detail?: string): AssignmentOu
  * short list. No reasons, no text from the book. Shared with the publication action, which writes the same note when it has to assign a department.
  */
 export function assignmentRecord(a: { department: string; basis: 'classifier' | 'person'; source: string; tier: Tier | null; score: number | null; margin: number | null;
-  second: { department: string | null; score: number } | null; evidence: string[] | null; classifier: ClassifierVariant | null; by: { uid?: string; email?: string } | null }) {
+  second: { department: string | null; score: number } | null; evidence: string[] | null; classifier: ClassifierVariant | null; by: { uid?: string; email?: string } | null; provider?: string | null }) {
   return {
     department: a.department, basis: a.basis, assignmentSource: a.source, tier: a.tier, topScore: a.score, secondDepartment: a.second?.department ?? null, secondScore: a.second?.score ?? null, margin: a.margin,
     classifier: a.classifier, classifierVersion: a.classifier ? (a.classifier === 'v2' ? ANALYSIS_CLASSIFIER_V2 : CLASSIFIER_RULES_VERSION) : null, evidence: a.evidence,
+    ...(a.provider ? { provider: a.provider } : {}),
     performedBy: a.by?.email || a.by?.uid || null, performedAt: new Date().toISOString(),
   };
 }
@@ -94,7 +97,7 @@ export async function assignDepartmentStayDraft(req: AssignmentRequest, opts: { 
   if (opts.dryRun) return { bookId, result: 'assigned', department, tier, score };
 
   // 4. One conditional write: the department and the note, nothing else. If anything about the book changed since step 1, no row matches.
-  const record = assignmentRecord({ department, basis: req.basis, source: req.source, tier, score, margin, second, evidence, classifier: rule?.classifier ?? null, by: req.by });
+  const record = assignmentRecord({ department, basis: req.basis, source: req.source, tier, score, margin, second, evidence, classifier: rule?.classifier ?? null, by: req.by, provider: req.provider });
   const done: any[] = await db.$queryRawUnsafe(
     `update "Book" set domain = $2, "updatedAt" = now(), metadata = jsonb_set(coalesce(metadata, '{}'::jsonb), '{reviewAssignment}', $3::jsonb, true)
       where id = $1 and status = 'Draft' and "ownershipSource" = 'Ingested' and (domain is null or domain = '') and "rejectionNote" is null

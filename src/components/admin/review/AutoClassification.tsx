@@ -6,6 +6,7 @@ import { N, exactTime } from '../ingestion/format';
 import { ClassifierComparison } from './ClassifierComparison';
 import { AutoAssignment } from './AutoAssignment';
 import { AutoPublish } from './AutoPublish';
+import { IngestRouting } from './IngestRouting';
 
 /**
  * Review automation R1 — Auto Classification. An analysis of the "Needs a department" queue that does not modify catalogue or content records: how many books the existing department classifier
@@ -207,6 +208,8 @@ export function AutoClassification() {
           <AutoAssignment summary={S} />
 
           <AutoPublish summary={S} />
+
+          <IngestRouting />
 
           <section className="card card-pad" aria-label="Suggested departments">
             <h3 className="text-[15px] font-semibold text-ink">By suggested department</h3>

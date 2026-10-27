@@ -14,6 +14,7 @@ import { licenceAllowsCommercialUse } from '../eligibility.js';
 import { tryLockProvider, unlockProvider, providerHolder } from '../providerLocks.js';
 import { bump, type DeptStats } from '../departmentStats.js';
 import { reconcile, type Reconciliation } from '../accounting.js';
+import { routingSession, type RoutingTally } from '../reviewIngestRouting.js';
 import { extraBatch } from './extraKinds.js';
 import { CROSSREF_WORKS } from './crossrefBooks.js';
 import { NLM_EUTILS, NLM_PROVIDER, NLM_TARGET_DEPARTMENTS } from './nlmCatalog.js';
@@ -224,6 +225,8 @@ export type HarvestOptions = {
 export type HarvestReport = {
   /** Clearly classified books held for review only because of the book year policy (older than it, or no year). Never refused for it. */
   heldForYear: { older: number; noYear: number };
+  /** Future-ingestion routing (Review Automation R3A) for the Drafts this harvest wrote. Present only when that gate was on and routing ran; the harvest's own counts are unchanged by it. */
+  routing?: RoutingTally;
   provider: string; dryRun: boolean;
   pages: number; fetched: number; deleted: number; unusable: number;
   /** Records the provider listed that it says have not changed since our last sync, so they were not judged again. Counted as skipped. */
@@ -675,6 +678,8 @@ export async function harvestFeed(cfg: OaiProviderConfig, opts: HarvestOptions =
   const seenDept = new Map<string, string>();
   const uniqueKeys = new Set<string>();
   const checker = cfg.verifyFiles ? new FileChecker() : null;
+  // Newly written Drafts may be given a department by future-ingestion routing (off unless its own gate is on). It only ever sees the id of a row created by THIS run.
+  const routing = routingSession(cfg.provider);
 
   let cp = await readCheckpoint(db, cfg.provider);
   const ignoreCp = (dry || !keepsCheckpoint) && !!opts.ignoreCheckpoint;
@@ -829,7 +834,8 @@ export async function harvestFeed(cfg: OaiProviderConfig, opts: HarvestOptions =
       try {
         const row: any = bookRow(j, cfg, publishes ? 'Published' : 'Draft');
         if (!yv.ok) row.metadata = { ...row.metadata, harvest: { ...(row.metadata?.harvest || {}), yearPolicy: { outcome: yv.outcome, reason: yv.reason, minYear } } };
-        await db.book.create({ data: row });
+        const created = await db.book.create({ data: row });
+        if (!publishes) await routing.route(created.id);          // never throws; changes only the department of this new Draft, and only when it is High confidence
         // Published: counted in the department it was published into. Waiting for review: unassigned, whatever it suggests.
         if (publishes) { report.added++; bump(stats, here, 'added'); } else { report.queuedForReview++; bump(stats, '', 'sentToReview'); }
       } catch (e: any) {
@@ -837,6 +843,8 @@ export async function harvestFeed(cfg: OaiProviderConfig, opts: HarvestOptions =
       }
     }
 
+    await routing.flush();
+    if (routing.tally) report.routing = routing.tally;
     if (page.deferred) report.deferred = page.deferred;
     // The page is done. Only now is it safe to remember where the next one starts.
     token = page.next;
