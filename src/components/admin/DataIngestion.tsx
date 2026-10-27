@@ -3,6 +3,7 @@ import { EngineStatus } from './ingestion/EngineStatus';
 import { EngineMode } from './ingestion/EngineMode';
 import { RotationStatus } from './ingestion/RotationStatus';
 import { Metrics } from './ingestion/Metrics';
+import { DailySummary } from './ingestion/DailySummary';
 import { PipelineStrip, ReviewQueueCard, ProviderYield } from './ingestion/Throughput';
 import { HistoricalBackfill } from './ingestion/HistoricalBackfill';
 import { RunActivity } from './ingestion/RunActivity';
@@ -59,6 +60,7 @@ export function DataIngestion() {
         <ReviewQueueCard refreshKey={bump} />
       </div>
       <Metrics state={state} />
+      <DailySummary refreshKey={bump} />
       <ProviderYield state={state} refreshKey={bump} />
 
       <div className="segmented" role="tablist" aria-label="Activity view">

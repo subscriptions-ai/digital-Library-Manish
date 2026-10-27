@@ -91,6 +91,7 @@ import { sourceCooldown } from "./src/lib/ingestion/sourceHealth.js";
 import { departmentMetrics, departmentTable, departmentExists } from "./src/lib/ingestion/departmentMetrics.js";
 import { resolveRange } from "./src/lib/ingestion/runFilter.js";
 import { historicalStatus as openAlexJournalsStatus, setPaused as setOpenAlexJournalsPaused } from "./src/lib/ingestion/openAlexJournals.js";
+import { dailySummary, dailyContent, resolveReportDate, previousReportDates, isContentType, MAX_PAGE_SIZE as DAILY_MAX_PAGE } from "./src/lib/ingestion/dailySummary.js";
 import sanitizeHtml from "sanitize-html";
 import { checkCoverImage, failed, cleanAlt, isUsableCoverUrl, isExternalMediaUrl, publishProblems, COVER_MAX_BYTES, COVER_UNAVAILABLE_MESSAGE, type PublishProblems } from "./src/lib/blogCover.js";
 import {
@@ -9513,6 +9514,32 @@ async function startServer() {
       const period = (['lifetime', '7d', '24h'] as const).find(p => p === req.query.period) || 'lifetime';
       res.json(await ingestionMetrics(await getIngestionState(), period));
     } catch (e: any) { res.status(500).json({ error: "Failed to load metrics" }); }
+  });
+
+  // GET /api/admin/ingest/daily-summary?reportDate=YYYY-MM-DD[&fresh=1] — what NEW content the catalogue gained in one reporting cycle
+  // ((reportDate − 1) 5:01 PM → reportDate 5:00 PM IST; leave reportDate out for the live cycle). Counted from the catalogue rows themselves.
+  // Read-only; nothing is written, reset or recalculated.
+  app.get("/api/admin/ingest/daily-summary", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const d = resolveReportDate(req.query.reportDate);
+      if ('error' in d) return res.status(400).json({ error: d.error });
+      res.json({ ...(await dailySummary(d.reportDate, { fresh: req.query.fresh === '1' })), reports: previousReportDates() });
+    } catch (e: any) { console.error('GET ingest/daily-summary error:', e?.message); res.status(500).json({ error: "Failed to load the daily summary" }); }
+  });
+
+  // GET /api/admin/ingest/daily-summary/content?reportDate=…&department=…&type=journal|article|book|all&page=1&pageSize=50
+  // The exact records one number in the summary is made of. `department` may be "(unassigned)". Read-only.
+  app.get("/api/admin/ingest/daily-summary/content", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try {
+      const d = resolveReportDate(req.query.reportDate);
+      if ('error' in d) return res.status(400).json({ error: d.error });
+      const type = req.query.type === undefined || req.query.type === '' || req.query.type === 'all' ? 'all' : req.query.type;
+      if (type !== 'all' && !isContentType(type)) return res.status(400).json({ error: 'type must be journal, article, book or all' });
+      const department = typeof req.query.department === 'string' && req.query.department ? req.query.department.trim() : null;
+      if (department && department.length > 120) return res.status(400).json({ error: 'Unknown department' });
+      const num = (v: any, fallback: number) => { const n = Number(v); return Number.isFinite(n) && n >= 1 ? Math.floor(n) : fallback; };
+      res.json(await dailyContent({ reportDate: d.reportDate, department, type, page: num(req.query.page, 1), pageSize: Math.min(DAILY_MAX_PAGE, num(req.query.pageSize, 50)) }));
+    } catch (e: any) { console.error('GET ingest/daily-summary/content error:', e?.message); res.status(500).json({ error: "Failed to load the records" }); }
   });
 
   // GET /api/admin/ingest/department-metrics?department=<name>&range=…&from=&to=&phase=&source=&result=&byDay=1
