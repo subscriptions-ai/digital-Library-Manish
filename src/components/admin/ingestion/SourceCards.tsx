@@ -20,6 +20,9 @@ export type SourceCard = {
   /** Whether it can be asked right now, and when it can be again. */
   availability?: Availability;
   health?: { state: string; failures: number; threshold: number; until: string | null; lastError: string | null; reason?: string | null; lastErrorKind?: string | null; lifetimeFailures?: number };
+  /** Book providers read through a checkpoint: where the harvest stands, and the last page vs the last attempt. */
+  harvest?: { checkpoint: { state: 'not_started' | 'mid_harvest' | 'idle'; position: number | null; positionUnit: string; since: string | null; lastSuccessfulSyncAt: string | null };
+    lastPageAt: string | null; lastAttemptAt: string | null; lastRequestOkAt: string | null; lastFailureAt: string | null; fallback: { active: boolean; available: boolean } } | null;
   yield?: 'productive' | 'low' | 'exhausted' | null;
   /** What a productive source is productive FOR. A source that only fills the review queue is never "productive for the published catalogue". */
   yieldFor?: 'published' | 'review' | null;
@@ -139,6 +142,21 @@ export function SourceCards({ sources, failed, onRetry, filter, onFilter, select
                         {s.health && s.health.failures > 0 && <span>{s.health.failures} consecutive failure{s.health.failures === 1 ? '' : 's'}</span>}
                         {s.health && (s.health.lifetimeFailures ?? 0) > 0 && <span title="Every failed request this source has ever had; it is never reset">{N(s.health.lifetimeFailures)} lifetime request failure{s.health.lifetimeFailures === 1 ? '' : 's'}</span>}
                       </p>
+                    )}
+                    {s.harvest && (
+                      <div className="mt-1.5 space-y-0.5 text-[12px] text-muted">
+                        <p>
+                          <span className="font-medium text-ink-2">Last successful page</span> {s.harvest.lastPageAt ? ago(s.harvest.lastPageAt) : 'not recorded yet'}
+                          {' · '}<span className="font-medium text-ink-2">Last attempt</span> {s.harvest.lastAttemptAt ? ago(s.harvest.lastAttemptAt) : 'not recorded yet'}
+                        </p>
+                        <p>
+                          <span className="font-medium text-ink-2">Checkpoint</span>{' '}
+                          {s.harvest.checkpoint.state === 'mid_harvest' ? `mid-harvest${s.harvest.checkpoint.position != null ? `, ${N(s.harvest.checkpoint.position)} ${s.harvest.checkpoint.positionUnit} in` : ''} (kept through failures)`
+                            : s.harvest.checkpoint.state === 'idle' ? `idle, last full sync ${ago(s.harvest.checkpoint.lastSuccessfulSyncAt)}` : 'not started'}
+                          {s.harvest.lastRequestOkAt && <> · last answered request {ago(s.harvest.lastRequestOkAt)}</>}
+                          {' · '}<span className="font-medium text-ink-2">Fallback</span> {s.harvest.fallback.active ? 'active' : 'none in use'}
+                        </p>
+                      </div>
                     )}
                     {s.plain && <p className="mt-1.5 text-[12px] leading-snug text-ink-2">{s.plain}</p>}
                     {s.cursors && s.cursors.resting.length > 0 && (

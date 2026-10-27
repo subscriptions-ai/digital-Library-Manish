@@ -2067,6 +2067,10 @@ model BookHarvestCheckpoint {
   cursor               String?   @db.Text
   lastSuccessfulSyncAt DateTime?
   harvestStartedAt     DateTime?
+  /// The last time the continuous engine tried this provider, whether or not the attempt worked. Diagnostic only.
+  lastAttemptAt        DateTime?
+  /// The last page that arrived and was fully processed (the moment `cursor` last moved). Diagnostic only.
+  lastPageAt           DateTime?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 }

@@ -25,12 +25,14 @@ export type ErrorKind =
   | 'dns' | 'timeout' | 'connection_refused' | 'connection_reset' | 'tls'
   | 'http_4xx' | 'http_429' | 'http_5xx'
   | 'oai_protocol' | 'invalid_xml' | 'invalid_response'
+  | 'invalid_resumption_token' | 'source_changed' | 'network_unreachable'
   | 'provider_unavailable' | 'unknown';
 
 export const ERROR_KIND_LABEL: Record<ErrorKind, string> = {
   dns: 'DNS lookup failed', timeout: 'Connection timeout', connection_refused: 'Connection refused', connection_reset: 'Connection reset',
   tls: 'TLS / certificate error', http_4xx: 'HTTP 4xx (request refused)', http_429: 'HTTP 429 (rate limited)', http_5xx: 'HTTP 5xx (server error)',
   oai_protocol: 'OAI protocol error', invalid_xml: 'Invalid XML', invalid_response: 'Unrecognised response',
+  invalid_resumption_token: 'Resumption token rejected', source_changed: 'Source changed (set or format gone)', network_unreachable: 'Network unreachable',
   provider_unavailable: 'Provider unavailable', unknown: 'Unknown error',
 };
 const KINDS = new Set(Object.keys(ERROR_KIND_LABEL));
@@ -38,7 +40,7 @@ export const isErrorKind = (v: unknown): v is ErrorKind => typeof v === 'string'
 
 /** A reply that arrived but cannot be used. Thrown by a caller's `parse`, so it is counted as the source failing, not as success. */
 export class SourceParseError extends Error {
-  constructor(public kind: 'oai_protocol' | 'invalid_xml' | 'invalid_response', message: string) { super(message); this.name = 'SourceParseError'; }
+  constructor(public kind: 'oai_protocol' | 'invalid_xml' | 'invalid_response' | 'source_changed', message: string) { super(message); this.name = 'SourceParseError'; }
 }
 
 /** The error's own code, wherever Node or undici put it (`fetch failed` carries the real one on `cause`). */
@@ -54,7 +56,7 @@ export function classifyFailure(e: any): ErrorKind {
   if (code === 'ECONNREFUSED') return 'connection_refused';
   if (/^(ECONNRESET|EPIPE|UND_ERR_SOCKET|UND_ERR_CLOSED|ECONNABORTED)$/.test(code)) return 'connection_reset';
   if (/CERT|TLS|SSL|SELF_SIGNED|UNABLE_TO_VERIFY|DEPTH_ZERO|HOSTNAME_MISMATCH/i.test(code) || /certificate|tls|ssl/i.test(text)) return 'tls';
-  if (/^(ENETUNREACH|EHOSTUNREACH|ENETDOWN|EHOSTDOWN)$/.test(code)) return 'provider_unavailable';
+  if (/^(ENETUNREACH|EHOSTUNREACH|ENETDOWN|EHOSTDOWN)$/.test(code)) return 'network_unreachable';
   if (e?.name === 'SyntaxError') return 'invalid_response';
   if (typeof e?.status === 'number') return kindForStatus(e.status);
   return 'unknown';
@@ -69,9 +71,12 @@ export function kindFromMessage(msg: string): ErrorKind {
   if (/\bHTTP 4\d\d\b/.test(m)) return 'http_4xx';
   if (/timed? ?out|TimeoutError|ETIMEDOUT/i.test(m)) return 'timeout';
   if (/ENOTFOUND|EAI_AGAIN|getaddrinfo/i.test(m)) return 'dns';
+  if (/ENETUNREACH|EHOSTUNREACH|ENETDOWN|EHOSTDOWN/i.test(m)) return 'network_unreachable';
   if (/ECONNREFUSED/i.test(m)) return 'connection_refused';
   if (/ECONNRESET|socket hang up/i.test(m)) return 'connection_reset';
   if (/certificate|TLS|SSL/i.test(m)) return 'tls';
+  if (/resumption token/i.test(m)) return 'invalid_resumption_token';
+  if (/OAI error (cannotDisseminateFormat|noSetHierarchy)/i.test(m)) return 'source_changed';
   if (/OAI error/i.test(m)) return 'oai_protocol';
   if (/xml/i.test(m)) return 'invalid_xml';
   return 'unknown';
