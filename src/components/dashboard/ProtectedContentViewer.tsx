@@ -27,6 +27,7 @@ import 'pdfjs-dist/web/pdf_viewer.css';
 
 // Correctly import PDF.js worker as a static url reference using Vite's ?url suffix
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import { landingPageUrl } from '../../lib/abstractPreview';
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
 
 // ────────────────────────────────────────────────────────
@@ -272,7 +273,7 @@ export function ProtectedContentViewer() {
     if (!id || !content || content.kind === 'book') return;
     const url = content.kind === 'content'
       ? `/api/library/content/${id}`
-      : `/api/library/article/${id}?abstract=preview`; // the viewer shows a preview, so it is not sent the whole abstract
+      : `/api/library/article/${id}`;
     fetch(url, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
       .then(r => (r.ok ? r.json() : null))
       .then(d => d && setRecord(d))
@@ -543,7 +544,7 @@ export function ProtectedContentViewer() {
   // A short preview, cut on the server. The link beside it goes to the record's own landing page — never to the
   // file, and never to an address built here — so it is absent when the source gave us none.
   const abstractPreview: string | null = content?.abstractPreview || record?.abstractPreview || null;
-  const landingPage: string | null = [record?.originalUrl, content?.originalUrl].find(u => typeof u === 'string' && /^https?:\/\//i.test(u)) || null;
+  const landingPage: string | null = landingPageUrl(record?.originalUrl, content?.originalUrl);
 
   // ────────────────────────────────────────────────────
   //  Render: Main viewer

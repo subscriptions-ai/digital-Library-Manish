@@ -74,13 +74,17 @@ export function buildAbstractPreview(raw: unknown, max: number = ABSTRACT_PREVIE
 }
 
 /**
- * Ingested records whose descriptions we may show in part. Everything else that was ingested keeps its abstract
- * on file and shows none: where a source's terms are not recorded here, the record points to the publisher instead.
+ * Ingested books whose descriptions we may show in part. Two things must both hold, and both are already stored on the record:
+ *   - it came from a source whose descriptions we ingest as catalogue metadata, and
+ *   - the record carries an open licence (CC0, CC BY, CC BY-SA, public domain) and is not marked non-commercial.
+ * An undeclared, non-commercial or no-derivatives licence keeps the description on file and shows none; the record
+ * points to the publisher instead. A source's own terms are not recorded anywhere, so none is assumed.
  *
  * Articles are deliberately absent: article ingestion stores no abstract (see the abstract decision in ingestionWorker),
  * so an ingested article that has one came from a path nobody has cleared.
  */
-const INGESTED_BOOK_SOURCES = new Set(['DOAB', 'OAPEN', 'OpenTextbookLibrary', 'NCBIBookshelf', 'Pressbooks', 'Crossref', 'OpenLibrary']);
+const INGESTED_BOOK_SOURCES = new Set(['DOAB', 'OAPEN', 'OpenTextbookLibrary', 'NCBIBookshelf', 'Pressbooks', 'Crossref']);
+const OPEN_LICENCE = /^(CC0|CC[ -]BY(?:[ -]SA)?|Public Domain)$/i;
 
 /** Whether the preview of this record's abstract may be shown at all. */
 export function abstractMayBeShown(kind: 'article' | 'book', item: any): boolean {
@@ -88,12 +92,42 @@ export function abstractMayBeShown(kind: 'article' | 'book', item: any): boolean
   if (item.rightsStatus === 'Rejected') return false;
   // Entered by us or submitted by the publisher itself.
   if (item.ownershipSource === 'AdminEntered' || item.ownershipSource === 'PublisherSubmitted') return true;
-  return kind === 'book' && INGESTED_BOOK_SOURCES.has(String(item.source || ''));
+  return kind === 'book'
+    && INGESTED_BOOK_SOURCES.has(String(item.source || ''))
+    && item.licenceIsNC === false
+    && OPEN_LICENCE.test(String(item.licence || '').trim());
 }
 
-/** The preview for a catalogue record as the viewer receives it. null for legacy content and for anything not cleared. */
+/** The preview for a catalogue record as a reader receives it. null for anything not cleared. */
 export function abstractPreviewFor(kind: string, item: any): string | null {
   if (kind === 'article') return abstractMayBeShown('article', item) ? buildAbstractPreview(item.abstract) : null;
   if (kind === 'book') return abstractMayBeShown('book', item) ? buildAbstractPreview(item.description) : null;
   return null;
+}
+
+/**
+ * The shapes public endpoints send. The full abstract is removed, not hidden: a reader's response carries `abstractPreview`
+ * and nothing longer. Admin, editorial and publisher-portal endpoints do not use these.
+ */
+export function publicArticle<T extends Record<string, any>>(row: T): Omit<T, 'abstract'> & { abstractPreview: string | null } {
+  const { abstract: _full, ...rest } = row;
+  return { ...rest, abstractPreview: abstractPreviewFor('article', row) };
+}
+export function publicBook<T extends Record<string, any>>(row: T): Omit<T, 'description'> & { abstractPreview: string | null } {
+  const { description: _full, ...rest } = row;
+  return { ...rest, abstractPreview: abstractPreviewFor('book', row) };
+}
+/**
+ * The older Content shelf keeps its text in `description`, which for papers and theses is an abstract. It is owned by us, so
+ * there is no source gate; the text is capped where it is. Videos are not abstracts and are left alone.
+ */
+export function publicContent<T extends Record<string, any>>(row: T): T & { abstractPreview?: string | null } {
+  if (!row || row.contentType === 'Educational Videos' || typeof row.description !== 'string') return row;
+  const preview = buildAbstractPreview(row.description);
+  return { ...row, description: preview, abstractPreview: preview };
+}
+
+/** Where the full abstract lives: the record's own landing page, only if it is a web address. Never built from an identifier. */
+export function landingPageUrl(...candidates: unknown[]): string | null {
+  return (candidates.find(u => typeof u === 'string' && /^https?:\/\//i.test(u)) as string | undefined) || null;
 }

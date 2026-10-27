@@ -3,6 +3,7 @@ import {
   X, Copy, Check, ExternalLink, FileText, BookOpen, Unlock, Lock,
   Tag, Info, Quote,
 } from 'lucide-react';
+import { FullAbstractLink } from './FullAbstractLink';
 
 /**
  * Full-metadata popup for library entries.
@@ -63,7 +64,8 @@ export function MetadataModal({ item, isBook = false, onClose, onOpen }: Props) 
   const meta = useMemo(() => parseMeta(item?.metadata), [item]);
   const book = isBook || item?.contentType === 'Books';
 
-  const abstract: string = item?.abstract || item?.description || '';
+  // Only ever the capped preview: the public list endpoints send nothing longer.
+  const abstract: string = item?.abstractPreview || item?.description || '';
   const keywords = useMemo(() => {
     const merged = [...toList(meta.keywords), ...toList(meta.tags), ...toList(item?.tags)];
     return [...new Set(merged)];
@@ -188,7 +190,8 @@ export function MetadataModal({ item, isBook = false, onClose, onOpen }: Props) 
 
           {abstract ? (
             <Section icon={<Quote size={14} />} title="Abstract">
-              <p className="whitespace-pre-line text-sm leading-relaxed text-ink-2">{abstract}</p>
+              <p className="text-sm leading-relaxed [overflow-wrap:anywhere] text-ink-2">{abstract}</p>
+              <FullAbstractLink urls={[item?.originalUrl]} />
             </Section>
           ) : (
             <Section icon={<Quote size={14} />} title="Abstract">

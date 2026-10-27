@@ -11,6 +11,7 @@ import { EngineSettings } from './ingestion/EngineSettings';
 import { ScopePanel } from './ingestion/ScopePanel';
 import { DoajImport } from './ingestion/DoajImport';
 import { DoajEnrichment } from './ingestion/DoajEnrichment';
+import { FullTextCandidates } from './ingestion/FullTextCandidates';
 import { OneOffImport } from './ingestion/OneOffImport';
 import { Coverage } from './ingestion/Coverage';
 import { BookCoverage } from './ingestion/BookCoverage';
@@ -28,7 +29,7 @@ import { api, useEngineState } from './ingestion/api';
 export function DataIngestion() {
   const { state, error, reload } = useEngineState();
   const [coverage, setCoverage] = useState<any[] | null>(null);
-  const [tab, setTab] = useState<'log' | 'coverage' | 'books' | 'growth' | 'bulk' | 'backfill'>('log');
+  const [tab, setTab] = useState<'log' | 'coverage' | 'books' | 'growth' | 'bulk' | 'backfill' | 'fulltext'>('log');
   const [bump, setBump] = useState(0);
   // The department filter belongs to the page, so a click in Coverage can set it. Dates, kind, source and result belong to Run activity.
   const [department, setDepartment] = useState('');
@@ -65,7 +66,7 @@ export function DataIngestion() {
       <ProviderYield state={state} refreshKey={bump} />
 
       <div className="segmented" role="tablist" aria-label="Activity view">
-        {([['log', 'Run activity'], ['coverage', 'Coverage'], ['books', 'Book coverage'], ['growth', 'Catalogue growth'], ['bulk', 'Bulk expansion'], ['backfill', 'Historical backfill']] as const).map(([id, label]) => (
+        {([['log', 'Run activity'], ['coverage', 'Coverage'], ['books', 'Book coverage'], ['growth', 'Catalogue growth'], ['bulk', 'Bulk expansion'], ['backfill', 'Historical backfill'], ['fulltext', 'Full-text candidates']] as const).map(([id, label]) => (
           <button key={id} type="button" role="tab" aria-selected={tab === id} aria-pressed={tab === id} onClick={() => setTab(id)}>{label}</button>
         ))}
       </div>
@@ -82,6 +83,8 @@ export function DataIngestion() {
         <CatalogueGrowth />
       ) : tab === 'backfill' ? (
         <HistoricalBackfill refreshKey={bump} />
+      ) : tab === 'fulltext' ? (
+        <FullTextCandidates />
       ) : (
         <BulkExpansion onChanged={changed} />
       )}

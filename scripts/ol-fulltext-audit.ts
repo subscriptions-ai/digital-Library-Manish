@@ -1,11 +1,12 @@
 /**
  * Phase 2F, first deliverable: the READ-ONLY Open Library / Internet Archive FULL-TEXT ELIGIBILITY audit of the Books we hold from Open Library.
  *
- *   npx tsx scripts/ol-fulltext-audit.ts [--source OpenLibraryDump,OpenLibrary] [--limit N] [--max-requests N] [--gap-ms N] [--json <file>] [--previous <report.json>]
+ *   npx tsx scripts/ol-fulltext-audit.ts [--source OpenLibraryDump,OpenLibrary] [--limit N] [--max-requests N] [--gap-ms N] [--after <book id>] [--save] [--json <file>] [--previous <report.json>]
  *
  * Reads DATABASE_URL (locally .env) inside READ ONLY transactions and asks two public APIs for small JSON, politely (1 request per 1.1 s by default, batches of 20, a hard request
  * budget, backoff, Retry-After, and a stop after repeated failures). It writes NOTHING: no Book, no checkpoint, no provider-health row — fingerprints of the Book table and of the
- * continuous-engine state are taken before and after to show nothing moved. It never downloads a book file. Prints which database it measured (host, port, name; never the password).
+ * continuous-engine state are taken before and after to show nothing moved. With --save it ALSO stores the candidates (and only them) for the admin review screen, as AppSetting rows;
+ * that is the one thing it writes, and it never writes a Book. It never downloads a book file. Prints which database it measured (host, port, name; never the password).
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 
@@ -33,7 +34,7 @@ console.log(`database: ${u.hostname}:${u.port || 5432}${u.pathname}   (read-only
 const before = await fingerprint();
 const sources = (opt('--source') ?? '').split(',').map(s => s.trim()).filter(Boolean);
 const t0 = Date.now();
-const r = await A.runAudit(db as any, { sources: sources.length ? sources : undefined, limit: opt('--limit') ? Number(opt('--limit')) : undefined, maxRequests: opt('--max-requests') ? Number(opt('--max-requests')) : undefined, gapMs: opt('--gap-ms') ? Number(opt('--gap-ms')) : undefined });
+const r = await A.runAudit(db as any, { sources: sources.length ? sources : undefined, limit: opt('--limit') ? Number(opt('--limit')) : undefined, afterId: opt('--after'), maxRequests: opt('--max-requests') ? Number(opt('--max-requests')) : undefined, gapMs: opt('--gap-ms') ? Number(opt('--gap-ms')) : undefined });
 const after = await fingerprint();
 
 console.log(`\n== SCOPE ==\n  sources                                  ${r.sources.join(', ')}\n  Books held from them                     ${n0(r.booksInScope)}\n  Books audited                            ${n0(r.booksAudited)}${r.incomplete ? '   INCOMPLETE — ' + r.incompleteReasons.join('; ') : ''}`);
@@ -43,11 +44,15 @@ console.log(`\n  matched to Open Library / the Internet Archive    ${n0(r.matche
 console.log(`  licences of the candidates / of the restricted: ${JSON.stringify(r.licences)}\n  notes (information only; never a verdict): ${JSON.stringify(r.notes)}`);
 console.log(`\n== ESTIMATED FULL-TEXT CANDIDATES BY DEPARTMENT ==`);
 const cand = Object.entries(r.candidatesByDepartment).sort((a, b) => b[1] - a[1]); console.log(cand.length ? cand.map(([d, n]) => `  ${String(n).padStart(6)}  ${d}`).join('\n') : '  none');
+console.log(`\n== CANDIDATES BY PROVIDER (Book source) ==\n  ${JSON.stringify(r.candidatesBySource)}`);
 console.log(`\n== BY DEPARTMENT (all verdicts) ==`);
 for (const [d, c] of Object.entries(r.byDepartment).sort((a, b) => Object.values(b[1]).reduce((x, y) => x + y, 0) - Object.values(a[1]).reduce((x, y) => x + y, 0))) console.log(`  ${d.padEnd(34)} ${L.CATEGORIES.filter(k => c[k]).map(k => `${k} ${c[k]}`).join(' · ')}`);
 console.log(`\n== REQUESTS ==\n  ${JSON.stringify(r.requests)}   (${((Date.now() - t0) / 1000).toFixed(0)} s)`);
 console.log(`\n== SAMPLES (bounded: ${25} each; first 3 shown) ==`);
 for (const c of L.CATEGORIES) if (r.samples[c].length) console.log(`  ${c}: ${JSON.stringify(r.samples[c].slice(0, 3))}`);
+console.log(`\n== POSITION ==\n  last Book audited: ${r.lastId ?? '—'}   (continue with --after ${r.lastId ?? '<id>'}); this audit covered the whole scope: ${r.wholeScope ? 'yes' : 'no'}`);
+let saved: any = null;
+if (args.includes('--save')) { const S = await import('../src/lib/ingestion/books/fulltextCandidates.js'); saved = await S.saveCandidates(db as any, r as any, { email: 'cli:ol-fulltext-audit' }); console.log(`\n== SAVED FOR REVIEW (AppSetting rows only; no Book written) ==\n  ${JSON.stringify(saved)}`); }
 const prevPath = opt('--previous');
 if (prevPath) { const prev = JSON.parse(readFileSync(prevPath, 'utf8')); const d = A.diffReports(prev, r); console.log(`\n== CHANGED SINCE ${prevPath} ==\n  ${d.length} Book(s)${d.length ? ': ' + JSON.stringify(d.slice(0, 10)) : ''}`); }
 console.log(`\n== SAFETY ==\n  reportHash ${r.reportHash}`);

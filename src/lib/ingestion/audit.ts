@@ -19,6 +19,8 @@ export type AuditAction =
   | 'BACKFILL_JOB_CREATED' | 'BACKFILL_JOB_CONTROL' | 'BACKFILL_JOB_FINISHED'
   /** DOAJ journal enrichment: one chunk wrote descriptive fields into journals already held (counts, the fields and at most 50 ISSNs; never a value, never a credential). */
   | 'DOAJ_ENRICHMENT_APPLIED'
+  /** Full-text candidate review: a person approved, held or rejected a candidate. A record only — nothing is downloaded and the Book is not changed. */
+  | 'FULLTEXT_CANDIDATE_DECISION'
   /** Review automation: a classification analysis (or v1-vs-v2 comparison) of the "Needs a department" queue was run. Counts only; it does not modify catalogue or content records. */
   | 'REVIEW_CLASSIFICATION_ANALYSIS' | 'REVIEW_CLASSIFICATION_COMPARISON'
   /** Review automation R2: a department-assignment batch or job. Counts and short scope only; the books' own audit note lives in metadata.reviewAssignment. */
@@ -26,7 +28,9 @@ export type AuditAction =
   /** Review automation: eligible Books were made public (a bulk job, or a selection). Counts and a short scope only. */
   | 'REVIEW_PUBLISH_STARTED' | 'REVIEW_PUBLISH_FINISHED' | 'REVIEW_PUBLISH_SELECTED'
   /** Review automation R3A: newly ingested Drafts were given a department by future-ingestion routing (one row per page of a harvest, counts only). Publishes nothing. */
-  | 'REVIEW_INGEST_ROUTING';
+  | 'REVIEW_INGEST_ROUTING'
+  /** Review automation R3B (journals): an analysis, one department assignment (one small row per journal, since a Journal has no metadata column to hold the note), and a batch summary. None publishes or changes status. */
+  | 'REVIEW_JOURNAL_ANALYSIS' | 'REVIEW_JOURNAL_ASSIGNED' | 'REVIEW_JOURNAL_BATCH_ASSIGN';
 
 const SECRET = /pass(word)?|token|secret|authorization|api[_-]?key|credential|cookie/i;
 

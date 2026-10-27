@@ -32,7 +32,7 @@ export const CATEGORY_LABEL: Record<Category, string> = {
 };
 
 /** What the audit knows about one Book. */
-export type BookRef = { id: string; source: string | null; sourceRecordId: string | null; isbn: string | null; title: string; domain: string | null; suggested: string | null; status: string };
+export type BookRef = { id: string; source: string | null; sourceRecordId: string | null; isbn: string | null; title: string; domain: string | null; suggested: string | null; status: string; authors?: string | null; year?: number | null; originalUrl?: string | null };
 export type BookIds = { edition: string | null; work: string | null; isbn13: string | null };
 export function idsOf(b: Pick<BookRef, 'sourceRecordId' | 'isbn'>): BookIds {
   const rid = String(b.sourceRecordId ?? '').trim().toUpperCase();
@@ -128,18 +128,23 @@ export function pickFile(files: IaFile[]): IaFile | null {
 export type Verdict = {
   category: Category; reasons: string[];
   ocaid?: string; olEdition?: string | null; licence?: string | null; licenceBasis?: string; file?: { name: string; format: string | null; size: number | null } | null;
+  /** Set only on a verdict that reached the identity check (an openly readable item the Archive described). */
+  evidence?: Evidence;
   /** A short hash of the source facts the verdict rests on: a later audit that finds a different one knows the source record changed. */
   sourceFingerprint?: string;
 };
 export type ArchiveLookup = IaItem | 'error' | null;      // null: the Archive has no such item
 
 /** Does the Archive item describe the same book as ours? Cross-checked on the edition, the ISBN, or (for a work-level record) the work. */
-function identityConfirmed(b: BookIds, m: Match, ia: IaItem): boolean {
-  if (ia.olEdition && ((m.editionKey && ia.olEdition.toUpperCase() === m.editionKey) || (b.edition && ia.olEdition.toUpperCase() === b.edition))) return true;
-  if (b.isbn13 && ia.isbns.includes(b.isbn13)) return true;
-  if (m.via === 'work' && b.work && ia.olWork && ia.olWork.toUpperCase() === b.work) return true;
-  return false;
+export type IdentityBasis = 'edition' | 'isbn' | 'work';
+function identityConfirmed(b: BookIds, m: Match, ia: IaItem): IdentityBasis | null {
+  if (ia.olEdition && ((m.editionKey && ia.olEdition.toUpperCase() === m.editionKey) || (b.edition && ia.olEdition.toUpperCase() === b.edition))) return 'edition';
+  if (b.isbn13 && ia.isbns.includes(b.isbn13)) return 'isbn';
+  if (m.via === 'work' && b.work && ia.olWork && ia.olWork.toUpperCase() === b.work) return 'work';
+  return null;
 }
+/** What a human reviewer is shown as the reasons to believe a candidate: how the edition was matched and what the Archive item declares. Nothing here is a permission by itself. */
+export type Evidence = { via: Match['via']; identityBasis: IdentityBasis; olAvailability: Avail; licenceUrl: string | null; copyrightStatus: string | null; archiveRestricted: boolean; collections: string[]; formats: string[]; olEditionOnArchive: string | null };
 
 const fp = (o: unknown) => createHash('sha1').update(JSON.stringify(o)).digest('hex').slice(0, 12);
 
@@ -162,11 +167,13 @@ export function judge(book: BookIds, match: Match | null | 'error', ia: (ocaid: 
   if (item === undefined || item === 'error') return { category: 'couldNotCheck', reasons: ['the Internet Archive item could not be read'], ...base };
   if (item === null) return { category: 'noFile', reasons: ['the Internet Archive has no such item'], ...base, sourceFingerprint: fp({ a, gone: true }) };
   if (item.restricted) return { category: 'borrowOnly', reasons: ['Open Library says readable, but the Archive item is access-restricted (lending): treated as borrow only'], ...base, sourceFingerprint: fp({ a, r: true }) };
-  if (!identityConfirmed(book, match, item)) return { category: 'ambiguous', reasons: ['the Archive item does not confirm it is this edition (no matching Open Library edition, ISBN or work)'], ...base, sourceFingerprint: fp({ a, e: item.olEdition, i: item.isbns }) };
+  const basis = identityConfirmed(book, match, item);
+  if (!basis) return { category: 'ambiguous', reasons: ['the Archive item does not confirm it is this edition (no matching Open Library edition, ISBN or work)'], ...base, sourceFingerprint: fp({ a, e: item.olEdition, i: item.isbns }) };
 
   const lic = licenceFromIa(item); const file = pickFile(item.files);
   const facts = { a, lic: [lic.licence, lic.kind, lic.note], file: file?.name ?? null, size: file?.size ?? null, status: item.copyrightStatus };
-  const out = { ...base, licence: lic.licence, licenceBasis: lic.basis, file: file ? { ...file } : null, sourceFingerprint: fp(facts) };
+  const evidence: Evidence = { via: match.via, identityBasis: basis, olAvailability: a.availability, licenceUrl: item.licenseurl, copyrightStatus: item.copyrightStatus, archiveRestricted: item.restricted, collections: item.collections.slice(0, 8), formats: [...new Set(item.files.filter(f => /\.(pdf|epub)$/i.test(f.name)).map(f => /epub/i.test(f.name) ? 'EPUB' : 'PDF'))], olEditionOnArchive: item.olEdition };
+  const out = { ...base, licence: lic.licence, licenceBasis: lic.basis, file: file ? { ...file } : null, evidence, sourceFingerprint: fp(facts) };
   if (lic.kind === 'restricted') return { category: 'readableLicenceRestricted', reasons: [`readable, but declared ${lic.licence}: it does not allow our use`], ...out };
   if (lic.kind === 'unknown') return { category: 'readableLicenceUnknown', reasons: [lic.note === 'publicDomainFlagOnly' ? 'readable; the Archive flags it as possibly out of copyright, which is not a declared licence — for a person to check' : lic.note === 'unrecognisedLicenceUrl' ? 'readable; the licence address is not one we recognise' : 'readable, but no licence is declared'], ...out };
   if (!file) return { category: 'noFile', reasons: [`${lic.licence} declared, but the item has no PDF or EPUB without DRM`], ...out };

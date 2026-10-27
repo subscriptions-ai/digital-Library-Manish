@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { isbn13s } from './identifiers.js';
-import { CATEGORIES, departmentOf, idsOf, judge, type ArchiveLookup, type BookRef, type Category, type Match, type Verdict } from './olFulltext.js';
+import { CATEGORIES, departmentOf, idsOf, judge, type ArchiveLookup, type BookRef, type Category, type Evidence, type Match, type Verdict } from './olFulltext.js';
 import { OlClient, type ClientOpts } from './olFulltextClient.js';
 
 /**
@@ -14,7 +14,7 @@ import { OlClient, type ClientOpts } from './olFulltextClient.js';
  */
 
 export const DEFAULT_SOURCES = ['OpenLibraryDump', 'OpenLibrary'];
-export type AuditOpts = ClientOpts & { sources?: string[]; limit?: number; sampleSize?: number };
+export type AuditOpts = ClientOpts & { sources?: string[]; limit?: number; sampleSize?: number; /** Only Books whose id sorts after this one (keyset): audit a large population in steps. */ afterId?: string };
 
 type Db = { $transaction: (fn: (tx: any) => Promise<any>, o?: { timeout?: number }) => Promise<any> };
 
@@ -22,22 +22,31 @@ type Db = { $transaction: (fn: (tx: any) => Promise<any>, o?: { timeout?: number
 export const readOnly = <T>(db: Db, fn: (tx: any) => Promise<T>): Promise<T> =>
   db.$transaction(async (tx: any) => { await tx.$executeRawUnsafe('SET TRANSACTION READ ONLY'); return fn(tx); }, { timeout: 120_000 });
 
-export async function loadBooks(db: Db, sources: string[], limit?: number): Promise<{ books: BookRef[]; dupIsbns: Set<string>; total: number }> {
+export async function loadBooks(db: Db, sources: string[], limit?: number, afterId?: string): Promise<{ books: BookRef[]; dupIsbns: Set<string>; total: number }> {
   return readOnly(db, async tx => {
     const rows: any[] = await tx.$queryRawUnsafe(
-      `select id, source, "sourceRecordId", isbn, title, domain, status, metadata->'harvest'->'department'->>'suggested' as suggested
-         from "Book" where source = any($1::text[]) order by id ${limit ? `limit ${Math.max(1, Math.floor(limit))}` : ''}`, sources);
-    const total: number = Number((await tx.$queryRawUnsafe(`select count(*)::int n from "Book" where source = any($1::text[])`, sources))[0].n);
+      `select id, source, "sourceRecordId", isbn, title, authors, year, "originalUrl", domain, status, metadata->'harvest'->'department'->>'suggested' as suggested
+         from "Book" where source = any($1::text[]) and ($2::text is null or id > $2) order by id ${limit ? `limit ${Math.max(1, Math.floor(limit))}` : ''}`, sources, afterId ?? null);
+    const total: number = Number((await tx.$queryRawUnsafe(`select count(*)::int n from "Book" where source = any($1::text[]) and ($2::text is null or id > $2)`, sources, afterId ?? null))[0].n);
     const dups: any[] = await tx.$queryRawUnsafe(`select isbn from "Book" where isbn is not null and isbn <> '' group by isbn having count(*) > 1`);
-    return { books: rows.map(r => ({ id: r.id, source: r.source, sourceRecordId: r.sourceRecordId, isbn: r.isbn, title: r.title, domain: r.domain, suggested: r.suggested, status: r.status })) as BookRef[], dupIsbns: new Set(dups.map(d => String(d.isbn))), total };
+    return { books: rows.map(r => ({ id: r.id, source: r.source, sourceRecordId: r.sourceRecordId, isbn: r.isbn, title: r.title, domain: r.domain, suggested: r.suggested, status: r.status, authors: r.authors, year: r.year, originalUrl: r.originalUrl })) as BookRef[], dupIsbns: new Set(dups.map(d => String(d.isbn))), total };
   });
 }
 
+export type CandidateRow = {
+  bookId: string; title: string; authors: string | null; year: number | null; isbn: string | null; source: string | null; olId: string | null; olEdition: string | null; ocaid: string; department: string;
+  licence: string; licenceUrl: string | null; access: 'full'; format: 'PDF' | 'EPUB'; file: { name: string; format: string | null; size: number | null };
+  landingUrl: string; olUrl: string | null; evidence: Evidence; sourceFingerprint: string;
+};
 export type Row = { id: string; title: string; department: string; verdict: Verdict };
 export type Report = {
   v: 1; sources: string[]; booksInScope: number; booksAudited: number; incomplete: boolean; incompleteReasons: string[];
   counts: Record<Category, number>; matched: number; readable: number;
-  licences: Record<string, number>; notes: Record<string, number>;
+  licences: Record<string, number>; notes: Record<string, number>; candidatesBySource: Record<string, number>;
+  /** The id of the last Book audited (pass it as afterId to continue), and whether this audit covered the whole scope (so a saved candidate list may mark absent ones stale). */
+  lastId: string | null; wholeScope: boolean;
+  /** One full row per candidate, for review. Not printed by the CLI. */
+  candidates: CandidateRow[];
   byDepartment: Record<string, Record<Category, number>>; candidatesByDepartment: Record<string, number>;
   samples: Record<Category, { id: string; title: string; department: string; why: string; ocaid?: string; licence?: string | null; file?: string | null }[]>;
   requests: { total: number; retries: number; rateLimited: number; failures: number; notFound: number; waitedMs: number; budget: number; gapMs: number; batch: number };
@@ -50,7 +59,7 @@ const zero = (): Record<Category, number> => Object.fromEntries(CATEGORIES.map(c
 
 export async function runAudit(db: Db, opts: AuditOpts = {}, client = new OlClient(opts)): Promise<Report> {
   const sources = opts.sources?.length ? opts.sources : DEFAULT_SOURCES; const sampleSize = Math.max(1, opts.sampleSize ?? 25);
-  const { books, dupIsbns, total } = await loadBooks(db, sources, opts.limit);
+  const { books, dupIsbns, total } = await loadBooks(db, sources, opts.limit, opts.afterId);
   const ids = new Map(books.map(b => [b.id, idsOf(b)]));
   const verdicts = new Map<string, Verdict>(); const matches = new Map<string, Match | null | 'error'>();
   const reasons = new Set<string>();
@@ -95,10 +104,15 @@ export async function runAudit(db: Db, opts: AuditOpts = {}, client = new OlClie
 
   // 4. the report
   const counts = zero(); const byDepartment: Report['byDepartment'] = {}; const samples = Object.fromEntries(CATEGORIES.map(c => [c, []])) as unknown as Report['samples'];
+  const candidates: CandidateRow[] = []; const candidatesBySource: Record<string, number> = {};
   const licences: Record<string, number> = {}, notes: Record<string, number> = {}; const candidatesByDepartment: Record<string, number> = {}; const compact: Report['verdicts'] = {};
   for (const b of books) {
     const v = verdicts.get(b.id)!; const dept = departmentOf(b);
     counts[v.category]++; (byDepartment[dept] ??= zero())[v.category]++; compact[b.id] = { c: v.category, ...(v.sourceFingerprint ? { f: v.sourceFingerprint } : {}) };
+    if (v.category === 'reuseSafe' && v.evidence && v.file && v.licence && v.ocaid) {
+      candidatesBySource[b.source ?? '—'] = (candidatesBySource[b.source ?? '—'] ?? 0) + 1;
+      candidates.push({ bookId: b.id, title: b.title, authors: b.authors ?? null, year: b.year ?? null, isbn: b.isbn, source: b.source, olId: b.sourceRecordId, olEdition: v.olEdition ?? null, ocaid: v.ocaid, department: dept, licence: v.licence, licenceUrl: v.evidence.licenceUrl, access: 'full', format: /epub/i.test(v.file.name) ? 'EPUB' : 'PDF', file: v.file, landingUrl: `https://archive.org/details/${v.ocaid}`, olUrl: b.originalUrl ?? null, evidence: v.evidence, sourceFingerprint: v.sourceFingerprint! });
+    }
     if (v.category === 'reuseSafe') { candidatesByDepartment[dept] = (candidatesByDepartment[dept] ?? 0) + 1; licences[v.licence ?? '—'] = (licences[v.licence ?? '—'] ?? 0) + 1; }
     if (v.category === 'readableLicenceRestricted') { const k = `restricted: ${v.licence ?? '—'}`; licences[k] = (licences[k] ?? 0) + 1; }
     if (otherEd.has(b.id)) { const k = `otherEditionOnArchive.${otherEd.get(b.id)}`; notes[k] = (notes[k] ?? 0) + 1; }
@@ -113,7 +127,8 @@ export async function runAudit(db: Db, opts: AuditOpts = {}, client = new OlClie
   return {
     v: 1, sources, booksInScope: total, booksAudited: books.length, incomplete: reasons.size > 0, incompleteReasons: [...reasons], counts,
     matched: books.length - counts.unmatched - counts.couldNotCheck - sharedIsbn.size,
-    readable, licences, notes, byDepartment, candidatesByDepartment, samples,
+    readable, licences, notes, candidatesBySource, byDepartment, candidatesByDepartment, samples, candidates,
+    lastId: books.length ? books[books.length - 1].id : null, wholeScope: !opts.limit && !opts.afterId && reasons.size === 0,
     requests: { total: client.c.requests, retries: client.c.retries, rateLimited: client.c.rateLimited, failures: client.c.failures, notFound: client.c.notFound, waitedMs: client.c.waitedMs, budget: client.limits.maxRequests, gapMs: client.limits.gapMs, batch: client.limits.batch },
     reportHash: createHash('sha256').update(stable).digest('hex').slice(0, 16), verdicts: compact,
   };

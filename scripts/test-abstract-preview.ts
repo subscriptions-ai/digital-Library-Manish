@@ -10,11 +10,12 @@
 import { readFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import jwt from 'jsonwebtoken';
-import { buildAbstractPreview, abstractToPlainText, abstractPreviewFor, ABSTRACT_PREVIEW_MAX } from '../src/lib/abstractPreview.js';
+import { buildAbstractPreview, abstractToPlainText, abstractPreviewFor, publicArticle, publicBook, publicContent, landingPageUrl, ABSTRACT_PREVIEW_MAX } from '../src/lib/abstractPreview.js';
 
 let pass = 0, fail = 0;
 const check = (name: string, ok: boolean, detail = '') => { ok ? pass++ : fail++; console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  — ' + detail : ''}`); };
 const section = (t: string) => console.log(`\n${t}`);
+const isPreview = (s: any, min = 1) => typeof s === 'string' && len(s) >= min && len(s) <= 400;
 const len = (s: string) => Array.from(new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(s)).length;
 
 section('Helper: length and ellipsis');
@@ -71,10 +72,26 @@ const art = (o: any) => ({ abstract: 'An abstract.', ownershipSource: 'AdminEnte
 check('an admin-entered article shows its preview', abstractPreviewFor('article', art({})) === 'An abstract.');
 check('a publisher-submitted article shows its preview', abstractPreviewFor('article', art({ ownershipSource: 'PublisherSubmitted' })) === 'An abstract.');
 check('an ingested article does not (article ingestion stores no abstract; one that has one is uncleared)', abstractPreviewFor('article', art({ ownershipSource: 'Ingested', source: 'OpenAlex' })) === null);
-check('an ingested DOAB book shows its description preview', abstractPreviewFor('book', { description: 'About the book.', ownershipSource: 'Ingested', source: 'DOAB' }) === 'About the book.');
-check('an ingested book from a source not cleared (Google Books) does not', abstractPreviewFor('book', { description: 'About.', ownershipSource: 'Ingested', source: 'GoogleBooks' }) === null);
+const doab = (o: any) => ({ description: 'About the book.', ownershipSource: 'Ingested', source: 'DOAB', licence: 'CC BY', licenceIsNC: false, ...o });
+check('an ingested DOAB book with an open licence shows its description preview', abstractPreviewFor('book', doab({})) === 'About the book.');
+check('CC0, CC BY-SA and public domain are open too', ['CC0', 'CC BY-SA', 'Public Domain'].every(l => abstractPreviewFor('book', doab({ licence: l })) === 'About the book.'));
+check('a non-commercial, no-derivatives, GNU FDL or undeclared licence shows none', ['CC BY-NC', 'CC BY-NC-SA', 'CC BY-NC-ND', 'CC BY-ND', 'GNU FDL', null, ''].every(l => abstractPreviewFor('book', doab({ licence: l, licenceIsNC: l === null ? true : /NC|FDL/.test(String(l)) })) === null));
+check('an open licence flagged non-commercial, or with the flag unset, shows none', abstractPreviewFor('book', doab({ licenceIsNC: true })) === null && abstractPreviewFor('book', doab({ licenceIsNC: null })) === null);
+check('an ingested book from a source not cleared (Google Books, NLM, Open Library) shows none even with an open licence', ['GoogleBooks', 'NLMCatalog', 'OpenLibrary', 'OpenLibraryDump', ''].every(src => abstractPreviewFor('book', doab({ source: src })) === null));
 check('a rejected record does not', abstractPreviewFor('book', { description: 'About.', ownershipSource: 'Ingested', source: 'DOAB', rightsStatus: 'Rejected' }) === null);
-check('legacy content has no preview', abstractPreviewFor('content', { description: 'x', abstract: 'x' }) === null);
+check('legacy content has no catalogue preview', abstractPreviewFor('content', { description: 'x', abstract: 'x' }) === null);
+
+section('Helper: the shapes public endpoints send');
+const pa = publicArticle({ id: 'a', abstract: 'x'.repeat(2000), ownershipSource: 'AdminEntered', title: 't' }) as any;
+check('publicArticle removes `abstract` and carries at most 400 characters', !('abstract' in pa) && len(pa.abstractPreview) === 400 && pa.title === 't');
+const pb = publicBook({ id: 'b', ...doab({ description: 'y'.repeat(2000) }) }) as any;
+check('publicBook removes `description` and carries at most 400 characters', !('description' in pb) && len(pb.abstractPreview) === 400);
+check('publicBook for a record that is not cleared carries null and no text', (() => { const o = publicBook({ description: 'secret', ...doab({ licence: null, licenceIsNC: true }) }) as any; return o.abstractPreview === null && !JSON.stringify(o).includes('secret'); })());
+const pc = publicContent({ id: 'c', contentType: 'Theses', description: 'z'.repeat(2000) }) as any;
+check('publicContent caps the legacy description at 400', len(pc.description) === 400 && pc.description === pc.abstractPreview);
+check('publicContent leaves a video description alone', (publicContent({ contentType: 'Educational Videos', description: 'v'.repeat(900) }) as any).description.length === 900);
+check('publicContent leaves a row with no description alone', (publicContent({ contentType: 'Theses', description: null }) as any).description === null);
+check('landingPageUrl takes the first web address and nothing else', landingPageUrl(null, 'javascript:alert(1)', 'ftp://x', 'https://pub.example/a', 'http://other.example') === 'https://pub.example/a' && landingPageUrl('doi:10.1/x', undefined) === null);
 
 // ───────────────────────────── the server ─────────────────────────────
 const env = readFileSync(new URL('../.env', import.meta.url), 'utf8');
@@ -89,7 +106,7 @@ const PORT = 3111, BASE = `http://127.0.0.1:${PORT}`;
 const SECRET = envVal('JWT_SECRET') || 'your-fallback-secret-for-dev-only';
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 export const MARKER = 'ZZTAILMARKERZZ';
-const ids = { long: 'abs-prev-long', short: 'abs-prev-short', none: 'abs-prev-none', html: 'abs-prev-html', uni: 'abs-prev-uni', ingested: 'abs-prev-ingested', book: 'abs-prev-book', bookGoogle: 'abs-prev-book-google' };
+const ids = { content: 'abs-prev-content', bookNc: 'abs-prev-book-nc', bookNd: 'abs-prev-book-nd', bookNoLic: 'abs-prev-book-nolic', long: 'abs-prev-long', short: 'abs-prev-short', none: 'abs-prev-none', html: 'abs-prev-html', uni: 'abs-prev-uni', ingested: 'abs-prev-ingested', book: 'abs-prev-book', bookGoogle: 'abs-prev-book-google' };
 const longAbstract = Array.from({ length: 40 }, (_, i) => `Sentence ${i + 1} describes the paramyxovirus reverse genetics system in some detail.`).join(' ') + ` ${MARKER}`;
 const base = { status: 'Published', ownershipSource: 'AdminEntered', source: 'Admin', contentType: 'Periodicals', domain: 'Biotechnology', pdfUrl: 'http://127.0.0.1:1/none.pdf', originalUrl: 'https://publisher.example/article/1', doi: '10.1234/preview.test', journalName: 'Test Journal', journalIssn: '1234-5678', year: 2024, authors: 'A. Author' };
 const fixtures = [
@@ -101,9 +118,16 @@ const fixtures = [
   { id: ids.ingested, title: 'Ingested with an abstract', abstract: 'Not cleared for display.', ownershipSource: 'Ingested', source: 'OpenAlex' },
 ];
 for (const f of fixtures) await db.article.upsert({ where: { id: f.id }, create: { ...base, ...f } as any, update: { ...base, ...f } as any });
-const bookBase = { status: 'Published', ownershipSource: 'Ingested', domain: 'Biotechnology', originalUrl: 'https://library.example/handle/1', doi: '10.1234/book.test', authors: 'B. Author', year: 2022 };
+const bookBase = { status: 'Published', ownershipSource: 'Ingested', licence: 'CC BY', licenceIsNC: false, domain: 'Biotechnology', originalUrl: 'https://library.example/handle/1', doi: '10.1234/book.test', authors: 'B. Author', year: 2022 };
 await db.book.upsert({ where: { id: ids.book }, create: { ...bookBase, id: ids.book, title: 'A DOAB book', source: 'DOAB', description: longAbstract } as any, update: { ...bookBase, title: 'A DOAB book', source: 'DOAB', description: longAbstract } as any });
-await db.book.upsert({ where: { id: ids.bookGoogle }, create: { ...bookBase, id: ids.bookGoogle, title: 'A Google book', source: 'GoogleBooks', description: 'Not cleared.' } as any, update: { ...bookBase, title: 'A Google book', source: 'GoogleBooks', description: 'Not cleared.' } as any });
+const extraBooks: [string, string, any][] = [
+  [ids.bookGoogle, 'A Google book', { source: 'GoogleBooks', description: 'Not cleared: source.' }],
+  [ids.bookNc, 'A non-commercial book', { source: 'DOAB', licence: 'CC BY-NC', licenceIsNC: true, description: 'Not cleared: NC.' }],
+  [ids.bookNd, 'A no-derivatives book', { source: 'DOAB', licence: 'CC BY-ND', licenceIsNC: false, description: 'Not cleared: ND.' }],
+  [ids.bookNoLic, 'An undeclared-licence book', { source: 'DOAB', licence: null, licenceIsNC: true, description: 'Not cleared: undeclared.' }],
+];
+for (const [id, title, o] of extraBooks) await db.book.upsert({ where: { id }, create: { ...bookBase, id, title, ...o } as any, update: { ...bookBase, title, ...o } as any });
+await db.content.upsert({ where: { id: ids.content }, create: { id: ids.content, title: 'AbsPrev legacy thesis', authors: 'C. Author', domain: 'Biotechnology', contentType: 'Theses', status: 'Published', description: longAbstract } as any, update: { description: longAbstract, status: 'Published' } as any });
 
 const mkAdmin = async () => {
   const u = await db.user.create({ data: { email: `admin-abs-${Date.now().toString(36)}@api-test.invalid`, password: 'x', role: 'SuperAdmin' } });
@@ -143,26 +167,58 @@ try {
   const vIng = await call(`/api/content/${ids.ingested}/view`, tok);
   check('an ingested article with an abstract from an uncleared path shows none', vIng.data.abstractPreview === null && !vIng.text.includes('Not cleared'));
   const vBook = await call(`/api/content/${ids.book}/view`, tok);
-  check('a DOAB book: preview of its description, never the whole', vBook.status === 200 && len(vBook.data.abstractPreview) <= 400 && !vBook.text.includes(MARKER));
+  check('a DOAB book (open licence): preview of its description, never the whole', vBook.status === 200 && isPreview(vBook.data.abstractPreview, 300) && !vBook.text.includes(MARKER));
   const vGoogle = await call(`/api/content/${ids.bookGoogle}/view`, tok);
   check('a book from a source not cleared shows none and sends none', vGoogle.data.abstractPreview === null && !vGoogle.text.includes('Not cleared'));
 
-  section('Viewer: /api/library/article/:id?abstract=preview');
-  const rLong = await call(`/api/library/article/${ids.long}?abstract=preview`);
-  check('no `abstract` key, a preview instead', rLong.status === 200 && !('abstract' in rLong.data) && len(rLong.data.abstractPreview) <= 400, Object.keys(rLong.data).includes('abstract') ? 'abstract present' : 'ok');
-  check('the complete abstract is nowhere in the response', !rLong.text.includes(MARKER));
-  const rNone = await call(`/api/library/article/${ids.none}?abstract=preview`);
+  section('Public: every reader endpoint sends a preview and never the abstract');
+  const noToken = (path: string) => call(path);
+  const sweep: [string, string, (r: any) => boolean][] = [
+    ['article record', `/api/library/article/${ids.long}`, r => !('abstract' in r.data) && isPreview(r.data.abstractPreview, 300) && r.data.abstractPreview.endsWith('\u2026')],
+    ['article record (the old ?abstract=preview form)', `/api/library/article/${ids.long}?abstract=preview`, r => !('abstract' in r.data) && isPreview(r.data.abstractPreview, 300)],
+    ['article list', `/api/library/articles?search=${encodeURIComponent('Long abstract')}`, r => r.data.data.some((a: any) => a.id === ids.long && !('abstract' in a) && isPreview(a.abstractPreview, 300))],
+    ['article list (unicode)', `/api/library/articles?search=${encodeURIComponent('Unicode abstract')}`, r => r.data.data.some((a: any) => a.id === ids.uni && isPreview(a.abstractPreview, 400))],
+    ['book list', `/api/library/books?search=${encodeURIComponent('A DOAB book')}`, r => r.data.data.some((b: any) => b.id === ids.book && !('description' in b) && isPreview(b.abstractPreview, 300))],
+    ['book record', `/api/library/book/${ids.book}`, r => !('description' in r.data.book) && isPreview(r.data.book.abstractPreview, 300) && !('licence' in r.data.book) && !('source' in r.data.book)],
+    ['legacy content list', `/api/content/list?search=${encodeURIComponent('AbsPrev legacy thesis')}`, r => r.data.data.some((c: any) => c.id === ids.content && isPreview(c.description, 300) && c.description === c.abstractPreview)],
+    ['legacy content (public page)', `/api/public/content/${ids.content}`, r => isPreview(r.data.description, 300)],
+    ['legacy content record', `/api/library/content/${ids.content}`, r => isPreview(r.data.description, 300)],
+  ];
+  for (const [name, path, ok] of sweep) {
+    // The legacy record endpoint is for signed-in readers only; everything else is open.
+    for (const [who, token] of (name === 'legacy content record' ? [['signed in', tok]] : [['logged out', undefined], ['signed in', tok]]) as [string, string | undefined][]) {
+      const r = await call(path, token);
+      check(`${name}, ${who}: preview only, the tail is not in the response`, r.status === 200 && ok(r) && !r.text.includes(MARKER) && !r.text.includes('Sentence 20 '), `${r.status}`);
+    }
+  }
+  const rNone = await noToken(`/api/library/article/${ids.none}`);
   check('no abstract → abstractPreview null', rNone.data.abstractPreview === null);
-  const rIng = await call(`/api/library/article/${ids.ingested}?abstract=preview`);
-  check('an uncleared ingested abstract is not sent in preview mode either', rIng.data.abstractPreview === null && !rIng.text.includes('Not cleared'));
+  const rIng = await noToken(`/api/library/article/${ids.ingested}`);
+  check('an uncleared ingested abstract is not sent', rIng.data.abstractPreview === null && !rIng.text.includes('Not cleared'));
+  for (const [name, id] of [['Google Books', ids.bookGoogle], ['non-commercial', ids.bookNc], ['no-derivatives', ids.bookNd], ['undeclared licence', ids.bookNoLic]] as const) {
+    const r = await noToken(`/api/library/book/${id}`);
+    check(`a ${name} book: no preview and none of its text is sent`, r.status === 200 && r.data.book.abstractPreview === null && !r.text.includes('Not cleared'), `${r.status}`);
+  }
+  const bl = await noToken(`/api/library/books?search=${encodeURIComponent('book')}&limit=100`);
+  check('the book list leaks no withheld description either', bl.status === 200 && !bl.text.includes('Not cleared'));
 
-  section('Unchanged: the record page and admin');
-  const full = await call(`/api/library/article/${ids.long}`);
-  check('the record page (no parameter) still receives the whole abstract', full.data.abstract === longAbstract && !('abstractPreview' in full.data));
+  section('Favourites: the saved card carries the preview');
+  const uid = (jwt.decode(tok) as any).uid;
+  await db.favorite.deleteMany({ where: { userId: uid } });
+  for (const [t, id] of [['Article', ids.long], ['Book', ids.book], ['Content', ids.content]] as const) await db.favorite.create({ data: { userId: uid, itemType: t, contentId: id } });
+  const fav = await call('/api/user/favorites', tok);
+  check('three saved cards, each with at most 400 characters of description and none of the tail', fav.status === 200 && fav.data.length === 3 && fav.data.every((f: any) => isPreview(f.description, 300) && !('abstract' in f)) && !fav.text.includes(MARKER), `${fav.status} ${fav.data?.length}`);
+  await db.favorite.deleteMany({ where: { userId: uid } });
+
+  section('Unchanged: admin editors still read the whole abstract');
   const adm = await call(`/api/admin/library/items/article/${ids.long}`, tok);
   check('the admin editor still receives the whole abstract', adm.status === 200 && adm.data.abstract === longAbstract, `${adm.status}`);
   const admIng = await call(`/api/admin/library/items/article/${ids.ingested}`, tok);
   check('and an admin still sees an abstract that is withheld from readers', admIng.data?.abstract === 'Not cleared for display.');
+  const admBook = await call(`/api/admin/library/items/book/${ids.book}`, tok);
+  check('and the whole book description', admBook.status === 200 && (admBook.data.description === longAbstract || admBook.data.abstract === longAbstract), `${admBook.status}`);
+  const admContent = await call(`/api/admin/content/${ids.content}`, tok);
+  check('and the whole legacy description', admContent.status === 200 && admContent.data.description === longAbstract, `${admContent.status}`);
 
   section('Unchanged: full text and DOI');
   for (const [name, id] of [['long', ids.long], ['short', ids.short], ['none', ids.none]] as const) {
@@ -171,13 +227,14 @@ try {
     const expectUrl = (row as any).originalUrl === null ? null : base.originalUrl;
     check(`${name}: file url, DOI, publisher link, title and authors are as stored`, v.data.url === base.pdfUrl && v.data.doi === base.doi && v.data.originalUrl === expectUrl && v.data.title === row.title && v.data.authors === base.authors && v.data.kind === 'article');
   }
-  const r2 = await call(`/api/library/article/${ids.long}?abstract=preview`);
-  check('the record keeps its DOI, publisher link and journal in preview mode', r2.data.doi === base.doi && r2.data.originalUrl === base.originalUrl && r2.data.journalName === 'Test Journal');
+  const r2 = await call(`/api/library/article/${ids.long}`);
+  check('the record keeps its DOI, publisher link and journal', r2.data.doi === base.doi && r2.data.originalUrl === base.originalUrl && r2.data.journalName === 'Test Journal');
 } catch (e: any) {
   fail++; console.log(`  FAIL  the suite stopped: ${e?.stack || e}\n${serverLog.slice(-1500)}`);
 } finally {
   await db.article.deleteMany({ where: { id: { startsWith: 'abs-prev-' } } });
   await db.book.deleteMany({ where: { id: { startsWith: 'abs-prev-' } } });
+  await db.content.deleteMany({ where: { id: { startsWith: 'abs-prev-' } } });
   await shutdown();
 }
 console.log(`\n${pass} passed, ${fail} failed`);
