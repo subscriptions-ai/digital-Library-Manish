@@ -54,13 +54,30 @@ export type Page<R = any> = { records: R[]; nextCursor: string | null; bytes: nu
 export type AdapterParam = { key: string; label: string; type: 'text' | 'number' | 'boolean'; help?: string; placeholder?: string; default?: string | number | boolean; min?: number; max?: number };
 export type Judged<N = any> = {
   id: string; outcome: Outcome; dup?: DupKind; reason?: string | null; item: N;
+  /**
+   * Whole-number facts about this record an adapter wants counted ("fill.homepage", "protected", "ambiguous"). Each tag is added up over the chunk and kept in the chunk's plan, so it reaches
+   * the job's `sourceStats` (as `t.<tag>`) exactly once, like every other counter. At most 64 distinct tags per chunk.
+   */
+  tags?: string[];
+  /** The label this record's example carries in the preview's list of conflicts/refusals ("ambiguous", "identity conflict"), so each kind keeps its own share of the examples. */
+  group?: string;
+  /** Counted like any other record, but never listed as an example (a flood of an uninteresting kind must not hide the interesting ones). */
+  quiet?: boolean;
   /** Adapter-private: whatever apply() needs to write this record without judging it again. */
   extra?: any;
 };
 export type WriteResult = 'written' | 'present' | 'failed';
 
+/** How much of a dry run is kept as examples. The defaults suit every adapter; one may ask for more of each kind (still hard-bounded by the preview's byte cap). */
+export type PreviewCaps = { samples: number; issues: number; perOutcome: number; perIssueKind: number };
+
 export interface BackfillAdapter<R = any, N = any> {
   id: string; label: string; contentTypes: readonly BackfillType[];
+  /** The adapter only completes records already in the catalogue and never creates one (a record not held is refused). The screen words its results accordingly. */
+  enrichOnly?: boolean;
+  previewCaps?: Partial<PreviewCaps>;
+  /** The least wait between two chunks, for an adapter that reads only a local file and the database (no provider to be polite to). Default: BACKFILL_MIN_GAP_SECONDS. The worker still waits as long as the chunk took. */
+  gapSeconds?: number;
   /** A test stand-in: listed only where BACKFILL_FIXTURE=1 and never in production. */
   fixture?: boolean;
   /** The settings this adapter takes (under config.adapter); the screen draws one input for each. */

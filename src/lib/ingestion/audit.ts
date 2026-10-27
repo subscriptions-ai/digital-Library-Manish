@@ -17,10 +17,14 @@ export type AuditAction =
   | 'SCHEDULER_ROTATION'
   /** Historical backfill: a job was created, and a job was paused / resumed / cancelled / re-planned. Never a record, never a credential. */
   | 'BACKFILL_JOB_CREATED' | 'BACKFILL_JOB_CONTROL' | 'BACKFILL_JOB_FINISHED'
+  /** DOAJ journal enrichment: one chunk wrote descriptive fields into journals already held (counts, the fields and at most 50 ISSNs; never a value, never a credential). */
+  | 'DOAJ_ENRICHMENT_APPLIED'
   /** Review automation: a classification analysis (or v1-vs-v2 comparison) of the "Needs a department" queue was run. Counts only; it does not modify catalogue or content records. */
   | 'REVIEW_CLASSIFICATION_ANALYSIS' | 'REVIEW_CLASSIFICATION_COMPARISON'
   /** Review automation R2: a department-assignment batch or job. Counts and short scope only; the books' own audit note lives in metadata.reviewAssignment. */
-  | 'REVIEW_AUTO_ASSIGN_STARTED' | 'REVIEW_AUTO_ASSIGN_FINISHED' | 'REVIEW_BATCH_ASSIGN';
+  | 'REVIEW_AUTO_ASSIGN_STARTED' | 'REVIEW_AUTO_ASSIGN_FINISHED' | 'REVIEW_BATCH_ASSIGN'
+  /** Review automation: eligible Books were made public (a bulk job, or a selection). Counts and a short scope only. */
+  | 'REVIEW_PUBLISH_STARTED' | 'REVIEW_PUBLISH_FINISHED' | 'REVIEW_PUBLISH_SELECTED';
 
 const SECRET = /pass(word)?|token|secret|authorization|api[_-]?key|credential|cookie/i;
 

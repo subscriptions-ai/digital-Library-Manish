@@ -50,6 +50,13 @@ export function jobView(job: any): JobView {
   };
 }
 
+/** The tags an adapter put on this chunk's records, added up (bounded). They are saved in the plan like any other count, so a retried chunk adds them once. */
+export function tagCounts(judged: Judged[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const j of judged) for (const t of j.tags ?? []) { const k = `t.${String(t).slice(0, 60)}`; if (k in out || Object.keys(out).length < 64) out[k] = (out[k] ?? 0) + 1; }
+  return out;
+}
+
 export const planCode = (j: Judged): PlanCode => (j.outcome === 'duplicate' ? (j.dup === 'enriched' ? 'E' : j.dup === 'conflicting' ? 'C' : 'U') : CODE[j.outcome]);
 
 /**
@@ -122,7 +129,7 @@ export async function runBackfillChunk(job: any, adapter: BackfillAdapter, ctx: 
     }
     else {
       const planned: [string, PlanCode][] = ids.map(id => [id, unreadable.has(id) ? 'F' : (byId.get(id) ? planCode(byId.get(id)!) : 'F')] as [string, PlanCode]);
-      plan = { v: 1, chunkNumber: job.chunksCompleted + 1, cursorBefore: cursor, expectedCursorAfter: page.nextCursor, limit, pageHash: pageHashOf(ids, page.nextCursor), planned, counts: countsOf(planned, page.bytes), bytes: page.bytes, ...(page.meta ? { meta: page.meta } : {}), plannedAt: new Date().toISOString(), attempts: 0 };
+      plan = { v: 1, chunkNumber: job.chunksCompleted + 1, cursorBefore: cursor, expectedCursorAfter: page.nextCursor, limit, pageHash: pageHashOf(ids, page.nextCursor), planned, counts: countsOf(planned, page.bytes), bytes: page.bytes, ...((page.meta || judged.some(j => j.tags?.length)) ? { meta: { ...(page.meta ?? {}), ...tagCounts(judged) } } : {}), plannedAt: new Date().toISOString(), attempts: 0 };
       crashPoint('before-inflight');
       if (!job.dryRun) {
         const done = await db.backfillJob.updateMany({ where: mine, data: { inflight: plan as any, heartbeatAt: new Date() } });
@@ -154,7 +161,7 @@ export async function runBackfillChunk(job: any, adapter: BackfillAdapter, ctx: 
     // ── commit: once, by the worker that holds the job, for the chunk it expects ─────────────────────────
     const counts = countsOf(plan.planned, plan.bytes, failedIds);
     const elapsedMs = Date.now() - t0;
-    const preview = job.dryRun ? addToPreview(job.preview, judged, [...unreadable].map(([id, reason]) => ({ id, reason })), ctx.title ?? (() => null)) : undefined;
+    const preview = job.dryRun ? addToPreview(job.preview, judged, [...unreadable].map(([id, reason]) => ({ id, reason })), ctx.title ?? (() => null), adapter.previewCaps) : undefined;
     // What the source cost (lines scanned, records not relevant …) is added from the PLAN, so a retried chunk adds it once, like every other counter.
     const sourceStats: Record<string, number> = { ...((job.config?.sourceStats as Record<string, number>) ?? {}) };
     for (const [k, v] of Object.entries(plan.meta ?? {})) sourceStats[k] = (sourceStats[k] ?? 0) + (Number.isFinite(v) ? v : 0);

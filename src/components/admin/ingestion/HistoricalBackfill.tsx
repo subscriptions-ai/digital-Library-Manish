@@ -157,13 +157,13 @@ export function HistoricalBackfill({ refreshKey }: { refreshKey: unknown }) {
           )}
       </div>
 
-      {previewJob && <PreviewResult job={previewJob} />}
+      {previewJob && <PreviewResult job={previewJob} enrichOnly={!!ov?.adapters?.find((a: any) => a.id === previewJob.provider)?.enrichOnly} />}
 
       {ov?.jobs?.length > 0 && (
         <div className="card card-pad">
           <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">Backfill jobs</h3>
           <ul className="mt-3 divide-y divide-rule/60">
-            {ov.jobs.map((j: any) => <JobRow key={j.id} j={j} onControl={control} />)}
+            {ov.jobs.map((j: any) => <JobRow key={j.id} j={j} onControl={control} enrichOnly={!!ov.adapters?.find((a: any) => a.id === j.provider)?.enrichOnly} />)}
           </ul>
         </div>
       )}
@@ -174,10 +174,13 @@ export function HistoricalBackfill({ refreshKey }: { refreshKey: unknown }) {
   );
 }
 
-function PreviewResult({ job }: { job: any }) {
+function PreviewResult({ job, enrichOnly }: { job: any; enrichOnly?: boolean }) {
   const r = job.records, p = job.preview;
   const running = ['Pending', 'Running'].includes(job.status);
-  const tiles: [string, number, string][] = [
+  const tiles: [string, number, string][] = enrichOnly ? [
+    ['Would enrich', r.enriched, 'Held records whose empty fields would be filled.'], ['Unchanged', r.unchangedDuplicate, 'Held records with nothing to complete (or protected).'],
+    ['Conflicts', r.conflicting, 'A held value disagrees. Never changed.'], ['Not enriched', r.refused, 'Not held, or ambiguous: reported only. Nothing is created.'], ['Failed', r.failed, 'Records that could not be read.'],
+  ] : [
     ['Would publish', r.published, 'New records that pass every rule.'], ['Would review', r.review, 'New records that wait for a person.'],
     ['Already held', r.unchangedDuplicate, 'Duplicates that change nothing.'], ['Would enrich', r.enriched, 'Held records whose empty fields would be filled.'],
     ['Conflicts', r.conflicting, 'Duplicates whose licence or DOI disagrees. Never changed.'], ['Refused', r.refused, 'Refused by a rule (for example too old).'], ['Failed', r.failed, 'Records that could not be read.'],
@@ -203,7 +206,7 @@ function PreviewResult({ job }: { job: any }) {
   );
 }
 
-function JobRow({ j, onControl }: { j: any; onControl: (id: string, a: 'pause' | 'resume' | 'cancel' | 'replan') => void }) {
+function JobRow({ j, onControl, enrichOnly }: { j: any; onControl: (id: string, a: 'pause' | 'resume' | 'cancel' | 'replan') => void; enrichOnly?: boolean }) {
   const r = j.records; const pct = j.maxRecords ? Math.min(100, Math.round((r.fetched / j.maxRecords) * 100)) : 0;
   const live = ['Pending', 'Running'].includes(j.status);
   const mismatch = j.status === 'Failed' && String(j.lastError || '').startsWith('BACKFILL_PAGE_CHANGED_DURING_RETRY');
@@ -219,7 +222,7 @@ function JobRow({ j, onControl }: { j: any; onControl: (id: string, a: 'pause' |
         </div>
       </div>
       <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-2" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Records looked at"><div className="h-full bg-accent" style={{ width: `${pct}%` }} /></div>
-      <p className="mt-1 text-[12px] text-muted">{N(r.fetched)} of {N(j.maxRecords)} · {j.dryRun ? 'would publish' : 'published'} {N(r.published)} · review {N(r.review)} · duplicates {N(r.duplicate)} (enriched {N(r.enriched)}, conflicting {N(r.conflicting)}) · refused {N(r.refused)} · failed {N(r.failed)} · chunk {N(j.chunksCompleted)}{j.finishedBecause ? ` · ${j.finishedBecause}` : ''}</p>
+      {enrichOnly ? <p className="mt-1 text-[12px] text-muted">{N(r.fetched)} of {N(j.maxRecords)} · {j.dryRun ? 'would enrich' : 'enriched'} {N(r.enriched)} · unchanged {N(r.unchangedDuplicate)} · conflicts {N(r.conflicting)} · not enriched {N(r.refused)} · failed {N(r.failed)} · chunk {N(j.chunksCompleted)}{j.finishedBecause ? ` · ${j.finishedBecause}` : ''}</p> : <p className="mt-1 text-[12px] text-muted">{N(r.fetched)} of {N(j.maxRecords)} · {j.dryRun ? 'would publish' : 'published'} {N(r.published)} · review {N(r.review)} · duplicates {N(r.duplicate)} (enriched {N(r.enriched)}, conflicting {N(r.conflicting)}) · refused {N(r.refused)} · failed {N(r.failed)} · chunk {N(j.chunksCompleted)}{j.finishedBecause ? ` · ${j.finishedBecause}` : ''}</p>}
       {j.waiting && live && <p role="status" className="mt-1 text-[12px] text-muted">Waiting for the source{j.waiting.until ? ` until ${new Date(j.waiting.until).toLocaleTimeString()}` : ''}: {j.waiting.reason} Nothing is lost; it carries on by itself.</p>}
       {j.lastError && <p className={`mt-1 text-[12px] ${mismatch ? 'font-medium text-ink' : 'text-muted'}`}>{mismatch ? 'The source returned a different page when this chunk was retried, so nothing was applied. Re-plan to start that chunk afresh. ' : ''}<span className="text-muted">{j.lastError}</span></p>}
       {j.replans?.length > 0 && <p className="mt-1 text-[12px] text-muted">Re-planned {j.replans.length}×: totals for the chunk{j.replans.length > 1 ? 's' : ''} re-planned may count a few already-written records as duplicates.</p>}

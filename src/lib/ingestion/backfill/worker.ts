@@ -22,7 +22,7 @@ import type { Judged } from './types.js';
 
 export const WORKER_ID = `${os.hostname()}:${process.pid}:${randomUUID().slice(0, 8)}`;
 
-export type TickResult = { ran: boolean; reason?: 'disabled' | 'no-job' | 'busy' | 'wait' | 'lost' | 'unavailable' | 'error' | 'stopped' | 'failed'; jobId?: string; chunk?: 'committed'; elapsedMs?: number; status?: string; waitMs?: number };
+export type TickResult = { ran: boolean; reason?: 'disabled' | 'no-job' | 'busy' | 'wait' | 'lost' | 'unavailable' | 'error' | 'stopped' | 'failed'; jobId?: string; chunk?: 'committed'; elapsedMs?: number; status?: string; waitMs?: number; gapSeconds?: number };
 
 const staleCutoff = () => new Date(Date.now() - backfillLimits().heartbeatStaleSeconds * 1000);
 
@@ -108,7 +108,7 @@ export async function backfillTick(opts: { workerId?: string } = {}): Promise<Ti
   const beat = setInterval(() => { db.backfillJob.updateMany({ where: { id: job.id, claimedBy: workerId, status: 'Running' }, data: { heartbeatAt: new Date() } }).catch(() => {}); }, L.heartbeatSeconds * 1000);
   beat.unref?.();
   try {
-    const title = (j: Judged) => (j.item as any)?.candidate?.title ?? (j.item as any)?.book?.title ?? (j.item as any)?.title ?? null;
+    const title = (j: Judged) => (j.item as any)?.candidate?.title ?? (j.item as any)?.book?.title ?? (j.item as any)?.row?.title ?? (j.item as any)?.title ?? null;
     const r = await runBackfillChunk(job, adapter, { workerId, chunkSize: L.chunkSize, title });
     switch (r.kind) {
       case 'busy': await db.backfillJob.updateMany({ where: { id: job.id, claimedBy: workerId }, data: { heartbeatAt: new Date() } }); return { ran: false, reason: 'busy', jobId: job.id };
@@ -134,7 +134,7 @@ export async function backfillTick(opts: { workerId?: string } = {}): Promise<Ti
           if (lim) { await finish(job.id, 'Completed', {}, lim); status = 'Completed'; }
           else { const s = await settleFlags(job.id); if (s) status = s; }      // a pause or cancel asked for during the chunk is honoured now that it is committed
         }
-        return { ran: true, jobId: job.id, chunk: 'committed', elapsedMs: r.elapsedMs, status };
+        return { ran: true, jobId: job.id, chunk: 'committed', elapsedMs: r.elapsedMs, status, ...(adapter.gapSeconds !== undefined ? { gapSeconds: adapter.gapSeconds } : {}) };
       }
     }
   } catch (e: any) {
@@ -158,7 +158,7 @@ export async function backfillTick(opts: { workerId?: string } = {}): Promise<Ti
 /** How long to leave the provider alone after a chunk: at least the minimum gap, and as long as the chunk took (so the worker uses at most half the provider's time). */
 export const nextDelayMs = (r: TickResult): number => {
   const L = backfillLimits();
-  if (r.ran) return Math.max(L.minGapSeconds * 1000, r.elapsedMs ?? 0);
+  if (r.ran) return Math.max((r.gapSeconds ?? L.minGapSeconds) * 1000, r.elapsedMs ?? 0);
   if (r.reason === 'wait') return r.waitMs ?? 60_000;
   if (r.reason === 'busy' || r.reason === 'error') return Math.max(L.minGapSeconds * 1000, 5000);
   return r.reason === 'stopped' || r.reason === 'failed' || r.reason === 'lost' ? 1000 : L.idlePollSeconds * 1000;

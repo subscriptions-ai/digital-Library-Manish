@@ -51,6 +51,19 @@ export type AssignmentOutcome =
 
 const skip = (bookId: string, reason: SkipReason, detail?: string): AssignmentOutcome => ({ bookId, result: 'skipped', reason, detail });
 
+/**
+ * The note kept on a book that Review Automation gave a department (metadata.reviewAssignment). Bounded by construction: a handful of scalars and one
+ * short list. No reasons, no text from the book. Shared with the publication action, which writes the same note when it has to assign a department.
+ */
+export function assignmentRecord(a: { department: string; basis: 'classifier' | 'person'; source: string; tier: Tier | null; score: number | null; margin: number | null;
+  second: { department: string | null; score: number } | null; evidence: string[] | null; classifier: ClassifierVariant | null; by: { uid?: string; email?: string } | null }) {
+  return {
+    department: a.department, basis: a.basis, assignmentSource: a.source, tier: a.tier, topScore: a.score, secondDepartment: a.second?.department ?? null, secondScore: a.second?.score ?? null, margin: a.margin,
+    classifier: a.classifier, classifierVersion: a.classifier ? (a.classifier === 'v2' ? ANALYSIS_CLASSIFIER_V2 : CLASSIFIER_RULES_VERSION) : null, evidence: a.evidence,
+    performedBy: a.by?.email || a.by?.uid || null, performedAt: new Date().toISOString(),
+  };
+}
+
 export async function assignDepartmentStayDraft(req: AssignmentRequest, opts: { dryRun?: boolean } = {}): Promise<AssignmentOutcome> {
   const { bookId } = req;
   const department = canonicalDepartmentName(req.department);
@@ -81,12 +94,7 @@ export async function assignDepartmentStayDraft(req: AssignmentRequest, opts: { 
   if (opts.dryRun) return { bookId, result: 'assigned', department, tier, score };
 
   // 4. One conditional write: the department and the note, nothing else. If anything about the book changed since step 1, no row matches.
-  // Bounded by construction: a handful of scalars and one short list. No reasons, no text from the book.
-  const record = {
-    department, basis: req.basis, assignmentSource: req.source, tier, topScore: score, secondDepartment: second?.department ?? null, secondScore: second?.score ?? null, margin,
-    classifier: rule?.classifier ?? null, classifierVersion: rule ? (rule.classifier === 'v2' ? ANALYSIS_CLASSIFIER_V2 : CLASSIFIER_RULES_VERSION) : null, evidence,
-    performedBy: req.by?.email || req.by?.uid || null, performedAt: new Date().toISOString(),
-  };
+  const record = assignmentRecord({ department, basis: req.basis, source: req.source, tier, score, margin, second, evidence, classifier: rule?.classifier ?? null, by: req.by });
   const done: any[] = await db.$queryRawUnsafe(
     `update "Book" set domain = $2, "updatedAt" = now(), metadata = jsonb_set(coalesce(metadata, '{}'::jsonb), '{reviewAssignment}', $3::jsonb, true)
       where id = $1 and status = 'Draft' and "ownershipSource" = 'Ingested' and (domain is null or domain = '') and "rejectionNote" is null

@@ -151,7 +151,7 @@ export async function listJobs(limit = 20) {
 /** What the screen needs to draw itself, whether or not backfill is switched on. */
 export async function overview() {
   const L = backfillLimits();
-  const adapters = listAdapters().map(a => ({ id: a.id, label: a.label, contentTypes: a.contentTypes, available: a.available() === true, reason: a.available() === true ? null : a.available(), fixture: !!a.fixture, params: a.params ?? [], describes: !!a.describe }));
+  const adapters = listAdapters().map(a => ({ id: a.id, label: a.label, contentTypes: a.contentTypes, available: a.available() === true, reason: a.available() === true ? null : a.available(), fixture: !!a.fixture, enrichOnly: !!a.enrichOnly, params: a.params ?? [], describes: !!a.describe }));
   let jobs: any[] = [], tableMissing = false;
   try { jobs = await listJobs(20); } catch { tableMissing = true; }       // a database that has not had the BackfillJob table added yet: say so rather than fail
   return {

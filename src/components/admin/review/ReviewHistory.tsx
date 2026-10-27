@@ -30,7 +30,9 @@ export function ReviewHistory() {
               <div className="mt-0.5 flex flex-wrap items-center gap-2"><span className="font-semibold text-ink">{r.label}</span>{r.cancelled && <Badge tone="caution">Cancelled{r.cancelledRemaining != null ? ` · about ${N(r.cancelledRemaining)} not reached` : ''}</Badge>}{r.detail && <span className="text-[12px] text-muted">{r.detail}</span>}</div>
               {r.assigns && (
                 <dl className="mt-1.5 grid grid-cols-2 gap-x-6 gap-y-0.5 text-[12.5px] sm:grid-cols-4">
-                  {([['Requested', r.requested], ['Assigned', r.assigned], ['Skipped', r.skipped], ['Failed', r.failed]] as const).map(([l, v]) => <div key={l} className="flex justify-between gap-2"><dt className="text-muted">{l}</dt><dd className="font-semibold tabular-nums text-ink">{N(v)}</dd></div>)}
+                  {(r.publishes
+                    ? [['Requested', r.requested], ...(r.eligibleAtPreview != null ? [['Eligible at preview', r.eligibleAtPreview]] : []), ['Published', r.published], ['Skipped', r.skipped], ['Failed', r.failed], ...(r.departmentsAssigned ? [['Departments assigned', r.departmentsAssigned]] : [])]
+                    : [['Requested', r.requested], ['Assigned', r.assigned], ['Skipped', r.skipped], ['Failed', r.failed]] as any[]).map(([l, v]) => <div key={l} className="flex justify-between gap-2"><dt className="text-muted">{l}</dt><dd className="font-semibold tabular-nums text-ink">{N(v)}</dd></div>)}
                 </dl>
               )}
               {Object.keys(r.skippedReasons || {}).length > 0 && <p className="mt-1 text-[11.5px] text-muted">Skipped: {Object.entries<number>(r.skippedReasons).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} ${N(n)}`).join(' · ')}</p>}

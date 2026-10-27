@@ -65,7 +65,7 @@ const closeGate = () => { delete process.env.REVIEW_AUTO_ASSIGN_ENABLED; delete 
 const rejects = async (p: Promise<any>, name?: string) => { try { await p; return null; } catch (e: any) { return name && e.name !== name ? `wrong error ${e.name}` : e.name; } };
 
 // A run that was interrupted leaves its tagged fixtures behind; they are all ours (this database is only used by the Review Automation suites), so clear them first.
-for (const prefix of ['r2-', 'r15-', 'rcls-', 'held-']) await db.book.deleteMany({ where: { title: { startsWith: prefix } } });   // this database is only ever used by these suites
+for (const prefix of ['r2-', 'r15-', 'rcls-', 'held-', 'pub-']) await db.book.deleteMany({ where: { title: { startsWith: prefix } } });   // this database is only ever used by these suites
 await db.appSetting.deleteMany({ where: { key: { in: ['REVIEW_CLASSIFICATION_ANALYSIS', 'REVIEW_CLASSIFICATION_COMPARISON', 'REVIEW_AUTO_ASSIGN_JOB', 'ingestion.localwork.v1'] } } });
 await db.ingestionAudit.deleteMany({ where: { action: { in: ['REVIEW_AUTO_ASSIGN_STARTED', 'REVIEW_AUTO_ASSIGN_FINISHED', 'REVIEW_BATCH_ASSIGN'] } } });
 eq('the private database starts with no queue from other runs', (await db.$queryRawUnsafe(`select count(*)::int n from "Book" where status = 'Draft' and "ownershipSource" = 'Ingested' and domain is null and "rejectionNote" is null`))[0].n, 0);
@@ -209,6 +209,7 @@ eq('a second start while it runs is refused', await rejects(J.startAutoAssign(AD
 check('analysis cannot run at the same time (one heavy job at a time)', R.startAnalysis(ADMIN) === false);
 const done = await waitJob();
 eq('the job finishes', done.status, 'done');
+eq('the moment the job reads as finished, the review lock is already free', Lock.reviewJobHolder(), null);
 eq('every High book was assigned and the job was bounded into chunks of 100', [done.assigned >= 130, done.scanned >= 130, J.CHUNK], [true, true, 100]);
 eq('assigned + skipped + failed = requested', done.assigned + done.skipped + done.failed, done.requested);
 eq('the 130 High books have their department and are still Draft', (await db.$queryRawUnsafe(`select count(*)::int n from "Book" where id = any($1::text[]) and domain = 'Dental' and status = 'Draft'`, jobHigh))[0].n, 130);

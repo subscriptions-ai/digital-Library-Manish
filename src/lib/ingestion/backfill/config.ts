@@ -39,7 +39,7 @@ export function backfillLimits() {
     // Never closer than three heartbeats, so one late beat can never look like a dead worker.
     heartbeatStaleSeconds: Math.max(envInt('BACKFILL_HEARTBEAT_STALE_SECONDS', 120, 1, 3600), heartbeatSeconds * 3),
     idlePollSeconds: envInt('BACKFILL_IDLE_POLL_SECONDS', 15, 1, 600),
-    previewMaxRecords: envInt('BACKFILL_PREVIEW_MAX_RECORDS', 500, 1, 5000),
+    previewMaxRecords: envInt('BACKFILL_PREVIEW_MAX_RECORDS', 500, 1, 100_000),
     previewValidMinutes: envInt('BACKFILL_PREVIEW_VALID_MINUTES', 60, 1, 24 * 60),
   };
 }
