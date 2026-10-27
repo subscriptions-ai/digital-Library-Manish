@@ -99,7 +99,7 @@ const obj = (v: any) => (v && typeof v === 'object' && !Array.isArray(v) ? v : {
 // ── Feeds, as the harvest knows them ────────────────────────────────────────
 
 const FEEDS: OaiProviderConfig[] = [DOAB_OAI, OAPEN_OAI, OTL_FEED, NCBI_FEED, NLM_FEED, CROSSREF_BOOKS_FEED, PRESSBOOKS_FEED, OPENLIBRARY_FEED, OPENLIBRARY_DUMP_FEED];
-const feedOf = (source: string | null) => FEEDS.find(f => f.provider === source) ?? null;
+export const feedOf = (source: string | null) => FEEDS.find(f => f.provider === source) ?? null;
 /** Sources whose strong, in-policy books the harvest publishes by itself. Review-first sources never publish on their own; nor does this job for them. */
 export const SELF_PUBLISHING_SOURCES = FEEDS.filter(f => !f.reviewFirst).map(f => f.provider);
 
@@ -125,7 +125,7 @@ async function heldBooksFingerprint() {
 }
 
 /** Is the same book already published? DOI, ISBN or the dedupe fingerprint — the identifiers the harvest itself matches on. */
-async function publishedTwin(b: { id: string; doi: string | null; isbn: string | null; fingerprint: string | null }) {
+export async function publishedTwin(b: { id: string; doi: string | null; isbn: string | null; fingerprint: string | null }) {
   const or: any[] = [];
   if (b.doi) or.push({ doi: b.doi });
   if (b.isbn) or.push({ isbn: b.isbn });

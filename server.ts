@@ -68,6 +68,8 @@ import * as reviewBatch from "./src/lib/ingestion/reviewBatch.js";
 import * as reviewAutoAssign from "./src/lib/ingestion/reviewAutoAssign.js";
 import { reviewHistory } from "./src/lib/ingestion/reviewHistory.js";
 import { reviewJobHolder } from "./src/lib/ingestion/reviewJobLock.js";
+import * as reviewPublish from "./src/lib/ingestion/reviewPublish.js";
+import * as reviewAutoPublish from "./src/lib/ingestion/reviewAutoPublish.js";
 import { pipelineStatus } from "./src/lib/ingestion/pipelineStatus.js";
 import { overview as backfillOverview, createJob as createBackfillJob, controlJob as controlBackfillJob, serializeJob as serializeBackfillJob, describeSource as describeBackfillSource } from "./src/lib/ingestion/backfill/jobs.js";
 import { startBackfillWorker } from "./src/lib/ingestion/backfill/worker.js";
@@ -8357,12 +8359,15 @@ async function startServer() {
   // Reading the configuration, the job, the preview and the history needs no gate. A mass job needs a Super Admin; a batch of at most 250 chosen books needs the same role as Content Review.
   const assignmentError = (res: any, e: any, fallback: string) => {
     if (e instanceof reviewBatch.AssignmentDisabledError) return res.status(403).json({ error: e.message, code: 'disabled' });
+    if (e instanceof reviewPublish.PublishDisabledError) return res.status(403).json({ error: e.message, code: 'disabled' });
+    if (e instanceof reviewPublish.PublishRequestError) return res.status(400).json({ error: e.message });
+    if (e instanceof reviewAutoPublish.AutoPublishError) return res.status(e.code === 'busy' ? 409 : 400).json({ error: e.message, code: e.code });
     if (e instanceof reviewBatch.BatchRequestError) return res.status(400).json({ error: e.message });
     if (e instanceof reviewAutoAssign.AutoAssignError) return res.status(e.code === 'busy' ? 409 : 400).json({ error: e.message, code: e.code });
     console.error('review assignment error:', e?.message); return res.status(500).json({ error: fallback });
   };
   app.get("/api/admin/review/assignment/config", authenticateJWT, requireAdminOrManager, (_req: any, res: any) => {
-    res.json({ ...reviewAutoAssign.autoAssignConfig(), departments: reviewBatch.assignableDepartments(), batchLimit: reviewBatch.BATCH_LIMIT, batchTiers: reviewBatch.BATCH_TIERS });
+    res.json({ ...reviewAutoAssign.autoAssignConfig(), departments: reviewBatch.assignableDepartments(), batchLimit: reviewBatch.BATCH_LIMIT, batchTiers: reviewBatch.BATCH_TIERS, publish: reviewPublish.publishGate() });
   });
   app.get("/api/admin/review/assignment/job", authenticateJWT, requireAdminOrManager, async (_req: any, res: any) => {
     try { res.json({ job: await reviewAutoAssign.autoAssignStatus(), preview: reviewAutoAssign.previewState(), busy: reviewJobHolder() }); }
@@ -8389,6 +8394,38 @@ async function startServer() {
   app.post("/api/admin/review/batch/assign", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
     try { res.json(await reviewBatch.batchAssign({ ids: req.body?.ids, mode: req.body?.mode, classifier: req.body?.classifier, department: req.body?.department, by: req.user })); }
     catch (e: any) { assignmentError(res, e, "Failed to assign the selected books"); }
+  });
+  // ── Review automation: Publish Eligible. Confidence in a department is not a right to publish: every book must also pass the application's own publication
+  // eligibility, at the moment of writing. A gate of its own (REVIEW_AUTO_PUBLISH_ENABLED) that assignment being enabled does not open. Previews read only and need no gate. ──
+  app.get("/api/admin/review/publish/job", authenticateJWT, requireAdminOrManager, async (_req: any, res: any) => {
+    try { res.json({ job: await reviewAutoPublish.autoPublishStatus(), preview: reviewAutoPublish.publishPreviewState(), busy: reviewJobHolder() }); }
+    catch (e: any) { res.status(500).json({ error: "Failed to read the publication job" }); }
+  });
+  app.post("/api/admin/review/publish/preview", authenticateJWT, requireAdminOrManager, (req: any, res: any) => {
+    try {
+      if (!reviewAutoPublish.startPublishPreview(req.body?.classifier, req.body?.tier, req.body?.scope || {})) return res.status(409).json({ error: "Another review job is running", busy: reviewJobHolder() });
+      res.status(202).json({ preview: reviewAutoPublish.publishPreviewState() });
+    } catch (e: any) { assignmentError(res, e, "Failed to start the publication preview"); }
+  });
+  app.post("/api/admin/review/publish/start", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try { res.status(202).json({ job: await reviewAutoPublish.startAutoPublish(req.user, { classifier: req.body?.classifier, tier: req.body?.tier, scope: req.body?.scope || {}, sampleReviewed: req.body?.sampleReviewed }) }); }
+    catch (e: any) { assignmentError(res, e, "Failed to start the publication"); }
+  });
+  app.post("/api/admin/review/publish/resume", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try { res.status(202).json({ job: await reviewAutoPublish.resumeAutoPublish(req.user) }); }
+    catch (e: any) { assignmentError(res, e, "Failed to resume the publication"); }
+  });
+  app.post("/api/admin/review/publish/cancel", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
+    try { res.json({ job: await reviewAutoPublish.cancelAutoPublish(req.user) }); }
+    catch (e: any) { assignmentError(res, e, "Failed to cancel the publication"); }
+  });
+  app.post("/api/admin/review/publish/selected/preview", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try { res.json(await reviewPublish.previewSelected(req.body?.ids, req.body?.classifier)); }
+    catch (e: any) { assignmentError(res, e, "Failed to preview the selected books"); }
+  });
+  app.post("/api/admin/review/publish/selected", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try { res.json(await reviewPublish.publishSelected({ ids: req.body?.ids, classifier: req.body?.classifier, by: req.user })); }
+    catch (e: any) { assignmentError(res, e, "Failed to publish the selected books"); }
   });
   app.get("/api/admin/review/history", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
     try { res.json(await reviewHistory(parseInt(req.query.page as string) || 1, parseInt(req.query.limit as string) || 25)); }

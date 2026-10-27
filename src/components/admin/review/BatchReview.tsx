@@ -3,7 +3,7 @@ import { ExternalLink, Layers } from 'lucide-react';
 import { Badge, Button, Dialog, type BadgeTone } from '../../ui';
 import { api } from '../ingestion/api';
 import { N, exactTime } from '../ingestion/format';
-import { useAssignmentConfig, Tally, WillWont } from './shared';
+import { useAssignmentConfig, Tally, WillWont, PublishWillWont } from './shared';
 
 /**
  * Batch Review: the books the classifier is fairly but not fully sure about. A person filters, ticks, and assigns — the suggested department for each
@@ -34,6 +34,7 @@ export function BatchReview() {
   const [working, setWorking] = useState(false);
   const [outcome, setOutcome] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pub, setPub] = useState<null | { loading: boolean; preview: any | null }>(null);
 
   useEffect(() => { api('/api/admin/review/classification/summary').then(r => { if (r.ok) setSummary(r.data.summary); }); }, []);
   const load = useCallback(async (p: number, f: Filters) => {
@@ -63,6 +64,25 @@ export function BatchReview() {
     if (!r.ok) { setError(r.data?.error || 'That did not work.'); return; }
     setOutcome({ ...r.data, mode, when: new Date().toISOString() });
     const gone = new Set<string>(r.data.outcomes.filter((o: any) => o.result === 'assigned' || o.reason === 'Department already assigned' || o.reason === 'Rejected' || o.reason === 'No longer a Draft' || o.reason === 'Record missing').map((o: any) => o.id));
+    setSelected(s => new Set([...s].filter(id => !gone.has(id))));
+    load(page, filters);
+  };
+
+  // Publish Selected Eligible: the server previews what would happen to exactly these books, then publishes only those that pass every rule right now.
+  const publishOff = !config?.publish?.enabled;
+  const openPublish = async () => {
+    setPub({ loading: true, preview: null }); setError(null);
+    const r = await api('/api/admin/review/publish/selected/preview', { method: 'POST', body: { ids: [...selected], classifier } });
+    if (!r.ok) { setPub(null); setError(r.data?.error || 'Could not preview the publication.'); return; }
+    setPub({ loading: false, preview: r.data });
+  };
+  const runPublish = async () => {
+    setWorking(true); setError(null);
+    const r = await api('/api/admin/review/publish/selected', { method: 'POST', body: { ids: [...selected], classifier } });
+    setWorking(false); setPub(null);
+    if (!r.ok) { setError(r.data?.error || 'That did not work.'); return; }
+    setOutcome({ ...r.data, assigned: r.data.published, mode: 'publish', when: new Date().toISOString() });
+    const gone = new Set<string>(r.data.outcomes.filter((o: any) => o.result === 'published' || ['already_published', 'rejected', 'no_longer_draft', 'record_missing'].includes(o.reason)).map((o: any) => o.id));
     setSelected(s => new Set([...s].filter(id => !gone.has(id))));
     load(page, filters);
   };
@@ -135,7 +155,8 @@ export function BatchReview() {
             <label className="field"><span className="sr-only">Department to assign</span>
               <select className="input" value={chosen} onChange={e => setChosen(e.target.value)} aria-label="Department to assign to the selected books"><option value="">Choose a department…</option>{(config?.departments || []).map(d => <option key={d}>{d}</option>)}</select></label>
             <Button variant="outline" size="sm" onClick={() => setAsk('chosen')} disabled={gateOff || !selected.size || !chosen || working}>Assign Selected Department</Button>
-            <span className="text-[11.5px] text-muted">Approving and rejecting stay on the “Needs a department” tab, one book at a time.</span>
+            <Button variant="highlight" size="sm" onClick={openPublish} disabled={publishOff || !selected.size || working} title={publishOff ? (config?.publish?.message || 'Publication is disabled by configuration') : 'Previews, then publishes only the selected books that pass every publication rule'}>Publish Selected Eligible</Button>
+            <span className="text-[11.5px] text-muted">{publishOff ? 'Publishing is off. ' : ''}Approving and rejecting stay on the “Needs a department” tab, one book at a time.</span>
           </div>
         </div>
       </section>
@@ -143,11 +164,24 @@ export function BatchReview() {
       {error && <p role="alert" className="text-[12.5px] text-alarm">{error}</p>}
       {outcome && (
         <section className="card card-pad" aria-label="Result of the last batch">
-          <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2"><h3 className="text-[15px] font-semibold text-ink">Last batch</h3><span className="text-[11.5px] text-muted">{outcome.mode === 'suggested' ? 'Each book’s own suggestion' : `Chosen department: ${chosen || '—'}`} · {exactTime(outcome.when)}</span></div>
-          <Tally t={outcome} />
-          <p className="mt-2 text-[11.5px] text-muted">Assigned books stay Drafts with their department set; they are not published.</p>
+          <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2"><h3 className="text-[15px] font-semibold text-ink">Last batch</h3><span className="text-[11.5px] text-muted">{outcome.mode === 'suggested' ? 'Each book’s own suggestion' : outcome.mode === 'publish' ? 'Publish selected eligible' : `Chosen department: ${chosen || '—'}`} · {exactTime(outcome.when)}</span></div>
+          <Tally t={outcome} assignedLabel={outcome.mode === 'publish' ? 'Published' : 'Assigned'} />
+          <p className="mt-2 text-[11.5px] text-muted">{outcome.mode === 'publish' ? 'Published books are now on the public catalogue; the rest were skipped for the reasons shown, and nothing about them was changed.' : 'Assigned books stay Drafts with their department set; they are not published.'}</p>
         </section>
       )}
+
+      <Dialog open={pub !== null} onClose={() => setPub(null)} size="lg" title="Publish selected eligible books"
+        description={<>{N(selected.size)} book{selected.size === 1 ? '' : 's'} selected · classifier {classifier} · only High or Medium confidence books are considered</>}
+        footer={<><Button variant="outline" onClick={() => setPub(null)}>Cancel</Button><Button variant="highlight" onClick={runPublish} loading={working} disabled={pub?.loading || !pub?.preview?.published}>Publish {N(pub?.preview?.published)} Eligible Books</Button></>}>
+        {pub?.loading ? <span aria-hidden="true" className="skeleton block h-16" /> : pub?.preview && (
+          <div className="mb-3 text-[13px] text-ink-2">
+            <p>Selected: <b className="text-ink">{N(pub.preview.requested)}</b> · Eligible to publish: <b className="text-ink">{N(pub.preview.published)}</b> · Not eligible: <b className="text-ink">{N(pub.preview.skipped)}</b></p>
+            {Object.keys(pub.preview.skippedReasons).length > 0 && <ul className="mt-1 space-y-0.5 text-[12.5px]">{Object.entries<number>(pub.preview.skippedReasons).sort((a, b) => b[1] - a[1]).map(([l, n]) => <li key={l} className="flex justify-between gap-3"><span>{l}</span><b className="tabular-nums text-ink">{N(n)}</b></li>)}</ul>}
+            <p className="mt-1 text-[11.5px] text-muted">This is the server’s read of these books right now; each is checked again just before it is written.</p>
+          </div>
+        )}
+        <PublishWillWont />
+      </Dialog>
 
       <Dialog open={ask !== null} onClose={() => setAsk(null)} size="lg"
         title={ask === 'suggested' ? 'Assign suggested departments' : `Assign “${chosen}” to the selected books`}
