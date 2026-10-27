@@ -4,6 +4,7 @@ import { Helmet } from '../../lib/head';
 import { ArrowLeft, ArrowRight, BookOpen, Building2, Calendar, FileText, Hash, Layers } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { buttonClass } from '../ui';
+import { NO_PUBLISHED_ARTICLES } from '../../lib/journalCopy';
 import { FullAbstractLink } from '../FullAbstractLink';
 import { getLibraryPaths } from '../../lib/libraryRoute';
 
@@ -336,7 +337,7 @@ export function JournalRecord() {
       <Helmet>
         <title>{`${j.title} — STM Digital Library`}</title>
         <meta name="description"
-          content={`${j.title}${j.domain ? ` — ${j.domain}` : ''}. ${n(j.articleCount)} articles held in the STM Digital Library.`} />
+          content={`${j.title}${j.domain ? ` — ${j.domain}` : ''}. ${j.articleCount === 0 ? NO_PUBLISHED_ARTICLES : `${n(j.articleCount)} articles held`} in the STM Digital Library.`} />
       </Helmet>
 
       <Link to="/digital-library?kind=articles" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-muted hover:text-ink">
@@ -354,6 +355,9 @@ export function JournalRecord() {
       )}
 
       {/* What we hold of it, in plain numbers. */}
+      {j.articleCount === 0 ? (
+        <p className="mt-7 rounded-xl border border-rule bg-surface px-5 py-4 text-center text-[14px] text-muted" role="status">{NO_PUBLISHED_ARTICLES}</p>
+      ) : (
       <div className="mt-7 grid grid-cols-3 gap-px overflow-hidden rounded-xl border border-rule bg-rule">
         {[['Articles', j.articleCount], ['Volumes', j.volumeCount], ['Issues', j.issueCount]].map(([k, v]) => (
           <div key={String(k)} className="bg-surface px-2 py-4 text-center sm:px-5">
@@ -363,6 +367,7 @@ export function JournalRecord() {
           </div>
         ))}
       </div>
+      )}
 
       <OpenIt to={`/library/journal/${j.id}`} label="Open it in the library" />
 

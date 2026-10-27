@@ -44,8 +44,8 @@ const heldTotal = b.heldPublic + b.heldNoArticles + b.heldReview + b.heldRejecte
 console.log(`2. DOAJ's file: ${n(b.checked)} rows`);
 const line = (l: string, v: number) => console.log(`   ${l.padEnd(58)} ${n(v).padStart(8)}`);
 line('New (would be added)', b.new);
-line('Already held — public now', b.heldPublic);
-line('Already held — catalogued, no published article yet', b.heldNoArticles);
+line('Already held — public, with published articles', b.heldPublic);
+line('Already held — public, no published article yet', b.heldNoArticles);
 line('Already held — draft / review / other', b.heldReview);
 line('Already held — rejected', b.heldRejected);
 line('Skipped / conflicting', b.skippedConflicting);

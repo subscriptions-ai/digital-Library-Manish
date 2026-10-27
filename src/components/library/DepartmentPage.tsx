@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from '../../lib/head';
 import { ChevronRight, Lock, Search } from 'lucide-react';
 import { Badge, Skeleton, buttonClass } from '../ui';
+import { JournalHoldings, Windowed } from './JournalHoldings';
 
 /**
  * A department, as a shelf of journals.
@@ -192,7 +193,7 @@ export function DepartmentPage({
           </div>
         ) : (
           <div className="mt-3 divide-y divide-rule overflow-hidden card">
-            {shown.map((j, i) => (
+            <Windowed items={shown}>{(j, i) => (
               <div key={j.id} className="flex gap-4 px-4 py-4 sm:px-5">
                 <span className="tnum hidden w-7 shrink-0 pt-1 font-mono text-[11px] text-faint sm:block">{i + 1}</span>
 
@@ -211,22 +212,12 @@ export function DepartmentPage({
                   {j.licence && (
                     <Badge tone={j.licenceIsNC ? 'caution' : 'accent'} className="mt-2">{j.licence}{j.licenceIsNC && ' · non-commercial'}</Badge>
                   )}
-                  <p className="tnum mt-2 font-mono text-[11.5px] text-muted sm:hidden">
-                    {typeof j.articleCount === 'number' ? j.articleCount.toLocaleString() : '—'} articles · {typeof j.volumeCount === 'number' ? j.volumeCount.toLocaleString() : '—'} volumes · {typeof j.issueCount === 'number' ? j.issueCount.toLocaleString() : '—'} issues
-                  </p>
+                  <JournalHoldings j={j} part="mobile" />
                 </div>
 
-                {/* What we hold of it — the reason a shelf is worth anything */}
-                <dl className="hidden shrink-0 gap-6 text-right sm:flex" aria-label="Holdings">
-                  {([['Articles', j.articleCount], ['Volumes', j.volumeCount], ['Issues', j.issueCount]] as const).map(([label, n]) => (
-                    <div key={label}>
-                      <dt className="font-mono text-[11px] uppercase tracking-wider text-muted">{label}</dt>
-                      <dd className="tnum mt-0.5 font-mono text-[14px] text-ink-2">{typeof n === 'number' ? n.toLocaleString() : '—'}</dd>
-                    </div>
-                  ))}
-                </dl>
+                <JournalHoldings j={j} part="desktop" />
               </div>
-            ))}
+            )}</Windowed>
           </div>
         )}
       </section>

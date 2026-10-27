@@ -101,7 +101,7 @@ export function AdminJournalDirectory() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Journals</h1>
-          <p className="mt-1 text-sm text-slate-500">Every journal record in the database, and how many each department holds. The public site shows only the journals that have a published article.</p>
+          <p className="mt-1 text-sm text-slate-500">Every journal record in the database, and how many each department holds. The public site lists every Accepted and Metadata-only journal, including those with no published article yet; Needs-review journals stay hidden.</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => setReload(r => r + 1)} title="Refresh"
@@ -121,7 +121,7 @@ export function AdminJournalDirectory() {
         {[
           // Two different counts, named so they cannot be mistaken for one: every row we hold, and what the public site offers.
           { label: 'Journal records in database', value: data?.catalogue, hint: 'every row, whatever its status' },
-          { label: 'Public journal titles', value: data?.publicTitles, hint: 'shown on the public site' },
+          { label: 'Public journal titles', value: data?.publicTitles, hint: 'Accepted + Metadata only' },
           { label: 'Matching', value: data?.total, hint: filtered ? 'these filters' : 'no filter set' },
           { label: 'With published articles', value: data?.withArticles, hint: 'of those matching' },
           { label: 'Full text allowed', value: data?.statuses?.Accepted, hint: 'licence checked' },

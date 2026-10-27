@@ -423,7 +423,7 @@ section('F. DOAJ: journals — bounded, licence-filtered, nothing held is change
   check('Import More carries on with the next journals — never the same ones', j2.result.added === 2 && (await db.journal.count({ where: { title: { startsWith: `${RUN} ` }, NOT: { issn: heldIssn } } })) === 4);
   const j3 = await run('doaj');
   check('when everything is held it says so and adds nothing', j3.result.added === 0 && j3.result.moreAvailable === false);
-  check('…and says how the held journals are placed, not just "all held": none public, five catalogued with no article', j3.result.checked === 5 && j3.result.alreadyHeld === 5 && j3.result.doaj?.breakdown?.heldNoArticles === 5 && j3.result.notes.some((n: string) => /No new journals/.test(n)) && j3.result.notes.some((n: string) => /5 are already held.*0 public now.*5 catalogued but with no published article/.test(n)), JSON.stringify(j3.result.notes));
+  check('…and says how the held journals are placed, not just "all held": none with articles, five public with no article yet', j3.result.checked === 5 && j3.result.alreadyHeld === 5 && j3.result.doaj?.breakdown?.heldNoArticles === 5 && j3.result.notes.some((n: string) => /No new journals/.test(n)) && j3.result.notes.some((n: string) => /5 are already held.*0 public with published articles.*5 public with no published article yet/.test(n)), JSON.stringify(j3.result.notes));
   check('the list was read once through the breaker and cached, not downloaded each time', hits('doaj.org/csv') === 1);
   const rr = await db.ingestionRun.findFirst({ where: { phase: 'Journals', note: { startsWith: 'Manual · Quick Import' } }, orderBy: { at: 'desc' } });
   check('logged as a Manual Journals run', !!rr);
