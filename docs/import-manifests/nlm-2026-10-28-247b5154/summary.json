@@ -1,0 +1,20 @@
+{
+ "runId": "nlm-2026-10-28-247b5154",
+ "candidates": 466,
+ "passed": 70,
+ "held": 396,
+ "byDept": {
+  "Dental": 22,
+  "Pharmacy": 6,
+  "Nano Technology": 3,
+  "Nursing": 23,
+  "Bio Technology": 13,
+  "Physiotherapy": 3
+ },
+ "holdReasons": {
+  "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)": 377,
+  "department": 37,
+  "Crossref has recent DOIs under a different title (identity not confirmed)": 5
+ },
+ "passedSha256": "e8f48e0c1d84091b52b6c0ae6b5534c34038eccea0d743543d37e3f78b538268"
+}
