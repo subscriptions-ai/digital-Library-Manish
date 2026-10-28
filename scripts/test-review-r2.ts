@@ -18,6 +18,8 @@ process.env.DATABASE_URL = real.replace(/\/[^/?]+(\?.*)?$/, '/stm_review_test');
 delete process.env.REVIEW_AUTO_ASSIGN_ENABLED; delete process.env.REVIEW_AUTO_ASSIGN_THRESHOLDS;
 
 const { ingestionDb: db } = await import('../src/lib/ingestion/db.js');
+// Importing the app loads .env, which on a developer machine may switch the gate on; the suite starts from "everything off" whatever .env says.
+delete process.env.REVIEW_AUTO_ASSIGN_ENABLED; delete process.env.REVIEW_AUTO_ASSIGN_THRESHOLDS;
 const name = (await db.$queryRawUnsafe('select current_database() d'))[0].d;
 if (name !== 'stm_review_test') throw new Error(`refusing to run against "${name}"`);
 const R = await import('../src/lib/ingestion/reviewClassification.js');
