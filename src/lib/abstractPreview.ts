@@ -106,15 +106,24 @@ export function abstractPreviewFor(kind: string, item: any): string | null {
 }
 
 /**
+ * A title as plain text. Some sources deliver titles as markup, sometimes entity-encoded ("&lt;p&gt;Augmented Reality&lt;/p&gt;"), and a
+ * text node showed the tags literally. This returns the words only; nothing is ever inserted as HTML. A title that is not a string is untouched.
+ */
+export const plainTitle = <T>(title: T): T | string => (typeof title === 'string' ? abstractToPlainText(title) || title : title);
+
+/** The same, applied to a record that carries a `title`; a record without one is returned as it was. */
+const withPlainTitle = <T extends Record<string, any>>(row: T): T => (typeof row?.title === 'string' ? { ...row, title: plainTitle(row.title) } : row);
+
+/**
  * The shapes public endpoints send. The full abstract is removed, not hidden: a reader's response carries `abstractPreview`
  * and nothing longer. Admin, editorial and publisher-portal endpoints do not use these.
  */
 export function publicArticle<T extends Record<string, any>>(row: T): Omit<T, 'abstract'> & { abstractPreview: string | null } {
-  const { abstract: _full, ...rest } = row;
+  const { abstract: _full, ...rest } = withPlainTitle(row);
   return { ...rest, abstractPreview: abstractPreviewFor('article', row) };
 }
 export function publicBook<T extends Record<string, any>>(row: T): Omit<T, 'description'> & { abstractPreview: string | null } {
-  const { description: _full, ...rest } = row;
+  const { description: _full, ...rest } = withPlainTitle(row);
   return { ...rest, abstractPreview: abstractPreviewFor('book', row) };
 }
 /**
@@ -122,9 +131,11 @@ export function publicBook<T extends Record<string, any>>(row: T): Omit<T, 'desc
  * there is no source gate; the text is capped where it is. Videos are not abstracts and are left alone.
  */
 export function publicContent<T extends Record<string, any>>(row: T): T & { abstractPreview?: string | null } {
-  if (!row || row.contentType === 'Educational Videos' || typeof row.description !== 'string') return row;
+  if (!row) return row;
+  const base = withPlainTitle(row);
+  if (row.contentType === 'Educational Videos' || typeof row.description !== 'string') return base;
   const preview = buildAbstractPreview(row.description);
-  return { ...row, description: preview, abstractPreview: preview };
+  return { ...base, description: preview, abstractPreview: preview };
 }
 
 /** Where the full abstract lives: the record's own landing page, only if it is a web address. Never built from an identifier. */

@@ -43,8 +43,11 @@ export type OaCandidate = {
   publisherName: string | null; country: string | null; homepage: string | null;
   isOa: boolean; isInDoaj: boolean; worksCount: number | null; oaWorksCount: number | null;
   firstYear: number | null; lastYear: number | null; subjects: string[]; updatedDate: string | null;
+  /** The journal's topics WITH their subfield / field / domain and the number of works each covers: the evidence the department mapping reads (see openAlexTopicDepartment.ts). */
+  topicEvidence?: TopicEvidence[];
   tier: Tier;
 };
+export type TopicEvidence = { topic: string; subfield: string | null; field: string | null; domain: string | null; count: number };
 export type PageSkips = { notJournal: number; notOa: number; noIssn: number; noTitle: number };
 export type SourcePage = { candidates: OaCandidate[]; fetched: number; skips: PageSkips; total: number | null; next: string | null };
 
@@ -74,6 +77,11 @@ export function parseSources(results: any[]): { candidates: OaCandidate[]; skips
       // Evidence for the department classifier, nothing more: the same five topic names the existing OpenAlex reader gave it.
       subjects: [...new Set(topics.slice(0, 5).map(t => String(t?.display_name || '').trim()).filter(Boolean))],
       updatedDate: it.updated_date ? String(it.updated_date) : null,
+      topicEvidence: topics.map(t => ({
+        topic: String(t?.display_name || '').trim(), subfield: t?.subfield?.display_name ? String(t.subfield.display_name) : null,
+        field: t?.field?.display_name ? String(t.field.display_name) : null, domain: t?.domain?.display_name ? String(t.domain.display_name) : null,
+        count: Number.isFinite(t?.count) ? t.count : 0,
+      })).filter(t => t.topic),
       tier: tierOf({ isOa, isInDoaj }),
     });
   }

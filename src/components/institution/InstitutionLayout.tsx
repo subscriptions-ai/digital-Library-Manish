@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, BookOpen, ChevronLeft, CreditCard, LayoutDashboard, LogOut, Menu, MessageSquareHeart, Moon, Search, Sun, UserCircle, Users, X } from 'lucide-react';
+import { Activity, BookOpen, ChevronLeft, CreditCard, Heart, History, LayoutDashboard, LogOut, Menu, MessageSquareHeart, Moon, Search, Sun, UserCircle, Users, X } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
@@ -158,6 +158,21 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
             collapsed={collapsed}
             onClick={() => navigate('/institution/access')}
           />
+          {/* What this person has kept and what they have read: their own, the same two pages every reader has. */}
+          <NavButton
+            icon={<Heart size={18} />}
+            label="Saved"
+            active={location.pathname === '/institution/saved'}
+            collapsed={collapsed}
+            onClick={() => navigate('/institution/saved')}
+          />
+          <NavButton
+            icon={<History size={18} />}
+            label="Reading History"
+            active={location.pathname === '/institution/history'}
+            collapsed={collapsed}
+            onClick={() => navigate('/institution/history')}
+          />
           <PlanNavItem timed={!!allowance?.timed} collapsed={collapsed} pathname={location.pathname} navigate={navigate} />
           <NavButton
             icon={<UserCircle size={18} />}
@@ -200,6 +215,8 @@ export function InstitutionLayout({ children }: InstitutionLayoutProps) {
             : location.pathname === '/institution/analytics' ? 'Learning Analytics'
             : location.pathname === '/institution/library' ? 'Content Library'
             : location.pathname === '/institution/explore' ? 'Content Library'
+            : location.pathname === '/institution/saved' ? 'Saved'
+            : location.pathname === '/institution/history' ? 'Reading History'
             : location.pathname === '/institution/subscriptions' ? 'Subscriptions'
             : location.pathname === '/institution/profile' ? 'Institution Profile'
             : location.pathname === '/institution/feedbacks' ? 'My Feedbacks'

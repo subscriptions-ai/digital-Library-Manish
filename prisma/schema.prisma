@@ -572,6 +572,7 @@ model User {
   activities           StudentActivity[]
   couponUsages         CouponUsage[]
   favorites            Favorite[]
+  readingHistory       ReadingHistory[]
   feedbacks            Feedback[]
 
   assignedLeads    Lead[]            @relation("AssignedLeads")
@@ -1239,6 +1240,29 @@ model ExtractionItem {
 
   @@index([jobId, status])
   @@index([fingerprint])
+}
+
+// One row per person per Article or Book they have opened, updated in place on every reopen (the legacy shelf keeps
+// using StudentActivity, whose foreign key points at Content only). Personal: read and written by the owner alone.
+model ReadingHistory {
+  id String @id @default(uuid())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  itemType String // Article | Book
+  itemId   String
+
+  /// What opening it actually gave the reader: full (a document we serve), external (the publisher's own copy), metadata (a record only).
+  access String @default("full")
+
+  lastPage    Int      @default(1)
+  timeSpent   Int      @default(0)
+  firstReadAt DateTime @default(now())
+  lastReadAt  DateTime @default(now())
+
+  @@unique([userId, itemId])
+  @@index([userId, lastReadAt])
 }
 
 model Favorite {

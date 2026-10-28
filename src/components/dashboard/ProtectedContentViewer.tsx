@@ -20,7 +20,6 @@ import {
   BookOpen,
   Shield,
   RotateCcw,
-  Heart,
 } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import 'pdfjs-dist/web/pdf_viewer.css';
@@ -28,6 +27,7 @@ import 'pdfjs-dist/web/pdf_viewer.css';
 // Correctly import PDF.js worker as a static url reference using Vite's ?url suffix
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { landingPageUrl } from '../../lib/abstractPreview';
+import { SaveButton } from '../library/SaveButton';
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
 
 // ────────────────────────────────────────────────────────
@@ -207,10 +207,6 @@ export function ProtectedContentViewer() {
   const [resumeToastShown, setResumeToastShown] = useState(false);
   const saveProgressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Favorites
-  const [isFavorite, setIsFavorite] = useState(false);
-  const [togglingFavorite, setTogglingFavorite] = useState(false);
-
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const viewerWrapperRef = useRef<HTMLDivElement>(null);
 
@@ -294,48 +290,6 @@ export function ProtectedContentViewer() {
       })
       .catch((err) => console.error('Failed to load progress:', err));
   }, [id]);
-
-  // ── Fetch favorite status ─────────────────────────────
-  useEffect(() => {
-    if (!id) return;
-    fetch(`/api/user/favorites/check/${id}`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        setIsFavorite(data.favorited);
-      })
-      .catch((err) => console.error('Failed to load favorite status:', err));
-  }, [id]);
-
-  // ── Toggle favorite ───────────────────────────────────
-  const toggleFavorite = async () => {
-    if (!id || togglingFavorite) return;
-    setTogglingFavorite(true);
-    try {
-      const res = await fetch('/api/user/favorites', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ contentId: id })
-      });
-      const data = await res.json();
-      // A failure here used to fall through this `if` in silence — the heart
-      // simply never filled and nothing said why. Now it speaks.
-      if (data.success) {
-        setIsFavorite(data.favorited);
-        toast.success(data.favorited ? "Added to your Wish List!" : "Removed from Wish List");
-      } else {
-        toast.error(friendlyError(data.error, "Could not update your Wish List"));
-      }
-    } catch (err) {
-      toast.error("Failed to update Wish List");
-    } finally {
-      setTogglingFavorite(false);
-    }
-  };
 
   // ── Load PDF once we have the URL ───────────────────
   useEffect(() => {
@@ -659,18 +613,8 @@ export function ProtectedContentViewer() {
             </button>
           )}
 
-          {/* Favorite Toggle */}
-          <button
-            onClick={toggleFavorite}
-            disabled={togglingFavorite}
-            type="button"
-            title={isFavorite ? "Remove from Wish List" : "Add to Wish List"}
-            aria-label={isFavorite ? "Remove from Wish List" : "Add to Wish List"}
-            aria-pressed={isFavorite}
-            className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${isFavorite ? 'text-alarm hover:bg-alarm-soft' : 'text-muted hover:text-alarm hover:bg-surface-2 dark:text-muted dark:hover:text-alarm dark:hover:bg-surface-hover'}`}
-          >
-            <Heart size={18} fill={isFavorite ? "currentColor" : "none"} aria-hidden="true" />
-          </button>
+          {/* Saved: the shared heart. It changes only once the server has confirmed. */}
+          <SaveButton id={id!} title={content?.title} />
 
           {/* Context rail — only offered when there is a record to show */}
           {record && (
@@ -1022,7 +966,10 @@ export function ProtectedContentViewer() {
         <div className={`shrink-0 h-9 flex items-center justify-between px-5 border-t text-[11px] bg-surface border-rule text-faint dark:bg-viewer-bar dark:border-rule dark:text-faint`}>
           <span className="flex items-center gap-2">
             <Shield size={11} className="text-accent" />
-            Protected Content — Reading session is logged
+            {/* Said only as far as it is true: the server reports whether this open reached the reader's history. */}
+            {content?.tracked === true ? 'Protected Content — Reading session is logged'
+              : content?.tracked === false ? 'Protected Content — this session could not be added to your reading history'
+              : 'Protected Content — preview, not recorded in reading history'}
           </span>
           <span className="font-mono">
             Zoom {Math.round(scale * 100)}%

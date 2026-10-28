@@ -4,6 +4,7 @@ import { Helmet } from '../../lib/head';
 import { ChevronRight, ExternalLink, Lock, Copy, Check } from 'lucide-react';
 import { Skeleton, buttonClass } from '../ui';
 import { FullAbstractLink } from '../FullAbstractLink';
+import { SaveButton } from './SaveButton';
 
 /**
  * One article, and everything around it.
@@ -225,6 +226,7 @@ export function ArticlePage({
                 {copied ? <><Check size={16} aria-hidden="true" /> Copied</> : <><Copy size={16} aria-hidden="true" /> Copy DOI</>}
               </button>
             )}
+            <SaveButton id={a.id} title={a.title} labelled className="border border-rule" />
           </div>
         </div>
       </header>

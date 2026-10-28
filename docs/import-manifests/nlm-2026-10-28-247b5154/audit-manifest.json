@@ -1,0 +1,5657 @@
+{
+ "runId": "nlm-2026-10-28-247b5154",
+ "source": "NLM Catalog",
+ "executedAt": "2026-10-28",
+ "authorization": "User authorization 2026-10-28: bounded production insertion of validated NLM Catalog candidates only (max 466); no relaxing of criteria to reach the number.",
+ "code": {
+  "baseGitHead": "5967139a1ba7604a433057a85be64229a1b69a7b",
+  "note": "the commit that adds this file contains exactly the files listed; a commit cannot name its own hash, see git log for docs/import-manifests/nlm-2026-10-28-247b5154/",
+  "executedFilesSha256": {
+   "scripts/nlm-journal-plan.ts": "d7ae00961a96eeb27814777affb726b8b3ff3f87fe20f6227bf146b4b423def5",
+   "scripts/nlm-journal-validate.ts": "71d9fa0ca98ff99047dfb7921fca8b9f7e90cf6edc19db11e1440cbd8142193d",
+   "scripts/test-nlm-journals.ts": "dca9748b51b0b6ae9be510c2e7de44262c9d11c525168e946cddcb962f25db92",
+   "src/lib/ingestion/nlmJournalDepartment.ts": "66048aad1d0f8faac792721edd4a88e8ee81e6a7c31a601ec49138c2f3e02d81",
+   "src/lib/ingestion/journalSources.ts": "7bc88b34d2d474a03d76e10265cdc66e157924aa0831e1de99a74cc86b1518b6",
+   "scripts/journal-source-apply.cjs": "a195b04daa166113339c1456aeb88fdca8c4708a96f6971b3ba15cc3fc49730f"
+  },
+  "tests": "test-journal-source-import 39/39, test-journal-quality 52/52, test-nlm-journals 15/15"
+ },
+ "frozenManifestSha256": "88317182f2a3d3a7121401d08eb1985fe094b8149a747eb5716f932293a6b2fc",
+ "frozenCandidates": 466,
+ "validatedSetSha256": "e8f48e0c1d84091b52b6c0ae6b5534c34038eccea0d743543d37e3f78b538268",
+ "reconciliation": {
+  "nlmSerialsFetched": 12214,
+  "noOrInvalidISSNorNonLatinTitle": 4887,
+  "alreadyHeld": 1860,
+  "sameTitleConflict": 202,
+  "noDepartment": 1275,
+  "noPublisher": 212,
+  "weakOrMultiSubject": 92,
+  "duplicateInBatch": 1,
+  "plannerReady": 3685,
+  "plannerReadyToFrozen466": {
+   "ceasedOrUndatedNLMdates": 3026,
+   "nonJournalTitles": 113,
+   "handDroppedByIssn": 80
+  },
+  "frozen466ToInserted": {
+   "held": 396,
+   "holdReasons": {
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)": 377,
+    "department": 37,
+    "Crossref has recent DOIs under a different title (identity not confirmed)": 5
+   },
+   "inserted": 70
+  }
+ },
+ "validationRules": [
+  "valid ISSN check digits",
+  "NLM id, title and publisher present",
+  "strict department mapping (title evidence required for Ayurveda, Architecture, Chemical Engineering, Nano Technology, Physiotherapy)",
+  "at least 3 articles issued 2024-2026 in Crossref (title overlap>=0.5), PubMed or OpenAlex (title overlap>=0.5)",
+  "live production re-check of every ISSN/eISSN and title immediately before each insert"
+ ],
+ "inserted": {
+  "count": 70,
+  "ids": [
+   "b4dbb197-e0fc-4859-9d4f-85854cd2d990",
+   "17b09ea2-9865-4070-8c7a-67f855dea11f",
+   "4098b53d-a67b-4f49-929b-333ad226a2b6",
+   "e3d0584d-d076-49e5-905a-9618e2987078",
+   "0d8bde8f-e328-465e-8fed-12321055c8fa",
+   "28723dd9-a3ef-45e5-8e09-d258da84cb05",
+   "26387a46-f3b9-4d72-999f-5be086325758",
+   "d10eed31-ca18-48bc-9e0e-1ffde4bfbae7",
+   "67cc6959-a2b2-4be7-8551-e407c04bc698",
+   "3e64e983-7f79-4de4-a3d1-e0f0fa817581",
+   "9334d926-d403-425d-9b50-0d6ad00b71fb",
+   "73e1a4cb-68e7-40ab-b89f-1a0534fafdf5",
+   "c070f8c5-bcdf-43ff-a62a-cc140dc666ef",
+   "b8cf3057-5f97-4b50-90ca-6d195f4e9665",
+   "cbb5b1e0-b45b-42fc-804c-c11f2c5b9743",
+   "8da9c68d-ff2d-4439-866d-3cfdf70796b2",
+   "96865c2d-0ffe-41f7-a603-40c8dc7c83a9",
+   "99ecfbe2-29f1-4004-9021-2bc17d152520",
+   "341b3f51-8c82-4360-9a1a-b8c49eb7d572",
+   "960c6b37-87d3-4852-96e8-52dab8b85294",
+   "9fbbe64e-0cc7-49f6-b06a-cfa99f865298",
+   "1ce95848-962c-4d4c-9218-9e4c7bb6f2a4",
+   "9feb8b87-f915-4a39-8ffc-d9249236cb9d",
+   "40bda864-4e5e-40a3-b079-1aa124625d09",
+   "cd5705a4-857b-4562-b91c-5cd3d94a49f9",
+   "d4dbff6a-ee6d-4a39-9b78-84cdc17149cc",
+   "5e66be02-0987-45e0-873a-3e89b825ca56",
+   "73ad0916-ddde-4621-8e3f-5cc2cd8fd33f",
+   "20e2c860-8ef7-4861-a95a-18bc99154393",
+   "2c58c70e-5d17-43b8-ade7-6ad16bd7f3d8",
+   "31adef59-1872-4c30-96e2-5f7fe19c1329",
+   "b65f3951-e9a7-4524-bd9b-09ad4d601985",
+   "91b7ec53-5c80-44c1-9981-1e4bfe4f569f",
+   "41f1a1f4-1df1-44a7-b273-d55f93479c5c",
+   "c270261a-4de9-4c54-8cae-7f805fbc1db3",
+   "a516fce0-ec9b-4d51-a97f-7af221b57c64",
+   "410adf04-f54e-4eac-a989-a2d4866005ee",
+   "961966c9-613d-4caf-bf2a-1cf9a838f14c",
+   "acff240c-f5e2-4e34-903f-bd24acc6ac4d",
+   "9a86f133-5893-4479-a486-f6de085844e1",
+   "a4cce9d7-cc1b-4d24-8b39-6ada2c8dcf2c",
+   "89936f87-ef95-41c2-9efd-70b9765d2b87",
+   "f32a1090-a10f-40f1-b336-1feb761b96b7",
+   "de12c404-dceb-4829-9586-8db32e471753",
+   "50bcb11f-d59e-4fe8-8b62-9145d7a37a17",
+   "423d73d6-e7f6-47df-92d5-afb2dbc5f2ac",
+   "61542b23-b54f-4c77-9d57-bfa1b8cc6742",
+   "a7878ca9-54d1-4d39-8884-3fd4606df084",
+   "4c5f1f57-5006-406a-a8b6-8edd8489cbf1",
+   "6714333b-42d8-4fb7-b59c-77c577a9c252",
+   "afab21b4-6f40-4d17-b9e6-185d9a331c08",
+   "d3ce09b7-2721-437d-9adc-c455e7872c79",
+   "ed8297be-cf68-44d2-9b8d-492f0daafa34",
+   "021d88ae-9763-42de-a5c5-cda11b15674b",
+   "0dbe3da5-f8f5-430e-ad22-89342df8790a",
+   "2ed77cec-10cf-4920-853d-bc145dbe4dab",
+   "330289ce-0b72-46f0-a7aa-3e89ba0ba385",
+   "4079f85a-41c0-490c-bed6-adbbec371291",
+   "305f2c56-ae20-49db-807b-2f682539ada7",
+   "2d05c6fa-6c58-48e0-9ecd-cf87973dbd5a",
+   "1f7b9190-d817-49b2-a5c0-f3f2f2e5206a",
+   "e10cfa8a-b7a7-44a7-bbd2-a7c0d5f4dabf",
+   "6bbf8948-ccd6-4bee-8d96-651af3b26cc1",
+   "73b4e430-538c-490a-bab2-36edd931dcd3",
+   "1c276892-c676-406e-b373-961bdd7f6e95",
+   "c3cd0536-e035-4ad7-a11b-c54042505a96",
+   "ea422f19-9762-43e1-8150-ca7d9ca77e18",
+   "8872e520-31f8-4712-af2a-0e45c481b1f5",
+   "420d0419-fe7d-4962-a251-f6a0a89d42a8",
+   "e4fe4e45-e78a-4445-aa7a-714d982f334e"
+  ],
+  "canaryIds": [
+   "b4dbb197-e0fc-4859-9d4f-85854cd2d990",
+   "17b09ea2-9865-4070-8c7a-67f855dea11f",
+   "4098b53d-a67b-4f49-929b-333ad226a2b6",
+   "e3d0584d-d076-49e5-905a-9618e2987078",
+   "0d8bde8f-e328-465e-8fed-12321055c8fa",
+   "28723dd9-a3ef-45e5-8e09-d258da84cb05",
+   "26387a46-f3b9-4d72-999f-5be086325758",
+   "d10eed31-ca18-48bc-9e0e-1ffde4bfbae7",
+   "67cc6959-a2b2-4be7-8551-e407c04bc698",
+   "3e64e983-7f79-4de4-a3d1-e0f0fa817581",
+   "9334d926-d403-425d-9b50-0d6ad00b71fb",
+   "73e1a4cb-68e7-40ab-b89f-1a0534fafdf5",
+   "c070f8c5-bcdf-43ff-a62a-cc140dc666ef",
+   "b8cf3057-5f97-4b50-90ca-6d195f4e9665",
+   "cbb5b1e0-b45b-42fc-804c-c11f2c5b9743",
+   "8da9c68d-ff2d-4439-866d-3cfdf70796b2",
+   "96865c2d-0ffe-41f7-a603-40c8dc7c83a9",
+   "99ecfbe2-29f1-4004-9021-2bc17d152520",
+   "341b3f51-8c82-4360-9a1a-b8c49eb7d572",
+   "960c6b37-87d3-4852-96e8-52dab8b85294",
+   "9fbbe64e-0cc7-49f6-b06a-cfa99f865298",
+   "1ce95848-962c-4d4c-9218-9e4c7bb6f2a4",
+   "9feb8b87-f915-4a39-8ffc-d9249236cb9d",
+   "40bda864-4e5e-40a3-b079-1aa124625d09",
+   "cd5705a4-857b-4562-b91c-5cd3d94a49f9",
+   "d4dbff6a-ee6d-4a39-9b78-84cdc17149cc",
+   "5e66be02-0987-45e0-873a-3e89b825ca56",
+   "73ad0916-ddde-4621-8e3f-5cc2cd8fd33f",
+   "20e2c860-8ef7-4861-a95a-18bc99154393",
+   "2c58c70e-5d17-43b8-ade7-6ad16bd7f3d8",
+   "31adef59-1872-4c30-96e2-5f7fe19c1329",
+   "b65f3951-e9a7-4524-bd9b-09ad4d601985",
+   "91b7ec53-5c80-44c1-9981-1e4bfe4f569f",
+   "41f1a1f4-1df1-44a7-b273-d55f93479c5c",
+   "c270261a-4de9-4c54-8cae-7f805fbc1db3"
+  ],
+  "restIds": [
+   "a516fce0-ec9b-4d51-a97f-7af221b57c64",
+   "410adf04-f54e-4eac-a989-a2d4866005ee",
+   "961966c9-613d-4caf-bf2a-1cf9a838f14c",
+   "acff240c-f5e2-4e34-903f-bd24acc6ac4d",
+   "9a86f133-5893-4479-a486-f6de085844e1",
+   "a4cce9d7-cc1b-4d24-8b39-6ada2c8dcf2c",
+   "89936f87-ef95-41c2-9efd-70b9765d2b87",
+   "f32a1090-a10f-40f1-b336-1feb761b96b7",
+   "de12c404-dceb-4829-9586-8db32e471753",
+   "50bcb11f-d59e-4fe8-8b62-9145d7a37a17",
+   "423d73d6-e7f6-47df-92d5-afb2dbc5f2ac",
+   "61542b23-b54f-4c77-9d57-bfa1b8cc6742",
+   "a7878ca9-54d1-4d39-8884-3fd4606df084",
+   "4c5f1f57-5006-406a-a8b6-8edd8489cbf1",
+   "6714333b-42d8-4fb7-b59c-77c577a9c252",
+   "afab21b4-6f40-4d17-b9e6-185d9a331c08",
+   "d3ce09b7-2721-437d-9adc-c455e7872c79",
+   "ed8297be-cf68-44d2-9b8d-492f0daafa34",
+   "021d88ae-9763-42de-a5c5-cda11b15674b",
+   "0dbe3da5-f8f5-430e-ad22-89342df8790a",
+   "2ed77cec-10cf-4920-853d-bc145dbe4dab",
+   "330289ce-0b72-46f0-a7aa-3e89ba0ba385",
+   "4079f85a-41c0-490c-bed6-adbbec371291",
+   "305f2c56-ae20-49db-807b-2f682539ada7",
+   "2d05c6fa-6c58-48e0-9ecd-cf87973dbd5a",
+   "1f7b9190-d817-49b2-a5c0-f3f2f2e5206a",
+   "e10cfa8a-b7a7-44a7-bbd2-a7c0d5f4dabf",
+   "6bbf8948-ccd6-4bee-8d96-651af3b26cc1",
+   "73b4e430-538c-490a-bab2-36edd931dcd3",
+   "1c276892-c676-406e-b373-961bdd7f6e95",
+   "c3cd0536-e035-4ad7-a11b-c54042505a96",
+   "ea422f19-9762-43e1-8150-ca7d9ca77e18",
+   "8872e520-31f8-4712-af2a-0e45c481b1f5",
+   "420d0419-fe7d-4962-a251-f6a0a89d42a8",
+   "e4fe4e45-e78a-4445-aa7a-714d982f334e"
+  ],
+  "byDepartment": {
+   "Nursing": 23,
+   "Dental": 22,
+   "Bio Technology": 13,
+   "Pharmacy": 6,
+   "Nano Technology": 3,
+   "Physiotherapy": 3
+  },
+  "rows": [
+   {
+    "issn": "2948-2453",
+    "eissn": null,
+    "title": "Periodontal and implant research",
+    "publisher": "Springer",
+    "department": "Dental",
+    "nlmUid": "nlm:269340",
+    "nlmSubjects": [
+     "Dentistry"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "2948-2453",
+      "title": "Periodontal and Implant Research",
+      "publisher": "Springer-Verlag",
+      "totalDois": 61,
+      "doisIssued2024to2026": 61,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "2772-9540",
+    "eissn": "2772-9532",
+    "title": "Le pharmacien clinicien",
+    "publisher": "Elsevier Masson SAS",
+    "department": "Pharmacy",
+    "nlmUid": "nlm:490167",
+    "nlmSubjects": [
+     "Pharmacy"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "2772-9532",
+      "title": "Le Pharmacien Clinicien",
+      "publisher": "Elsevier",
+      "totalDois": 1834,
+      "doisIssued2024to2026": 1296,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "3066-4608",
+    "eissn": null,
+    "title": "RNA nanomed",
+    "publisher": "ISRNN Press",
+    "department": "Nano Technology",
+    "nlmUid": "nlm:274137",
+    "nlmSubjects": [
+     "Nanotechnology"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "3066-4608",
+      "title": "RNA NanoMed",
+      "publisher": "International Association of Biomedical Sciences",
+      "totalDois": 12,
+      "doisIssued2024to2026": 12,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "2691-3623",
+    "eissn": null,
+    "title": "Cancer care research online",
+    "publisher": "Wolters Kluwer Health, Inc.",
+    "department": "Nursing",
+    "nlmUid": "nlm:381305",
+    "nlmSubjects": [
+     "Nursing"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "2691-3623",
+      "title": "Cancer Care Research Online",
+      "publisher": "Ovid Technologies (Wolters Kluwer) - Lippincott Williams & Wilkins",
+      "totalDois": 89,
+      "doisIssued2024to2026": 38,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "2631-6420",
+    "eissn": "2631-6439",
+    "title": "International journal of oral implantology",
+    "publisher": "Quintessence Verlags-GmbH",
+    "department": "Dental",
+    "nlmUid": "nlm:101744702",
+    "nlmSubjects": [
+     "Dentistry"
+    ],
+    "currentPublication": {
+     "basis": "pubmed",
+     "crossref": null,
+     "pubmed": {
+      "via": "2631-6420",
+      "articles2024to2026": 74
+     },
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "2701-0198",
+    "eissn": null,
+    "title": "Advanced biology",
+    "publisher": "Wiley-VCH GmbH",
+    "department": "Bio Technology",
+    "nlmUid": "nlm:101775319",
+    "nlmSubjects": [
+     "Biotechnology"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "2701-0198",
+      "title": "Advanced Biology",
+      "publisher": "Wiley (John Wiley & Sons)",
+      "totalDois": 1051,
+      "doisIssued2024to2026": 466,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "2689-9272",
+    "eissn": "2769-7584",
+    "title": "American nurse journal",
+    "publisher": "HealthCom Media",
+    "department": "Nursing",
+    "nlmUid": "nlm:101766543",
+    "nlmSubjects": [
+     "Nursing"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "2689-9272",
+      "title": "American Nurse Journal",
+      "publisher": "HealthCom Media",
+      "totalDois": 649,
+      "doisIssued2024to2026": 424,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "2572-7958",
+    "eissn": "2572-7966",
+    "title": "Journal of engineering and science in medical diagnostics and therapy",
+    "publisher": "American Society of Mechanical Engineers",
+    "department": "Bio Technology",
+    "nlmUid": "nlm:101723801",
+    "nlmSubjects": [
+     "Biotechnology",
+     "Engineering"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "2572-7958",
+      "title": "Journal of Engineering and Science in Medical Diagnostics and Therapy",
+      "publisher": "ASME International",
+      "totalDois": 375,
+      "doisIssued2024to2026": 122,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "2633-5417",
+    "eissn": "2633-5425",
+    "title": "British journal of child health",
+    "publisher": "Mark Allen Group",
+    "department": "Nursing",
+    "nlmUid": "nlm:101765441",
+    "nlmSubjects": [
+     "Nursing"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "2633-5417",
+      "title": "British Journal of Child Health",
+      "publisher": "Mark Allen Group",
+      "totalDois": 260,
+      "doisIssued2024to2026": 30,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "2616-0013",
+    "eissn": "2616-0021",
+    "title": "Journal of Nepalese Prosthodontic Society",
+    "publisher": "[Kathmandu] :",
+    "department": "Dental",
+    "nlmUid": "nlm:390296",
+    "nlmSubjects": [
+     "Dentistry"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "2616-0013",
+      "title": "Journal of Nepalese Prosthodontic Society",
+      "publisher": "Nepal Journals Online",
+      "totalDois": 182,
+      "doisIssued2024to2026": 58,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "2288-8268",
+    "eissn": null,
+    "title": "KSBB journal",
+    "publisher": "Korean Society for Biotechnology and Bioengineering",
+    "department": "Bio Technology",
+    "nlmUid": "nlm:101758096",
+    "nlmSubjects": [
+     "Biotechnology"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "2288-8268",
+      "title": "KSBB Journal",
+      "publisher": "Korean Society for Biotechnology and Bioengineering",
+      "totalDois": 719,
+      "doisIssued2024to2026": 77,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "2468-8509",
+    "eissn": "2468-7855",
+    "title": "Journal of stomatology, oral and maxillofacial surgery",
+    "publisher": "Elsevier Masson SAS",
+    "department": "Dental",
+    "nlmUid": "nlm:101701089",
+    "nlmSubjects": [
+     "Dentistry"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "2468-7855",
+      "title": "Journal of Stomatology Oral and Maxillofacial Surgery",
+      "publisher": "Elsevier",
+      "totalDois": 2402,
+      "doisIssued2024to2026": 1122,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "2157-7277",
+    "eissn": null,
+    "title": "International journal of athletic therapy & training",
+    "publisher": "Human Kinetics",
+    "department": "Physiotherapy",
+    "nlmUid": "nlm:101558270",
+    "nlmSubjects": [
+     "Physical Therapy Modalities"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "2157-7277",
+      "title": "International Journal of Athletic Therapy & Training",
+      "publisher": "Human Kinetics",
+      "totalDois": 968,
+      "doisIssued2024to2026": 177,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "2452-0748",
+    "eissn": null,
+    "title": "NanoImpact",
+    "publisher": "Elsevier B.V.",
+    "department": "Nano Technology",
+    "nlmUid": "nlm:101676795",
+    "nlmSubjects": [
+     "Nanotechnology"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "2452-0748",
+      "title": "NanoImpact",
+      "publisher": "Elsevier",
+      "totalDois": 638,
+      "doisIssued2024to2026": 153,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "2508-2558",
+    "eissn": "2508-2566",
+    "title": "Oral biology research",
+    "publisher": "Oral Biology Research Institute, School of Dentistry, Chosun University",
+    "department": "Dental",
+    "nlmUid": "nlm:101725480",
+    "nlmSubjects": [
+     "Dentistry"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "2508-2558",
+      "title": "Oral Biology Research",
+      "publisher": "The Oral Biology Research Institute at Chosum University",
+      "totalDois": 457,
+      "doisIssued2024to2026": 60,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "2588-994X",
+    "eissn": null,
+    "title": "Australasian emergency care",
+    "publisher": "Published by Elsevier Ltd on behalf of College of Emergency Nursing Australasia",
+    "department": "Nursing",
+    "nlmUid": "nlm:101727782",
+    "nlmSubjects": [
+     "Nursing"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "2588-994X",
+      "title": "Australasian Emergency Care",
+      "publisher": "Elsevier",
+      "totalDois": 471,
+      "doisIssued2024to2026": 157,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1860-3092",
+    "eissn": "1860-3351",
+    "title": "Physioscience",
+    "publisher": "Georg Thieme Verlag KG",
+    "department": "Physiotherapy",
+    "nlmUid": "nlm:101738284",
+    "nlmSubjects": [
+     "Physical Therapy Modalities",
+     "Rehabilitation"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "1860-3092",
+      "title": "physioscience",
+      "publisher": "Georg Thieme Verlag KG",
+      "totalDois": 1355,
+      "doisIssued2024to2026": 557,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1555-130X",
+    "eissn": "1555-1318",
+    "title": "Journal of nanoelectronics and optoelectronics",
+    "publisher": "American Scientific Publishers",
+    "department": "Nano Technology",
+    "nlmUid": "nlm:101274236",
+    "nlmSubjects": [
+     "Nanotechnology"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "1555-130X",
+      "title": "Journal of Nanoelectronics and Optoelectronics",
+      "publisher": "American Scientific Publishers",
+      "totalDois": 2808,
+      "doisIssued2024to2026": 331,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "2529-9840",
+    "eissn": null,
+    "title": "Enfermería intensiva",
+    "publisher": "[Elsevier España]",
+    "department": "Nursing",
+    "nlmUid": "nlm:101778566",
+    "nlmSubjects": [
+     "Nursing"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "2529-9840",
+      "title": "Enfermería Intensiva (English ed )",
+      "publisher": "Elsevier",
+      "totalDois": 368,
+      "doisIssued2024to2026": 160,
+      "titleOverlap": 0.5
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "2161-5063",
+    "eissn": null,
+    "title": "ACS synthetic biology",
+    "publisher": "American Chemical Society",
+    "department": "Bio Technology",
+    "nlmUid": "nlm:101575075",
+    "nlmSubjects": [
+     "Biotechnology",
+     "Engineering"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "2161-5063",
+      "title": "ACS Synthetic Biology",
+      "publisher": "American Chemical Society",
+      "totalDois": 4440,
+      "doisIssued2024to2026": 1223,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1758-5082",
+    "eissn": "1758-5090",
+    "title": "Biofabrication",
+    "publisher": "IOP Pub.",
+    "department": "Bio Technology",
+    "nlmUid": "nlm:101521964",
+    "nlmSubjects": [
+     "Biotechnology",
+     "Engineering"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "1758-5082",
+      "title": "Biofabrication",
+      "publisher": "IOP Publishing",
+      "totalDois": 1717,
+      "doisIssued2024to2026": 523,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1665-1456",
+    "eissn": null,
+    "title": "Biotecnia",
+    "publisher": "Facultad Interdisciplinaria de Ciencias Biológicas y de Salud de la Universidad de Sonora",
+    "department": "Bio Technology",
+    "nlmUid": "nlm:101598815",
+    "nlmSubjects": [
+     "Biotechnology"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "1665-1456",
+      "title": "BIOtecnia",
+      "publisher": "Biotecnia",
+      "totalDois": 815,
+      "doisIssued2024to2026": 245,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "2397-9534",
+    "eissn": "2397-9542",
+    "title": "Journal of kidney care",
+    "publisher": "MA Healthcare Ltd.",
+    "department": "Nursing",
+    "nlmUid": "nlm:101681822",
+    "nlmSubjects": [
+     "Nursing"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "2397-9534",
+      "title": "Journal of Kidney Care",
+      "publisher": "Mark Allen Group",
+      "totalDois": 837,
+      "doisIssued2024to2026": 193,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1932-1058",
+    "eissn": null,
+    "title": "Biomicrofluidics",
+    "publisher": "American Institute of Physics",
+    "department": "Bio Technology",
+    "nlmUid": "nlm:101293825",
+    "nlmSubjects": [
+     "Biotechnology"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "1932-1058",
+      "title": "Biomicrofluidics",
+      "publisher": "American Institute of Physics",
+      "totalDois": 2056,
+      "doisIssued2024to2026": 177,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "2374-4529",
+    "eissn": "2374-4537",
+    "title": "Home healthcare now",
+    "publisher": "Lippincott Williams and Wilkins",
+    "department": "Nursing",
+    "nlmUid": "nlm:101650829",
+    "nlmSubjects": [
+     "Nursing"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "2374-4529",
+      "title": "Home Healthcare Now",
+      "publisher": "Ovid Technologies (Wolters Kluwer) - Lippincott Williams & Wilkins",
+      "totalDois": 1261,
+      "doisIssued2024to2026": 228,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1697-4271",
+    "eissn": "1697-428X",
+    "title": "Anales de la Real Academia Nacional de Farmacia",
+    "publisher": "Real Academia Nacional de Farmacia",
+    "department": "Pharmacy",
+    "nlmUid": "nlm:101230069",
+    "nlmSubjects": [
+     "Pharmacy"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "1697-4271",
+      "title": "Anales de la Real Academia Nacional de Farmacia",
+      "publisher": "Real Academia Nacional de Farmacia",
+      "totalDois": 241,
+      "doisIssued2024to2026": 72,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1673-1581",
+    "eissn": "1862-1783",
+    "title": "Journal of Zhejiang University. Science. B",
+    "publisher": "Zhejiang University Press",
+    "department": "Bio Technology",
+    "nlmUid": "nlm:101236535",
+    "nlmSubjects": [
+     "Biotechnology"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "1673-1581",
+      "title": "Journal of Zhejiang University SCIENCE B",
+      "publisher": "Zhejiang University Press",
+      "totalDois": 2484,
+      "doisIssued2024to2026": 251,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "2169-9798",
+    "eissn": "2169-981X",
+    "title": "Journal for nurses in professional development",
+    "publisher": "Lippincott Williams & Wilkins",
+    "department": "Nursing",
+    "nlmUid": "nlm:101603887",
+    "nlmSubjects": [
+     "Nursing"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "2169-9798",
+      "title": "Journal for Nurses in Professional Development",
+      "publisher": "Ovid Technologies (Wolters Kluwer) - Lippincott Williams & Wilkins",
+      "totalDois": 1342,
+      "doisIssued2024to2026": 263,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "2317-1154",
+    "eissn": null,
+    "title": "Revista de enfermagem e atenção à saúde",
+    "publisher": "Universidade Federal do Triângulo Mineiro",
+    "department": "Nursing",
+    "nlmUid": "nlm:101772822",
+    "nlmSubjects": [
+     "Nursing"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "2317-1154",
+      "title": "Revista de Enfermagem e Atenção à Saúde",
+      "publisher": "Universidade Federal do Triangulo Minero",
+      "totalDois": 426,
+      "doisIssued2024to2026": 112,
+      "titleOverlap": 0.5
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1551-6776",
+    "eissn": "2331-348X",
+    "title": "The journal of pediatric pharmacology and therapeutics : JPPT : the official journal of PPAG",
+    "publisher": "Pediatric Pharmacology Advocacy Group, Inc.",
+    "department": "Pharmacy",
+    "nlmUid": "nlm:101089851",
+    "nlmSubjects": [
+     "Pharmacy"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "1551-6776",
+      "title": "The Journal of Pediatric Pharmacology and Therapeutics",
+      "publisher": "The Pediatric Pharmacy Association",
+      "totalDois": 1435,
+      "doisIssued2024to2026": 281,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1751-8423",
+    "eissn": "1751-8431",
+    "title": "Developmental neurorehabilitation",
+    "publisher": "Informa Healthcare",
+    "department": "Physiotherapy",
+    "nlmUid": "nlm:101304394",
+    "nlmSubjects": [
+     "Rehabilitation"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "1751-8423",
+      "title": "Developmental Neurorehabilitation",
+      "publisher": "Informa UK (Taylor & Francis)",
+      "totalDois": 1025,
+      "doisIssued2024to2026": 97,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1741-0126",
+    "eissn": "1741-0134",
+    "title": "Protein engineering, design & selection : PEDS",
+    "publisher": "Oxford University Press",
+    "department": "Bio Technology",
+    "nlmUid": "nlm:101186484",
+    "nlmSubjects": [
+     "Biotechnology",
+     "Engineering"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "1741-0126",
+      "title": "Protein Engineering Design and Selection",
+      "publisher": "Oxford University Press",
+      "totalDois": 3785,
+      "doisIssued2024to2026": 62,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1892-2678",
+    "eissn": "1892-2686",
+    "title": "Nordisk sygeplejeforskning",
+    "publisher": "Universitetsforlaget",
+    "department": "Nursing",
+    "nlmUid": "nlm:101710326",
+    "nlmSubjects": [
+     "Nursing"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "1892-2678",
+      "title": "Nordisk Sygeplejeforskning",
+      "publisher": "Scandinavian University Press",
+      "totalDois": 450,
+      "doisIssued2024to2026": 72,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1712-171X",
+    "eissn": "1712-1728",
+    "title": "Canadian journal of dental hygiene : CJDH = Journal canadien de l'hygiène dentaire : JCHD",
+    "publisher": "Canadian Dental Hygienists Association",
+    "department": "Dental",
+    "nlmUid": "nlm:101234082",
+    "nlmSubjects": [
+     "Dentistry"
+    ],
+    "currentPublication": {
+     "basis": "pubmed",
+     "crossref": null,
+     "pubmed": {
+      "via": "1712-171X",
+      "articles2024to2026": 67
+     },
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1698-4447",
+    "eissn": "1698-6946",
+    "title": "Medicina oral, patología oral y cirugía bucal",
+    "publisher": "Medicina Oral S.L.",
+    "department": "Dental",
+    "nlmUid": "nlm:101231694",
+    "nlmSubjects": [
+     "Dentistry"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "1698-6946",
+      "title": "Medicina Oral Patología Oral y Cirugia Bucal",
+      "publisher": "Medicina Oral, S.L.",
+      "totalDois": 2598,
+      "doisIssued2024to2026": 297,
+      "titleOverlap": 0.6
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1598-6365",
+    "eissn": null,
+    "title": "Sigmul saengmyeong gong haghoeji = Korean journal of plant biotechnology",
+    "publisher": "Han'gug sigmul saengmyeong gong haghoe",
+    "department": "Bio Technology",
+    "nlmUid": "nlm:101233411",
+    "nlmSubjects": [
+     "Biotechnology"
+    ],
+    "currentPublication": {
+     "basis": "openalex",
+     "crossref": null,
+     "pubmed": {
+      "via": "1598-6365",
+      "articles2024to2026": 0
+     },
+     "openalex": {
+      "via": "1598-6365",
+      "title": "Journal of Plant Biotechnology",
+      "works2024to2026": 92,
+      "totalWorks": 1332,
+      "titleOverlap": 1
+     },
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "2177-4285",
+    "eissn": "2357-707X",
+    "title": "Enfermagem em foco",
+    "publisher": "Conselho Federal de Enfermagem",
+    "department": "Nursing",
+    "nlmUid": "nlm:101636940",
+    "nlmSubjects": [
+     "Nursing"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "2177-4285",
+      "title": "Enfermagem em Foco",
+      "publisher": "Conselho Federal de Enfermagem - Cofen",
+      "totalDois": 1975,
+      "doisIssued2024to2026": 640,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1538-8786",
+    "eissn": null,
+    "title": "Bioprocessing",
+    "publisher": "Williamsburg Bioprocessing Foundation",
+    "department": "Bio Technology",
+    "nlmUid": "nlm:101161018",
+    "nlmSubjects": [
+     "Biotechnology",
+     "Engineering"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "1538-8786",
+      "title": "BioProcessing Journal",
+      "publisher": "BioProcessing Journal",
+      "totalDois": 524,
+      "doisIssued2024to2026": 41,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1092-4221",
+    "eissn": "1943-5223",
+    "title": "International journal of pharmaceutical compounding",
+    "publisher": "IJPC",
+    "department": "Pharmacy",
+    "nlmUid": "nlm:9706294",
+    "nlmSubjects": [
+     "Pharmacy"
+    ],
+    "currentPublication": {
+     "basis": "pubmed",
+     "crossref": null,
+     "pubmed": {
+      "via": "1092-4221",
+      "articles2024to2026": 148
+     },
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1930-5583",
+    "eissn": "2162-8629",
+    "title": "American nurse today",
+    "publisher": "Healthcom Media",
+    "department": "Nursing",
+    "nlmUid": "nlm:101291565",
+    "nlmSubjects": [
+     "Nursing"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "1930-5583",
+      "title": "American Nurse Journal",
+      "publisher": "HealthCom Media",
+      "totalDois": 649,
+      "doisIssued2024to2026": 424,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1551-8949",
+    "eissn": "1935-5068",
+    "title": "Journal of dentistry for children",
+    "publisher": "American Academy of Pediatric Dentistry",
+    "department": "Dental",
+    "nlmUid": "nlm:101180951",
+    "nlmSubjects": [
+     "Dentistry"
+    ],
+    "currentPublication": {
+     "basis": "pubmed",
+     "crossref": null,
+     "pubmed": {
+      "via": "1551-8949",
+      "articles2024to2026": 67
+     },
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "0947-0867",
+    "eissn": "1868-6249",
+    "title": "Biospektrum : Zeitschrift der Gesellschaft für Biologishe Chemie (GBCH) und der Vereinigung für Allgemeine und Angewandte Mikrobiologie (VAAM)",
+    "publisher": "Spektrum Akademischer Verlag",
+    "department": "Bio Technology",
+    "nlmUid": "nlm:9615685",
+    "nlmSubjects": [
+     "Biotechnology"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "0947-0867",
+      "title": "BIOspektrum",
+      "publisher": "Springer-Verlag",
+      "totalDois": 2538,
+      "doisIssued2024to2026": 673,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "0944-5013",
+    "eissn": "1618-0623",
+    "title": "Microbiological research",
+    "publisher": "G. Fischer",
+    "department": "Bio Technology",
+    "nlmUid": "nlm:9437794",
+    "nlmSubjects": [
+     "Biotechnology"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "0944-5013",
+      "title": "Microbiological Research",
+      "publisher": "Elsevier",
+      "totalDois": 3956,
+      "doisIssued2024to2026": 945,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1517-7491",
+    "eissn": null,
+    "title": "Pesquisa odontológica brasileira = Brazilian oral research",
+    "publisher": "Faculdade de Odontologia da Universadade de São Paulo :",
+    "department": "Dental",
+    "nlmUid": "nlm:100941949",
+    "nlmSubjects": [
+     "Dentistry"
+    ],
+    "currentPublication": {
+     "basis": "openalex",
+     "crossref": {
+      "via": "1517-7491",
+      "title": "Pesquisa Odontológica Brasileira",
+      "publisher": "SciELO",
+      "totalDois": 260,
+      "doisIssued2024to2026": 0,
+      "titleOverlap": 0.75
+     },
+     "pubmed": {
+      "via": "1517-7491",
+      "articles2024to2026": 0
+     },
+     "openalex": {
+      "via": "1517-7491",
+      "title": "Brazilian Oral Research",
+      "works2024to2026": 347,
+      "totalWorks": 3806,
+      "titleOverlap": 1
+     },
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1466-2094",
+    "eissn": "2518-3745",
+    "title": "Journal of the International Academy of Periodontology",
+    "publisher": "FDI World Dental Press Ltd",
+    "department": "Dental",
+    "nlmUid": "nlm:100888553",
+    "nlmSubjects": [
+     "Dentistry"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "1466-2094",
+      "title": "Journal of the International Academy of Periodontology",
+      "publisher": "Dental Press International",
+      "totalDois": 23,
+      "doisIssued2024to2026": 3,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1806-3144",
+    "eissn": "2595-7007",
+    "title": "Estima",
+    "publisher": "Associacao Brasileira de Estomaterapia",
+    "department": "Nursing",
+    "nlmUid": "nlm:492289",
+    "nlmSubjects": [
+     "Nursing"
+    ],
+    "currentPublication": {
+     "basis": "openalex",
+     "crossref": {
+      "via": "1806-3144",
+      "title": "Revista Estima",
+      "publisher": "SOBEST Associacao Brasileira de Estomaterapia",
+      "totalDois": 145,
+      "doisIssued2024to2026": 0,
+      "titleOverlap": 1
+     },
+     "pubmed": {
+      "via": "2595-7007",
+      "articles2024to2026": 0
+     },
+     "openalex": {
+      "via": "1806-3144",
+      "title": "Revista Estima",
+      "works2024to2026": 162,
+      "totalWorks": 676,
+      "titleOverlap": 1
+     },
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1462-6446",
+    "eissn": "1867-5646",
+    "title": "The Chinese journal of dental research",
+    "publisher": "Quintessence Pub. Co.",
+    "department": "Dental",
+    "nlmUid": "nlm:100892845",
+    "nlmSubjects": [
+     "Dentistry"
+    ],
+    "currentPublication": {
+     "basis": "pubmed",
+     "crossref": null,
+     "pubmed": {
+      "via": "1462-6446",
+      "articles2024to2026": 85
+     },
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1463-4201",
+    "eissn": null,
+    "title": "International journal of computerized dentistry",
+    "publisher": "Quintessence Pub. Co.",
+    "department": "Dental",
+    "nlmUid": "nlm:100891504",
+    "nlmSubjects": [
+     "Dentistry"
+    ],
+    "currentPublication": {
+     "basis": "pubmed",
+     "crossref": null,
+     "pubmed": {
+      "via": "1463-4201",
+      "articles2024to2026": 104
+     },
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1541-6577",
+    "eissn": null,
+    "title": "Research and theory for nursing practice",
+    "publisher": "Springer Pub. Co.",
+    "department": "Nursing",
+    "nlmUid": "nlm:101146940",
+    "nlmSubjects": [
+     "Nursing"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "1541-6577",
+      "title": "Scholarly Inquiry for Nursing Practice",
+      "publisher": "Springer Publishing Company",
+      "totalDois": 1220,
+      "doisIssued2024to2026": 90,
+      "titleOverlap": 0.5
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1516-0939",
+    "eissn": "2178-1990",
+    "title": "Arquivos em odontologia",
+    "publisher": "Universidade Federal de Minas Gerais, Faculdade de Odontologia",
+    "department": "Dental",
+    "nlmUid": "nlm:100885162",
+    "nlmSubjects": [
+     "Dentistry"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "1516-0939",
+      "title": "Arquivos em Odontologia",
+      "publisher": "Universidade Federal de Minas Gerais - Pro-Reitoria de Pesquisa",
+      "totalDois": 348,
+      "doisIssued2024to2026": 32,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1426-6911",
+    "eissn": "1731-2450",
+    "title": "Nowa stomatologia",
+    "publisher": "Borgis",
+    "department": "Dental",
+    "nlmUid": "nlm:9810339",
+    "nlmSubjects": [
+     "Dentistry"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "1426-6911",
+      "title": "Nowa Stomatologia",
+      "publisher": "Borgis Sp. z o.o.",
+      "totalDois": 200,
+      "doisIssued2024to2026": 52,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1434-5293",
+    "eissn": "1615-6714",
+    "title": "Journal of orofacial orthopedics = Fortschritte der Kieferorthopädie : Organ/official journal Deutsche Gesellschaft für Kieferorthopädie",
+    "publisher": "Urban & Vogel",
+    "department": "Dental",
+    "nlmUid": "nlm:9713484",
+    "nlmSubjects": [
+     "Dentistry"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "1434-5293",
+      "title": "Journal of Orofacial Orthopedics / Fortschritte der Kieferorthopädie",
+      "publisher": "Springer-Verlag",
+      "totalDois": 4254,
+      "doisIssued2024to2026": 182,
+      "titleOverlap": 0.75
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1517-3852",
+    "eissn": "2175-6783",
+    "title": "Rev. RENE",
+    "publisher": "Rede de Enfermagem do Nordeste",
+    "department": "Nursing",
+    "nlmUid": "nlm:101187841",
+    "nlmSubjects": [
+     "Nursing"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "1517-3852",
+      "title": "Rev Rene",
+      "publisher": "Universidade Federal do Ceará (UFC)",
+      "totalDois": 2105,
+      "doisIssued2024to2026": 191,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1413-3326",
+    "eissn": null,
+    "title": "Revista do CROMG",
+    "publisher": "Conselho Regional de Odontologia de Minas Gerais",
+    "department": "Dental",
+    "nlmUid": "nlm:9611039",
+    "nlmSubjects": [
+     "Dentistry"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "1413-3326",
+      "title": "REVISTA DO CROMG",
+      "publisher": "Conselho Regional De Odontologia De Minas Gerais",
+      "totalDois": 298,
+      "doisIssued2024to2026": 273,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "0173-7597",
+    "eissn": null,
+    "title": "Krankenhauspharmazie : Zeitschrift der Arbeitsgemeinschaft Deutscher Krankenhausapotheker",
+    "publisher": "Deutscher Apotheker Verlag",
+    "department": "Pharmacy",
+    "nlmUid": "nlm:8405949",
+    "nlmSubjects": [
+     "Pharmacy"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "0173-7597",
+      "title": "Krankenhauspharmazie",
+      "publisher": "Deutscher Apotheker Verlag, Dr. Roland Schmiedel GmbH &amp; Co. KG",
+      "totalDois": 4,
+      "doisIssued2024to2026": 4,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "0543-517X",
+    "eissn": null,
+    "title": "Revista de la Facultad de Farmacía, Universidad de Los Andes",
+    "publisher": "La Facultad",
+    "department": "Pharmacy",
+    "nlmUid": "nlm:410292",
+    "nlmSubjects": [
+     "Pharmacy"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "0543-517X",
+      "title": "Revista de la Facultad de Farmacia",
+      "publisher": "Universidad de Los Andes, Venezuela",
+      "totalDois": 45,
+      "doisIssued2024to2026": 20,
+      "titleOverlap": 0.5
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1059-0927",
+    "eissn": null,
+    "title": "Revolution : the journal for RNs and patient advocacy",
+    "publisher": "Center for Caregiver and Patient Advocacy",
+    "department": "Nursing",
+    "nlmUid": "nlm:100956124",
+    "nlmSubjects": [
+     "Nursing"
+    ],
+    "currentPublication": {
+     "basis": "openalex",
+     "crossref": null,
+     "pubmed": {
+      "via": "1059-0927",
+      "articles2024to2026": 0
+     },
+     "openalex": {
+      "via": "1059-0927",
+      "title": "Revolution",
+      "works2024to2026": 24,
+      "totalWorks": 37,
+      "titleOverlap": 1
+     },
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "0183-2980",
+    "eissn": "2214-9473",
+    "title": "Soins. Cadres : la revue de l'encadrement et de la formation : avec la participation du CEFIEC",
+    "publisher": "Masson",
+    "department": "Nursing",
+    "nlmUid": "nlm:101096829",
+    "nlmSubjects": [
+     "Nursing"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "0183-2980",
+      "title": "Soins Cadres",
+      "publisher": "Elsevier",
+      "totalDois": 1780,
+      "doisIssued2024to2026": 295,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1042-3699",
+    "eissn": "1558-1365",
+    "title": "Oral and maxillofacial surgery clinics of North America",
+    "publisher": "W.B. Saunders Co.",
+    "department": "Dental",
+    "nlmUid": "nlm:9001454",
+    "nlmSubjects": [
+     "Dentistry"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "1042-3699",
+      "title": "Oral and Maxillofacial Surgery Clinics of North America",
+      "publisher": "Elsevier",
+      "totalDois": 2626,
+      "doisIssued2024to2026": 224,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "0894-8275",
+    "eissn": null,
+    "title": "American journal of dentistry",
+    "publisher": "Mosher & Linder, Inc.",
+    "department": "Dental",
+    "nlmUid": "nlm:8806701",
+    "nlmSubjects": [
+     "Dentistry"
+    ],
+    "currentPublication": {
+     "basis": "pubmed",
+     "crossref": null,
+     "pubmed": {
+      "via": "0894-8275",
+      "articles2024to2026": 168
+     },
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "0258-4638",
+    "eissn": null,
+    "title": "The Jordan dental journal",
+    "publisher": "Published by the Jordan Dental Association in cooperation with the dental sections of the Royal Medical Services",
+    "department": "Dental",
+    "nlmUid": "nlm:8411106",
+    "nlmSubjects": [
+     "Dentistry"
+    ],
+    "currentPublication": {
+     "basis": "openalex",
+     "crossref": null,
+     "pubmed": {
+      "via": "0258-4638",
+      "articles2024to2026": 0
+     },
+     "openalex": {
+      "via": "0258-4638",
+      "title": "Jordan journal of dentistry.",
+      "works2024to2026": 115,
+      "totalWorks": 115,
+      "titleOverlap": 0.5
+     },
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "0266-4356",
+    "eissn": "1532-1940",
+    "title": "The British journal of oral & maxillofacial surgery",
+    "publisher": "Churchill Livingstone",
+    "department": "Dental",
+    "nlmUid": "nlm:8405235",
+    "nlmSubjects": [
+     "Dentistry"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "0266-4356",
+      "title": "British Journal of Oral and Maxillofacial Surgery",
+      "publisher": "Elsevier",
+      "totalDois": 14118,
+      "doisIssued2024to2026": 1382,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1343-2761",
+    "eissn": null,
+    "title": "Seishin kango = Psychiatric mental health nursing",
+    "publisher": "Igaku Shoin",
+    "department": "Nursing",
+    "nlmUid": "nlm:9812508",
+    "nlmSubjects": [
+     "Nursing"
+    ],
+    "currentPublication": {
+     "basis": "pubmed",
+     "crossref": null,
+     "pubmed": {
+      "via": "1343-2761",
+      "articles2024to2026": 8
+     },
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "0278-2391",
+    "eissn": "1531-5053",
+    "title": "Journal of oral and maxillofacial surgery : official journal of the American Association of Oral and Maxillofacial Surgeons",
+    "publisher": "W.B. Saunders Co.",
+    "department": "Dental",
+    "nlmUid": "nlm:8206428",
+    "nlmSubjects": [
+     "Dentistry"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "0278-2391",
+      "title": "Journal of Oral and Maxillofacial Surgery",
+      "publisher": "Elsevier",
+      "totalDois": 27533,
+      "doisIssued2024to2026": 1482,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1567-3227",
+    "eissn": null,
+    "title": "Verpleging en verzorging in kaart gebracht",
+    "publisher": "De Tijdstroom :",
+    "department": "Nursing",
+    "nlmUid": "nlm:100939690",
+    "nlmSubjects": [
+     "Nursing"
+    ],
+    "currentPublication": {
+     "basis": "pubmed",
+     "crossref": null,
+     "pubmed": {
+      "via": "1567-3227",
+      "articles2024to2026": 9
+     },
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1091-5710",
+    "eissn": "2578-2304",
+    "title": "International journal for human caring",
+    "publisher": "International Association for Human Caring",
+    "department": "Nursing",
+    "nlmUid": "nlm:9806969",
+    "nlmSubjects": [
+     "Nursing"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "1091-5710",
+      "title": "International Journal for Human Caring",
+      "publisher": "Journal for Human Caring",
+      "totalDois": 1494,
+      "doisIssued2024to2026": 77,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "0587-3908",
+    "eissn": null,
+    "title": "Australian orthodontic journal",
+    "publisher": "Australian Society of Orthodontists",
+    "department": "Dental",
+    "nlmUid": "nlm:1260462",
+    "nlmSubjects": [
+     "Dentistry"
+    ],
+    "currentPublication": {
+     "basis": "openalex",
+     "crossref": null,
+     "pubmed": {
+      "via": "0587-3908",
+      "articles2024to2026": 0
+     },
+     "openalex": {
+      "via": "0587-3908",
+      "title": "Australasian Orthodontic Journal",
+      "works2024to2026": 71,
+      "totalWorks": 1288,
+      "titleOverlap": 0.5
+     },
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1268-6034",
+    "eissn": null,
+    "title": "Soins. Gérontologie",
+    "publisher": "Masson",
+    "department": "Nursing",
+    "nlmUid": "nlm:9616322",
+    "nlmSubjects": [
+     "Nursing"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "1268-6034",
+      "title": "Soins Gérontologie",
+      "publisher": "Elsevier",
+      "totalDois": 1269,
+      "doisIssued2024to2026": 179,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "1012-5302",
+    "eissn": "1664-283X",
+    "title": "Pflege",
+    "publisher": "Hans Huber",
+    "department": "Nursing",
+    "nlmUid": "nlm:8907069",
+    "nlmSubjects": [
+     "Nursing"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "1012-5302",
+      "title": "Pflege",
+      "publisher": "Hogrefe Publishing Group",
+      "totalDois": 1989,
+      "doisIssued2024to2026": 151,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   },
+   {
+    "issn": "0921-5832",
+    "eissn": null,
+    "title": "Tijdschrift voor verzorgenden",
+    "publisher": "Stichting Publikaties voor Verpleegkundigen en Verzorgenden, en, Uitgeversmaatschappij de Tijdstroom BV",
+    "department": "Nursing",
+    "nlmUid": "nlm:8805900",
+    "nlmSubjects": [
+     "Nursing"
+    ],
+    "currentPublication": {
+     "basis": "crossref",
+     "crossref": {
+      "via": "0921-5832",
+      "title": "TvV Tijdschrift voor Verzorgenden",
+      "publisher": "Springer-Verlag",
+      "totalDois": 996,
+      "doisIssued2024to2026": 224,
+      "titleOverlap": 1
+     },
+     "pubmed": null,
+     "openalex": null,
+     "checkedAt": "2026-10-28"
+    }
+   }
+  ]
+ },
+ "held": [
+  {
+   "title": "The ABNFF journal",
+   "issn": "3064-9927",
+   "domain": "Nursing",
+   "nlm": "nlm:494636",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "JOSPT cases",
+   "issn": "2767-293X",
+   "domain": "Physiotherapy",
+   "nlm": "nlm:491709",
+   "reasons": [
+    "department: the NLM subject is broad for Physiotherapy and the title does not name the field"
+   ]
+  },
+  {
+   "title": "Biotechnologie Kursbuch",
+   "issn": "2751-8752",
+   "domain": "Bio Technology",
+   "nlm": "nlm:137958",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Global advances in integrative medicine and health",
+   "issn": "2753-6130",
+   "domain": "Ayurveda",
+   "nlm": "nlm:492533",
+   "reasons": [
+    "department: the NLM subject is broad for Ayurveda and the title does not name the field"
+   ]
+  },
+  {
+   "title": "Landscape research record",
+   "issn": "2471-8335",
+   "domain": "Architecture",
+   "nlm": "nlm:101759180",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Sustainable production and consumption",
+   "issn": "2352-5509",
+   "domain": "Chemical Engineering",
+   "nlm": "nlm:101761781",
+   "reasons": [
+    "department: the NLM subject is broad for Chemical Engineering and the title does not name the field"
+   ]
+  },
+  {
+   "title": "Farmacia, medicina & historia",
+   "issn": "2604-6466",
+   "domain": "Pharmacy",
+   "nlm": "nlm:101776466",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Journal of musculoskeletal science and technology",
+   "issn": "2635-8573",
+   "domain": "Physiotherapy",
+   "nlm": "nlm:129759",
+   "reasons": [
+    "department: the NLM subject is broad for Physiotherapy and the title does not name the field"
+   ]
+  },
+  {
+   "title": "Advances in nanomedicine and nanotechnology research",
+   "issn": "2688-5476",
+   "domain": "Nano Technology",
+   "nlm": "nlm:101752773",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Journal of the Society for Integrative Oncology",
+   "issn": "1715-894X",
+   "domain": "Ayurveda",
+   "nlm": "nlm:101262057",
+   "reasons": [
+    "department: the NLM subject is broad for Ayurveda and the title does not name the field",
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nexus network journal",
+   "issn": "1590-5896",
+   "domain": "Architecture",
+   "nlm": "nlm:101774035",
+   "reasons": [
+    "department: the NLM subject is broad for Architecture and the title does not name the field"
+   ]
+  },
+  {
+   "title": "Journal of chemical engineering and chemistry research",
+   "issn": "2333-9195",
+   "domain": "Chemical Engineering",
+   "nlm": "nlm:101707639",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "DZZ international",
+   "issn": "2627-3489",
+   "domain": "Dental",
+   "nlm": "nlm:381023",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Journal of negative & no positive results",
+   "issn": "2529-850X",
+   "domain": "Pharmacy",
+   "nlm": "nlm:101738828",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Musculoskeletal science & practice",
+   "issn": "2468-8630",
+   "domain": "Physiotherapy",
+   "nlm": "nlm:101692753",
+   "reasons": [
+    "department: the NLM subject is broad for Physiotherapy and the title does not name the field"
+   ]
+  },
+  {
+   "title": "World journal of nanoscience and nanotechnology",
+   "issn": "2766-5917",
+   "domain": "Nano Technology",
+   "nlm": "nlm:388523",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Explore : the journal of science and healing",
+   "issn": "1550-8307",
+   "domain": "Ayurveda",
+   "nlm": "nlm:101233160",
+   "reasons": [
+    "department: the NLM subject is broad for Ayurveda and the title does not name the field"
+   ]
+  },
+  {
+   "title": "Architecture : the AIA journal",
+   "issn": "0746-0554",
+   "domain": "Architecture",
+   "nlm": "nlm:9880305",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "International journal of engineering research and applications",
+   "issn": "2248-9622",
+   "domain": "Chemical Engineering",
+   "nlm": "nlm:101589990",
+   "reasons": [
+    "department: the NLM subject is broad for Chemical Engineering and the title does not name the field"
+   ]
+  },
+  {
+   "title": "Journal of pharmacy and pharmaceutics",
+   "issn": "2576-3091",
+   "domain": "Pharmacy",
+   "nlm": "nlm:101718876",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Journal of physiotherapy and sports medicine",
+   "issn": "2226-9541",
+   "domain": "Physiotherapy",
+   "nlm": "nlm:101623813",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Small methods",
+   "issn": "2366-9608",
+   "domain": "Nano Technology",
+   "nlm": "nlm:101724536",
+   "reasons": [
+    "department: the NLM subject is broad for Nano Technology and the title does not name the field"
+   ]
+  },
+  {
+   "title": "Japanese journal of complementary and alternative medicine : JCAM",
+   "issn": "1348-7922",
+   "domain": "Ayurveda",
+   "nlm": "nlm:101233260",
+   "reasons": [
+    "department: the NLM subject is broad for Ayurveda and the title does not name the field"
+   ]
+  },
+  {
+   "title": "Architectural record",
+   "issn": "0003-858X",
+   "domain": "Architecture",
+   "nlm": "nlm:9877762",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Journal of the Taiwan Institute of Chemical Engineers",
+   "issn": "1876-1070",
+   "domain": "Chemical Engineering",
+   "nlm": "nlm:101550026",
+   "reasons": [
+    "department: the NLM subject is broad for Chemical Engineering and the title does not name the field"
+   ]
+  },
+  {
+   "title": "Integrative journal of nursing and medicine",
+   "issn": "2768-749X",
+   "domain": "Nursing",
+   "nlm": "nlm:133390",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "International journal of drug formulation and research",
+   "issn": "2229-5054",
+   "domain": "Pharmacy",
+   "nlm": "nlm:101628660",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "American journal of microbiology and biotechnology",
+   "issn": "2375-3005",
+   "domain": "Bio Technology",
+   "nlm": "nlm:101707250",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "The healing journal",
+   "issn": "1488-6731",
+   "domain": "Ayurveda",
+   "nlm": "nlm:101189156",
+   "reasons": [
+    "department: the NLM subject is broad for Ayurveda and the title does not name the field",
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Applied biocatalysis",
+   "issn": "1063-6358",
+   "domain": "Chemical Engineering",
+   "nlm": "nlm:9208453",
+   "reasons": [
+    "department: the NLM subject is broad for Chemical Engineering and the title does not name the field",
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Online journal of interprofessional health promotion",
+   "issn": "2641-8517",
+   "domain": "Nursing",
+   "nlm": "nlm:492025",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Pharmacy professional",
+   "issn": "2042-4493",
+   "domain": "Pharmacy",
+   "nlm": "nlm:101590451",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "North American journal of sports physical therapy : NAJSPT",
+   "issn": "1558-6162",
+   "domain": "Physiotherapy",
+   "nlm": "nlm:101318564",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Jacobs journal of biotechnology and bioengineering",
+   "issn": "2376-9084",
+   "domain": "Bio Technology",
+   "nlm": "nlm:101651069",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Journal of micro-bio robotics",
+   "issn": "2194-6418",
+   "domain": "Nano Technology",
+   "nlm": "nlm:101707742",
+   "reasons": [
+    "department: the NLM subject is broad for Nano Technology and the title does not name the field"
+   ]
+  },
+  {
+   "title": "The Internet journal of alternative medicine",
+   "issn": "1540-2584",
+   "domain": "Ayurveda",
+   "nlm": "nlm:101208632",
+   "reasons": [
+    "department: the NLM subject is broad for Ayurveda and the title does not name the field",
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Molecular engineering",
+   "issn": "0925-5125",
+   "domain": "Chemical Engineering",
+   "nlm": "nlm:9111654",
+   "reasons": [
+    "department: the NLM subject is broad for Chemical Engineering and the title does not name the field",
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Decisions in dentistry : the journal of multidisciplinary care",
+   "issn": "2380-1980",
+   "domain": "Dental",
+   "nlm": "nlm:495792",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Biuletyn Wydziału Farmaceutycznego Warszawskiego Uniwersytetu Medycznego",
+   "issn": "2080-1602",
+   "domain": "Pharmacy",
+   "nlm": "nlm:101623953",
+   "reasons": [
+    "Crossref has recent DOIs under a different title (identity not confirmed)"
+   ]
+  },
+  {
+   "title": "International journal of biotechnology research",
+   "issn": "2328-3505",
+   "domain": "Bio Technology",
+   "nlm": "nlm:101690660",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "The International journal of healing and caring",
+   "issn": "1538-1080",
+   "domain": "Ayurveda",
+   "nlm": "nlm:101135884",
+   "reasons": [
+    "department: the NLM subject is broad for Ayurveda and the title does not name the field",
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Irish dentistry : promoting dental excellence throughout Ireland",
+   "issn": "2049-7482",
+   "domain": "Dental",
+   "nlm": "nlm:101596350",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "PharmaJournal",
+   "issn": "1661-8785",
+   "domain": "Pharmacy",
+   "nlm": "nlm:101298432",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Fisio active",
+   "issn": "1660-5209",
+   "domain": "Physiotherapy",
+   "nlm": "nlm:101137902",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nanoscience",
+   "issn": "1555-4880",
+   "domain": "Nano Technology",
+   "nlm": "nlm:101276745",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Medicina naturista",
+   "issn": "1576-3080",
+   "domain": "Ayurveda",
+   "nlm": "nlm:100969276",
+   "reasons": [
+    "department: the NLM subject is broad for Ayurveda and the title does not name the field",
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Enfermería clínica",
+   "issn": "2445-1479",
+   "domain": "Nursing",
+   "nlm": "nlm:101777540",
+   "reasons": [
+    "Crossref has recent DOIs under a different title (identity not confirmed)"
+   ]
+  },
+  {
+   "title": "Social science and dentistry",
+   "issn": "2040-4263",
+   "domain": "Dental",
+   "nlm": "nlm:101551911",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Student pharmacist : an official publication of the American Pharmacists Association",
+   "issn": "1559-7210",
+   "domain": "Pharmacy",
+   "nlm": "nlm:101276020",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Fisioterapia actual",
+   "issn": "1576-141X",
+   "domain": "Physiotherapy",
+   "nlm": "nlm:100958000",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "GSTF international journal on bioinformatics & biotechnology",
+   "issn": "2251-3159",
+   "domain": "Bio Technology",
+   "nlm": "nlm:101584532",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Small",
+   "issn": "1613-6810",
+   "domain": "Nano Technology",
+   "nlm": "nlm:101235338",
+   "reasons": [
+    "department: the NLM subject is broad for Nano Technology and the title does not name the field"
+   ]
+  },
+  {
+   "title": "Complementary therapies in chronic care",
+   "issn": "1531-538X",
+   "domain": "Ayurveda",
+   "nlm": "nlm:100962822",
+   "reasons": [
+    "department: the NLM subject is broad for Ayurveda and the title does not name the field",
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "InScope : the official journal of the Queensland Nurses and Midwives' Union",
+   "issn": "2207-6018",
+   "domain": "Nursing",
+   "nlm": "nlm:101725723",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Journal of craniomandibular function",
+   "issn": "1868-4149",
+   "domain": "Dental",
+   "nlm": "nlm:101556155",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Lex medicinae : revista portuguesa de direito da saúde",
+   "issn": "1646-0359",
+   "domain": "Pharmacy",
+   "nlm": "nlm:101269121",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Ciência em movimento",
+   "issn": "1517-1914",
+   "domain": "Physiotherapy",
+   "nlm": "nlm:100927327",
+   "reasons": [
+    "department: the NLM subject is broad for Physiotherapy and the title does not name the field",
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Clinical practice of alternative medicine : the official journal of the American College for Advancement in Medicine",
+   "issn": "1527-4772",
+   "domain": "Ayurveda",
+   "nlm": "nlm:100911625",
+   "reasons": [
+    "department: the NLM subject is broad for Ayurveda and the title does not name the field",
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "ONS voice",
+   "issn": "2475-6938",
+   "domain": "Nursing",
+   "nlm": "nlm:101704718",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Revista odontológica latinoamericana",
+   "issn": "2007-1221",
+   "domain": "Dental",
+   "nlm": "nlm:101526355",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Pharmacy journal of New England",
+   "issn": "1558-6588",
+   "domain": "Pharmacy",
+   "nlm": "nlm:101246327",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Funktionskrankheiten des Bewegungssystems",
+   "issn": "1433-1861",
+   "domain": "Physiotherapy",
+   "nlm": "nlm:100964673",
+   "reasons": [
+    "department: the NLM subject is broad for Physiotherapy and the title does not name the field",
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Alternalia : revista sobre alternativas de vida y pensamiento",
+   "issn": "1575-9547",
+   "domain": "Ayurveda",
+   "nlm": "nlm:100901637",
+   "reasons": [
+    "department: the NLM subject is broad for Ayurveda and the title does not name the field",
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Implant dentistry today",
+   "issn": "1754-159X",
+   "domain": "Dental",
+   "nlm": "nlm:101304190",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "International journal of pharmacy education",
+   "issn": "1557-1017",
+   "domain": "Pharmacy",
+   "nlm": "nlm:101279079",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Athletic therapy today : the journal for sports health care professionals",
+   "issn": "1078-7895",
+   "domain": "Physiotherapy",
+   "nlm": "nlm:9602352",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "The Asian and Australasian journal of plant science and biotechnology",
+   "issn": "1752-3818",
+   "domain": "Bio Technology",
+   "nlm": "nlm:101597011",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "The original internist : a scientific publication on natural health care",
+   "issn": "1529-4722",
+   "domain": "Ayurveda",
+   "nlm": "nlm:100900693",
+   "reasons": [
+    "department: the NLM subject is broad for Ayurveda and the title does not name the field",
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nihon Shikinō Kango Gakkai shi",
+   "issn": "2433-3107",
+   "domain": "Nursing",
+   "nlm": "nlm:131488",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Aesthetic dentistry today",
+   "issn": "1754-1581",
+   "domain": "Dental",
+   "nlm": "nlm:101303801",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Hospital healthcare Europe. Pharmacy & therapeutics : [a Hospital healthcare Europe reference resource for hospital pharmacists and prescribing clinicians]",
+   "issn": "1479-1935",
+   "domain": "Pharmacy",
+   "nlm": "nlm:101499191",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Journal of the Association of Chartered Physiotherapists in Women's Health",
+   "issn": "1367-7845",
+   "domain": "Physiotherapy",
+   "nlm": "nlm:9715901",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Systems and synthetic biology",
+   "issn": "1872-5325",
+   "domain": "Bio Technology",
+   "nlm": "nlm:101300404",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Coherence : international journal of integrated medicine",
+   "issn": "1565-0138",
+   "domain": "Ayurveda",
+   "nlm": "nlm:101120742",
+   "reasons": [
+    "department: the NLM subject is broad for Ayurveda and the title does not name the field",
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Journal of family health",
+   "issn": "2058-7554",
+   "domain": "Nursing",
+   "nlm": "nlm:101659451",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Contemporary esthetics",
+   "issn": "1931-9916",
+   "domain": "Dental",
+   "nlm": "nlm:101294632",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "European journal of hospital pharmacy : E.J.H.P",
+   "issn": "1378-1510",
+   "domain": "Pharmacy",
+   "nlm": "nlm:101250767",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "European journal of physical medicine & rehabilitation",
+   "issn": "1017-6721",
+   "domain": "Physiotherapy",
+   "nlm": "nlm:9204187",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nutrition in complementary care",
+   "issn": "1524-5209",
+   "domain": "Ayurveda",
+   "nlm": "nlm:100889163",
+   "reasons": [
+    "department: the NLM subject is broad for Ayurveda and the title does not name the field",
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "The European journal of esthetic dentistry : official journal of the European Academy of Esthetic Dentistry",
+   "issn": "1862-0612",
+   "domain": "Dental",
+   "nlm": "nlm:101285292",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Rigaku ryōhō jānaru = Japanese journal of physical therapy : PT",
+   "issn": "0915-0552",
+   "domain": "Physiotherapy",
+   "nlm": "nlm:9316030",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Shipin yu shengwu jishu xuebao",
+   "issn": "1673-1689",
+   "domain": "Bio Technology",
+   "nlm": "nlm:101648184",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "International journal of aromatherapy",
+   "issn": "0962-4562",
+   "domain": "Ayurveda",
+   "nlm": "nlm:9506960",
+   "reasons": [
+    "department: the NLM subject is broad for Ayurveda and the title does not name the field",
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Whitireia nursing & health journal",
+   "issn": "2350-2509",
+   "domain": "Nursing",
+   "nlm": "nlm:101621984",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Journal de l'Ordre des dentistes du Québec : JODQ",
+   "issn": "1718-1569",
+   "domain": "Dental",
+   "nlm": "nlm:101279096",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Washington pharmacy",
+   "issn": "1539-1469",
+   "domain": "Pharmacy",
+   "nlm": "nlm:101139469",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Rééducation",
+   "issn": "0034-2211",
+   "domain": "Physiotherapy",
+   "nlm": "nlm:8801863",
+   "reasons": [
+    "department: the NLM subject is broad for Physiotherapy and the title does not name the field",
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Tailoring biotechnologies",
+   "issn": "1574-1990",
+   "domain": "Bio Technology",
+   "nlm": "nlm:101262158",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Complementary medical research",
+   "issn": "0268-4055",
+   "domain": "Ayurveda",
+   "nlm": "nlm:9000217",
+   "reasons": [
+    "department: the NLM subject is broad for Ayurveda and the title does not name the field",
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Australian nursing & midwifery journal",
+   "issn": "2202-7114",
+   "domain": "Nursing",
+   "nlm": "nlm:101619146",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Aesthetic & implant dentistry",
+   "issn": "1748-6483",
+   "domain": "Dental",
+   "nlm": "nlm:101252454",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Zhonghua guo ji yi yao za zhi = Chinese international journal of medicine & pharmacy",
+   "issn": "1680-6247",
+   "domain": "Pharmacy",
+   "nlm": "nlm:101135373",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Adapted physical activity quarterly : APAQ",
+   "issn": "0736-5829",
+   "domain": "Physiotherapy",
+   "nlm": "nlm:8701671",
+   "reasons": [
+    "department: the NLM subject is broad for Physiotherapy and the title does not name the field"
+   ]
+  },
+  {
+   "title": "Journal of drug research in ayurveda and siddha = Āyurveda evaṃ siddha aushadhi anusandhāna patrikā",
+   "issn": "0975-2722",
+   "domain": "Ayurveda",
+   "nlm": "nlm:101568696",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "The annals of the New York Academy of Dentistry",
+   "issn": "1931-6585",
+   "domain": "Dental",
+   "nlm": "nlm:101252990",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Advances in pharmacy",
+   "issn": "1532-3862",
+   "domain": "Pharmacy",
+   "nlm": "nlm:101083106",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Journée de rééducation",
+   "issn": "0075-4420",
+   "domain": "Physiotherapy",
+   "nlm": "nlm:7607347",
+   "reasons": [
+    "department: the NLM subject is broad for Physiotherapy and the title does not name the field",
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Applied biotechnology, food science and policy",
+   "issn": "1175-9534",
+   "domain": "Bio Technology",
+   "nlm": "nlm:101218170",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Asian journal of traditional medicines",
+   "issn": "1817-4337",
+   "domain": "Ayurveda",
+   "nlm": "nlm:101540596",
+   "reasons": [
+    "department: the NLM subject is broad for Ayurveda and the title does not name the field",
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Shika rinshō kenkyū = Clinical research in dentistry",
+   "issn": "1348-9887",
+   "domain": "Dental",
+   "nlm": "nlm:101241755",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Che 3 ŭihak : Hyŏn'gok Hakhoe chi",
+   "issn": "1226-0932",
+   "domain": "Ayurveda",
+   "nlm": "nlm:101159556",
+   "reasons": [
+    "department: the NLM subject is broad for Ayurveda and the title does not name the field",
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "ORNAC journal",
+   "issn": "1927-6141",
+   "domain": "Nursing",
+   "nlm": "nlm:101586012",
+   "reasons": [
+    "Crossref has recent DOIs under a different title (identity not confirmed)"
+   ]
+  },
+  {
+   "title": "Journal of oral tissue engineering",
+   "issn": "1348-9623",
+   "domain": "Dental",
+   "nlm": "nlm:101237475",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "North Carolina pharmacist",
+   "issn": "1529-918X",
+   "domain": "Pharmacy",
+   "nlm": "nlm:100957560",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Türkiye klinikleri. Fiziksel tıp ve rehabilitasyon = Türkliye klinikleri journal of physical medicine and rehabilitation",
+   "issn": "1302-9401",
+   "domain": "Physiotherapy",
+   "nlm": "nlm:101127380",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "BioProcess international",
+   "issn": "1542-6319",
+   "domain": "Bio Technology",
+   "nlm": "nlm:101181310",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Kesehatan tradisional",
+   "issn": "0215-8035",
+   "domain": "Ayurveda",
+   "nlm": "nlm:9424778",
+   "reasons": [
+    "department: the NLM subject is broad for Ayurveda and the title does not name the field",
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Farmakonomen",
+   "issn": "1600-2725",
+   "domain": "Pharmacy",
+   "nlm": "nlm:100910302",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "The Journal of Egyptian Association of Physical Medicine and Rehabilitation.  Majallat al-Jam'ĭyah al-Misrĭyah lil-Tibb al-Tabĭ'ĭ wa-al-Ta'ăhĭlĭ",
+   "issn": "0253-9667",
+   "domain": "Physiotherapy",
+   "nlm": "nlm:7703247",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Biomagnetic research and technology",
+   "issn": "1477-044X",
+   "domain": "Bio Technology",
+   "nlm": "nlm:101153608",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Al Biruniya",
+   "issn": "0851-0040",
+   "domain": "Ayurveda",
+   "nlm": "nlm:8703429",
+   "reasons": [
+    "department: the NLM subject is broad for Ayurveda and the title does not name the field",
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "African journal of nursing and health issues",
+   "issn": "2141-6168",
+   "domain": "Nursing",
+   "nlm": "nlm:101708094",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Schweizerische Drogisten-Zeitschrift = Revue suisse des droguistes",
+   "issn": "1423-8713",
+   "domain": "Pharmacy",
+   "nlm": "nlm:100884676",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Kai tiaki nursing research",
+   "issn": "1179-772X",
+   "domain": "Nursing",
+   "nlm": "nlm:101655574",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Revista ibero-americana de prótese clínica & laboratorial : PCL",
+   "issn": "1679-978X",
+   "domain": "Dental",
+   "nlm": "nlm:101231391",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Journal of the Iowa Pharmacy Association",
+   "issn": "1525-7894",
+   "domain": "Pharmacy",
+   "nlm": "nlm:100884455",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Zhongguo sheng wu gong cheng za zhi = Journal of Chinese biotechnology",
+   "issn": "1671-8135",
+   "domain": "Bio Technology",
+   "nlm": "nlm:101204341",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Journal of the Academy of Laser Dentistry",
+   "issn": "1556-3413",
+   "domain": "Dental",
+   "nlm": "nlm:101228365",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Arab journal of pharmaceutical sciences",
+   "issn": "1683-0369",
+   "domain": "Pharmacy",
+   "nlm": "nlm:101094362",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "New Egyptian journal of microbiology",
+   "issn": "1687-1219",
+   "domain": "Bio Technology",
+   "nlm": "nlm:101202804",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Continental journal of nursing science",
+   "issn": "2141-4173",
+   "domain": "Nursing",
+   "nlm": "nlm:101578979",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Revista ibero-americana de odontopediatria & odontologia do bebê : JBP",
+   "issn": "1679-9771",
+   "domain": "Dental",
+   "nlm": "nlm:101239712",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "The journal of clinical problem-based learning",
+   "issn": "1522-7529",
+   "domain": "Pharmacy",
+   "nlm": "nlm:100963608",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "The Massachusetts nurse advocate",
+   "issn": "1941-367X",
+   "domain": "Nursing",
+   "nlm": "nlm:101583680",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Revista ibero-americana de odontologia estética & dentística : JBD",
+   "issn": "1679-9763",
+   "domain": "Dental",
+   "nlm": "nlm:101219591",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Pharma Rundschau",
+   "issn": "1439-5983",
+   "domain": "Pharmacy",
+   "nlm": "nlm:100884710",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Cell preservation technology",
+   "issn": "1538-344X",
+   "domain": "Bio Technology",
+   "nlm": "nlm:101137840",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "The British journal of primary care nursing. Respiratory diseases and allergy",
+   "issn": "1752-4385",
+   "domain": "Nursing",
+   "nlm": "nlm:101510320",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Revista brasileira de cirurgia e periodontia : RBC",
+   "issn": "1677-6445",
+   "domain": "Dental",
+   "nlm": "nlm:101187850",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Apotheke & Recht",
+   "issn": "1434-7970",
+   "domain": "Pharmacy",
+   "nlm": "nlm:9815734",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Journal of insect biotechnology and sericology",
+   "issn": "1346-8073",
+   "domain": "Bio Technology",
+   "nlm": "nlm:101133845",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Asian journal of nursing : AJN",
+   "issn": "1818-6270",
+   "domain": "Nursing",
+   "nlm": "nlm:101316847",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Private dentistry : promoting excellence in private treatment",
+   "issn": "1742-1896",
+   "domain": "Dental",
+   "nlm": "nlm:101185820",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Cloning and stem cells",
+   "issn": "1536-2302",
+   "domain": "Bio Technology",
+   "nlm": "nlm:101125444",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nihon Byōin Yakuzaishikai zasshi = Journal of Japanese Society of Hospital Pharmacists",
+   "issn": "1341-8815",
+   "domain": "Pharmacy",
+   "nlm": "nlm:9612773",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Protein reviews on the web : PROW",
+   "issn": "1532-0405",
+   "domain": "Bio Technology",
+   "nlm": "nlm:101126214",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Current nursing in geriatric care",
+   "issn": "1932-8710",
+   "domain": "Nursing",
+   "nlm": "nlm:101291230",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "The journal of pediatric dental care",
+   "issn": "1559-5986",
+   "domain": "Dental",
+   "nlm": "nlm:101180573",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Community pharmacist",
+   "issn": "1096-9179",
+   "domain": "Pharmacy",
+   "nlm": "nlm:9608384",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Bangladesh journal of genetics and biotechnology",
+   "issn": "1608-6597",
+   "domain": "Bio Technology",
+   "nlm": "nlm:101125643",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Registered nurse",
+   "issn": "1932-8966",
+   "domain": "Nursing",
+   "nlm": "nlm:101290712",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Odontologia clínico-científica = Scientific-clinical odontology",
+   "issn": "1677-3888",
+   "domain": "Dental",
+   "nlm": "nlm:101283716",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "SINTEFARMA",
+   "issn": "1024-9419",
+   "domain": "Pharmacy",
+   "nlm": "nlm:101246810",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Biyoteknoloji dergisi = Journal of biotechnology : Biyoteknoloji ve KÜKEM Derneklerinin ortak yayınıdır",
+   "issn": "1302-969X",
+   "domain": "Bio Technology",
+   "nlm": "nlm:100954186",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Kagawa Daigaku kangogaku zasshi",
+   "issn": "1349-8673",
+   "domain": "Nursing",
+   "nlm": "nlm:101623167",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Tagete : rivista medico giuridica sul danno alla persona",
+   "issn": "2035-1046",
+   "domain": "Dental",
+   "nlm": "nlm:101159105",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Clinical pharmacy perspectives on primary care therapeutics",
+   "issn": "1081-3853",
+   "domain": "Pharmacy",
+   "nlm": "nlm:9612041",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Agbioforum",
+   "issn": "1522-936X",
+   "domain": "Bio Technology",
+   "nlm": "nlm:101214361",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Jurnal keperawatan Rufaidah",
+   "issn": "1858-375X",
+   "domain": "Nursing",
+   "nlm": "nlm:101477810",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Developing dentistry : the worldwide voice of oral health and oral health care development",
+   "issn": "1811-6132",
+   "domain": "Dental",
+   "nlm": "nlm:101189168",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Formulary : the journal for managed care and hospital decision makers",
+   "issn": "1082-801X",
+   "domain": "Pharmacy",
+   "nlm": "nlm:9513311",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Methods in biotechnology",
+   "issn": "1940-6061",
+   "domain": "Bio Technology",
+   "nlm": "nlm:101599298",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Ōsaka Shiritsu Daigaku kangogaku zasshi",
+   "issn": "1349-953X",
+   "domain": "Nursing",
+   "nlm": "nlm:101278408",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Dental dialogue",
+   "issn": "1556-5637",
+   "domain": "Dental",
+   "nlm": "nlm:101175889",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Journal of infectious disease pharmacotherapy",
+   "issn": "1068-7777",
+   "domain": "Pharmacy",
+   "nlm": "nlm:9513013",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Biotechnology et alia",
+   "issn": "1532-5474",
+   "domain": "Bio Technology",
+   "nlm": "nlm:101218024",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "LPN : the journal for excellence in practical nursing",
+   "issn": "1553-0582",
+   "domain": "Nursing",
+   "nlm": "nlm:101233157",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "ODA today",
+   "issn": "1536-1683",
+   "domain": "Dental",
+   "nlm": "nlm:101122886",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Pharmacy connection",
+   "issn": "1198-354X",
+   "domain": "Pharmacy",
+   "nlm": "nlm:9888807",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Biotechnology international",
+   "issn": "1094-9984",
+   "domain": "Bio Technology",
+   "nlm": "nlm:9800951",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nihon Kango Gakkai ronbunshū. Seishin kango",
+   "issn": "1349-2985",
+   "domain": "Nursing",
+   "nlm": "nlm:101318496",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Practical procedures & aesthetic dentistry : PPAD",
+   "issn": "1534-6846",
+   "domain": "Dental",
+   "nlm": "nlm:101089932",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "PZ Prisma : pharmazeutische Zeitung, Materialien zur Weiterbildung",
+   "issn": "0945-5566",
+   "domain": "Pharmacy",
+   "nlm": "nlm:9440261",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Genetic engineering and biotechnology",
+   "issn": "1020-5209",
+   "domain": "Bio Technology",
+   "nlm": "nlm:9892021",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Hoken kagaku kenkyūshi",
+   "issn": "1348-7043",
+   "domain": "Nursing",
+   "nlm": "nlm:101241762",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Revista da ABRO",
+   "issn": "1518-2819",
+   "domain": "Dental",
+   "nlm": "nlm:101164629",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Hospital pharmacy practice",
+   "issn": "1197-3412",
+   "domain": "Pharmacy",
+   "nlm": "nlm:101093881",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Biotechnology annual review",
+   "issn": "1387-2656",
+   "domain": "Bio Technology",
+   "nlm": "nlm:9616443",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Ningen kangogaku kenkyū",
+   "issn": "1349-2721",
+   "domain": "Nursing",
+   "nlm": "nlm:101237530",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Taehan Kugang Akanmyŏn Pangsasŏn Hakhoe chi = Korean journal of oral and maxillofacial radiology",
+   "issn": "1229-8212",
+   "domain": "Dental",
+   "nlm": "nlm:101147725",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "The Georgia pharmacy journal : the official publication of the Georgia Pharmacy Association",
+   "issn": "1075-6965",
+   "domain": "Pharmacy",
+   "nlm": "nlm:9890602",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "The registered practical nursing journal",
+   "issn": "1710-8454",
+   "domain": "Nursing",
+   "nlm": "nlm:101237393",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Revista odonto",
+   "issn": "1518-7004",
+   "domain": "Dental",
+   "nlm": "nlm:101129558",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Pharmacy law",
+   "issn": "1069-076X",
+   "domain": "Pharmacy",
+   "nlm": "nlm:9816208",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Tissue engineering",
+   "issn": "1076-3279",
+   "domain": "Bio Technology",
+   "nlm": "nlm:9505538",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Ishikawa kango zasshi = Ishikawa journal of nursing",
+   "issn": "1349-0664",
+   "domain": "Nursing",
+   "nlm": "nlm:101234405",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Die Dental Praxis",
+   "issn": "1616-8879",
+   "domain": "Dental",
+   "nlm": "nlm:101092030",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Butlletí de la Societat d'Amics de la Història i de la Ciència Farmacèutica Catalana : BSAHCFC",
+   "issn": "1133-990X",
+   "domain": "Pharmacy",
+   "nlm": "nlm:9425224",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Hokenshi jānaru = the Japanese journal for public health nurse",
+   "issn": "1348-8333",
+   "domain": "Nursing",
+   "nlm": "nlm:101209914",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "World journal of orthodontics",
+   "issn": "1530-5678",
+   "domain": "Dental",
+   "nlm": "nlm:100959981",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Geschichte der Pharmazie",
+   "issn": "0939-334X",
+   "domain": "Pharmacy",
+   "nlm": "nlm:9703300",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "The African journal of mycology and biotechnology",
+   "issn": "1110-5879",
+   "domain": "Bio Technology",
+   "nlm": "nlm:101703008",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Fukuoka Kenritsu Daigkau Kango Gakubu kiyō = FPU journal of nursing reasearch",
+   "issn": "1348-8104",
+   "domain": "Nursing",
+   "nlm": "nlm:101261026",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "The journal of cosmetic dentistry",
+   "issn": "1532-8910",
+   "domain": "Dental",
+   "nlm": "nlm:100958075",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Pharmacy business",
+   "issn": "1060-4537",
+   "domain": "Pharmacy",
+   "nlm": "nlm:9425759",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Russian biotechnology",
+   "issn": "1068-3682",
+   "domain": "Bio Technology",
+   "nlm": "nlm:9420950",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Dibattito : giornale italiano di infermieristica cardiologica",
+   "issn": "1722-6759",
+   "domain": "Nursing",
+   "nlm": "nlm:101250848",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Journal of pharmacoepidemiology",
+   "issn": "0896-6966",
+   "domain": "Pharmacy",
+   "nlm": "nlm:9008977",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Frontiers in biomedicine and biotechnology",
+   "issn": "1067-1897",
+   "domain": "Bio Technology",
+   "nlm": "nlm:9317995",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "U.S. Chinese journal of nursing",
+   "issn": "1543-1479",
+   "domain": "Nursing",
+   "nlm": "nlm:101228779",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Mouth : journal of the American Student Dental Association",
+   "issn": "1529-5044",
+   "domain": "Dental",
+   "nlm": "nlm:100939354",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Massachusetts pharmacist : the journal of the Massachusetts State Pharmaceutical Association",
+   "issn": "1050-0081",
+   "domain": "Pharmacy",
+   "nlm": "nlm:9883691",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Biomedical applications of biotechnology",
+   "issn": "1068-7408",
+   "domain": "Bio Technology",
+   "nlm": "nlm:9305510",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Zhongguo shi yong hu li za zhi = Chinese journal of practical nursing",
+   "issn": "1672-7088",
+   "domain": "Nursing",
+   "nlm": "nlm:101215828",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Farmaceuten",
+   "issn": "0904-6542",
+   "domain": "Pharmacy",
+   "nlm": "nlm:9303195",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Shengwu jishu tongxun",
+   "issn": "1009-0002",
+   "domain": "Bio Technology",
+   "nlm": "nlm:101262923",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Perspective infirmière : revue officielle de l'Ordre des infirmières et infirmiers du Québec",
+   "issn": "1708-1890",
+   "domain": "Nursing",
+   "nlm": "nlm:101196674",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Revista ciências odontológicas : publicação da Faculdade de Ciências Odontológicas da Universidade de Marília, UNIMAR",
+   "issn": "1516-5639",
+   "domain": "Dental",
+   "nlm": "nlm:100965692",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Revista de la Sociedad Española de Farmacia Hospitalaria : organo oficial de expresion científica de la S.E.F.H",
+   "issn": "0214-753X",
+   "domain": "Pharmacy",
+   "nlm": "nlm:9108816",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Journal of biochemical organization",
+   "issn": "1065-9668",
+   "domain": "Bio Technology",
+   "nlm": "nlm:9315241",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Pakistan journal of pharmacy",
+   "issn": "1019-956X",
+   "domain": "Pharmacy",
+   "nlm": "nlm:9426168",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Pharmaceutical biotechnology",
+   "issn": "1078-0467",
+   "domain": "Bio Technology",
+   "nlm": "nlm:9310302",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Integrative nursing",
+   "issn": "1542-3344",
+   "domain": "Nursing",
+   "nlm": "nlm:101273932",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Farmaci",
+   "issn": "0903-9198",
+   "domain": "Pharmacy",
+   "nlm": "nlm:9002396",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Shengwu jishu = Biotechnology",
+   "issn": "1004-311X",
+   "domain": "Bio Technology",
+   "nlm": "nlm:101160878",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Endodontic practice",
+   "issn": "1465-9417",
+   "domain": "Dental",
+   "nlm": "nlm:100887863",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Florida pharmacy today : the journal of the Florida Pharmacy Association",
+   "issn": "0897-4616",
+   "domain": "Pharmacy",
+   "nlm": "nlm:8804918",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Biotechnology, current progress",
+   "issn": "1055-2162",
+   "domain": "Bio Technology",
+   "nlm": "nlm:9207135",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nursing and health policy review",
+   "issn": "1533-208X",
+   "domain": "Nursing",
+   "nlm": "nlm:101134852",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Revista da Faculdade de Odontologia da Universidade Federal de Goiás",
+   "issn": "1414-7637",
+   "domain": "Dental",
+   "nlm": "nlm:101187646",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Georgia journal of hospital pharmacy : GSHP",
+   "issn": "1079-6665",
+   "domain": "Pharmacy",
+   "nlm": "nlm:9891597",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Australasian biotechnology",
+   "issn": "1036-7128",
+   "domain": "Bio Technology",
+   "nlm": "nlm:9113681",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Hosŭpi'sŭ kyoyuk yŏn'gusoji",
+   "issn": "1598-5180",
+   "domain": "Nursing",
+   "nlm": "nlm:101266933",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Sanŏp kugang pogŏn = Journal of the Korean Industrial Dental Health Association",
+   "issn": "1226-718X",
+   "domain": "Dental",
+   "nlm": "nlm:101095041",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Pharmaklinik",
+   "issn": "1011-4386",
+   "domain": "Pharmacy",
+   "nlm": "nlm:9204307",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Biotekhnologii︠a︡, biotekhnika = Biotechnology",
+   "issn": "1310-6724",
+   "domain": "Bio Technology",
+   "nlm": "nlm:9425961",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Kenritsu Nagasaki Shīboruto Daigaku Kango Eiyō Gakubu kiyō",
+   "issn": "1346-6380",
+   "domain": "Nursing",
+   "nlm": "nlm:101213210",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Aktualna stomatologii︠a︡",
+   "issn": "1310-9340",
+   "domain": "Dental",
+   "nlm": "nlm:100885505",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "The Consultant pharmacist : the journal of the American Society of Consultant Pharmacists",
+   "issn": "0888-5109",
+   "domain": "Pharmacy",
+   "nlm": "nlm:9013983",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Biotec : rivista bimestrale di biotecnologia",
+   "issn": "0393-9146",
+   "domain": "Bio Technology",
+   "nlm": "nlm:9424785",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Topics in advanced practice nursing ejournal",
+   "issn": "1535-2250",
+   "domain": "Nursing",
+   "nlm": "nlm:101209962",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Marmara Üniversitesi eczacılık dergisi = Journal of pharmacy of University of Marmara",
+   "issn": "1011-3398",
+   "domain": "Pharmacy",
+   "nlm": "nlm:9425291",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Current plant science and biotechnology in agriculture",
+   "issn": "0924-1949",
+   "domain": "Bio Technology",
+   "nlm": "nlm:100958065",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Zhonghua guo ji hu li za zhi = Chinese international journal of nursing",
+   "issn": "1680-6255",
+   "domain": "Nursing",
+   "nlm": "nlm:101135369",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "St. Louis dentistry : your gateway to excellence",
+   "issn": "1092-650X",
+   "domain": "Dental",
+   "nlm": "nlm:9891138",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Apotheke und Krankenhaus : Zeitschrift des Verbandes der krankenhausversorgenden Offizin-Apotheker e.V",
+   "issn": "0177-9591",
+   "domain": "Pharmacy",
+   "nlm": "nlm:8700022",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Progress in biotechnology",
+   "issn": "0921-0423",
+   "domain": "Bio Technology",
+   "nlm": "nlm:8603433",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "INO journal of nursing research",
+   "issn": "1649-0665",
+   "domain": "Nursing",
+   "nlm": "nlm:101129333",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Gazi Üniversitesi Eczacılık Fakültesi dergisi",
+   "issn": "1015-9592",
+   "domain": "Pharmacy",
+   "nlm": "nlm:9424870",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Journal of solid-phase biochemistry",
+   "issn": "0146-0641",
+   "domain": "Bio Technology",
+   "nlm": "nlm:7701862",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Ī.B̄i. nāshingu = EB nursing : evidence-based nursing",
+   "issn": "1346-0137",
+   "domain": "Nursing",
+   "nlm": "nlm:101123651",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Pharmazeutische Zeitung",
+   "issn": "0724-6315",
+   "domain": "Pharmacy",
+   "nlm": "nlm:8500281",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Biologische Zahnmedizin Zeitschrift für ganzheitliche Stomatologie",
+   "issn": "1431-5602",
+   "domain": "Dental",
+   "nlm": "nlm:9612686",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Journal of social and administrative pharmacy : JSAP",
+   "issn": "0281-0662",
+   "domain": "Pharmacy",
+   "nlm": "nlm:8411742",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nagoya Shiritsu Daigaku Kango Gakubu kiyō",
+   "issn": "1346-4132",
+   "domain": "Nursing",
+   "nlm": "nlm:101187146",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "WDA journal",
+   "issn": "1080-6989",
+   "domain": "Dental",
+   "nlm": "nlm:101120058",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Perspectives in clinical pharmacology",
+   "issn": "0737-2914",
+   "domain": "Pharmacy",
+   "nlm": "nlm:8407786",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "ICUs and nursing web journal",
+   "issn": "1108-7366",
+   "domain": "Nursing",
+   "nlm": "nlm:101166308",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Southern online journal of nursing research",
+   "issn": "1538-0696",
+   "domain": "Nursing",
+   "nlm": "nlm:101135885",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "NDA journal",
+   "issn": "1524-4938",
+   "domain": "Dental",
+   "nlm": "nlm:9711435",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Schweiz. Apotheker-Zeitung = Journal suisse de pharmacie = Giornale svizzero di farmacia",
+   "issn": "0036-7508",
+   "domain": "Pharmacy",
+   "nlm": "nlm:7613212",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nursing in focus",
+   "issn": "1492-2878",
+   "domain": "Nursing",
+   "nlm": "nlm:100961984",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "The dental assistant : journal of the American Dental Assistants Association",
+   "issn": "1088-3886",
+   "domain": "Dental",
+   "nlm": "nlm:9432924",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "ZorgSupport : tijdschrift voor leidinggevenden in de zorgsector",
+   "issn": "1566-3760",
+   "domain": "Nursing",
+   "nlm": "nlm:100960596",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "OFT",
+   "issn": "1401-1638",
+   "domain": "Dental",
+   "nlm": "nlm:9703442",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Yakhakhoe chi. Journal of the Pharmaceutical Society of Korea",
+   "issn": "0377-9556",
+   "domain": "Pharmacy",
+   "nlm": "nlm:7602096",
+   "reasons": [
+    "Crossref has recent DOIs under a different title (identity not confirmed)"
+   ]
+  },
+  {
+   "title": "Clinic : la revue de l'omnipraticien",
+   "issn": "1254-3136",
+   "domain": "Dental",
+   "nlm": "nlm:100884375",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Dynamics : the official journal of the Canadian Association of Critical Care Nurses",
+   "issn": "1497-3715",
+   "domain": "Nursing",
+   "nlm": "nlm:100955578",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Odonto stomatologia",
+   "issn": "1593-7402",
+   "domain": "Dental",
+   "nlm": "nlm:9425206",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Research practitioner",
+   "issn": "1528-0330",
+   "domain": "Nursing",
+   "nlm": "nlm:100939532",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Dental world",
+   "issn": "0965-9986",
+   "domain": "Dental",
+   "nlm": "nlm:9214345",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Journal of undergraduate nursing scholarship",
+   "issn": "1522-8223",
+   "domain": "Nursing",
+   "nlm": "nlm:101651103",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Endo : revue française d'endodontie : publication officielle de la Société française d'endodontie",
+   "issn": "1168-5476",
+   "domain": "Dental",
+   "nlm": "nlm:9212291",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nursing and you",
+   "issn": "1492-5869",
+   "domain": "Nursing",
+   "nlm": "nlm:101151696",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Periodontal clinical investigations : official publication of the Northeastern Society of Periodontists",
+   "issn": "1065-2418",
+   "domain": "Dental",
+   "nlm": "nlm:9209040",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nursing in the community",
+   "issn": "1649-0657",
+   "domain": "Nursing",
+   "nlm": "nlm:101132082",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Thüringer Zahnärzteblatt",
+   "issn": "0939-5687",
+   "domain": "Dental",
+   "nlm": "nlm:9440661",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Arkansas dentistry",
+   "issn": "1056-4764",
+   "domain": "Dental",
+   "nlm": "nlm:9104816",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Kiy⁻o",
+   "issn": "1345-5036",
+   "domain": "Nursing",
+   "nlm": "nlm:100964732",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Practical reviews in pediatric dentistry",
+   "issn": "1051-0265",
+   "domain": "Dental",
+   "nlm": "nlm:9887345",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nihon Chiiki Kango Gakkai shi = Journal of Japan Academy of Community Health Nursing",
+   "issn": "1346-9657",
+   "domain": "Nursing",
+   "nlm": "nlm:100964137",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Art technique dentaires : ATD",
+   "issn": "1146-0717",
+   "domain": "Dental",
+   "nlm": "nlm:9426173",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Research for nursing practice",
+   "issn": "1526-999X",
+   "domain": "Nursing",
+   "nlm": "nlm:100963629",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Journal of Marmara University Dental Faculty",
+   "issn": "1018-5992",
+   "domain": "Dental",
+   "nlm": "nlm:9114162",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nuritinga : electronic journal of nursing",
+   "issn": "1440-1541",
+   "domain": "Nursing",
+   "nlm": "nlm:101237899",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Journal of gynecologic oncology nursing",
+   "issn": "1536-9935",
+   "domain": "Nursing",
+   "nlm": "nlm:101206753",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Revista europea de odonto-estomatología",
+   "issn": "0214-8668",
+   "domain": "Dental",
+   "nlm": "nlm:8909773",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nihon Kango Gakkai ronbunshū. Chiiki kango",
+   "issn": "1347-8257",
+   "domain": "Nursing",
+   "nlm": "nlm:101148796",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Revista de la Sociedad Odontológica de La Plata",
+   "issn": "1514-9943",
+   "domain": "Dental",
+   "nlm": "nlm:9506154",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nihon Kango Gakkai ronbunshū. Kango kyōiku",
+   "issn": "1347-8265",
+   "domain": "Nursing",
+   "nlm": "nlm:101148789",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Aichi-Gakuin dental science",
+   "issn": "0916-2062",
+   "domain": "Dental",
+   "nlm": "nlm:9206301",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nihon Kango Gakkai ronbunshū. Kango sōgō",
+   "issn": "1347-815X",
+   "domain": "Nursing",
+   "nlm": "nlm:101148782",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Türk ortodonti dergisi : Ortodonti Derneğ'nin resmi yayin organidir = Turkish journal of orthodontics",
+   "issn": "1300-3550",
+   "domain": "Dental",
+   "nlm": "nlm:9114702",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Ciencia enfermera",
+   "issn": "1510-2130",
+   "domain": "Nursing",
+   "nlm": "nlm:101125957",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nihon Kango Gakkai ronbunshū. Rōjin kango",
+   "issn": "1347-9792",
+   "domain": "Nursing",
+   "nlm": "nlm:101122193",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "African dental journal : official publication of the Federation of African Dental Associations = Journal dentaire africain",
+   "issn": "0794-7348",
+   "domain": "Dental",
+   "nlm": "nlm:8813229",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nihon Kango Gakkai ronbunshū. Bosei kango",
+   "issn": "1347-8230",
+   "domain": "Nursing",
+   "nlm": "nlm:101122187",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "University of Toronto dental journal",
+   "issn": "0843-5812",
+   "domain": "Dental",
+   "nlm": "nlm:8808558",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nihon Kango Gakkai ronbunshū. Shōni kango",
+   "issn": "1347-8222",
+   "domain": "Nursing",
+   "nlm": "nlm:101122178",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Schweizer Monatsschrift für Zahnmedizin = Revue mensuelle suisse d'odonto-stomatologie = Rivista mensile svizzera di odontologia e stomatologia",
+   "issn": "0256-2855",
+   "domain": "Dental",
+   "nlm": "nlm:8709597",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nihon Kango Gakkai ronbunshū. Kango kanri",
+   "issn": "1347-8184",
+   "domain": "Nursing",
+   "nlm": "nlm:101122172",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Quintessenz-Impulse : magazin für Kommunikation & Praxismanagement",
+   "issn": "0931-8259",
+   "domain": "Dental",
+   "nlm": "nlm:9427051",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nihon Kango Gakkai ronbunshū. 1, Seijin kango",
+   "issn": "1347-8192",
+   "domain": "Nursing",
+   "nlm": "nlm:101122096",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "To enēmerōtiko deltio tēs Hellēnikēs Odontiatrikēs Omospondias",
+   "issn": "1105-0543",
+   "domain": "Dental",
+   "nlm": "nlm:9422660",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Online journal of clinical innovations : OJCI",
+   "issn": "1521-219X",
+   "domain": "Nursing",
+   "nlm": "nlm:100963724",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Stoma",
+   "issn": "0870-4287",
+   "domain": "Dental",
+   "nlm": "nlm:8907513",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Neonatal, paediatric, and child health nursing : official journal of the Australian Confederation of Paediatric and Child Health Nurses ... [et al.]",
+   "issn": "1441-6638",
+   "domain": "Nursing",
+   "nlm": "nlm:100954412",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "The International journal of adult orthodontics and orthognathic surgery",
+   "issn": "0742-1931",
+   "domain": "Dental",
+   "nlm": "nlm:8610335",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Tōkyō Hoken Kagaku Gakkai shi : Tōhogakushi = The journal of Tokyo Academy of Health Sciences : J.T.H.S",
+   "issn": "1344-3844",
+   "domain": "Nursing",
+   "nlm": "nlm:100889079",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "The Functional orthodontist",
+   "issn": "8756-3150",
+   "domain": "Dental",
+   "nlm": "nlm:8502864",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Home healthcare nurse manager",
+   "issn": "1520-5657",
+   "domain": "Nursing",
+   "nlm": "nlm:100884165",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Hawaii dental journal",
+   "issn": "0891-9933",
+   "domain": "Dental",
+   "nlm": "nlm:8502148",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "CIN plus",
+   "issn": "1098-7126",
+   "domain": "Nursing",
+   "nlm": "nlm:100883848",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Alberta RN",
+   "issn": "1481-9988",
+   "domain": "Nursing",
+   "nlm": "nlm:100883278",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Journal of newborn nursing : the official publication of the International Association of Newborn Nurses",
+   "issn": "1098-5778",
+   "domain": "Nursing",
+   "nlm": "nlm:9814865",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Belgisch tijdschrift voor tandheelkunde",
+   "issn": "0775-0285",
+   "domain": "Dental",
+   "nlm": "nlm:8400039",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "MilitaryRN journal",
+   "issn": "1096-8008",
+   "domain": "Nursing",
+   "nlm": "nlm:9814860",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Higashi Nihon shigaku zasshi",
+   "issn": "0910-9722",
+   "domain": "Dental",
+   "nlm": "nlm:8703497",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nursing research methods",
+   "issn": "1098-9137",
+   "domain": "Nursing",
+   "nlm": "nlm:9807184",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Ch'ikwa imsang = The Journal of dental clinics",
+   "issn": "1976-0337",
+   "domain": "Dental",
+   "nlm": "nlm:8400845",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Sei Roka Kango Gakkai shi = Journal of St. Luke's Society for Nursing Research (SLNR)",
+   "issn": "1344-1922",
+   "domain": "Nursing",
+   "nlm": "nlm:101086090",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Shōwa Shigakkai zasshi = The Journal of Showa University Dental Society",
+   "issn": "0285-922X",
+   "domain": "Dental",
+   "nlm": "nlm:8302367",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Implantologie orale : organe officiel de la Société implantaire internationale",
+   "issn": "0252-2705",
+   "domain": "Dental",
+   "nlm": "nlm:9424988",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nihon Nanbyō Kango Gakkai shi = Journal of Japan Intractable Illness Nursing Society",
+   "issn": "1343-1692",
+   "domain": "Nursing",
+   "nlm": "nlm:100889043",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Periodontology",
+   "issn": "0726-5247",
+   "domain": "Dental",
+   "nlm": "nlm:9422683",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Midwifery today with international midwife",
+   "issn": "1551-8892",
+   "domain": "Nursing",
+   "nlm": "nlm:100888783",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Sunch'ŏnhyang Taehak nonmunjip = The Journal of Soon Chun Hyang College",
+   "issn": "0253-3111",
+   "domain": "Dental",
+   "nlm": "nlm:8406879",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "ED nursing",
+   "issn": "1096-4304",
+   "domain": "Nursing",
+   "nlm": "nlm:9891961",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Dental asepsis review",
+   "issn": "0733-9836",
+   "domain": "Dental",
+   "nlm": "nlm:8209674",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Kokoro no kangogaku",
+   "issn": "1343-0556",
+   "domain": "Nursing",
+   "nlm": "nlm:9812506",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Revista do Centro de Ciências da Saúde",
+   "issn": "0102-0404",
+   "domain": "Dental",
+   "nlm": "nlm:8608577",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nihon Tōnyōbyō Kyōiku Kango Gakkai shi = The journal of Japan Academy of Diabetes Education and Nursing",
+   "issn": "1342-8497",
+   "domain": "Nursing",
+   "nlm": "nlm:9810940",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Gifu Shika Gakkai zasshi = The Journal of Gifu Dental Society",
+   "issn": "0385-0072",
+   "domain": "Dental",
+   "nlm": "nlm:8109799",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "El Odontólogo",
+   "issn": "0472-5158",
+   "domain": "Dental",
+   "nlm": "nlm:7605087",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "On-line journal of nursing informatics",
+   "issn": "1089-9758",
+   "domain": "Nursing",
+   "nlm": "nlm:9806523",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Rhode Island dental journal",
+   "issn": "0091-8903",
+   "domain": "Dental",
+   "nlm": "nlm:375713",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Managing clinical nursing : MCN",
+   "issn": "1363-9587",
+   "domain": "Nursing",
+   "nlm": "nlm:9709259",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Ontario dentist",
+   "issn": "0300-5275",
+   "domain": "Dental",
+   "nlm": "nlm:360775",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Kawasaki Shiritsu Kango Tanki Daigaku kiyo",
+   "issn": "1342-1921",
+   "domain": "Nursing",
+   "nlm": "nlm:101294926",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Conector",
+   "issn": "0325-2426",
+   "domain": "Dental",
+   "nlm": "nlm:7610427",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "CANNT journal = Journal ACITN",
+   "issn": "1498-5136",
+   "domain": "Nursing",
+   "nlm": "nlm:100959352",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Hōmon kango to kaigo = The Japanese journal of home care nursing",
+   "issn": "1341-7045",
+   "domain": "Nursing",
+   "nlm": "nlm:9810760",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Journal - University of Singapore Dental Society",
+   "issn": "0129-2080",
+   "domain": "Dental",
+   "nlm": "nlm:8009544",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Actualités professionnelles : revue officielle de l'ORIIM/L",
+   "issn": "1482-4590",
+   "domain": "Nursing",
+   "nlm": "nlm:9715278",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "The Journal of the Dental Association of Thailand",
+   "issn": "0045-9917",
+   "domain": "Dental",
+   "nlm": "nlm:7505601",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nursing now",
+   "issn": "1206-3878",
+   "domain": "Nursing",
+   "nlm": "nlm:9713098",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Zentralblatt für die gesamte Zahn-, Mund-, und Kieferheilkunde",
+   "issn": "0323-8199",
+   "domain": "Dental",
+   "nlm": "nlm:352873",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Shōkaki geka nursing = Gastroenterological surgery nursing",
+   "issn": "1341-7819",
+   "domain": "Nursing",
+   "nlm": "nlm:9617308",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "El Cooperador dental; cooperativismo, información y ciencia odontológica",
+   "issn": "0069-9799",
+   "domain": "Dental",
+   "nlm": "nlm:162050",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Revue française de thérapeutique ondonto-stomatologique",
+   "issn": "0758-6884",
+   "domain": "Dental",
+   "nlm": "nlm:9424896",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Uro-nashingu = Urological nursing",
+   "issn": "1341-8920",
+   "domain": "Nursing",
+   "nlm": "nlm:9615067",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Mother baby journal : MBJ",
+   "issn": "1084-6190",
+   "domain": "Nursing",
+   "nlm": "nlm:9612506",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Jahrbuch der Pflege- und Gesundheitsfachberufe",
+   "issn": "1430-922X",
+   "domain": "Nursing",
+   "nlm": "nlm:9612015",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "European nurse",
+   "issn": "1358-8621",
+   "domain": "Nursing",
+   "nlm": "nlm:9608612",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Advances in gerontological nursing",
+   "issn": "1083-8708",
+   "domain": "Nursing",
+   "nlm": "nlm:9608373",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Today's surgical nurse",
+   "issn": "1087-1667",
+   "domain": "Nursing",
+   "nlm": "nlm:9606921",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Aichi Kenritsu Kango Daigaku kiyo",
+   "issn": "1341-9382",
+   "domain": "Nursing",
+   "nlm": "nlm:101294932",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Innovations in breast cancer care",
+   "issn": "1082-1341",
+   "domain": "Nursing",
+   "nlm": "nlm:9889728",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Registered nurse journal : RN journal",
+   "issn": "1484-0863",
+   "domain": "Nursing",
+   "nlm": "nlm:9815895",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Australian electronic journal of nursing education : AEJNE",
+   "issn": "1322-8676",
+   "domain": "Nursing",
+   "nlm": "nlm:9806462",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Tōseki kea = The Japanese journal of dialysis & caring",
+   "issn": "1341-1489",
+   "domain": "Nursing",
+   "nlm": "nlm:9617313",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Quality nursing : the Japanese journal of nursing education & nursing research",
+   "issn": "1340-9875",
+   "domain": "Nursing",
+   "nlm": "nlm:9617312",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Directions in psychiatric nursing",
+   "issn": "1085-097X",
+   "domain": "Nursing",
+   "nlm": "nlm:9616325",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Tidsskriftet sykepleien",
+   "issn": "0806-7511",
+   "domain": "Nursing",
+   "nlm": "nlm:9603908",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nursing New Zealand = Kai tiaki",
+   "issn": "1173-2032",
+   "domain": "Nursing",
+   "nlm": "nlm:9507374",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "The Hawaii nurse",
+   "issn": "1047-4749",
+   "domain": "Nursing",
+   "nlm": "nlm:101135199",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nursing in Canada and nursing education programs",
+   "issn": "1201-7345",
+   "domain": "Nursing",
+   "nlm": "nlm:9892285",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "The journal of shared governance : a publication of Dynamic Visions of Nursing",
+   "issn": "1078-4640",
+   "domain": "Nursing",
+   "nlm": "nlm:9602865",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Renaissance : journal of the National Certified Nursing Assistant Association",
+   "issn": "1075-1491",
+   "domain": "Nursing",
+   "nlm": "nlm:9438790",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Addictions nursing",
+   "issn": "1073-886X",
+   "domain": "Nursing",
+   "nlm": "nlm:9435671",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Advance for nurse practitioners",
+   "issn": "1096-6293",
+   "domain": "Nursing",
+   "nlm": "nlm:9892010",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Enfermagem revista",
+   "issn": "0104-4419",
+   "domain": "Nursing",
+   "nlm": "nlm:9440315",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Materialien für die Krankenpflege",
+   "issn": "0936-7071",
+   "domain": "Nursing",
+   "nlm": "nlm:9432913",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "L'Infirmière du Québec : revue officielle de l'Ordre des infirmières et infirmiers du Québec",
+   "issn": "1195-2695",
+   "domain": "Nursing",
+   "nlm": "nlm:9430795",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Pflege aktuell",
+   "issn": "0944-8918",
+   "domain": "Nursing",
+   "nlm": "nlm:9423842",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "The Australian nursing journal : ANJ",
+   "issn": "1320-3185",
+   "domain": "Nursing",
+   "nlm": "nlm:9317904",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Gaoxiong hu li za zhi",
+   "issn": "1683-0903",
+   "domain": "Nursing",
+   "nlm": "nlm:101528969",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nursing education program",
+   "issn": "1195-4213",
+   "domain": "Nursing",
+   "nlm": "nlm:9814908",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Quality of life : a nursing challenge",
+   "issn": "1064-7988",
+   "domain": "Nursing",
+   "nlm": "nlm:9310853",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Med-surg nursing quarterly",
+   "issn": "1062-7537",
+   "domain": "Nursing",
+   "nlm": "nlm:9302375",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "ONS nursing scan in oncology",
+   "issn": "1062-5720",
+   "domain": "Nursing",
+   "nlm": "nlm:9301306",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Seminars in perioperative nursing",
+   "issn": "1056-8670",
+   "domain": "Nursing",
+   "nlm": "nlm:9206988",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Long term care",
+   "issn": "1183-1618",
+   "domain": "Nursing",
+   "nlm": "nlm:100911309",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nursing BC",
+   "issn": "1185-3638",
+   "domain": "Nursing",
+   "nlm": "nlm:9105915",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nurse to nurse",
+   "issn": "0849-3383",
+   "domain": "Nursing",
+   "nlm": "nlm:9890699",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nursing scan in administration",
+   "issn": "1056-3091",
+   "domain": "Nursing",
+   "nlm": "nlm:9887820",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "History of Nursing Society journal",
+   "issn": "0960-2348",
+   "domain": "Nursing",
+   "nlm": "nlm:9425801",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Pflegen ambulant",
+   "issn": "0937-0277",
+   "domain": "Nursing",
+   "nlm": "nlm:9425793",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "The Care connection",
+   "issn": "0843-9966",
+   "domain": "Nursing",
+   "nlm": "nlm:101134590",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Info nursing : a publication of the Nurses Association of New Brunswick",
+   "issn": "0846-524X",
+   "domain": "Nursing",
+   "nlm": "nlm:9886533",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Pflegeforum",
+   "issn": "0936-0514",
+   "domain": "Nursing",
+   "nlm": "nlm:9114522",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Dermatology nursing",
+   "issn": "1060-3441",
+   "domain": "Nursing",
+   "nlm": "nlm:9011113",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nursing the elderly : in hospital, homes and the community",
+   "issn": "0956-8115",
+   "domain": "Nursing",
+   "nlm": "nlm:9002004",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nursing scan in research",
+   "issn": "0897-5647",
+   "domain": "Nursing",
+   "nlm": "nlm:9883473",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nurse in action : NIA",
+   "issn": "0887-8838",
+   "domain": "Nursing",
+   "nlm": "nlm:9886348",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Quality care advocate",
+   "issn": "0892-6174",
+   "domain": "Nursing",
+   "nlm": "nlm:9883328",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Jona's nursing scan in administration",
+   "issn": "0888-6288",
+   "domain": "Nursing",
+   "nlm": "nlm:9883132",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "The Birth gazette",
+   "issn": "0890-3255",
+   "domain": "Nursing",
+   "nlm": "nlm:9306676",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Journal of nursing quality assurance",
+   "issn": "0889-4647",
+   "domain": "Nursing",
+   "nlm": "nlm:8703781",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Geriatric nursing and home care",
+   "issn": "0269-9079",
+   "domain": "Nursing",
+   "nlm": "nlm:8701774",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Ambulatory nursing",
+   "issn": "8755-9897",
+   "domain": "Nursing",
+   "nlm": "nlm:9886336",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nursing scan women's health",
+   "issn": "0883-4369",
+   "domain": "Nursing",
+   "nlm": "nlm:9884252",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nursing executive",
+   "issn": "8756-7601",
+   "domain": "Nursing",
+   "nlm": "nlm:9882856",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Kango kyōiku no kenkyū",
+   "issn": "0914-4552",
+   "domain": "Nursing",
+   "nlm": "nlm:9314439",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Emphasis, nursing",
+   "issn": "0886-7143",
+   "domain": "Nursing",
+   "nlm": "nlm:8509371",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Journal of the Association of Pediatric Oncology Nurses",
+   "issn": "0748-1802",
+   "domain": "Nursing",
+   "nlm": "nlm:8410048",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Perspectives in nursing",
+   "issn": "0894-1076",
+   "domain": "Nursing",
+   "nlm": "nlm:8704054",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Kentucky nurse",
+   "issn": "0742-8367",
+   "domain": "Nursing",
+   "nlm": "nlm:8309653",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Omvårdaren",
+   "issn": "0280-4123",
+   "domain": "Nursing",
+   "nlm": "nlm:8410691",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "L'Infirmière auxiliaire : revue de la Corporation professionnelle des infirmières et infirmiers auxiliaires du Québec",
+   "issn": "0822-8558",
+   "domain": "Nursing",
+   "nlm": "nlm:8410629",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Journal of ophthalmic nursing & technology",
+   "issn": "0744-7132",
+   "domain": "Nursing",
+   "nlm": "nlm:8219658",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "The Zimbabwe nurse",
+   "issn": "1012-9103",
+   "domain": "Nursing",
+   "nlm": "nlm:8411431",
+   "reasons": [
+    "Crossref has recent DOIs under a different title (identity not confirmed)"
+   ]
+  },
+  {
+   "title": "Taehan kanho. The Korean nurse",
+   "issn": "0047-3618",
+   "domain": "Nursing",
+   "nlm": "nlm:1264143",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "New Mexico nurse",
+   "issn": "0028-6273",
+   "domain": "Nursing",
+   "nlm": "nlm:7806629",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "The Oklahoma nurse",
+   "issn": "0030-1787",
+   "domain": "Nursing",
+   "nlm": "nlm:413179",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  },
+  {
+   "title": "Nursing resources in Manitoba",
+   "issn": "1482-2296",
+   "domain": "Nursing",
+   "nlm": "nlm:9891542",
+   "reasons": [
+    "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)"
+   ]
+  }
+ ],
+ "productionBefore": {
+  "status": [
+   {
+    "status": "Accepted",
+    "n": 12840
+   },
+   {
+    "status": "MetadataOnly",
+    "n": 15937
+   },
+   {
+    "status": "NeedsReview",
+    "n": 25607
+   }
+  ],
+  "total": 54384,
+  "existingRowsHash": {
+   "n": 54384,
+   "h": "98a0a46cef51919a3efba4bd689bf02b"
+  }
+ },
+ "productionAfter": {
+  "status": [
+   {
+    "status": "Accepted",
+    "n": 12840
+   },
+   {
+    "status": "MetadataOnly",
+    "n": 16007
+   },
+   {
+    "status": "NeedsReview",
+    "n": 25607
+   }
+  ],
+  "total": 54454,
+  "existingRowsHashExcludingRun": {
+   "n": 54384,
+   "h": "98a0a46cef51919a3efba4bd689bf02b"
+  },
+  "existingRowsUnchanged": true
+ },
+ "auditLocation": "Production table \"IngestionAudit\", action JOURNAL_SOURCE_IMPORT, meta.runId = nlm-2026-10-28-247b5154 (2 batch entries, each lists inserted ids/issn/evidence).",
+ "rollback": {
+  "mechanism": "No dedicated rollback script exists. Scope any rollback to this run only: ids above, rightsBasis = 'NLM Catalog listing — OA unverified', and no attached articles. NOT EXECUTED.",
+  "sql": "DELETE FROM \"Journal\" WHERE id = ANY(<inserted.ids>) AND \"rightsBasis\" = 'NLM Catalog listing — OA unverified' AND NOT EXISTS (SELECT 1 FROM \"Article\" a WHERE a.\"journalId\" = \"Journal\".id);"
+ },
+ "heldReconciliation": {
+  "uniquePrimaryReason": {
+   "E0 no record in Crossref or OpenAlex and 0 PubMed articles 2024-26": 230,
+   "D1 broad NLM subject, title does not name the field": 37,
+   "E2 1-2 recent articles (borderline; passed a >=1 bar, fails >=3)": 10,
+   "E1 record exists in Crossref/OpenAlex but 0 recent articles": 114,
+   "ID Crossref recent DOIs under a different title": 5
+  },
+  "overlappingSecondary": {
+   "rowsWithTwoReasons": 23,
+   "secondaryReasons": {
+    "E1 record exists in Crossref/OpenAlex but 0 recent articles": 5,
+    "E0 no record in Crossref or OpenAlex and 0 PubMed articles 2024-26": 17,
+    "E2 1-2 recent articles (borderline; passed a >=1 bar, fails >=3)": 1
+   }
+  },
+  "validatorInstanceCounts": {
+   "fewer than 3 articles issued 2024–2026 in Crossref, PubMed or OpenAlex (possibly ceased)": 377,
+   "department": 37,
+   "Crossref has recent DOIs under a different title (identity not confirmed)": 5
+  },
+  "extra10": "rows held only because the evidence bar is 3 instead of 1 (E2): Dental 4, Nursing 4, Architecture 1, Physiotherapy 1",
+  "passCountsByBar": {
+   "crossref+pubmed >=1": 74,
+   "+openalex >=1": 80,
+   "+openalex >=3 (final)": 70
+  }
+ },
+ "additionalConservativeFilters": [
+  "at least 3 articles issued 2024-2026 in Crossref/PubMed/OpenAlex (title overlap >=0.5)",
+  "title must name the field for Ayurveda, Architecture, Chemical Engineering, Nano Technology, Physiotherapy"
+ ],
+ "rollbackReview": {
+  "reviewedAt": "2026-10-28",
+  "executed": false,
+  "scope": "exactly the 70 ids; 70 rows carry the NLM rightsBasis, all in the list",
+  "foreignKeys": "only Article.journalId ON DELETE SET NULL (0 rows reference the 70)",
+  "softReferencesWithoutFk": {
+   "IngestionRun.journalId": 0,
+   "LibraryEvent.journalId": 0,
+   "LibraryEvent.journalIssn": 0,
+   "Article.journalIssn": 0
+  },
+  "auditPreservation": "2 IngestionAudit rows, no FK to Journal, preserved by a delete",
+  "details": "docs/nlm-journal-import-2026-10-28.md section 8"
+ },
+ "openAccessSemantics": "no frontend component reads openAccess; JournalPage shows \"Licence not recorded\" (neutral); the API returns the raw row (openAccess false + rightsBasis \"OA unverified\" + rightsVerifiedAt null). See docs section 7.",
+ "reassessmentPlan": "docs/nlm-journal-import-2026-10-28.md section 6 (preview only; no insertion)",
+ "evidenceFiles": {
+  "frozenManifest": "manifest-466.json",
+  "validatedSet": "passed.json",
+  "held": "held.json",
+  "evidence": "evidence.json",
+  "summary": "summary.json",
+  "preFreezeDropped": "prefreeze-dropped-80.json",
+  "rollbackReview": [
+   "rollback-review.json",
+   "rollback-softrefs.json"
+  ],
+  "checksums": "SHA256SUMS"
+ }
+}

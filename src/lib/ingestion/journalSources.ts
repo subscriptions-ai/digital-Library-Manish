@@ -30,7 +30,7 @@ export const crossrefHeaders = () => ({ 'User-Agent': process.env.CROSSREF_USER_
 const OA_HEADERS = { 'User-Agent': `STM Digital Library (mailto:${CONTACT})` };
 
 export type JournalCandidate = {
-  source: 'Crossref Journals' | 'OpenAlex Sources' | 'ROAD';
+  source: 'Crossref Journals' | 'OpenAlex Sources' | 'ROAD' | 'NLM Catalog';
   title: string; issn: string | null; eissn: string | null;
   /** The linking ISSN, where the source gives one (OpenAlex does). It is one of the journal's ISSNs, so it identifies the same journal under either. */
   issnL?: string | null;

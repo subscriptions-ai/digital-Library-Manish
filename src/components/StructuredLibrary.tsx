@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { Badge, Button, EmptyState, ErrorState, PageHeader, Skeleton, buttonClass, type BadgeTone } from './ui';
 import { useAllowance, inCooldown, clockTime } from './membership/ReadingClock';
+import { SaveButton } from './library/SaveButton';
 
 type Mode = 'new' | 'archived';
 type Kind = 'articles' | 'books';
@@ -679,7 +680,8 @@ export const ResultCard = React.memo(function ResultCard({ it, n, kind, mode, on
         </div>
       </div>
 
-      <div className="shrink-0 sm:self-start sm:pt-0.5">
+      <div className="flex shrink-0 items-center gap-1 sm:self-start sm:pt-0.5">
+        <SaveButton id={it.id} title={it.title} />
         {lockedLabel && !metaOnly ? (
           // Said in words and with a lock, not by colour: reading is shut until the time shown.
           <span className="inline-flex items-center gap-1 text-xs font-semibold text-caution"

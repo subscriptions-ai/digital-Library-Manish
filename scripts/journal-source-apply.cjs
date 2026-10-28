@@ -27,7 +27,7 @@ const file = process.argv.slice(2).find(a => !a.startsWith('--'));
   const db = (await p.$queryRawUnsafe('select current_database() d'))[0].d;
   const startedAt = new Date().toISOString();
   const out = { database: db, runId: plan.runId, source: plan.source, dry: DRY, startedAt, requested: rows.length, inserted: 0, skippedIdentifierHeld: 0, skippedTitleHeld: 0, skippedRace: 0, failed: 0, firstError: null, batches: 0, insertedIds: [] };
-  const basis = `${plan.source === 'OpenAlex Sources' ? 'OpenAlex' : plan.source === 'ROAD' ? 'ROAD' : 'Crossref'} listing — OA unverified`;
+  const basis = `${plan.source === 'OpenAlex Sources' ? 'OpenAlex' : plan.source === 'ROAD' ? 'ROAD' : plan.source === 'NLM Catalog' ? 'NLM Catalog' : 'Crossref'} listing — OA unverified`;
 
   for (let i = 0; i < rows.length; i += BATCH) {
     const batch = rows.slice(i, i + BATCH);

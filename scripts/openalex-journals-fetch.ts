@@ -13,7 +13,7 @@ const envFile = (() => { try { return readFileSync(new URL('../.env', import.met
 const key = process.env.OPENALEX_API_KEY || (/^OPENALEX_API_KEY=(.*)$/m.exec(envFile) || [])[1]?.trim();
 if (!key) { console.log('OpenAlex key usable: no (OPENALEX_API_KEY is not set)'); process.exit(0); }
 const SELECT = 'id,display_name,type,issn_l,issn,host_organization_name,country_code,homepage_url,is_oa,is_in_doaj,works_count,topics';
-const FILTER = 'type:journal,is_oa:true,has_issn:true';
+const FILTER = arg('filter', 'type:journal,is_oa:true,has_issn:true')!;   // --filter 'type:journal,is_oa:false,has_issn:true' reads the journals that are not open access
 const url = (cursor: string, per = 200) => `https://api.openalex.org/sources?filter=${encodeURIComponent(FILTER)}&select=${SELECT}&per-page=${per}&cursor=${encodeURIComponent(cursor)}&mailto=info@celnet.in&api_key=${encodeURIComponent(key)}`;
 const hide = (s: string) => s.split(key).join('<hidden>');
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
