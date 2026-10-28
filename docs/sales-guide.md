@@ -287,7 +287,7 @@ Members who asked, from inside the app, for help getting a **Premium subscriptio
 
 Sales staff cannot approve or decline an enquiry. Approving it does not change the lead's stage, so set the lead to Subscriber yourself.
 
-Every Pro application also sends an email alert (subject "⭐ Pro membership application — <name>") to all Sales Executives, Sales Managers, Subscription Managers and Super Admins, and the matching lead appears (or reappears) in the assigned executive's bell.
+Every Pro application also sends an email alert (subject "⭐ Pro membership application — <name>") to the admin inbox (ADMIN_EMAIL, info@celnet.in) only, and the matching lead appears (or reappears) in the assigned executive's bell.
 
 ---
 
@@ -457,7 +457,7 @@ When this happens, the quotation shows **Paid** in your My Quotations and its va
 **By email, to sales staff**
 
 - Your login details, when your account is created
-- Every **Pro membership application** (sent to the whole sales team and the admins)
+- Every **Pro membership application** (sent to the admin inbox only)
 
 Not emailed to sales staff: lead assignments, demo requests and contact form messages (these go to the company admin inbox), and copies of quotations (the copy goes to the admin inbox).
 

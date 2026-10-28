@@ -78,7 +78,15 @@ try {
 
   const headline = async () => (await get('/api/public/content-type-counts')).data?.Journals as number;
   const deptCount = async () => ((await get(`/api/domain-data?domain=${encodeURIComponent(DEPT)}`)).data?.content_summary || []).find((c: any) => c.type === 'Journals')?.count ?? 0;
-  const deptList = async () => ((await get(`/api/library/department/${DEPT.toLowerCase()}`)).data?.journals || []) as any[];
+  // The list is paged (src/lib/journalPaging.ts): walk every page, so these checks still see the whole department.
+  const deptList = async () => {
+    const all: any[] = [];
+    for (let page = 1; page < 200; page++) {
+      const d = (await get(`/api/library/department/${DEPT.toLowerCase()}?limit=200&page=${page}`)).data;
+      all.push(...(d?.journals || [])); if (!d?.hasMore) break;
+    }
+    return all;
+  };
   const filterList = async () => ((await get(`/api/library/journals?domain=${encodeURIComponent(DEPT)}`)).data || []) as any[];
   const adminFigures = async (q = '') => (await get(`/api/admin/journals?limit=200&q=${encodeURIComponent(q)}`, adminTok)).data;
 

@@ -168,7 +168,7 @@ export function EngineStatus({ state, onChanged }: { state: any; onChanged: () =
       )}
 
       <div className="mt-5">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">Last 24 hours <span className="font-normal normal-case tracking-normal">· {N(day.passes)} runs · ingestion events, not catalogue totals</span></p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">Last 24 hours (rolling) <span className="font-normal normal-case tracking-normal">· {N(day.passes)} runs · ingestion events, not catalogue totals · not the daily cycle</span></p>
         <dl className="mt-2 grid grid-cols-2 gap-x-6 gap-y-2.5 sm:grid-cols-4 lg:grid-cols-6">
           {[
             ['Checked', day.checked, 'Candidates looked at by runs that recorded it. Older article and journal runs did not, so this can be lower than the real figure.'],

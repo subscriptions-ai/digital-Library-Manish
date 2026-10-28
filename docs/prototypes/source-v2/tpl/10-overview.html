@@ -1,0 +1,97 @@
+
+    <!-- ================= OVERVIEW ================= -->
+    <sc-if value="{{isOverview}}" hint-placeholder-val="{{ true }}">
+      <div class="split">
+        <section class="card hero rise" aria-labelledby="hero-h">
+          <span class="eyebrow">Librarian Dashboard</span>
+          <h1 class="h-page" id="hero-h">STM journals</h1>
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px"><span class="sub">Digital Marketing · Librarian</span><span class="tag info">{{planChip}}</span></div>
+          <p class="lead">Your institution can explore <b class="num">{{kItems}}</b> academic resources across <b>{{kDepts}}</b> selected departments.</p>
+          <div class="actions"><button class="btn primary" onClick="{{goLibrary}}"><sc-icon name="book" size="17"></sc-icon>Browse Library</button><button class="btn secondary" onClick="{{goUsers}}"><sc-icon name="users" size="17"></sc-icon>Manage Users</button></div>
+        </section>
+        <section class="card pad rise" style="animation-delay:50ms" aria-labelledby="setup-h">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><h2 class="h-card" id="setup-h">Institution setup</h2><span class="sub num">{{setupCount}}</span></div>
+          <div class="prog" style="margin-top:10px" role="img" aria-label="{{setupCount}}"><i style="{{setupPct}}"></i></div>
+          <ul class="steps">
+            <sc-for list="{{steps}}" as="s" key="{{s.label}}" hint-placeholder-count="4"><li><button class="{{s.cls}}" onClick="{{s.go}}"><span class="dotc"><sc-icon name="check" size="13" stroke="3.4"></sc-icon></span><span>{{s.label}}</span><span class="sr">, {{s.status}}</span><sc-icon class="go" name="chevr" size="16"></sc-icon></button></li></sc-for>
+          </ul>
+        </section>
+      </div>
+
+      <sc-if value="{{bannerWarn}}" hint-placeholder-val="{{ true }}">
+        <section class="banner warn rise" style="animation-delay:80ms">
+          <span class="ic"><sc-icon name="clock" size="17"></sc-icon></span>
+          <span class="txt"><b>{{pendingText}}</b> A short reminder usually brings them in.</span>
+          <button class="btn primary sm" onClick="{{sendReminders}}">Send reminder</button>
+          <button class="btn secondary sm" onClick="{{goUsers}}">View members</button>
+          <button class="iconbtn flat" onClick="{{dismissBanner}}" aria-label="Dismiss this notice"><sc-icon name="x" size="16"></sc-icon></button>
+        </section>
+      </sc-if>
+      <sc-if value="{{bannerSent}}" hint-placeholder-val="{{ false }}">
+        <section class="banner ok rise">
+          <span class="ic"><sc-icon name="check" size="17" stroke="3"></sc-icon></span>
+          <span class="txt"><b>Reminder sent successfully.</b> Members see it the next time they sign in.</span>
+          <button class="iconbtn flat" onClick="{{dismissBanner}}" aria-label="Dismiss this notice"><sc-icon name="x" size="16"></sc-icon></button>
+        </section>
+      </sc-if>
+
+      <section class="grid-kpi four" aria-label="Key figures">
+        <article class="card kpi rise" style="animation-delay:60ms">
+          <span class="eyebrow">Access Plan</span>
+          <sc-if value="{{free}}" hint-placeholder-val="{{ true }}">
+            <b class="h-sec">Free Preview</b>
+            <div class="pips" role="img" aria-label="{{sessionsLine}}"><sc-for list="{{pips}}" as="p" hint-placeholder-count="4"><span class="{{p.cls}}"></span></sc-for></div>
+            <span class="sub foot">{{sessionsLine}}</span>
+          </sc-if>
+          <sc-if value="{{premium}}" hint-placeholder-val="{{ false }}"><b class="h-sec">Premium</b><span class="sub">Unlimited reading sessions</span><span class="sub foot">Active until {{renewal}}</span></sc-if>
+        </article>
+        <article class="card kpi rise" style="animation-delay:100ms">
+          <span class="eyebrow">Departments</span><b class="big">{{kDepts}}</b><span class="sub">Selected departments</span>
+          <button class="link foot" onClick="{{goLibrary}}">View departments <sc-icon name="arrow" size="15"></sc-icon></button>
+        </article>
+        <article class="card kpi rise" style="animation-delay:140ms">
+          <span class="eyebrow">Members</span><b class="big">{{kMembers}}</b><span class="sub">{{membersLine}}</span>
+          <button class="link foot" onClick="{{goUsers}}">Manage users <sc-icon name="arrow" size="15"></sc-icon></button>
+        </article>
+        <article class="card kpi rise" style="animation-delay:180ms">
+          <span class="eyebrow">Accessible Content</span><b class="big">{{kItems}}</b><span class="sub">Resources available</span>
+          <svg class="spark foot" viewBox="0 0 120 30" width="100%" height="28" preserveAspectRatio="none" aria-hidden="true"><path pathLength="1" d="M0 24 C12 22 18 25 28 20 S46 14 58 16 S78 9 90 11 S108 5 120 3" fill="none" stroke="var(--s1)" stroke-width="2.5" stroke-linecap="round"></path></svg>
+        </article>
+      </section>
+
+      <div class="split">
+        <section class="card pad rise" style="animation-delay:120ms" aria-label="Reading activity">
+          <!--@include chart-->
+        </section>
+        <div class="stack">
+          <section class="card pad rise" style="animation-delay:160ms" aria-labelledby="eng-h">
+            <h2 class="h-card" id="eng-h">Reader engagement</h2>
+            <div style="margin-top:12px"><!--@include donut--></div>
+          </section>
+          <section class="card pad rise" style="animation-delay:200ms" aria-labelledby="acc-h">
+            <h2 class="h-card" id="acc-h">Current access</h2>
+            <sc-if value="{{free}}" hint-placeholder-val="{{ true }}">
+              <p style="margin-top:8px;font-size:20px;font-weight:650;letter-spacing:-.01em">Next session in <span class="num">{{clock}}</span></p>
+              <div class="pips" style="margin-top:10px" role="img" aria-label="{{sessionsLine}}"><sc-for list="{{pips}}" as="p" hint-placeholder-count="4"><span class="{{p.cls}}"></span></sc-for></div>
+              <p class="sub" style="margin-top:6px">{{sessionsLine}}</p>
+              <button class="btn secondary sm" style="margin-top:12px" onClick="{{goSubs}}">Explore Premium</button>
+            </sc-if>
+            <sc-if value="{{premium}}" hint-placeholder-val="{{ false }}"><p style="margin-top:8px;font-size:20px;font-weight:650">Unlimited reading</p><p class="sub" style="margin-top:6px">No session limit until {{renewal}}.</p></sc-if>
+          </section>
+        </div>
+      </div>
+
+      <section aria-labelledby="qa-h">
+        <h2 class="h-sec" id="qa-h" style="margin-bottom:12px">Quick actions</h2>
+        <div class="grid-kpi four">
+          <sc-for list="{{quick}}" as="q" key="{{q.t}}" hint-placeholder-count="4"><article class="card lift rise" style="{{q.delay}}"><button class="quick" onClick="{{q.go}}"><span class="ic"><sc-icon name="{{q.ic}}" size="20"></sc-icon></span><span><b>{{q.t}}</b><span class="sub">{{q.d}}</span></span></button></article></sc-for>
+        </div>
+      </section>
+
+      <section class="card rise" style="overflow:hidden" aria-labelledby="new-h">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:16px 18px"><h2 class="h-card" id="new-h">Newest in your departments</h2><span class="tag sample">Sample titles</span></div>
+        <sc-for list="{{newest}}" as="n" key="{{n.key}}" hint-placeholder-count="5">
+          <button class="row rise" style="{{n.delay}}" onClick="{{n.open}}"><span style="flex:1;min-width:0"><b style="display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{n.title}}</b><span class="sub">{{n.dept}} · {{n.added}}</span></span><span class="tag mute">{{n.type}}</span><sc-icon name="chevr" size="16" style="color:var(--faint)"></sc-icon></button>
+        </sc-for>
+      </section>
+    </sc-if>

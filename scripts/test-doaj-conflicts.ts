@@ -142,6 +142,30 @@ const changed = L2.items.find(i => i.doaj.issn === N.distinct)!;
 check('after the held journal changes, the old decision is flagged "look again"', changed.changedSinceDecision === true && changed.decision?.decision === 'distinct' && L2.decisions.lookAgain === 1);
 check('re-deciding on the new evidence clears the flag', (await C.decideConflict(admin, N.distinct, 'distinct', null, changed.fingerprint, { csvText: csv })).changedSinceDecision === false);
 
+section('5. The rule for a later import (a plan only: nothing is written)');
+{
+  await C.decideConflict(admin, N.alias, 'hold', null, undefined, { csvText: csv });   // one row on hold, so both refusals below are exercised
+  const journalsBefore = await db.journal.count();
+  const L5 = await C.listConflicts({ csvText: csv });
+  const plan = C.planDistinctImports(L5.items);
+  const accepted = L5.items.filter(i => i.decision?.decision === 'distinct' && !i.changedSinceDecision);
+  eq('exactly the rows a person accepted as distinct (and still stand) are importable', plan.importable.map(r => r.issn).sort(), accepted.map(i => i.doaj.issn).sort());
+  check('there is at least one importable row in this fixture, so the check above is not empty', plan.importable.length >= 1);
+  check('a "likely distinct" verdict nobody accepted is refused', (() => { const v = L5.items.find(i => i.verdict === 'distinct' && !i.decision); return !v || plan.refused.some(r => r.issn === v.doaj.issn && /decided/i.test(r.reason)); })());
+  check('Keep blocked and Hold for review are refused, each with its own reason', plan.refused.some(r => /blocked/i.test(r.reason)) && plan.refused.some(r => /Held for review/i.test(r.reason)));
+  check('every planned journal is NeedsReview: never Accepted, never MetadataOnly (which is public the moment it exists)', plan.importable.every(r => r.status === 'NeedsReview') && C.DISTINCT_IMPORT_STATUS === 'NeedsReview');
+  const fake = (over: any) => ({ ...L5.items.find(i => i.decision?.decision === 'distinct')!, ...over });
+  eq('a decision that went stale ("look again") is refused', C.planDistinctImports([fake({ changedSinceDecision: true })]).importable.length, 0);
+  eq('a decision whose fingerprint no longer matches is refused', C.planDistinctImports([fake({ fingerprint: 'something else' })]).importable.length, 0);
+  eq('a decision with no named administrator is refused', C.planDistinctImports([fake({ decision: { ...L5.items.find(i => i.decision?.decision === 'distinct')!.decision, by: null } })]).importable.length, 0);
+  const dis = L5.items.find(i => i.decision?.decision === 'distinct')!;
+  eq('an ISSN that is held NOW is refused, whatever was decided earlier', C.planDistinctImports([dis], { heldIdentifiers: new Set([dis.doaj.issn]) }).importable.length, 0);
+  eq('the same journal twice in one plan is imported once', C.planDistinctImports([dis, dis]).importable.length, 1);
+  check('a person\'s "distinct" outranks a "duplicate" verdict, and the plan says so', C.planDistinctImports([fake({ verdict: 'duplicate' })]).importable[0]?.contradictsVerdict === true);
+  check('the title plays no part: two rows with the same title are decided one by one', (() => { const twin = fake({ decision: null, changedSinceDecision: false, doaj: { ...dis.doaj, issn: '9999-9990' } }); const r = C.planDistinctImports([dis, twin]); return r.importable.length === 1 && r.refused.length === 1; })());
+  eq('planning wrote nothing: the journal count is unchanged', await db.journal.count(), journalsBefore);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 await db.$disconnect();
 process.exit(fail ? 1 : 0);

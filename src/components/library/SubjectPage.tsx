@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from '../../lib/head';
 import { ChevronRight } from 'lucide-react';
 import { Badge, Skeleton, buttonClass } from '../ui';
-import { JournalHoldings, Windowed } from './JournalHoldings';
+import { JournalHoldings, PagedJournals, type JournalPageData } from './JournalHoldings';
 
 /**
  * A subject, and the journals classed under it.
@@ -25,9 +25,8 @@ type Journal = {
   firstYear?: number | null; lastYear?: number | null;
 };
 
-type Subject = {
+type Subject = JournalPageData<Journal> & {
   subject: string; slug: string;
-  journals: Journal[];
   articles: number;
   firstYear?: number | null; lastYear?: number | null;
   departments: { name: string; journals: number }[];
@@ -93,7 +92,7 @@ export function SubjectPage({
     <div className="min-h-full bg-ground">
       <Helmet>
         <title>{s.subject} | STM Digital Library</title>
-        <meta name="description" content={`${s.journals.length} journals classed under ${s.subject}.`} />
+        <meta name="description" content={`${s.journalTotal.toLocaleString()} journals classed under ${s.subject}.`} />
       </Helmet>
 
       <header className="border-b border-rule bg-surface">
@@ -114,7 +113,7 @@ export function SubjectPage({
           <dl className="mt-6 flex flex-wrap gap-x-10 gap-y-4">
             <div>
               <dt className={LABEL}>Journal Titles</dt>
-              <dd className="tnum mt-0.5 font-mono text-[22px] text-ink">{s.journals.length.toLocaleString()}</dd>
+              <dd className="tnum mt-0.5 font-mono text-[22px] text-ink">{s.journalTotal.toLocaleString()}</dd>
             </div>
             <div>
               <dt className={LABEL}>Research Articles</dt>
@@ -148,8 +147,9 @@ export function SubjectPage({
 
       <section className="mx-auto max-w-5xl px-5 py-8">
         <h2 className={LABEL}>Journals</h2>
-        <div className="mt-3 divide-y divide-rule overflow-hidden card">
-          <Windowed items={s.journals}>{(j, i) => (
+        <PagedJournals key={s.slug} url={`/api/library/subject/${encodeURIComponent(slug || s.slug)}`} first={s} headers={auth()}
+            empty={<div className="mt-3 card p-10 text-center text-sm text-muted">No journals are listed here yet.</div>}>
+            {(j, i) => (
             <div key={j.id} className="flex gap-4 px-4 py-4 sm:px-5">
               <span className="tnum hidden w-7 shrink-0 pt-1 font-mono text-[11px] text-faint sm:block">{i + 1}</span>
 
@@ -178,8 +178,8 @@ export function SubjectPage({
 
               <JournalHoldings j={j} part="desktop" />
             </div>
-          )}</Windowed>
-        </div>
+            )}
+        </PagedJournals>
       </section>
     </div>
   );

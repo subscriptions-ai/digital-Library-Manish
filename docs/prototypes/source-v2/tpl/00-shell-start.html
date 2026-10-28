@@ -1,0 +1,71 @@
+<div class="app {{themeCls}}" style="--mw:{{mw}}px">
+<a class="skip" href="#main">Skip to content</a>
+
+<!-- ============ SIDEBAR ============ -->
+<aside class="{{sideCls}}" aria-label="Sidebar" aria-hidden="{{sideHidden}}" onKeyDown="{{sideKey}}">
+  <div class="side-head">
+    <span class="logo" aria-hidden="true">ST</span>
+    <span class="name">STM journals</span>
+    <button class="iconbtn flat" onClick="{{toggleSide}}" aria-label="{{sideToggleLabel}}"><sc-icon name="{{sideToggleIcon}}" size="18"></sc-icon></button>
+  </div>
+  <nav class="side-scroll" aria-label="Main navigation">
+    <div class="nav-label">WORKSPACE</div>
+    <sc-for list="{{navMain}}" as="n" key="{{n.k}}" hint-placeholder-count="5">
+      <button class="{{n.cls}}" onClick="{{n.go}}" aria-current="{{n.cur}}" aria-label="{{n.label}}" onMouseEnter="{{n.enter}}" onMouseLeave="{{n.leave}}" onFocus="{{n.enter}}" onBlur="{{n.leave}}"><sc-icon name="{{n.icon}}" size="20"></sc-icon><span class="lbl">{{n.label}}</span><sc-if value="{{n.hasBadge}}" hint-placeholder-val="{{ false }}"><span class="nav-badge" aria-label="{{n.badge}} members waiting">{{n.badge}}</span></sc-if></button>
+    </sc-for>
+    <div class="nav-sep"></div>
+    <div class="nav-label">ACCOUNT</div>
+    <sc-for list="{{navAcct}}" as="n" key="{{n.k}}" hint-placeholder-count="2">
+      <button class="{{n.cls}}" onClick="{{n.go}}" aria-current="{{n.cur}}" aria-label="{{n.label}}" onMouseEnter="{{n.enter}}" onMouseLeave="{{n.leave}}" onFocus="{{n.enter}}" onBlur="{{n.leave}}"><sc-icon name="{{n.icon}}" size="20"></sc-icon><span class="lbl">{{n.label}}</span></button>
+    </sc-for>
+  </nav>
+  <div class="side-foot">
+    <div class="access-card">
+      <span class="eyebrow">Institutional Access</span>
+      <sc-if value="{{free}}" hint-placeholder-val="{{ true }}"><b>Free Preview</b><p>Premium removes the session clock for you and everyone you add.</p><button onClick="{{goSubs}}">Explore Premium</button></sc-if>
+      <sc-if value="{{premium}}" hint-placeholder-val="{{ false }}"><b>Premium is active</b><p>Unlimited reading until {{renewal}}.</p><button onClick="{{goSubs}}">View subscription</button></sc-if>
+    </div>
+    <button class="nav signout" onClick="{{signOut}}" aria-label="Sign out" onMouseEnter="{{signEnter}}" onMouseLeave="{{signLeave}}" onFocus="{{signEnter}}" onBlur="{{signLeave}}"><sc-icon name="logout" size="20"></sc-icon><span class="lbl">Sign Out</span></button>
+  </div>
+</aside>
+<sc-if value="{{showSideScrim}}" hint-placeholder-val="{{ false }}"><div class="side-scrim" onClick="{{closeNav}}"></div></sc-if>
+<sc-if value="{{tip}}" hint-placeholder-val="{{ false }}"><div class="tooltip" role="tooltip" style="{{tipStyle}}">{{tipText}}</div></sc-if>
+
+<!-- ============ MAIN ============ -->
+<div class="main">
+  <header class="top">
+    <div class="left">
+      <button class="iconbtn burger" onClick="{{openNav}}" aria-label="Open the menu"><sc-icon name="menu" size="20"></sc-icon></button>
+      <div class="title">{{pageTitle}}</div>
+    </div>
+    <div class="mid">
+      <button class="search" onClick="{{openPalette}}" aria-label="Search library, members and departments" aria-haspopup="dialog"><sc-icon name="search" size="17"></sc-icon><span class="t">Search library, members, departments…</span><span class="kbd">Ctrl K</span></button>
+    </div>
+    <div class="right">
+      <sc-if value="{{free}}" hint-placeholder-val="{{ true }}"><span class="pill warn hide-s"><sc-icon name="clock" size="14"></sc-icon>Free Preview</span></sc-if>
+      <sc-if value="{{premium}}" hint-placeholder-val="{{ false }}"><span class="pill ok hide-s"><sc-icon name="check" size="14" stroke="3"></sc-icon>Premium</span></sc-if>
+      <div style="position:relative">
+        <button class="iconbtn" onClick="{{toggleNotif}}" aria-label="Notifications" aria-haspopup="true" aria-expanded="{{notif}}"><sc-icon name="bell" size="18"></sc-icon><sc-if value="{{unread}}" hint-placeholder-val="{{ true }}"><span style="position:absolute;top:8px;right:9px;width:9px;height:9px;border-radius:50%;background:var(--red);border:2px solid var(--surface)"></span></sc-if></button>
+        <sc-if value="{{notif}}" hint-placeholder-val="{{ false }}">
+          <div class="pop" role="region" aria-label="Notifications">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px"><b>Notifications</b><button class="link" style="font-size:12.5px;min-height:32px" onClick="{{markRead}}">Mark all read</button></div>
+            <sc-for list="{{notifs}}" as="n" key="{{n.id}}" hint-placeholder-count="3"><div class="menu-item" style="align-items:flex-start;padding-top:10px;padding-bottom:10px"><span style="width:8px;height:8px;border-radius:50%;background:var(--blue);margin-top:7px;flex:none"></span><span><span>{{n.title}}</span><span class="sub" style="display:block;font-size:12px">{{n.when}}</span></span></div></sc-for>
+          </div>
+        </sc-if>
+      </div>
+      <button class="iconbtn" onClick="{{toggleTheme}}" aria-label="{{themeLabel}}"><sc-icon name="{{themeIcon}}" size="18"></sc-icon></button>
+      <span class="avatar hide-s" role="img" aria-label="Signed in as the librarian">DI</span>
+    </div>
+  </header>
+  <sc-if value="{{popsOpen}}" hint-placeholder-val="{{ false }}"><div class="pop-scrim" onClick="{{closePops}}"></div></sc-if>
+
+  <main id="main" tabindex="-1" style="outline:none">
+  <div class="page enter" key="{{epochKey}}">
+
+    <sc-if value="{{isLoading}}" hint-placeholder-val="{{ false }}">
+      <div class="stack" aria-busy="true" aria-label="Loading">
+        <div class="skel" style="height:170px"></div>
+        <div class="grid-kpi"><div class="skel" style="height:148px"></div><div class="skel" style="height:148px"></div><div class="skel" style="height:148px"></div><div class="skel" style="height:148px"></div></div>
+        <div class="skel" style="height:300px"></div>
+      </div>
+    </sc-if>

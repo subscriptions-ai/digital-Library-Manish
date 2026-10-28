@@ -39,6 +39,7 @@ import { installSeoPages } from "./src/server/seoPages.js";
 import { aiAssistantSwitchState, aiAssistantSwitchHistory, setAiAssistantEnabled } from "./src/server/aiAssistantSwitch.js";
 import { s3Configured, isProduction, deleteObject, keyFromUrl } from "./src/server/storage/s3Storage.js";
 import { removeFromInstitution, cancelDeletion, reactivateRemovedMember, purgeDueAccounts, RemovalError, isRemovedStatus, maskEmail, GRACE_HOURS, PENDING_DELETION, DELETED } from "./src/server/accountRemoval.js";
+import { registrationAnalyticsRouter } from "./src/server/registrationAnalytics.js";
 import { loadEntitlement, loadInstitutionDepartments, entitlementAllows, scopeOf, narrowToEntitlement, subscriptionDepartments, departmentSourceOf, isInstitutionMember, type Entitlement } from "./src/server/entitlements.js";
 import { mediaStorageRoot, mediaDir as mediaDirPath, mediaDriver, mediaStorageStatus, ensureMediaDirs, assertUploadsPossible, uploadMedia, MediaStorageError } from "./src/server/storage/mediaStorage.js";
 import { aiConfig } from "./src/server/aiAssistantConfig.js";
@@ -47,6 +48,7 @@ import { contentTypeCounts } from "./src/lib/publicCounts.js";
 import { abstractPreviewFor, publicArticle, publicBook, publicContent } from "./src/lib/abstractPreview.js";
 import { buildQuotationEmailHtml } from "./src/lib/quotation/quotationEmail.js";
 import { publicJournalCount, publicJournalStatusSql, publicJournalStatusWhere, PUBLIC_JOURNAL_STATUSES } from "./src/lib/publicJournals.js";
+import { parseJournalPaging, queryJournalPage, publicScope, subjectSlugSql } from "./src/lib/journalPaging.js";
 import { COMPANY_DETAILS, currentIssuer } from "./src/config.js";
 import { canonicalOrSelf, canonicalOrSelfList, canonicalDepartmentName, resolveCanonicalDepartment, entitlementCovers, foldCounts, departmentFromSlug, spellingsOfAll } from "./src/lib/departmentRegistry.js";
 import { createDepartmentSpellings } from "./src/server/departmentSpellings.js";
@@ -100,7 +102,8 @@ import { sourceCooldown } from "./src/lib/ingestion/sourceHealth.js";
 import { departmentMetrics, departmentTable, departmentExists } from "./src/lib/ingestion/departmentMetrics.js";
 import { resolveRange } from "./src/lib/ingestion/runFilter.js";
 import { historicalStatus as openAlexJournalsStatus, setPaused as setOpenAlexJournalsPaused } from "./src/lib/ingestion/openAlexJournals.js";
-import { dailySummary, dailyContent, resolveReportDate, previousReportDates, isContentType, MAX_PAGE_SIZE as DAILY_MAX_PAGE } from "./src/lib/ingestion/dailySummary.js";
+import { dailySummary, dailyContent, dailyPublishedContent, resolveReportDate, previousReportDates, isContentType, MAX_PAGE_SIZE as DAILY_MAX_PAGE } from "./src/lib/ingestion/dailySummary.js";
+import { recordPublications } from "./src/lib/ingestion/publicationEvents.js";
 import sanitizeHtml from "sanitize-html";
 import { checkCoverImage, failed, cleanAlt, isUsableCoverUrl, isExternalMediaUrl, publishProblems, COVER_MAX_BYTES, COVER_UNAVAILABLE_MESSAGE, type PublishProblems } from "./src/lib/blogCover.js";
 import {
@@ -1663,16 +1666,11 @@ async function startServer() {
         },
       }).catch((e: any) => console.error('pro application: could not file the lead', e?.message));
 
-      // Told to whoever can grant it and whoever will call about it.
+      // One alert, to the admin inbox only. The sales team is told through the
+      // lead in their bell, not by mail, so nobody's address is shared with the rest.
       (async () => {
-        const team = await prisma.user.findMany({
-          where: { role: { in: ['SuperAdmin', 'SubscriptionManager', 'SalesManager', 'SalesExecutive'] } },
-          select: { email: true },
-        });
-        const to = [...new Set([process.env.ADMIN_EMAIL || COMPANY_DETAILS.email, ...team.map(t => t.email)])]
-          .filter(Boolean).join(', ');
         await sendMail({
-          to,
+          to: ADMIN_INBOX,
           subject: `⭐ Pro membership application — ${u.displayName || u.email}`,
           html: buildEmail(
             `<tr><td style="padding:28px 40px 24px;">` +
@@ -8285,17 +8283,22 @@ async function startServer() {
       const { action, note } = req.body;
       if (action === 'approve') {
         const data: any = { status: 'Published', rejectionNote: null };
+        let heldStatus: string | null = null;
         if (model === 'book') {
           // A book the harvest set aside has no department. Publishing one without a department would count it in
           // the library but leave it on no shelf, so approval names the department — only ever one that exists.
-          const held = await (prisma as any).book.findUnique({ where: { id }, select: { domain: true, ownershipSource: true } });
+          const held = await (prisma as any).book.findUnique({ where: { id }, select: { domain: true, ownershipSource: true, status: true } });
           if (!held) return res.status(404).json({ error: "No such book" });
+          heldStatus = held.status;
           const department = typeof req.body.department === 'string' ? (canonicalDepartmentName(req.body.department) ?? req.body.department) : null;
           if (department && !ALL_DEPARTMENTS.includes(department)) return res.status(400).json({ error: "Unknown department" });
           if (department) data.domain = department;
           else if (held.ownershipSource === 'Ingested' && !held.domain) return res.status(400).json({ error: "Choose a department to approve this book" });
         }
+        // The moment it becomes public is recorded once, and only if it was not public already (the Daily Summary's "Published" is counted from this).
+        const wasPublic = model === 'book' ? (heldStatus === 'Published') : ((await (prisma as any).article.findUnique({ where: { id }, select: { status: true } }))?.status === 'Published');
         const updated = await (prisma as any)[model].update({ where: { id }, data });
+        if (!wasPublic) await recordPublications(req.user, [{ type: model, id, department: updated.domain ?? null, via: 'approve' }]);
         return res.json(updated);
       } else if (action === 'reject') {
         const updated = await (prisma as any)[model].update({ where: { id }, data: { status: 'Rejected', rejectionNote: note || 'Rejected by reviewer' } });
@@ -9273,7 +9276,14 @@ async function startServer() {
       const data = action === 'approve'
         ? { status: 'Published', rejectionNote: null }
         : { status: 'Rejected', rejectionNote: note || 'Rejected by reviewer' };
+      // Only a record that was not public yet gets a publication event; approving one that already is writes nothing.
+      const before: any[] = action === 'approve' ? await (prisma as any)[model].findMany({ where: { id: { in: ids } }, select: { id: true, status: true } }) : [];
       const r = await (prisma as any)[model].updateMany({ where: { id: { in: ids } }, data });
+      if (action === 'approve') {
+        const moved = before.filter(b => b.status !== 'Published');
+        const dom: any[] = moved.length ? await (prisma as any)[model].findMany({ where: { id: { in: moved.map(m => m.id) } }, select: { id: true, domain: true } }) : [];
+        await recordPublications(req.user, moved.map(m => ({ type: model, id: m.id, department: dom.find(d => d.id === m.id)?.domain ?? null, via: 'bulk-approve' as const })));
+      }
       res.json({ ok: true, count: r.count });
     } catch (e: any) { res.status(500).json({ error: "Bulk review failed" }); }
   });
@@ -9642,8 +9652,8 @@ async function startServer() {
     } catch (e: any) { console.error('GET ingest/daily-summary error:', e?.message); res.status(500).json({ error: "Failed to load the daily summary" }); }
   });
 
-  // GET /api/admin/ingest/daily-summary/content?reportDate=…&department=…&type=journal|article|book|all&page=1&pageSize=50
-  // The exact records one number in the summary is made of. `department` may be "(unassigned)". Read-only.
+  // GET /api/admin/ingest/daily-summary/content?reportDate=…&department=…&type=journal|article|book|all&basis=added|published&page=1&pageSize=50
+  // The exact records one number in the summary is made of: `basis=added` (default) the records CREATED in the cycle, `basis=published` the records that BECAME PUBLIC in it. `department` may be "(unassigned)". Read-only.
   app.get("/api/admin/ingest/daily-summary/content", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
     try {
       const d = resolveReportDate(req.query.reportDate);
@@ -9653,7 +9663,9 @@ async function startServer() {
       const department = typeof req.query.department === 'string' && req.query.department ? req.query.department.trim() : null;
       if (department && department.length > 120) return res.status(400).json({ error: 'Unknown department' });
       const num = (v: any, fallback: number) => { const n = Number(v); return Number.isFinite(n) && n >= 1 ? Math.floor(n) : fallback; };
-      res.json(await dailyContent({ reportDate: d.reportDate, department, type, page: num(req.query.page, 1), pageSize: Math.min(DAILY_MAX_PAGE, num(req.query.pageSize, 50)) }));
+      const basis = req.query.basis === 'published' ? 'published' : 'added';
+      const args = { reportDate: d.reportDate, department, type, page: num(req.query.page, 1), pageSize: Math.min(DAILY_MAX_PAGE, num(req.query.pageSize, 50)) };
+      res.json(basis === 'published' ? await dailyPublishedContent(args) : await dailyContent(args));
     } catch (e: any) { console.error('GET ingest/daily-summary/content error:', e?.message); res.status(500).json({ error: "Failed to load the records" }); }
   });
 
@@ -9729,7 +9741,7 @@ async function startServer() {
     try {
       const take = Math.min(parseInt(req.query.limit as string) || 20, 100);
       const action = typeof req.query.action === 'string' && /^[A-Z_]{3,60}$/.test(req.query.action) ? req.query.action : null;
-      const where = action ? { action } : req.query.includeRoutine === '1' ? {} : { action: { notIn: ['NCBI_ARCHIVE_DOWNLOADED'] } };
+      const where = action ? { action } : req.query.includeRoutine === '1' ? {} : { action: { notIn: ['NCBI_ARCHIVE_DOWNLOADED', 'CONTENT_PUBLISHED'] } };
       const events = await (prisma as any).ingestionAudit.findMany({ where, orderBy: { at: 'desc' }, take });
       const day = new Date(); day.setUTCHours(0, 0, 0, 0);
       const [n]: any[] = await (prisma as any).$queryRawUnsafe(
@@ -10731,22 +10743,12 @@ async function startServer() {
         return res.status(403).json({ error: "Not in your subscription" });
       }
 
-      // Journals derived from the articles they hold, not from Journal.articleCount.
-      // The counter is written by two jobs and is zero wherever neither has run,
-      // which showed "0 journals" beside 2,506 articles on the same page.
-      // A journal with no published article is still listed (left join), with a count of 0, after those that hold some.
-      const shelfSql = (clause: string) => `
-        select j.id, j.title, j.issn, j.domain, j."publisherName", j.licence, j."licenceIsNC",
-               count(a.id)::int as "articleCount",
-               count(distinct nullif(a."volume",''))::int as "volumeCount",
-               count(distinct nullif(a."volume",'') || '|' || coalesce(nullif(a."issue",''),''))::int as "issueCount",
-               min(a."year")::int as "firstYear",
-               max(a."year")::int as "lastYear"
-        from "Journal" j
-        left join "Article" a on a."journalId" = j.id and a.status = 'Published'
-        where ${publicJournalStatusSql('j')} and ${clause}
-        group by j.id
-        order by "articleCount" desc, j.title asc`;
+      // One PAGE of journals, derived from the articles they hold (not from Journal.articleCount: the counter is written by two jobs and
+      // is zero wherever neither has run, which once showed "0 journals" beside 2,506 articles). A journal with no published article is
+      // still listed, after those that hold some. The largest department holds thousands of titles, so the list is paged and searched
+      // here (src/lib/journalPaging.ts); every figure that describes the WHOLE department is its own query, not a sum over the page.
+      const paging = parseJournalPaging(req.query);
+      const where = publicScope('j.domain = any($1)');
 
       // How many people wrote what this department holds. The names are stored
       // as one printed string per item, so they are split on the comma and
@@ -10760,29 +10762,37 @@ async function startServer() {
         ) s, unnest(string_to_array(s.names, ',')) x
         where s.names is not null and btrim(x) <> ''`;
 
-      const [journals, articles, books, publishers, authorRows] = await Promise.all([
-        (prisma as any).$queryRawUnsafe(shelfSql('j.domain = any($1)'), spelled),
+      const [page, articles, books, publisherRows, publisherCount, years, authorRows] = await Promise.all([
+        queryJournalPage(prisma, where, [spelled], paging),
         (prisma as any).article.count({ where: { domain: { in: spelled }, status: 'Published' } }),
         (prisma as any).book.count({ where: { domain: { in: spelled }, status: 'Published' } }),
+        // The publishers shown beside the shelf are the biggest fifty; `publisherTotal` is how many there are.
         (prisma as any).$queryRawUnsafe(
-          `select j."publisherName" as name, count(distinct j.id)::int as journals
+          `select j."publisherName" as name, count(*)::int as journals
            from "Journal" j
-           where ${publicJournalStatusSql('j')} and j.domain = any($1) and j."publisherName" is not null
-           group by 1 order by 2 desc`, spelled),
+           where ${where} and j."publisherName" is not null
+           group by 1 order by 2 desc, 1 asc limit 50`, spelled),
+        (prisma as any).$queryRawUnsafe(
+          `select count(distinct j."publisherName")::int as n from "Journal" j where ${where} and j."publisherName" is not null`, spelled),
+        // The span of years held across the whole department, not just this page.
+        (prisma as any).$queryRawUnsafe(
+          `select min(a."year")::int as first, max(a."year")::int as last
+           from "Article" a join "Journal" j on j.id = a."journalId"
+           where a.status = 'Published' and ${where}`, spelled),
         (prisma as any).$queryRawUnsafe(authorsSql, spelled),
       ]);
-
-      const years = journals.flatMap((j: any) => [j.firstYear, j.lastYear]).filter(Boolean) as number[];
 
       res.json({
         domain,
         slug: wanted,
-        journals,
+        journals: page.rows,
+        ...page.meta,
         articles,
         books,
-        firstYear: years.length ? Math.min(...years) : null,
-        lastYear: years.length ? Math.max(...years) : null,
-        publishers: publishers.map((p: any) => ({ name: p.name, journals: Number(p.journals) })),
+        firstYear: years?.[0]?.first ?? null,
+        lastYear: years?.[0]?.last ?? null,
+        publishers: publisherRows.map((p: any) => ({ name: p.name, journals: Number(p.journals) })),
+        publisherTotal: Number(publisherCount?.[0]?.n || 0),
         authors: Number(authorRows?.[0]?.authors || 0),
       });
     } catch (e: any) {
@@ -10810,36 +10820,33 @@ async function startServer() {
 
       const scope = await libraryScopeDomains(req);
 
-      // Derived from the articles, for the same reason as the department page.
-      const journals = await (prisma as any).$queryRawUnsafe(
-        `select j.id, j.title, j.issn, j.domain, j.licence, j."licenceIsNC",
-                count(a.id)::int as "articleCount",
-                count(distinct nullif(a."volume",''))::int as "volumeCount",
-                count(distinct nullif(a."volume",'') || '|' || coalesce(nullif(a."issue",''),''))::int as "issueCount",
-                min(a."year")::int as "firstYear", max(a."year")::int as "lastYear"
-         from "Journal" j
-         left join "Article" a on a."journalId" = j.id and a.status = 'Published'
-         where ${publicJournalStatusSql('j')} and j."publisherName" = $1 ${scope !== null ? 'and j.domain = any($2)' : ''}
-         group by j.id
-         order by "articleCount" desc, j.title asc`,
-        ...(scope !== null ? [publisherName, scope] : [publisherName]));
+      // One page of this publisher's journals, derived from the articles (see the department page); the totals describe all of them.
+      const paging = parseJournalPaging(req.query);
+      const params: any[] = scope !== null ? [publisherName, scope] : [publisherName];
+      const where = publicScope(`j."publisherName" = $1${scope !== null ? ' and j.domain = any($2)' : ''}`);
+
+      const [page, totals, byDept] = await Promise.all([
+        queryJournalPage(prisma, where, params, paging),
+        (prisma as any).$queryRawUnsafe(
+          `select count(a.id)::int as articles, min(a."year")::int as first, max(a."year")::int as last
+           from "Journal" j left join "Article" a on a."journalId" = j.id and a.status = 'Published'
+           where ${where}`, ...params),
+        (prisma as any).$queryRawUnsafe(
+          `select j.domain as name, count(*)::int as journals from "Journal" j
+           where ${where} and j.domain is not null group by 1 order by 2 desc, 1 asc`, ...params),
+      ]);
 
       // A publisher the reader's subscription reaches none of is not an error —
       // it is simply empty for them, and the page says so.
-      const years = journals.flatMap((j: any) => [j.firstYear, j.lastYear]).filter(Boolean) as number[];
-      const byDomain = new Map<string, number>();
-      for (const j of journals) if (j.domain) byDomain.set(j.domain, (byDomain.get(j.domain) || 0) + 1);
-
       res.json({
         publisherName,
         slug: wanted,
-        journals,
-        articles: journals.reduce((n: number, j: any) => n + (j.articleCount || 0), 0),
-        firstYear: years.length ? Math.min(...years) : null,
-        lastYear: years.length ? Math.max(...years) : null,
-        departments: [...byDomain.entries()]
-          .map(([name, journals]) => ({ name, journals }))
-          .sort((a, b) => b.journals - a.journals),
+        journals: page.rows,
+        ...page.meta,
+        articles: Number(totals?.[0]?.articles || 0),
+        firstYear: totals?.[0]?.first ?? null,
+        lastYear: totals?.[0]?.last ?? null,
+        departments: byDept.map((d: any) => ({ name: d.name, journals: Number(d.journals) })),
       });
     } catch (e: any) {
       console.error('GET library/publisher error:', e?.message);
@@ -10886,57 +10893,43 @@ async function startServer() {
     try {
       const wanted = String(req.params.slug || '').toLowerCase();
       const scope = await libraryScopeDomains(req);
-      // Not gated on articleCount, for the same reason the department and
-      // publisher pages are not: a derived counter must never be what decides
-      // whether a page exists. The subject *list* still only offers subjects
-      // with holdings; a direct URL simply never dead-ends.
-      const where: any = {};
-      if (scope !== null) where.domain = { in: scope };
-
-      const all = await (prisma as any).$queryRawUnsafe(
-        `select j.id, j.title, j.issn, j.domain, j."publisherName", j.subjects, j.status,
-                j.licence, j."licenceIsNC",
-                count(a.id)::int as "articleCount",
-                count(distinct nullif(a."volume",''))::int as "volumeCount",
-                count(distinct nullif(a."volume",'') || '|' || coalesce(nullif(a."issue",''),''))::int as "issueCount",
-                min(a."year")::int as "firstYear", max(a."year")::int as "lastYear"
-         from "Journal" j
-         left join "Article" a on a."journalId" = j.id and a.status = 'Published'
-         ${scope !== null ? 'where j.domain = any($1)' : ''}
-         group by j.id`,
-        ...(scope !== null ? [scope] : []));
-
-      // The subject is stored as a name inside a JSON array, so it is matched on
-      // its slug here rather than in the query.
-      let subject: string | null = null;
-      const journals = all.filter((j: any) => {
-        const subs: string[] = Array.isArray(j.subjects) ? j.subjects : [];
-        const hit = subs.find(sname => departmentSlug(sname) === wanted);
-        if (hit && !subject) subject = hit;
-        return !!hit;
-      });
+      // Not gated on articleCount, for the same reason the department and publisher pages are not: a derived counter must never be
+      // what decides whether a page exists. The subject *list* still only offers subjects with holdings; a direct URL simply never
+      // dead-ends. The subject is stored as a name inside a JSON array, so it is matched on its slug in SQL (subjectSlugSql), and only
+      // one page of journals is read. The page exists for any subject any journal in scope carries, whatever that journal's status; it
+      // LISTS only journals the catalogue offers (src/lib/publicJournals.ts), a journal with no published article included.
+      const paging = parseJournalPaging(req.query);
+      const scopeParams: any[] = scope !== null ? [scope] : [];
+      const found: any[] = await (prisma as any).$queryRawUnsafe(
+        `select s.v as name from "Journal" j,
+                jsonb_array_elements_text(case when jsonb_typeof(j.subjects) = 'array' then j.subjects else '[]'::jsonb end) as s(v)
+          where trim(both '-' from regexp_replace(lower(s.v), '[^a-z0-9]+', '-', 'g')) = $1 ${scope !== null ? 'and j.domain = any($2)' : ''}
+          order by s.v limit 1`, wanted, ...scopeParams);
+      const subject: string | null = found?.[0]?.name ?? null;
       if (!subject) return res.status(404).json({ error: "Subject not found" });
-      // The page exists for any subject we hold, but it lists only journals the catalogue offers (see src/lib/publicJournals.ts):
-      // a candidate waiting for review is not an entry a visitor can use. A journal with no published article is, and sorts last.
-      for (let i = journals.length - 1; i >= 0; i--) {
-        if (!(PUBLIC_JOURNAL_STATUSES as readonly string[]).includes(journals[i].status)) journals.splice(i, 1);
-      }
 
-      journals.sort((a: any, b: any) => (b.articleCount || 0) - (a.articleCount || 0) || String(a.title).localeCompare(String(b.title)));
-      const years = journals.flatMap((j: any) => [j.firstYear, j.lastYear]).filter(Boolean) as number[];
-      const byDomain = new Map<string, number>();
-      for (const j of journals) if (j.domain) byDomain.set(j.domain, (byDomain.get(j.domain) || 0) + 1);
+      const params: any[] = [wanted, ...scopeParams];
+      const where = publicScope(`${subjectSlugSql(1)}${scope !== null ? ' and j.domain = any($2)' : ''}`);
+      const [page, totals, byDept] = await Promise.all([
+        queryJournalPage(prisma, where, params, paging),
+        (prisma as any).$queryRawUnsafe(
+          `select count(a.id)::int as articles, min(a."year")::int as first, max(a."year")::int as last
+           from "Journal" j left join "Article" a on a."journalId" = j.id and a.status = 'Published'
+           where ${where}`, ...params),
+        (prisma as any).$queryRawUnsafe(
+          `select j.domain as name, count(*)::int as journals from "Journal" j
+           where ${where} and j.domain is not null group by 1 order by 2 desc, 1 asc`, ...params),
+      ]);
 
       res.json({
         subject,
         slug: wanted,
-        journals,
-        articles: journals.reduce((n: number, j: any) => n + (j.articleCount || 0), 0),
-        firstYear: years.length ? Math.min(...years) : null,
-        lastYear: years.length ? Math.max(...years) : null,
-        departments: [...byDomain.entries()]
-          .map(([name, journals]) => ({ name, journals }))
-          .sort((a, b) => b.journals - a.journals),
+        journals: page.rows,
+        ...page.meta,
+        articles: Number(totals?.[0]?.articles || 0),
+        firstYear: totals?.[0]?.first ?? null,
+        lastYear: totals?.[0]?.last ?? null,
+        departments: byDept.map((d: any) => ({ name: d.name, journals: Number(d.journals) })),
       });
     } catch (e: any) {
       console.error('GET library/subject error:', e?.message);
@@ -12430,9 +12423,12 @@ async function startServer() {
     }
   });
 
-  app.post("/api/admin/subscription-requests", async (req: any, res) => {
+  // Internal: nothing in the product posts here (the public form is /api/domain-request, the member's own is the Pro application), and the
+  // sibling routes on this path are admin-only. It was open to anyone, so a stranger could file a request in any member's name.
+  app.post("/api/admin/subscription-requests", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
     try {
       const { userName, email, planType, durationMonths, planDescription, paymentRef, notes, userId } = req.body;
+      if (!userName || !email) return res.status(400).json({ error: "Name and email are required" });
       const request = await (prisma as any).subscriptionRequest.create({
         data: { userName, email, planType, durationMonths: parseInt(durationMonths) || 1, planDescription, paymentRef, notes, userId }
       });
@@ -16311,6 +16307,9 @@ async function startServer() {
 
   // 2. SALES EXECUTIVE ROUTES
 
+  // Registration analytics: read-only, GET only, its own permission (not requireAdminOrManager). Individual rows are the caller's assigned members only.
+  app.use("/api/sales/registrations", registrationAnalyticsRouter({ db: prisma, authenticateJWT, staffRoles: STAFF_ROLES }));
+
   /**
    * Pro applications for the sales team.
    *
@@ -16395,8 +16394,21 @@ async function startServer() {
   });
 
 
+  /**
+   * Sales executives and managers work the leads assigned to them (My Leads has only ever listed those); the admin-level roles that may
+   * already read every lead through /api/admin/leads can open any. Answered as "not found" rather than "forbidden", so another executive's
+   * lead id says nothing about whether it exists. Replies and returns null when the caller may not touch the lead.
+   */
+  const leadForCaller = async (req: any, res: any, select?: any) => {
+    const lead = await prisma.lead.findUnique({ where: { id: req.params.id }, select: { id: true, assignedToId: true, ...(select || {}) } });
+    const ownerOnly = req.user?.role === "SalesExecutive" || req.user?.role === "SalesManager";
+    if (!lead || (ownerOnly && lead.assignedToId !== req.user.uid)) { res.status(404).json({ error: "Lead not found" }); return null; }
+    return lead;
+  };
+
   app.get("/api/sales/leads/:id", authenticateJWT, requireSalesRole, async (req: any, res) => {
     try {
+      if (!(await leadForCaller(req, res))) return;
       const lead = await prisma.lead.findUnique({
         where: { id: req.params.id },
         include: {
@@ -16416,6 +16428,7 @@ async function startServer() {
 
   app.put("/api/sales/leads/:id/status", authenticateJWT, requireSalesRole, async (req: any, res) => {
     try {
+      if (!(await leadForCaller(req, res))) return;
       const { status } = req.body;
       const lead = await prisma.lead.update({
         where: { id: req.params.id },
@@ -16430,6 +16443,7 @@ async function startServer() {
 
   app.post("/api/sales/leads/:id/interactions", authenticateJWT, requireSalesRole, async (req: any, res) => {
     try {
+      if (!(await leadForCaller(req, res))) return;
       const { type, notes } = req.body;
       const interaction = await prisma.leadInteraction.create({
         data: {
@@ -16904,6 +16918,10 @@ async function startServer() {
     res.setHeader("Cache-Control", "public, max-age=600");
     res.sendFile(file);
   });
+
+  // An /api path that no route claimed is a 404 in JSON. Without this the app-shell fallback below answered it with index.html and a 200, so a
+  // caller reaching a server that did not have the route yet (a dev server started before it was added) got HTML where it expected JSON.
+  app.use("/api", (_req: any, res: any) => res.status(404).json({ error: "Not found" }));
 
   // Public pages (the blog, the department pages, the marketing pages) leave the server with their own title, description,
   // canonical and structured data, and the blog's content as plain HTML. Everything else gets the plain app shell below.

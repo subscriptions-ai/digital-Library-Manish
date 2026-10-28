@@ -276,3 +276,43 @@ export async function decideConflict(admin: { uid?: string; email?: string } | n
   await audit(admin as any, 'DOAJ_CONFLICT_DECISION', { issn: id, title: c.doaj.title, decision: rec.decision, verdict: c.verdict, previous: prev?.decision ?? null, heldJournals: c.held.map(h => h.id) });
   return { ...c, decision: rec, changedSinceDecision: false, unchanged: false };
 }
+
+// ── The rule for a LATER import (nothing here writes) ──────────────────────
+
+/**
+ * The only rule by which a DOAJ identity conflict may ever become an importable journal. It is a pure function: it reads items and says which could be
+ * imported and why the others cannot. There is no import behind it yet, and building one needs its own approval; this exists so that import cannot be
+ * written broader than this.
+ *
+ *   - Only a row a named administrator explicitly marked "Accept as distinct" (decision `distinct`). The verdict is a reading aid and never enough: a
+ *     "likely distinct" row that nobody accepted is refused, and so are `blocked`, `hold` and undecided rows.
+ *   - The decision must still stand on the evidence it was made on: a row shown as "look again" (the DOAJ row or a held journal changed) is refused until re-decided.
+ *   - A person's "distinct" outranks a "duplicate" verdict, but the plan says so (`contradictsVerdict`) so the preview can put it in front of them.
+ *   - Identity, never title: the importer must still refuse a journal whose ISSN or e-ISSN is held NOW (`heldIdentifiers`), and it never merges into, edits or
+ *     replaces an existing journal. The title that made the conflict plays no part in any of this.
+ *   - Status: the new journal is written as NeedsReview, never Accepted. MetadataOnly is NOT offered: since 2026-10-27 a MetadataOnly journal is public the
+ *     moment it exists (publicJournals.ts), so it would skip the second look. A person (or the existing journal review) promotes it afterwards.
+ */
+export const DISTINCT_IMPORT_STATUS = 'NeedsReview' as const;
+
+export type DistinctImportRow = { issn: string; eissn: string | null; title: string; status: typeof DISTINCT_IMPORT_STATUS; contradictsVerdict: boolean; decidedBy: string; decidedAt: string; against: string };
+export type DistinctImportRefusal = { issn: string; title: string; reason: string };
+
+export function planDistinctImports(items: ConflictItem[], o: { heldIdentifiers?: Set<string> } = {}): { importable: DistinctImportRow[]; refused: DistinctImportRefusal[] } {
+  const importable: DistinctImportRow[] = []; const refused: DistinctImportRefusal[] = [];
+  const no = (c: ConflictItem, reason: string) => refused.push({ issn: c.doaj.issn, title: c.doaj.title, reason });
+  const seen = new Set<string>();
+  for (const c of items) {
+    const d = c.decision;
+    if (!d) { no(c, 'Nobody has decided this journal.'); continue; }
+    if (d.decision !== 'distinct') { no(c, d.decision === 'blocked' ? 'Kept blocked.' : 'Held for review, not accepted.'); continue; }
+    if (!d.by) { no(c, 'The decision has no named administrator.'); continue; }
+    if (c.changedSinceDecision || d.fingerprint !== c.fingerprint) { no(c, 'The evidence changed since it was accepted; look again.'); continue; }
+    const ids = [c.doaj.issn, c.doaj.eissn].filter(Boolean) as string[];
+    if (ids.some(i => o.heldIdentifiers?.has(i))) { no(c, 'Its ISSN or e-ISSN is already held.'); continue; }
+    if (ids.some(i => seen.has(i))) { no(c, 'Listed twice in this plan.'); continue; }
+    ids.forEach(i => seen.add(i));
+    importable.push({ issn: c.doaj.issn, eissn: c.doaj.eissn, title: c.doaj.title, status: DISTINCT_IMPORT_STATUS, contradictsVerdict: c.verdict === 'duplicate', decidedBy: d.by, decidedAt: d.at, against: c.against });
+  }
+  return { importable, refused };
+}

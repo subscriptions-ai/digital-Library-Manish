@@ -1,0 +1,54 @@
+
+    <!-- ================= USER MANAGEMENT ================= -->
+    <sc-if value="{{isUsers}}" hint-placeholder-val="{{ false }}">
+      <div class="page-head rise">
+        <div><h1 class="h-page">User Management</h1><p class="sub" style="margin-top:4px">Manage institution members and monitor library engagement.</p></div>
+        <div class="actions"><button class="btn secondary" onClick="{{toastImport}}"><sc-icon name="upload" size="17"></sc-icon>Import Users</button><button class="btn primary" onClick="{{openAddUser}}"><sc-icon name="plus" size="17"></sc-icon>Add User</button></div>
+      </div>
+      <section class="grid-kpi four keep" aria-label="Member statistics">
+        <sc-for list="{{stats}}" as="st" key="{{st.label}}" hint-placeholder-count="4"><button class="{{st.cls}}" style="{{st.delay}}" aria-pressed="{{st.on}}" onClick="{{st.pick}}"><span class="eyebrow">{{st.label}}</span><b class="num">{{st.n}}</b></button></sc-for>
+      </section>
+      <sc-if value="{{hasSel}}" hint-placeholder-val="{{ false }}">
+        <div class="bulk" role="region" aria-label="Actions for the selected members"><b>{{selCount}} selected</b><span style="flex:1"></span><button class="btn sm" onClick="{{remindSel}}">Send reminder</button><button class="btn sm" onClick="{{removeSel}}">Remove</button><button class="btn sm" onClick="{{clearSel}}">Clear</button></div>
+      </sc-if>
+      <section class="card rise" style="overflow:hidden;animation-delay:80ms" aria-label="Members">
+        <div class="toolbar">
+          <label class="search" style="cursor:text"><sc-icon name="search" size="17"></sc-icon><span class="sr">Search members</span><input type="search" value="{{mq}}" onInput="{{setMq}}" placeholder="Search name, email or title…"></label>
+          <label class="sel"><span class="sr">Account type</span><select value="{{mType}}" onChange="{{setMType}}"><option value="all">All account types</option><option value="Faculty">Faculty</option><option value="Researcher">Researcher</option><option value="Student">Student</option></select></label>
+          <label class="sel"><span class="sr">Engagement</span><select value="{{mEng}}" onChange="{{setMEng}}"><option value="all">All engagement</option><option value="reading">Reading</option><option value="notstarted">Not started</option><option value="invited">Invited</option></select></label>
+          <label class="sel"><span class="sr">Sort by</span><select value="{{msort}}" onChange="{{setMSort}}"><option value="name">Sort: Name</option><option value="active">Sort: Last active</option><option value="sessions">Sort: Most sessions</option></select></label>
+        </div>
+        <p class="sub" style="padding:0 18px 12px;display:flex;gap:8px;align-items:flex-start"><sc-icon name="info" size="15" style="margin-top:2px;flex:none"></sc-icon><span>Account type controls what a person can do. Professional designation is descriptive only and never changes permissions. {{shownCount}}.</span></p>
+        <div class="mrow mhead">
+          <span class="cell-cb"><button class="{{allCls}}" role="checkbox" aria-checked="{{allOn}}" aria-label="Select everyone shown" onClick="{{toggleAll}}"><sc-icon name="check" size="13" stroke="3.6"></sc-icon></button></span>
+          <span class="eyebrow">Member</span><span class="eyebrow">Account Type</span><span class="eyebrow">Professional Designation</span><span class="eyebrow">Engagement</span><span class="eyebrow m-last">Last Active</span><span class="eyebrow" style="text-align:right">Actions</span>
+        </div>
+        <sc-for list="{{members}}" as="m" key="{{m.key}}" hint-placeholder-count="3">
+          <div class="rise" style="{{m.rowStyle}}">
+            <div class="mrow">
+              <span class="cell-cb"><button class="{{m.cbCls}}" role="checkbox" aria-checked="{{m.sel}}" aria-label="Select {{m.name}}" onClick="{{m.toggle}}"><sc-icon name="check" size="13" stroke="3.6"></sc-icon></button></span>
+              <span class="who"><span class="avatar" aria-hidden="true">{{m.ini}}</span><span><b>{{m.name}}</b><small>{{m.email}}</small><small class="m-last-sub">Active: {{m.last}}</small></span></span>
+              <span class="cell-type"><span class="tag mute">{{m.type}}</span></span>
+              <span class="cell-desig"><span class="m-lab">Designation: </span>{{m.desig}}</span>
+              <span class="cell-eng"><span class="{{m.engCls}}"><sc-icon name="{{m.engIcon}}" size="13" stroke="2.6"></sc-icon>{{m.eng}}</span><span class="m-last-line">{{m.last}}</span></span>
+              <span class="m-last">{{m.last}}</span>
+              <span class="ops">
+                <sc-if value="{{m.canRemind}}" hint-placeholder-val="{{ true }}"><button class="btn secondary sm" disabled="{{m.remindOff}}" onClick="{{m.remind}}">{{m.remindLabel}}</button></sc-if>
+                <button class="iconbtn" style="width:36px;height:36px" aria-expanded="{{m.open}}" aria-label="Details for {{m.name}}" onClick="{{m.expand}}"><sc-icon name="{{m.chev}}" size="16"></sc-icon></button>
+              </span>
+            </div>
+            <sc-if value="{{m.open}}" hint-placeholder-val="{{ false }}">
+              <div class="detail rise">
+                <div><span class="eyebrow">Account type</span><div style="font-weight:600">{{m.type}}</div><span class="sub">Controls access</span></div>
+                <div><span class="eyebrow">Designation</span><div style="font-weight:600">{{m.desig}}</div><span class="sub">Descriptive only</span></div>
+                <sc-if value="{{m.hasContact}}" hint-placeholder-val="{{ false }}"><div><span class="eyebrow">Contact</span><div style="font-weight:600">{{m.contactLine}}</div></div></sc-if>
+                <div><span class="eyebrow">Sessions this month</span><div class="big" style="font-size:24px">{{m.sessions}}</div></div>
+                <div><span class="eyebrow">Recently opened</span><ul style="margin-top:4px;font-size:13px;color:var(--ink-2)"><sc-for list="{{m.itemList}}" as="it" key="{{it}}" hint-placeholder-count="2"><li>{{it}}</li></sc-for></ul></div>
+                <div style="display:flex;align-items:flex-start"><button class="btn danger sm" onClick="{{m.remove}}">Remove member</button></div>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+        <sc-if value="{{noMembers}}" hint-placeholder-val="{{ false }}"><div class="empty" style="border-top:1px solid var(--line)"><span class="ic"><sc-icon name="search" size="24"></sc-icon></span><b>No member matches</b><span class="sub">Try a different search or filter.</span><button class="btn secondary sm" onClick="{{clearFilters}}">Clear filters</button></div></sc-if>
+      </section>
+    </sc-if>

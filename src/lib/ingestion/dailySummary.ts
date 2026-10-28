@@ -1,6 +1,7 @@
 import { canonicalOrSelf } from '../departmentRegistry.js';
 import { ingestionDb } from './db.js';
 import { runConditions, RUN_LEVEL, PROVIDER_FAILURE_SQL, EARLIEST_DAY } from './runFilter.js';
+import { publishedGroups, notRecordedCount, foldPublished, publishedContent, type PubGroups, type PublishedSummary, type PubType } from './dailyPublished.js';
 
 /**
  * Daily Ingestion Summary — what NEW content the catalogue gained in one reporting cycle. Read-only.
@@ -30,9 +31,13 @@ import { runConditions, RUN_LEVEL, PROVIDER_FAILURE_SQL, EARLIEST_DAY } from './
  *
  * The totals, the department table and the clicked record lists are all read from the SAME predicate (ADDED below), so they cannot disagree.
  *
+ * "Added" is about CREATION. A record that is approved from review days later is "added" in the cycle it was created in; the cycle it BECAME PUBLIC in is a
+ * different question, answered separately by `published` (dailyPublished.ts: the real transition into public status, from the publication event, Review
+ * Automation's own stamp, or `createdAt` for a record the engine created public). The two never mix: a record created today and still a Draft is in neither,
+ * one created last week and published today is in `published` only, and one created and published today is in both.
+ *
  * Known limits, shown rather than hidden: the department is the record's department NOW (a record moved later is reported where it
- * is); a record approved from review after its cycle counts in the cycle it was CREATED in (the schema keeps no "published at"); a deleted
- * record is gone. Nothing here is estimated from run totals.
+ * is); a deleted record is gone. Nothing here is estimated from run totals.
  */
 
 // ── The reporting window ────────────────────────────────────────────────────
@@ -133,6 +138,8 @@ export type DailySummary = {
   departments: DepartmentRow[];
   /** New journals catalogued as metadata-only (non-commercial licence): in the catalogue, nowhere to read — not counted as added. */
   journalsMetadataOnly: number;
+  /** What became PUBLIC in this cycle (the real transition), apart from what was created in it. */
+  published: PublishedSummary;
   /** What the run log recorded for runs that started in the same window. Events, not catalogue rows — never added to the figures above. */
   processing: Processing;
   generatedAt: string;
@@ -184,7 +191,7 @@ async function processing(q: any, w: DailyWindow): Promise<Processing> {
 
 const CACHE_LIVE_MS = Number(process.env.INGEST_DAILY_LIVE_CACHE_MS ?? 30_000);          // the live cycle moves; half a minute is current enough
 const CACHE_FINAL_MS = Number(process.env.INGEST_DAILY_FINAL_CACHE_MS ?? 300_000);       // a finished cycle changes only if a person approves something late
-type Cached = { at: number; groups: WindowGroups; metadataOnly: number; processing: Processing };
+type Cached = { at: number; groups: WindowGroups; metadataOnly: number; processing: Processing; published: PubGroups; notRecorded: number };
 const cache = new Map<string, Cached>();
 
 /**
@@ -205,7 +212,7 @@ export async function dailySummary(reportDate: string, opts: { now?: Date; fresh
     hit = await db.$transaction(async (tx: any) => {
       const groups = await groupsFor(tx, w);
       const [m] = await tx.$queryRawUnsafe(`select count(*)::int n from "Journal" where status = 'MetadataOnly' and ${IN_WINDOW}`, ...windowParams(w));
-      return { at: Date.now(), groups, metadataOnly: m?.n ?? 0, processing: await processing(tx, w) } as Cached;
+      return { at: Date.now(), groups, metadataOnly: m?.n ?? 0, processing: await processing(tx, w), published: await publishedGroups(tx, w), notRecorded: await notRecordedCount(tx) } as Cached;
     }, { isolationLevel: 'RepeatableRead' });
     if (ttl > 0) cache.set(key, hit!);
   }
@@ -218,7 +225,7 @@ export async function dailySummary(reportDate: string, opts: { now?: Date; fresh
     totalAdded: totals.journals + totals.articles + totals.books, journalsAdded: totals.journals, articlesAdded: totals.articles, booksAdded: totals.books,
     // Unassigned is records with no department, not a department: it is listed in the table but not counted here.
     departmentsWithActivity: rows.filter(r => r.department !== UNASSIGNED).length,
-    departments: rows, journalsMetadataOnly: hit!.metadataOnly, processing: hit!.processing, generatedAt: new Date(hit!.at).toISOString(),
+    departments: rows, journalsMetadataOnly: hit!.metadataOnly, published: foldPublished(hit!.published, hit!.notRecorded), processing: hit!.processing, generatedAt: new Date(hit!.at).toISOString(),
   };
 }
 
@@ -285,4 +292,16 @@ export async function dailyContent(
       addedAt: new Date(r.createdAt).toISOString(), access: r.access, status: 'Added',
     })),
   };
+}
+
+// ── The records behind a PUBLISHED number ───────────────────────────────────
+
+/** The exact records that became public in the cycle (title, type, department, provider, published at, method). Same definition as `published` above. */
+export async function dailyPublishedContent(
+  q: { reportDate: string; department?: string | null; type?: ContentType | 'all'; page?: number; pageSize?: number },
+  opts: { db?: any } = {},
+) {
+  const w = dailyIngestionWindow(q.reportDate);
+  const r = await publishedContent(opts.db ?? ingestionDb, w, { department: q.department, type: q.type as PubType | 'all', page: q.page, pageSize: q.pageSize }, MAX_PAGE_SIZE);
+  return { reportDate: q.reportDate, windowStart: w.start.toISOString(), windowEnd: w.end.toISOString(), basis: 'published' as const, ...r };
 }

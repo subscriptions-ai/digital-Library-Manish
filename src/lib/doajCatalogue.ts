@@ -34,12 +34,12 @@ import { canonicalDepartmentName } from './departmentRegistry.js';
  * the title alone, so a medical journal with "rehabilitation" among twenty
  * keywords stays in medicine.
  */
-const BY_TITLE_OR_KEYWORD: [RegExp, string][] = [
+export const BY_TITLE_OR_KEYWORD: [RegExp, string][] = [
   [/\bnano/, 'Nano Technology'],
   [/biotechnolog/, 'Bio Technology'],
   [/ayurved|\bunani\b|\bsiddha\b|homoeopath|homeopath|traditional (chinese |indian )?medicine|herbal medicine|pharmacognosy|ethnopharmacolog/, 'Ayurveda'],
 ];
-const BY_TITLE: [RegExp, string][] = [
+export const BY_TITLE: [RegExp, string][] = [
   [/physiotherap|physical therapy|rehabilitat/, 'Physiotherapy'],
   [/nursing|midwifery/, 'Nursing'],
   [/\bdental|dentistry|\boral (health|surgery|medicine|science)|orthodont|periodont|endodont/, 'Dental'],

@@ -1,0 +1,18 @@
+<div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:14px">
+  <div><h2 class="h-card">Reading activity</h2><p class="sub">{{chartTotal}} · {{chartAvg}} <span class="tag sample" style="margin-left:4px">Sample</span></p></div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px">
+    <div class="seg" role="group" aria-label="Metric"><sc-for list="{{metrics}}" as="m" key="{{m.l}}" hint-placeholder-count="3"><button class="{{m.cls}}" aria-pressed="{{m.on}}" onClick="{{m.pick}}">{{m.l}}</button></sc-for></div>
+    <div class="seg" role="group" aria-label="Time range"><sc-for list="{{ranges}}" as="r" key="{{r.l}}" hint-placeholder-count="3"><button class="{{r.cls}}" aria-pressed="{{r.on}}" onClick="{{r.pick}}">{{r.l}}</button></sc-for></div>
+  </div>
+</div>
+<div class="plot" key="{{chartKey}}" onMouseLeave="{{clearHover}}" role="group" aria-label="Reading activity chart. Use Tab to move between points.">
+  <sc-for list="{{grid}}" as="g" hint-placeholder-count="5"><div class="gridline" style="{{g.style}}"></div><span class="gridlbl" style="{{g.style}}">{{g.label}}</span></sc-for>
+  <svg viewBox="0 0 600 200" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible" aria-hidden="true">
+    <defs><linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--s1);stop-opacity:.3"></stop><stop offset="1" style="stop-color:var(--s1);stop-opacity:0"></stop></linearGradient></defs>
+    <path class="area" d="{{areaD}}" fill="url(#areaGrad)"></path>
+    <path class="line" pathLength="1" d="{{lineD}}" fill="none" stroke="var(--s1)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+  </svg>
+  <sc-for list="{{hits}}" as="h" key="{{h.key}}" hint-placeholder-count="7"><button class="hit" style="{{h.style}}" onMouseEnter="{{h.enter}}" onFocus="{{h.enter}}" aria-label="{{h.label}}"></button></sc-for>
+  <sc-if value="{{hasHover}}" hint-placeholder-val="{{ false }}"><div class="cross" style="{{crossStyle}}"></div><div class="pt" style="{{ptStyle}}"></div><div class="tip" style="{{tipPos}}" aria-hidden="true">{{tipLabel}}</div></sc-if>
+</div>
+<div class="xlabels" aria-hidden="true"><sc-for list="{{xlabels}}" as="x" hint-placeholder-count="7"><span>{{x.l}}</span></sc-for></div>

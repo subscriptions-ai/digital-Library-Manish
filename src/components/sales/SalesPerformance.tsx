@@ -101,7 +101,7 @@ export function SalesPerformance() {
         <StatCard label="Conversion rate" icon={Award} value={total ? `${rate.toFixed(1)}%` : null}
           context={total ? `${subscribers} of ${total} leads · target ${CONVERSION_TARGET}%` : 'No leads yet'} />
         <StatCard label="Open opportunities" icon={Flame} value={open} context="Positive or in progress" to="/sales/leads?status=In%20Progress" />
-        <StatCard label="Won deals" icon={Zap} value={subscribers} context="Leads who subscribed" to="/sales/leads?status=Subscriber" />
+        <StatCard label="Won deals" icon={Zap} value={subscribers} context="Your leads marked Subscriber" to="/sales/leads?status=Subscriber" />
         <StatCard label="Value won" icon={Banknote} value={won ? inr(won.value) : null} loading={won === undefined}
           context={won === null ? 'Could not be loaded' : won ? `From ${won.paid} paid ${won.paid === 1 ? 'quotation' : 'quotations'}` : undefined}
           to="/sales/quotations?status=Paid" />
