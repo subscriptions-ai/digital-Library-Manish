@@ -6,6 +6,7 @@ import { toast } from 'react-hot-toast';
 import { isPast } from 'date-fns';
 import { useAuth } from '../../contexts/AuthContext';
 import { EmptyState, ErrorState, Skeleton, buttonClass, PageHeader } from '../ui';
+import { RegistrationAnalytics } from './RegistrationAnalytics';
 import {
   AttentionTile, AXIS_TICK, ChartTooltip, DataNote, NO_STATE, STAGE_COLOR, STAGE_ORDER, StatCard,
   formatStamp, interactionIcon, isQuiet, pct, stageLabel, timeAgo,
@@ -121,21 +122,33 @@ export function SalesDashboard() {
         description="Today's sales overview — what needs you first, and where your pipeline stands."
       />
 
-      {/* Headline numbers */}
-      <section aria-label="Lead totals" className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard to="/sales/leads" label="Total Leads" value={total} icon={Users}
-          context={total ? `${lastMonth} assigned in the last 30 days` : 'Nothing assigned yet'} />
-        <StatCard to="/sales/leads?status=Subscriber" label="Subscribers" value={subscribers} icon={CheckCircle2}
-          context={total ? `${pct(subscribers, total)}% of your leads` : 'No leads yet'} />
-        <StatCard to="/sales/leads?status=Positive" label="Positive Contacts" value={positive} icon={Phone}
-          context={total ? `${pct(positive, total)}% of your leads` : 'No leads yet'} />
-        <StatCard to="/sales/leads?status=In%20Progress" label="In Progress" value={inProgress} icon={Clock}
-          context={total ? `${pct(inProgress, total)}% of your leads` : 'No leads yet'} />
+      {/* Headline numbers — every one of these counts the leads assigned to this executive. */}
+      <section aria-labelledby="leads-h" className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 id="leads-h" className="text-xs font-semibold uppercase tracking-wider text-muted">Lead pipeline</h2>
+          <span className="badge badge-neutral">My assigned leads</span>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard to="/sales/leads" label="Total Leads" value={total} icon={Users}
+            context={total ? `${lastMonth} assigned in the last 30 days` : 'Nothing assigned yet'} />
+          {/* A lead's status, set by the executive — not a payment. Paid subscribers are counted separately, below, across all members. */}
+          <StatCard to="/sales/leads?status=Subscriber" label="Subscribed Leads" value={subscribers} icon={CheckCircle2}
+            context={total ? `${pct(subscribers, total)}% of your leads · marked Subscriber` : 'No leads yet'} />
+          <StatCard to="/sales/leads?status=Positive" label="Positive Contacts" value={positive} icon={Phone}
+            context={total ? `${pct(positive, total)}% of your leads` : 'No leads yet'} />
+          <StatCard to="/sales/leads?status=In%20Progress" label="In Progress" value={inProgress} icon={Clock}
+            context={total ? `${pct(inProgress, total)}% of your leads` : 'No leads yet'} />
+        </div>
       </section>
+
+      <RegistrationAnalytics />
 
       {/* What wants doing */}
       <section aria-labelledby="attention-h" className="space-y-3">
-        <h2 id="attention-h" className="text-xs font-semibold uppercase tracking-wider text-muted">Needs attention</h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 id="attention-h" className="text-xs font-semibold uppercase tracking-wider text-muted">Needs attention</h2>
+          <span className="badge badge-neutral">My leads · enquiries: whole team</span>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <AttentionTile to="/sales/leads?status=new" icon={UserPlus} label="New leads" count={fresh}
             context="Waiting for a first contact" />

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { ThemeToggle } from '../ui/ThemeToggle';
-import { LogOut, LayoutDashboard, Target, Users, ClipboardList, BarChart3, Bell, FileText, Sparkles, Menu, X, ArrowRight } from 'lucide-react';
+import { LogOut, LayoutDashboard, Target, Users, ClipboardList, BarChart3, Bell, FileText, Sparkles, Menu, X, ArrowRight, UserCheck } from 'lucide-react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
@@ -12,6 +12,7 @@ import { getDashboardRoute } from '../../lib/dashboardRoute';
 const NAV = [
   { to: '/sales', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { to: '/sales/leads', label: 'My Leads', icon: Users, exact: false },
+  { to: '/sales/registered-users', label: 'Registered Users', icon: UserCheck, exact: true },
   { to: '/sales/pro-applications', label: 'Subscription Enquiries', icon: Sparkles, exact: false },
   { to: '/sales/activity', label: 'Activity Log', icon: ClipboardList, exact: true },
   { to: '/sales/quotations', label: 'My Quotations', icon: FileText, exact: false },

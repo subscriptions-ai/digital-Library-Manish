@@ -39,6 +39,7 @@ import { installSeoPages } from "./src/server/seoPages.js";
 import { aiAssistantSwitchState, aiAssistantSwitchHistory, setAiAssistantEnabled } from "./src/server/aiAssistantSwitch.js";
 import { s3Configured, isProduction, deleteObject, keyFromUrl } from "./src/server/storage/s3Storage.js";
 import { removeFromInstitution, cancelDeletion, reactivateRemovedMember, purgeDueAccounts, RemovalError, isRemovedStatus, maskEmail, GRACE_HOURS, PENDING_DELETION, DELETED } from "./src/server/accountRemoval.js";
+import { registrationAnalyticsRouter } from "./src/server/registrationAnalytics.js";
 import { loadEntitlement, loadInstitutionDepartments, entitlementAllows, scopeOf, narrowToEntitlement, subscriptionDepartments, departmentSourceOf, isInstitutionMember, type Entitlement } from "./src/server/entitlements.js";
 import { mediaStorageRoot, mediaDir as mediaDirPath, mediaDriver, mediaStorageStatus, ensureMediaDirs, assertUploadsPossible, uploadMedia, MediaStorageError } from "./src/server/storage/mediaStorage.js";
 import { aiConfig } from "./src/server/aiAssistantConfig.js";
@@ -16307,6 +16308,9 @@ async function startServer() {
 
 
   // 2. SALES EXECUTIVE ROUTES
+
+  // Registration analytics: read-only, GET only, its own permission (not requireAdminOrManager). Individual rows are the caller's assigned members only.
+  app.use("/api/sales/registrations", registrationAnalyticsRouter({ db: prisma, authenticateJWT, staffRoles: STAFF_ROLES }));
 
   /**
    * Pro applications for the sales team.
