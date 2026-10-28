@@ -316,6 +316,8 @@ export default function App() {
                 <Route path="/institution/department/:slug" element={<InstitutionLayout><DepartmentPage journalBase="/institution/journal" browseBase="/institution/explore" /></InstitutionLayout>} />
                 <Route path="/institution/publisher/:slug" element={<InstitutionLayout><PublisherPage journalBase="/institution/journal" departmentBase="/institution/department" /></InstitutionLayout>} />
                 <Route path="/institution/subject/:slug" element={<InstitutionLayout><SubjectPage journalBase="/institution/journal" departmentBase="/institution/department" /></InstitutionLayout>} />
+                <Route path="/institution/saved" element={<InstitutionLayout><MyFavorites standalone /></InstitutionLayout>} />
+                <Route path="/institution/history" element={<InstitutionLayout><MyHistory /></InstitutionLayout>} />
                 <Route path="/institution/viewer/:id" element={<InstitutionLayout><ProtectedContentViewer /></InstitutionLayout>} />
                 <Route path="/institution/videos/player/:id" element={<InstitutionLayout><LmsVideoPlayer /></InstitutionLayout>} />
                 <Route path="/institution/subscriptions" element={<InstitutionLayout><InstitutionSubscriptions /></InstitutionLayout>} />

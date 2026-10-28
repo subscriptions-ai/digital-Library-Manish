@@ -1,3 +1,4 @@
+import { plainTitle } from './abstractPreview.js';
 import type { PrismaClient } from '@prisma/client';
 
 export type CatalogueSearchParams = {
@@ -58,5 +59,5 @@ export async function searchContent(prisma: PrismaClient, params: CatalogueSearc
     prisma.content.count({ where }),
   ]);
 
-  return { data, total, query: params.q, page, limit };
+  return { data: data.map(r => ({ ...r, title: plainTitle(r.title) as string })), total, query: params.q, page, limit };
 }

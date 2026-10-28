@@ -14,6 +14,7 @@ import {
   Receipt,
   PlaySquare,
   History,
+  Heart,
   MessageSquareHeart,
   Sun,
   Moon,
@@ -44,6 +45,8 @@ const sidebarItems: SidebarItem[] = [
   // The page existed and only the dashboard's own "View history" link reached
   // it, so a reader who had scrolled past that link could not find what they
   // had read.
+  // The reader's own shortlist. Also a tab inside the Library; it is here as well because a heart is only worth pressing if the list it fills can be found.
+  { label: 'Saved', icon: Heart, path: '/dashboard/library/saved', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
   { label: 'Reading History', icon: History, path: '/dashboard/history', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
   { label: 'Subscription', icon: Sparkles, path: '/dashboard/pro', roles: ['Subscriber'] },
   { label: 'My Subscriptions', icon: CreditCard, path: '/dashboard/subscriptions', roles: ['Subscriber', 'Student', 'College', 'University', 'Corporate'] },
@@ -167,9 +170,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
           {filteredItems.map((item) => {
-            const isActive = item.path === '/dashboard' 
-              ? location.pathname === '/dashboard' 
-              : location.pathname.startsWith(item.path);
+            // Saved lives under /dashboard/library, so the Library entry must step aside for it rather than both lighting up.
+            const isActive = item.path === '/dashboard'
+              ? location.pathname === '/dashboard'
+              : item.path === '/dashboard/library'
+                ? location.pathname.startsWith(item.path) && !location.pathname.startsWith('/dashboard/library/saved')
+                : location.pathname.startsWith(item.path);
 
             return (
               <Link

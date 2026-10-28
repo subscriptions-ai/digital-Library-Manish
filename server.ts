@@ -45,7 +45,7 @@ import { mediaStorageRoot, mediaDir as mediaDirPath, mediaDriver, mediaStorageSt
 import { aiConfig } from "./src/server/aiAssistantConfig.js";
 import { searchContent } from "./src/lib/catalogueSearch.js";
 import { contentTypeCounts } from "./src/lib/publicCounts.js";
-import { abstractPreviewFor, publicArticle, publicBook, publicContent } from "./src/lib/abstractPreview.js";
+import { abstractPreviewFor, plainTitle, publicArticle, publicBook, publicContent } from "./src/lib/abstractPreview.js";
 import { buildQuotationEmailHtml } from "./src/lib/quotation/quotationEmail.js";
 import { publicJournalCount, publicJournalStatusSql, publicJournalStatusWhere, PUBLIC_JOURNAL_STATUSES } from "./src/lib/publicJournals.js";
 import { parseJournalPaging, queryJournalPage, publicScope, subjectSlugSql } from "./src/lib/journalPaging.js";
@@ -4140,9 +4140,9 @@ async function startServer() {
         prisma.content.findMany({ where: { id: { in: idsOf('content') } }, select: { id: true, title: true, domain: true, contentType: true } }),
       ]);
       const meta = new Map<string, any>([
-        ...arts.map((a: any) => [a.id, { title: a.title, where: a.journalName }] as [string, any]),
-        ...books.map((b: any) => [b.id, { title: b.title, where: b.publisherName }] as [string, any]),
-        ...contents.map((c: any) => [c.id, { title: c.title, where: c.contentType }] as [string, any]),
+        ...arts.map((a: any) => [a.id, { title: plainTitle(a.title), where: a.journalName }] as [string, any]),
+        ...books.map((b: any) => [b.id, { title: plainTitle(b.title), where: b.publisherName }] as [string, any]),
+        ...contents.map((c: any) => [c.id, { title: plainTitle(c.title), where: c.contentType }] as [string, any]),
       ]);
 
       // A department nobody has opened yet still deserves a shelf: the newest
@@ -4188,56 +4188,150 @@ async function startServer() {
     }
   });
 
-  // GET /api/user/history — Get full reading history
+  // ── READING HISTORY ─────────────────────────────────────────────────────────
+  // Personal to the signed-in reader: every query below is keyed on the token's own uid, never on an id the
+  // request supplies. Having read something grants no access to it — opening it again goes through /view.
+  //
+  // Legacy Content rows are recorded in StudentActivity (its foreign key points at Content only); Articles and
+  // Books in ReadingHistory. Both are written only by a successful open, in /api/content/:id/view.
+
+  /** Roles that read the library for themselves. Staff opening an item are previewing it, and leave no history. */
+  const keepsHistory = (role: string) => !STAFF_ROLES.includes(role);
+
+  /** What opening an item gave the reader, so a link-out or a bare record is never described as a document that was read. */
+  const accessModeOf = (resolved: { fileUrl?: string | null; item: any }): 'full' | 'external' | 'metadata' => {
+    const status = resolved.item?.accessStatus;
+    if (!resolved.fileUrl) return resolved.item?.originalUrl ? 'external' : 'metadata';
+    if (status === 'LinkOnly') return 'external';
+    if (status === 'MetadataOnly') return 'metadata';
+    return 'full';
+  };
+
+  /** Records one open, in place: a reopen moves the last-read time and never adds a row. False if it could not be written. */
+  const recordReading = async (uid: string, resolved: { kind: string; item: any; fileUrl?: string | null }): Promise<boolean> => {
+    try {
+      if (resolved.kind === 'content') {
+        const existing = await prisma.studentActivity.findFirst({ where: { userId: uid, contentId: resolved.item.id } });
+        if (existing) await prisma.studentActivity.update({ where: { id: existing.id }, data: { accessedAt: new Date() } });
+        else await prisma.studentActivity.create({ data: { userId: uid, contentId: resolved.item.id, timeSpent: 0, lastPage: 1 } });
+        return true;
+      }
+      const row = {
+        userId: uid, itemType: resolved.kind === 'book' ? 'Book' : 'Article', itemId: resolved.item.id as string,
+        access: accessModeOf(resolved),
+      };
+      const rh = (prisma as any).readingHistory;
+      try {
+        await rh.upsert({
+          where: { userId_itemId: { userId: uid, itemId: row.itemId } },
+          create: row, update: { lastReadAt: new Date(), access: row.access },
+        });
+      } catch (e: any) {
+        // Two opens at once both found no row; the second one's insert lost the race. It is an update now.
+        if (e?.code !== 'P2002') throw e;
+        await rh.update({ where: { userId_itemId: { userId: uid, itemId: row.itemId } }, data: { lastReadAt: new Date(), access: row.access } });
+      }
+      return true;
+    } catch (e: any) {
+      console.error('[history] write failed:', e?.message);
+      return false;
+    }
+  };
+
+  // GET /api/user/history?q=&page=&limit= — the signed-in reader's own history, newest first. Read-only.
   app.get("/api/user/history", authenticateJWT, async (req: any, res) => {
     try {
-      const recentViews = await prisma.studentActivity.findMany({
-        where: { userId: req.user.uid },
-        orderBy: { accessedAt: 'desc' },
-        take: 100,
-        include: { content: true }
-      });
-      res.json(recentViews);
+      const uid = req.user.uid;
+      const limit = Math.min(50, Math.max(1, parseInt(String(req.query.limit), 10) || 12));
+      const q = String(req.query.q || '').trim().toLowerCase().slice(0, 100);
+      const asked = Math.max(1, parseInt(String(req.query.page), 10) || 1);
+
+      const [acts, reads] = await Promise.all([
+        prisma.studentActivity.findMany({
+          where: { userId: uid, contentId: { not: null } }, orderBy: { accessedAt: 'desc' }, take: 500,
+          include: { content: { select: { id: true, title: true, authors: true, contentType: true, domain: true, status: true } } },
+        }),
+        (prisma as any).readingHistory.findMany({ where: { userId: uid }, orderBy: { lastReadAt: 'desc' }, take: 500 }),
+      ]);
+      const idsOf = (t: string) => reads.filter((r: any) => r.itemType === t).map((r: any) => r.itemId);
+      const [arts, books] = await Promise.all([
+        idsOf('Article').length ? (prisma as any).article.findMany({ where: { id: { in: idsOf('Article') } }, select: { id: true, title: true, authors: true, domain: true, status: true, contentType: true } }) : [],
+        idsOf('Book').length ? (prisma as any).book.findMany({ where: { id: { in: idsOf('Book') } }, select: { id: true, title: true, authors: true, domain: true, status: true } }) : [],
+      ]);
+      const artById = new Map<string, any>(arts.map((a: any) => [a.id, a]));
+      const bookById = new Map<string, any>(books.map((b: any) => [b.id, b]));
+
+      let items: any[] = [
+        ...acts.filter(a => a.content).map(a => {
+          const c = a.content!;
+          const isVideo = String(c.contentType || '').toLowerCase().includes('video');
+          return {
+            id: c.id, kind: isVideo ? 'video' : 'content', title: plainTitle(c.title), authors: c.authors || null, contentType: c.contentType || null,
+            domain: c.domain || null, lastReadAt: a.accessedAt, lastPage: a.lastPage || 1, access: isVideo ? 'video' : 'full',
+            available: String(c.status || '').toLowerCase() !== 'draft',
+          };
+        }),
+        ...reads.map((r: any) => {
+          const it = r.itemType === 'Book' ? bookById.get(r.itemId) : artById.get(r.itemId);
+          return {
+            id: r.itemId, kind: r.itemType === 'Book' ? 'book' : 'article',
+            // A record deleted since it was read is still in the history, named as gone, so it can be told apart from an empty list.
+            title: it ? plainTitle(it.title) : null, authors: it?.authors || null,
+            contentType: r.itemType === 'Book' ? 'Books' : (it?.contentType || 'Periodicals'), domain: it?.domain || null,
+            lastReadAt: r.lastReadAt, lastPage: r.lastPage || 1, access: r.access, available: !!it && it.status === 'Published',
+          };
+        }),
+      ].sort((a, b) => new Date(b.lastReadAt).getTime() - new Date(a.lastReadAt).getTime());
+
+      if (q) items = items.filter(i => `${i.title || ''} ${i.authors || ''}`.toLowerCase().includes(q));
+      const total = items.length;
+      const pages = Math.max(1, Math.ceil(total / limit));
+      const page = Math.min(asked, pages);
+      res.set('Cache-Control', 'no-store');
+      res.json({ items: items.slice((page - 1) * limit, page * limit), total, page, pages, pageSize: limit });
     } catch (error) {
       console.error("User history error:", error);
       res.status(500).json({ error: "Failed to load history" });
     }
   });
 
-  // ── PATCH /api/user/reading-progress — save current page ────────────────────
+  // ── PATCH /api/user/reading-progress — move the resume point of something this reader has already opened ────
+  // It never starts a history entry: only a successful open does, so this cannot be used to put an item the
+  // reader was never given into their history.
   app.patch("/api/user/reading-progress", authenticateJWT, async (req: any, res) => {
     try {
-      const { contentId, lastPage, timeSpent } = req.body;
-      if (!contentId || !lastPage) return res.status(400).json({ error: "contentId and lastPage are required" });
+      const contentId = typeof req.body?.contentId === 'string' ? req.body.contentId : '';
+      const lastPage = Math.floor(Number(req.body?.lastPage));
+      const spent = Math.min(600, Math.max(0, Math.floor(Number(req.body?.timeSpent)) || 0));
+      if (!contentId || !(lastPage >= 1) || lastPage > 100000) return res.status(400).json({ error: "contentId and a lastPage of 1 or more are required" });
+      if (!keepsHistory(req.user.role)) return res.json({ success: true, recorded: false });
 
-      const existing = await prisma.studentActivity.findFirst({
-        where: { userId: req.user.uid, contentId }
-      });
-      if (existing) {
-        await prisma.studentActivity.update({
-          where: { id: existing.id },
-          data: { lastPage: Number(lastPage), timeSpent: { increment: Number(timeSpent) || 0 } }
-        });
-        res.json({ success: true, lastPage: Number(lastPage) });
-      } else {
-        await prisma.studentActivity.create({
-          data: { userId: req.user.uid, contentId, lastPage: Number(lastPage), timeSpent: Number(timeSpent) || 0 }
-        });
-        res.json({ success: true, lastPage: Number(lastPage) });
+      const uid = req.user.uid;
+      const legacy = await prisma.studentActivity.findFirst({ where: { userId: uid, contentId } });
+      if (legacy) {
+        await prisma.studentActivity.update({ where: { id: legacy.id }, data: { lastPage, timeSpent: { increment: spent } } });
+        return res.json({ success: true, recorded: true, lastPage });
       }
+      const row = await (prisma as any).readingHistory.findUnique({ where: { userId_itemId: { userId: uid, itemId: contentId } } });
+      if (!row) return res.status(409).json({ error: "Open this item first" });
+      await (prisma as any).readingHistory.update({ where: { id: row.id }, data: { lastPage, timeSpent: { increment: spent }, lastReadAt: new Date() } });
+      res.json({ success: true, recorded: true, lastPage });
     } catch (error) {
       console.error("Reading progress save error:", error);
       res.status(500).json({ error: "Failed to save reading progress" });
     }
   });
 
-  // ── GET /api/user/reading-progress/:contentId — get last page ────────────────
+  // ── GET /api/user/reading-progress/:contentId — where this reader left off in it ────────────────
   app.get("/api/user/reading-progress/:contentId", authenticateJWT, async (req: any, res) => {
     try {
-      const activity = await prisma.studentActivity.findFirst({
-        where: { userId: req.user.uid, contentId: req.params.contentId }
-      });
-      res.json({ lastPage: activity?.lastPage || 1, accessedAt: activity?.accessedAt || null });
+      const uid = req.user.uid, itemId = req.params.contentId;
+      const [legacy, row] = await Promise.all([
+        prisma.studentActivity.findFirst({ where: { userId: uid, contentId: itemId } }),
+        (prisma as any).readingHistory.findUnique({ where: { userId_itemId: { userId: uid, itemId } } }),
+      ]);
+      res.set('Cache-Control', 'no-store');
+      res.json({ lastPage: legacy?.lastPage || row?.lastPage || 1, accessedAt: legacy?.accessedAt || row?.lastReadAt || null });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch reading progress" });
     }
@@ -4246,10 +4340,11 @@ async function startServer() {
   // ── FAVORITES (WISH LIST) ───────────────────────────────────────────────────
   // A saved item can live in Content, Article or Book, so which table it came
   // from is recorded on the row rather than enforced by a foreign key.
+  // Only something a reader can open can be saved: a draft, or an id that exists nowhere, is "no longer exists".
   const favouriteKindOf = async (id: string): Promise<'Content' | 'Article' | 'Book' | null> => {
-    if (await prisma.content.count({ where: { id } })) return 'Content';
-    if (await (prisma as any).article.count({ where: { id } })) return 'Article';
-    if (await (prisma as any).book.count({ where: { id } })) return 'Book';
+    if (await prisma.content.count({ where: { id, status: { not: 'Draft' } } })) return 'Content';
+    if (await (prisma as any).article.count({ where: { id, status: 'Published' } })) return 'Article';
+    if (await (prisma as any).book.count({ where: { id, status: 'Published' } })) return 'Book';
     return null;
   };
 
@@ -4283,13 +4378,24 @@ async function startServer() {
         contentType: 'Books',
       });
 
-      // An item deleted since it was saved simply drops out of the list.
-      res.json(favorites
-        .map((f: any) => {
-          const item = byId.get(f.contentId);
-          return item ? { ...item, favoriteId: f.id, favoritedAt: f.createdAt } : null;
-        })
-        .filter(Boolean));
+      // An item deleted or withdrawn since it was saved stays in the list, named as unavailable, so the reader can
+      // remove it and the count matches what they saved. It carries no title and no link: nothing of it is exposed.
+      const live = (f: any, item: any) => {
+        if (!item) return false;
+        if (f.itemType === 'Content') return String(item.status || '').toLowerCase() !== 'draft';
+        return item.status === 'Published';
+      };
+      res.set('Cache-Control', 'no-store');
+      res.json(favorites.map((f: any) => {
+        const item = byId.get(f.contentId);
+        // The stored file address is not part of a list of saved items: whether it may be opened is decided on opening,
+        // and a legacy item the reader's plan does not cover would otherwise hand over its link here.
+        if (live(f, item)) {
+          const { pdfUrl: _p, fileUrl: _f, ...safe } = item;
+          return { ...safe, hasFile: !!(item.pdfUrl || item.fileUrl), favoriteId: f.id, favoritedAt: f.createdAt };
+        }
+        return { id: f.contentId, itemType: f.itemType, unavailable: true, favoriteId: f.id, favoritedAt: f.createdAt };
+      }));
     } catch (error) {
       console.error("Favorites fetch error:", error);
       res.status(500).json({ error: "Failed to fetch favorites" });
@@ -4320,6 +4426,17 @@ async function startServer() {
     } catch (error) {
       console.error("Favorite toggle error:", error);
       res.status(500).json({ error: "Failed to toggle favorite" });
+    }
+  });
+
+  // Every id this reader has saved, in one cheap request: lets a list of results show which hearts are filled.
+  app.get("/api/user/favorites/ids", authenticateJWT, async (req: any, res) => {
+    try {
+      const rows = await prisma.favorite.findMany({ where: { userId: req.user.uid }, select: { contentId: true } });
+      res.set('Cache-Control', 'no-store');
+      res.json({ ids: rows.map(r => r.contentId) });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load saved items" });
     }
   });
 
@@ -5076,23 +5193,21 @@ async function startServer() {
         });
       }
 
-      // Activity logging only for legacy content (StudentActivity.contentId FKs to Content)
-      if (resolved.kind === 'content' && (req.user.role === 'Student' || req.user.role === 'Subscriber')) {
-        try {
-          const existing = await prisma.studentActivity.findFirst({ where: { userId: req.user.uid, contentId: resolved.item.id } });
-          if (existing) await prisma.studentActivity.update({ where: { id: existing.id }, data: { accessedAt: new Date() } });
-          else await prisma.studentActivity.create({ data: { userId: req.user.uid, contentId: resolved.item.id, timeSpent: 0, lastPage: 1 } });
-        } catch (e) { console.error('Activity log failed', e); }
-      }
+      // The reader's own history, in place: a reopen moves the last-read time, it does not add a row. This runs
+      // only once access has been granted above, so a refused open leaves nothing behind. `tracked` is what the
+      // reader's screen may say about it: null for staff previews, which are not recorded, false if the write failed.
+      const tracked: boolean | null = keepsHistory(req.user.role) ? await recordReading(req.user.uid, resolved) : null;
 
       // The reader also carries a way back into the catalogue — the journal it
       // came from, and the full record — so no page in the library is a dead end.
       const it: any = resolved.item;
       return res.json({
         url: resolved.fileUrl,
-        title: resolved.title,
+        title: plainTitle(resolved.title),
         contentType: resolved.contentType,
         kind: resolved.kind,
+        access: accessModeOf(resolved),
+        tracked,
         journalName: it.journalName ?? null,
         journalIssn: normaliseIssn(it.journalIssn) ?? null,
         year: it.year ?? null,
@@ -7267,18 +7382,7 @@ async function startServer() {
       }
 
       // Log activity (safe findFirst+update/create — avoids duplicate-row race conditions)
-      if (['Student', 'Subscriber'].includes(req.user.role)) {
-        try {
-          const existing = await prisma.studentActivity.findFirst({
-            where: { userId: req.user.uid, contentId: content.id }
-          });
-          if (existing) {
-            await prisma.studentActivity.update({ where: { id: existing.id }, data: { accessedAt: new Date() } });
-          } else {
-            await prisma.studentActivity.create({ data: { userId: req.user.uid, contentId: content.id, timeSpent: 0, lastPage: 1 } });
-          }
-        } catch(e) { console.error('Activity log failed (video):', e); }
-      }
+      if (keepsHistory(req.user.role)) await recordReading(req.user.uid, { kind: 'content', item: content, fileUrl: content.fileUrl });
 
       // Find related videos (same domain, max 10, accessible)
       let related: any[] = [];
