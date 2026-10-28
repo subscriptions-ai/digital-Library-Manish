@@ -80,6 +80,12 @@ const infoTech = departmentFromTopics({ display_name: 'Journal of Library Automa
 check('…unless the title also says computing', infoTech.dept === 'Computer / IT' && infoTech.confidence === 'high');
 const multiTitleOnly = departmentFromTopics({ display_name: 'Multidisciplinary Journal of Chemistry', topics: [T('Organic Chemistry', 70), T('Inorganic Chemistry', 20)] });
 check('"multidisciplinary" in the title with chemistry topics → Chemistry (the word alone is not evidence)', multiTitleOnly.dept === 'Chemistry');
+const halfMed = departmentFromTopics({ display_name: 'Clinical Oral Studies', topics: [T('Orthodontics', 30, 'Dentistry'), T('Periodontics', 15, 'Dentistry'), T('Surgery', 30, 'Medicine'), T('Cardiology and Cardiovascular Medicine', 15, 'Medicine')] });
+check('half Dentistry and half Medicine is not clearly Dental: the field-level competitor stops it', halfMed.confidence === 'low');
+const fewWorks = departmentFromTopics({ display_name: 'Tiny Dental Bulletin', topics: [T('Orthodontics', 12, 'Dentistry'), T('Periodontics', 8, 'Dentistry')] });
+check('fewer than 30 topic works is too little to say', fewWorks.confidence === 'low' && /too little/.test(fewWorks.reason || ''));
+const nanoTopic = departmentFromTopics({ display_name: 'Letters on Small Things', topics: [{ display_name: 'Graphene research and applications', count: 60, subfield: { display_name: 'Materials Chemistry' }, field: { display_name: 'Materials Science' } }, { display_name: 'Carbon Nanotubes in Composites', count: 30, subfield: { display_name: 'Ceramics and Composites' }, field: { display_name: 'Materials Science' } }] });
+check('Nano Technology is read from topic names (graphene, nanotubes), which have no subfield of their own', nanoTopic.dept === 'Nano Technology' && nanoTopic.confidence === 'high');
 const sc = scoreTopics('x', [T('Software', 10), T('Not A Real Subfield', 90)]);
 check('a topic with an unknown subfield counts toward the total and supports nothing', sc.total === 100 && sc.shares[0].share === 0.1);
 check('every department the table names is one of this product\'s departments', Object.values(SUBFIELD_DEPARTMENT).every(d => d === 'ELECTRICAL_OR_ELECTRONICS' || CANON.includes(d)), Object.values(SUBFIELD_DEPARTMENT).filter(d => d !== 'ELECTRICAL_OR_ELECTRONICS' && !CANON.includes(d)).join(', '));

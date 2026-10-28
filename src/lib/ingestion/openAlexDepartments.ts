@@ -18,7 +18,7 @@ import { canonicalDepartmentName } from '../departmentRegistry.js';
 
 const D = {
   physio: 'Physiotherapy', dental: 'Dental', nursing: 'Nursing', pharmacy: 'Pharmacy', biotech: 'Bio Technology', chem: 'Chemistry', chemEng: 'Chemical Engineering', cs: 'Computer / IT',
-  elec: 'Electrical Engineering', electronics: 'Electronics & Telecommunication Engineering', mech: 'Mechanical Engineering', appMech: 'Applied Mechanics', civil: 'Civil / Construction Engineering',
+  nano: 'Nano Technology', elec: 'Electrical Engineering', electronics: 'Electronics & Telecommunication Engineering', mech: 'Mechanical Engineering', appMech: 'Applied Mechanics', civil: 'Civil / Construction Engineering',
   arch: 'Architecture', material: 'Material Science', commerce: 'Commerce', management: 'Management', energy: 'Energy', agri: 'Agriculture', ayurveda: 'Ayurveda',
 };
 
@@ -50,6 +50,24 @@ export const SUBFIELD_DEPARTMENT: Record<string, string> = {
   'Complementary and alternative medicine': D.ayurveda,
 };
 
+/** FIELD → department, for topics whose subfield the table above does not cover. A field is only a hint, so these are used last, and mostly as COMPETITORS: a journal whose works are half
+ *  Dentistry and half Medicine is not clearly Dental. Departments we do not need to grow are here so a physics, law or medicine journal is never mistaken for one of ours. */
+const FIELD_DEPARTMENT: Record<string, string> = {
+  'Dentistry': D.dental, 'Nursing': D.nursing, 'Pharmacology, Toxicology and Pharmaceutics': D.pharmacy, 'Chemical Engineering': D.chemEng, 'Chemistry': D.chem, 'Energy': D.energy, 'Materials Science': D.material,
+  'Computer Science': D.cs, 'Medicine': 'Medical Sciences', 'Health Professions': 'Medical Sciences', 'Veterinary': D.agri, 'Agricultural and Biological Sciences': D.agri,
+  'Biochemistry, Genetics and Molecular Biology': 'Life Sciences', 'Immunology and Microbiology': 'Life Sciences', 'Neuroscience': 'Life Sciences',
+  'Business, Management and Accounting': D.management, 'Economics, Econometrics and Finance': D.commerce, 'Decision Sciences': D.management,
+  'Social Sciences': 'Education and Social Sciences', 'Psychology': 'Education and Social Sciences', 'Arts and Humanities': 'Arts',
+  'Mathematics': 'Science', 'Physics and Astronomy': 'Science', 'Earth and Planetary Sciences': 'Science', 'Environmental Science': 'Science',
+};
+/** Subfields that sit under a department-bearing FIELD but are not that department. */
+const NOT_THE_FIELD: Record<string, string> = { 'Nutrition and Dietetics': 'Medical Sciences', 'Law': 'Law' };
+const NANO_TOPIC = /\bnano|graphene|quantum dots?|fullerene|carbon nanotube/i;
+const AYU_TOPIC = /ayurved|herbal|traditional (chinese |indian )?medicine|homeopath|unani|siddha|phytochemic|medicinal plants?|ethnopharmac/i;
+
+/** The strictest of both designs: the department must hold at least this part of the journal's topic works, lead the runner-up by this factor, and rest on this many works. */
+export const MIN_SHARE = 0.5, LEAD = 1.5, MIN_WORKS = 30, MIN_LEAD_POINTS = 0.25;
+
 const ELECTRONICS_WORDS = /telecommunication|communication|wireless|network|signal|electronic|\brf\b|microwave|antenna|photonic|optic|semiconductor|circuit|vlsi|embedded|sensor/i;
 const ELECTRICAL_WORDS = /\bpower\b|electrical|electric\b|energy|machines?|drives?|\bgrid\b|high voltage|control|automation|motor/i;
 /** Departments the title ITSELF names by the engine's title rules (a Nursing journal's title says nursing). Used only to catch a title that contradicts the topics. */
@@ -69,7 +87,10 @@ export function scoreTopics(title: string, topics: Topic[]): TopicEvidence {
   for (const t of topics || []) {
     const w = Number.isFinite(t?.count) && (t.count as number) > 0 ? (t.count as number) : 1; total += w;
     if (t?.field?.display_name) fields.set(t.field.display_name, (fields.get(t.field.display_name) || 0) + w);
-    let dept = SUBFIELD_DEPARTMENT[String(t?.subfield?.display_name || '')];
+    const sub = String(t?.subfield?.display_name || ''), topicName = String(t?.display_name || '');
+    // A topic's department: its name for Nano and Ayurveda (they have no subfield of their own), then its subfield, then (last, and as a competitor) its field.
+    let dept: string | undefined = NANO_TOPIC.test(topicName) ? D.nano : AYU_TOPIC.test(topicName) && /complementary|medicine|pharma|botany|plant|therapy|health/i.test(`${sub} ${t?.field?.display_name || ''}`) ? D.ayurveda
+      : NOT_THE_FIELD[sub] || SUBFIELD_DEPARTMENT[sub] || FIELD_DEPARTMENT[String(t?.field?.display_name || '')];
     if (!dept) continue;
     if (dept === 'ELECTRICAL_OR_ELECTRONICS') dept = ELECTRONICS_WORDS.test(title) && !ELECTRICAL_WORDS.test(title) ? D.electronics : ELECTRICAL_WORDS.test(title) && !ELECTRONICS_WORDS.test(title) ? D.elec : 'AMBIGUOUS_ELECTRICAL';
     const c = by.get(dept) || { w: 0, n: 0 }; c.w += w; c.n++; by.set(dept, c);
@@ -89,8 +110,10 @@ export function departmentFromTopics(source: { display_name?: string; topics?: T
   const evidence = { basis: 'topics', shares: ev.shares.slice(0, 3).map(s => ({ ...s, share: Math.round(s.share * 100) / 100 })), topics: (source.topics || []).slice(0, 4).map(t => t.subfield?.display_name || t.display_name) };
   if (top.department === 'AMBIGUOUS_ELECTRICAL') return { dept: null, confidence: 'low', reason: 'electrical or electronics engineering: the title does not say which', evidence };
   const margin = top.share - (second?.share ?? 0);
-  if (top.topics < 2 || top.share < 0.5 || margin < 0.25) return { dept: top.department, confidence: 'low', reason: `topic support is not strong enough (${Math.round(top.share * 100)}% of its works in ${top.topics} topic${top.topics === 1 ? '' : 's'}, ahead of the next by ${Math.round(margin * 100)} points)`, evidence };
-  // OpenAlex files sports science under the physical-therapy subfield. A journal is Physiotherapy here only when its title says therapy, rehabilitation or clinical practice.
+  const pct = (x: number) => `${Math.round(x * 100)}%`;
+  if (ev.total < MIN_WORKS) return { dept: top.department, confidence: 'low', reason: `only ${ev.total} topic works: too little to say`, evidence };
+  if (top.topics < 2 || top.share < MIN_SHARE) return { dept: top.department, confidence: 'low', reason: `topic support is not strong enough (${pct(top.share)} of its works in ${top.topics} topic${top.topics === 1 ? '' : 's'})`, evidence };
+  if (margin < MIN_LEAD_POINTS || (second && top.share < LEAD * second.share)) return { dept: top.department, confidence: 'low', reason: `${top.department} (${pct(top.share)}) does not clearly lead ${second?.department} (${pct(second?.share ?? 0)})`, evidence };
   if (top.department === 'Physiotherapy' && !THERAPY_WORDS.test(title)) return { dept: top.department, confidence: 'low', reason: SPORT_EDUCATION.test(title) ? 'a sport or physical-education journal, not physical therapy' : 'the title does not name therapy, rehabilitation or clinical practice (OpenAlex files sports science under this subfield)', evidence };
   if (top.department === 'Computer / IT' && LIBRARY_SCIENCE.test(title) && !COMPUTING_WORDS.test(title)) return { dept: top.department, confidence: 'low', reason: 'a library or information-science journal, not computing', evidence };
   const fromTitle = titleDepartment(title);
