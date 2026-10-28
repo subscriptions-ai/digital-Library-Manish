@@ -1666,16 +1666,11 @@ async function startServer() {
         },
       }).catch((e: any) => console.error('pro application: could not file the lead', e?.message));
 
-      // Told to whoever can grant it and whoever will call about it.
+      // One alert, to the admin inbox only. The sales team is told through the
+      // lead in their bell, not by mail, so nobody's address is shared with the rest.
       (async () => {
-        const team = await prisma.user.findMany({
-          where: { role: { in: ['SuperAdmin', 'SubscriptionManager', 'SalesManager', 'SalesExecutive'] } },
-          select: { email: true },
-        });
-        const to = [...new Set([process.env.ADMIN_EMAIL || COMPANY_DETAILS.email, ...team.map(t => t.email)])]
-          .filter(Boolean).join(', ');
         await sendMail({
-          to,
+          to: ADMIN_INBOX,
           subject: `⭐ Pro membership application — ${u.displayName || u.email}`,
           html: buildEmail(
             `<tr><td style="padding:28px 40px 24px;">` +
