@@ -24,7 +24,19 @@ Cohort = members registered in the selected period. Converted = of those, ones w
 ## Individual records
 Only members whose email matches (case-insensitively) a `Lead` assigned to the caller (`Lead.assignedToId`). There is no User → executive column. Nothing is assigned automatically. Columns: name, email, organisation, registered date, verified, subscription, and the lead id (to open the existing lead page). No export, no per-id route.
 
+## Ambiguous ownership
+An address can sit on leads of two executives. Such a member is listed for neither; each is told how many were held back (`ambiguous`), with no names. A duplicate lead that is unassigned does not make ownership ambiguous.
+
+## Why "could not be loaded" appeared on localhost
+The dev server (`npm run dev`, no watch) had been started before these routes existed, so `/api/sales/registrations/*` was not mounted and the app-shell fallback answered with `index.html` and HTTP 200; the page then failed to parse it as JSON. Unknown `/api/*` paths now return a JSON 404, and the screens tell a missing route (restart the server), an ended session, missing access, a network failure and a server error apart. Restart the dev server to pick the routes up.
+
+## Demo data label
+`REGISTRATION_DEMO_DATA=1` makes the three routes return `demo: true` and the screens show a "Demo data" badge. Set it only on a localhost run against a seeded test database; never in production.
+
+## Closed gaps
+- `/api/sales/leads/:id` (detail, status, notes): SalesExecutive and SalesManager may only open leads assigned to them (404 otherwise); SuperAdmin and SubscriptionManager, who already read every lead through `/api/admin/leads`, may open any.
+- `POST /api/admin/subscription-requests` is now admin-only. Nothing in the product posted to it (the public form is `/api/domain-request`; a member's own request is the Pro application).
+
 ## Known gaps
-- `/api/sales/leads/:id` (existing) does not check assignment; any sales user can open any lead by id. Not changed here.
-- `POST /api/admin/subscription-requests` has no authentication.
+- `/api/domain-request` (public) has no rate limit beyond the global API limiter.
 - Optional indexes if the Subscription table grows large: `Subscription(userId)`, `Subscription(institutionId)`, `Payment(status)`. Not added; no migration is needed for this feature.

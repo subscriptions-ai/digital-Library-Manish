@@ -12428,9 +12428,12 @@ async function startServer() {
     }
   });
 
-  app.post("/api/admin/subscription-requests", async (req: any, res) => {
+  // Internal: nothing in the product posts here (the public form is /api/domain-request, the member's own is the Pro application), and the
+  // sibling routes on this path are admin-only. It was open to anyone, so a stranger could file a request in any member's name.
+  app.post("/api/admin/subscription-requests", authenticateJWT, requireAdminOrManager, async (req: any, res) => {
     try {
       const { userName, email, planType, durationMonths, planDescription, paymentRef, notes, userId } = req.body;
+      if (!userName || !email) return res.status(400).json({ error: "Name and email are required" });
       const request = await (prisma as any).subscriptionRequest.create({
         data: { userName, email, planType, durationMonths: parseInt(durationMonths) || 1, planDescription, paymentRef, notes, userId }
       });
@@ -16396,8 +16399,21 @@ async function startServer() {
   });
 
 
+  /**
+   * Sales executives and managers work the leads assigned to them (My Leads has only ever listed those); the admin-level roles that may
+   * already read every lead through /api/admin/leads can open any. Answered as "not found" rather than "forbidden", so another executive's
+   * lead id says nothing about whether it exists. Replies and returns null when the caller may not touch the lead.
+   */
+  const leadForCaller = async (req: any, res: any, select?: any) => {
+    const lead = await prisma.lead.findUnique({ where: { id: req.params.id }, select: { id: true, assignedToId: true, ...(select || {}) } });
+    const ownerOnly = req.user?.role === "SalesExecutive" || req.user?.role === "SalesManager";
+    if (!lead || (ownerOnly && lead.assignedToId !== req.user.uid)) { res.status(404).json({ error: "Lead not found" }); return null; }
+    return lead;
+  };
+
   app.get("/api/sales/leads/:id", authenticateJWT, requireSalesRole, async (req: any, res) => {
     try {
+      if (!(await leadForCaller(req, res))) return;
       const lead = await prisma.lead.findUnique({
         where: { id: req.params.id },
         include: {
@@ -16417,6 +16433,7 @@ async function startServer() {
 
   app.put("/api/sales/leads/:id/status", authenticateJWT, requireSalesRole, async (req: any, res) => {
     try {
+      if (!(await leadForCaller(req, res))) return;
       const { status } = req.body;
       const lead = await prisma.lead.update({
         where: { id: req.params.id },
@@ -16431,6 +16448,7 @@ async function startServer() {
 
   app.post("/api/sales/leads/:id/interactions", authenticateJWT, requireSalesRole, async (req: any, res) => {
     try {
+      if (!(await leadForCaller(req, res))) return;
       const { type, notes } = req.body;
       const interaction = await prisma.leadInteraction.create({
         data: {
@@ -16905,6 +16923,10 @@ async function startServer() {
     res.setHeader("Cache-Control", "public, max-age=600");
     res.sendFile(file);
   });
+
+  // An /api path that no route claimed is a 404 in JSON. Without this the app-shell fallback below answered it with index.html and a 200, so a
+  // caller reaching a server that did not have the route yet (a dev server started before it was added) got HTML where it expected JSON.
+  app.use("/api", (_req: any, res: any) => res.status(404).json({ error: "Not found" }));
 
   // Public pages (the blog, the department pages, the marketing pages) leave the server with their own title, description,
   // canonical and structured data, and the blog's content as plain HTML. Everything else gets the plain app shell below.

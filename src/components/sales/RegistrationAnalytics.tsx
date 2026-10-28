@@ -1,17 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { UserPlus, Users, CalendarDays, BadgeCheck, TrendingUp, TrendingDown, Minus, RefreshCw, Info, ArrowRight, UserX, CreditCard } from 'lucide-react';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import { EmptyState, ErrorState, Skeleton, Button, buttonClass } from '../ui';
+import { UserPlus, Users, CalendarDays, BadgeCheck, TrendingUp, TrendingDown, Minus, RefreshCw, Info, ArrowRight, CreditCard, ShieldCheck } from 'lucide-react';
+import { ResponsiveContainer, LineChart, Line, BarChart, Bar, Cell, LabelList, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { EmptyState, Skeleton, Button, buttonClass } from '../ui';
 import { istDay } from '../../lib/registrationWindows';
 import { AXIS_TICK, DataNote, FilterChips, StatCard } from './salesUi';
-import { fmtDay, fmtIstTime, fmtNum, getJson, SUB_LABEL, SUB_ORDER, type Growth, type Summary } from './registrationApi';
+import {
+  ApiErrorState, asApiError, DemoBadge, fmtDay, fmtIstTime, fmtNum, getJson, PAID_EXPLAINER, SUB_LABEL, SUB_ORDER,
+  type ApiError, type Growth, type Summary,
+} from './registrationApi';
 
 type RangeKey = 'today' | '7d' | '30d' | 'custom';
 const RANGES: { key: RangeKey; label: string }[] = [
   { key: 'today', label: 'Today' }, { key: '7d', label: 'Last 7 Days' }, { key: '30d', label: 'Last 30 Days' }, { key: 'custom', label: 'Custom Range' },
 ];
-const RANGE_NAME: Record<RangeKey, string> = { today: 'Today', '7d': 'the last 7 days', '30d': 'the last 30 days', custom: 'the selected range' };
+const RANGE_NAME: Record<RangeKey, string> = { today: 'today', '7d': 'in the last 7 days', '30d': 'in the last 30 days', custom: 'in the selected range' };
 
 /** A short explanation that opens on hover and on keyboard focus, so it is not a mouse-only title attribute. */
 function InfoTip({ label, children, align = 'left' }: { label: string; children: React.ReactNode; align?: 'left' | 'right' }) {
@@ -33,7 +36,7 @@ function GrowthLine({ g, prevLabel }: { g: Growth; prevLabel: string }) {
     const up = g.pct > 0, down = g.pct < 0;
     const Icon = up ? TrendingUp : down ? TrendingDown : Minus;
     return (
-      <p className={`flex items-center gap-1.5 text-sm font-semibold ${up ? 'text-success' : down ? 'text-alarm' : 'text-muted'}`}>
+      <p className={`flex flex-wrap items-center gap-x-1.5 text-sm font-semibold ${up ? 'text-success' : down ? 'text-alarm' : 'text-muted'}`}>
         <Icon size={16} aria-hidden="true" />
         <span>{up ? '+' : ''}{g.pct}%</span>
         <span className="font-normal text-muted">vs {prevLabel} ({g.delta > 0 ? '+' : ''}{g.delta})</span>
@@ -42,18 +45,19 @@ function GrowthLine({ g, prevLabel }: { g: Growth; prevLabel: string }) {
   }
   // A percentage over zero would read as infinite; say what happened instead.
   if (g.kind === 'new') {
-    return <p className="flex items-center gap-1.5 text-sm font-semibold text-success"><TrendingUp size={16} aria-hidden="true" />+{g.delta}<span className="font-normal text-muted">— none in {prevLabel}, so no percentage</span></p>;
+    return <p className="flex flex-wrap items-center gap-x-1.5 text-sm font-semibold text-success"><TrendingUp size={16} aria-hidden="true" />+{g.delta}<span className="font-normal text-muted">— none in {prevLabel}, so no percentage</span></p>;
   }
   return <p className="flex items-center gap-1.5 text-sm text-muted"><Minus size={16} aria-hidden="true" />No registrations in either period</p>;
 }
 
+/** Exact value on hover or focus: the day, and the count itself. */
 const DayTooltip = ({ active, payload }: any) => {
   if (!active || !payload?.length) return null;
   const p = payload[0].payload;
   return (
     <div className="rounded-lg border border-rule bg-surface px-3 py-2 text-xs shadow-[var(--shadow-pop)]">
       <p className="font-semibold text-ink">{fmtDay(p.day, true)}</p>
-      <p className="mt-0.5 text-ink-2">{p.count} {p.count === 1 ? 'registration' : 'registrations'}</p>
+      <p className="mt-0.5 text-ink-2"><b className="tabular-nums text-ink">{p.count}</b> {p.count === 1 ? 'registration' : 'registrations'}</p>
     </div>
   );
 };
@@ -67,7 +71,7 @@ export function RegistrationAnalytics() {
   const [data, setData] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ApiError | null>(null);
   const [rangeError, setRangeError] = useState<string | null>(null);
   const seq = useRef(0);
 
@@ -81,11 +85,12 @@ export function RegistrationAnalytics() {
       const d = await getJson<Summary>(`/api/sales/registrations/summary?${qs}`);
       if (id !== seq.current) return;           // a newer request has gone out; this answer is stale
       setData(d); setRangeError(null);
-    } catch (e: any) {
+    } catch (e) {
       if (id !== seq.current) return;
+      const err = asApiError(e);
       // A bad custom range is the user's to fix and keeps the figures on screen; anything else is a failed load.
-      if (key === 'custom') setRangeError(e?.message && !/^\d+$/.test(e.message) ? e.message : 'The range could not be loaded.');
-      else setError('We could not load the registration figures.');
+      if (err.kind === 'invalid') setRangeError(err.message || 'That range cannot be used.');
+      else setError(err);
     } finally {
       if (id === seq.current) { setLoading(false); setBusy(false); }
     }
@@ -100,20 +105,42 @@ export function RegistrationAnalytics() {
     load('custom', { from, to });
   };
 
+  const heading = (demo?: boolean) => (
+    <div className="flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 id="reg-h" className="text-xs font-semibold uppercase tracking-wider text-muted">User registrations</h2>
+          <span className="badge badge-neutral">All members</span>
+          {demo && <DemoBadge />}
+        </div>
+        <p className="mt-1 text-sm text-muted">Every registered customer account, not only your leads. Dates are in IST.</p>
+      </div>
+      {data && (
+        <div className="flex items-center gap-3">
+          <p className="text-xs text-muted" aria-live="polite">Last updated <time dateTime={data.generatedAt}>{fmtIstTime(data.generatedAt)}</time></p>
+          <Button variant="outline" size="sm" onClick={() => load(range, applied, true)} disabled={busy} aria-label="Refresh registration figures">
+            <RefreshCw size={14} className={busy ? 'animate-spin' : ''} aria-hidden="true" /> Refresh
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+
   if (loading) {
     return (
       <section aria-label="User registrations" className="space-y-4" role="status">
         <Skeleton className="h-6 w-48" />
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">{[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-[124px] rounded-xl" />)}</div>
-        <Skeleton className="h-[320px] rounded-xl" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">{[1, 2, 3].map(i => <Skeleton key={i} className="h-[96px] rounded-xl" />)}</div>
+        <Skeleton className="h-[360px] rounded-xl" />
       </section>
     );
   }
   if (error && !data) {
     return (
       <section aria-labelledby="reg-h" className="space-y-3">
-        <h2 id="reg-h" className="text-xs font-semibold uppercase tracking-wider text-muted">User registrations · All members</h2>
-        <div className="card"><ErrorState title="Registration figures could not be loaded" description={error} onRetry={() => load(range, applied)} /></div>
+        {heading()}
+        <div className="card"><ApiErrorState error={error} subject="Registration figures" onRetry={() => load(range, applied)} /></div>
       </section>
     );
   }
@@ -124,40 +151,29 @@ export function RegistrationAnalytics() {
   const selLabel = data.range.fromDay === data.range.toDay ? fmtDay(data.range.fromDay, true) : `${fmtDay(data.range.fromDay)} – ${fmtDay(data.range.toDay, true)}`;
   const rangeKey = (data.range.key as RangeKey) || range;
   const pctOf = (n: number, whole: number) => (whole > 0 ? Math.round((n / whole) * 100) : 0);
-  const none = cards.total === 0;
   const peak = Math.max(1, ...series.map(s => s.count));
-  // Thin the x-axis labels so a year of days stays legible.
+  // Thin the x-axis labels so a year of days stays legible, and more so on a phone.
   const tickEvery = Math.max(0, Math.ceil(series.length / (typeof window !== 'undefined' && window.innerWidth < 640 ? 4 : 8)) - 1);
+  const verification = [
+    { name: 'Verified', value: cards.verified, color: 'var(--success)' },
+    { name: 'Not verified', value: cards.unverified, color: 'var(--faint)' },
+  ];
 
   return (
     <section aria-labelledby="reg-h" className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 id="reg-h" className="text-xs font-semibold uppercase tracking-wider text-muted">User registrations</h2>
-          <p className="mt-1 text-sm text-muted">
-            <span className="badge badge-neutral mr-2">All members</span>
-            Every registered customer account, not only your leads. Dates are in IST.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <p className="text-xs text-muted" aria-live="polite">Last updated <time dateTime={data.generatedAt}>{fmtIstTime(data.generatedAt)}</time></p>
-          <Button variant="outline" size="sm" onClick={() => load(range, applied, true)} disabled={busy} aria-label="Refresh registration figures">
-            <RefreshCw size={14} className={busy ? 'animate-spin' : ''} aria-hidden="true" /> Refresh
-          </Button>
-        </div>
-      </div>
+      {heading(data.demo)}
 
-      {none ? (
+      {cards.total === 0 ? (
         <div className="card"><EmptyState icon={Users} title="No registered members yet" description="Registrations appear here as soon as members sign up." /></div>
       ) : (
         <>
           {/* Fixed windows: these four do not follow the filter below. */}
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             <StatCard label="Total Registered Users" value={fmtNum(cards.total)} icon={Users} context="All members · all time" />
-            <StatCard label="New Registrations Today" value={fmtNum(cards.today)} icon={UserPlus} context="All members · since 12:00 AM IST" />
-            <StatCard label="New in Last 30 Days" value={fmtNum(cards.last30)} icon={CalendarDays} context="All members · 30 days incl. today" />
+            <StatCard label="Registered Today" value={fmtNum(cards.today)} icon={UserPlus} context="All members · since 12:00 AM IST" />
+            <StatCard label="Last 30 Days" value={fmtNum(cards.last30)} icon={CalendarDays} context="All members · 30 days incl. today" />
             <StatCard label="Verified Users" value={fmtNum(cards.verified)} icon={BadgeCheck}
-              context={`All members · ${pctOf(cards.verified, cards.total)}% of all registered`} />
+              context={`All members · all time · ${pctOf(cards.verified, cards.total)}% of all`} />
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -168,27 +184,29 @@ export function RegistrationAnalytics() {
             </div>
             <Link to="/sales/registered-users" className="card card-pad card-interactive block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
               <p className="metric-label flex items-center gap-1.5">
-                Without an Active Subscription
+                Without Active Subscription
                 <InfoTip label="How this is counted">
                   Registered members who hold no running subscription: none ever, trial only, expired or cancelled. Running access of any kind (paid, via an institution, or granted by an administrator) is not counted here.
                 </InfoTip>
               </p>
               <p className="metric-value mt-1">{fmtNum(subs.withoutActive)}</p>
-              <p className="metric-context mt-1">All members · {pctOf(subs.withoutActive, cards.total)}% of all registered</p>
+              <p className="metric-context mt-1">All members · all time · {pctOf(subs.withoutActive, cards.total)}% of all</p>
             </Link>
             <div className="card card-pad">
               <p className="metric-label">Growth vs previous period</p>
               <div className="mt-2"><GrowthLine g={selected.growth} prevLabel={prevLabel} /></div>
-              <p className="metric-context mt-1">All members · follows the range below</p>
+              <p className="metric-context mt-1">All members · selected period ({selLabel})</p>
             </div>
           </div>
 
-          {/* Everything below follows the filter. */}
+          {/* Everything in this card follows the filter. */}
           <div className="card card-pad space-y-5" aria-busy={busy}>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0">
-                <h3 className="card-title">Daily registrations</h3>
-                <p className="mt-1 text-sm text-muted">{selLabel} · {data.range.days} {data.range.days === 1 ? 'day' : 'days'} · all members</p>
+                <h3 className="card-title flex flex-wrap items-center gap-2">Daily registrations <span className="badge badge-accent">Selected period</span></h3>
+                <p className="mt-1 text-sm text-muted">
+                  {selLabel} IST · {data.range.days} {data.range.days === 1 ? 'day' : 'days'} · all members
+                </p>
               </div>
               <FilterChips label="Registration period" value={range} onChange={k => setRange(k as RangeKey)} options={RANGES} />
             </div>
@@ -196,11 +214,11 @@ export function RegistrationAnalytics() {
             {range === 'custom' && (
               <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
                 <div className="field sm:w-44">
-                  <label htmlFor="reg-from" className="field-label">From</label>
+                  <label htmlFor="reg-from" className="field-label">From (IST)</label>
                   <input id="reg-from" type="date" className="input" value={from} max={today} onChange={e => setFrom(e.target.value)} />
                 </div>
                 <div className="field sm:w-44">
-                  <label htmlFor="reg-to" className="field-label">To</label>
+                  <label htmlFor="reg-to" className="field-label">To (IST)</label>
                   <input id="reg-to" type="date" className="input" value={to} max={today} onChange={e => setTo(e.target.value)} />
                 </div>
                 <Button onClick={applyCustom} disabled={busy}>Apply range</Button>
@@ -208,11 +226,15 @@ export function RegistrationAnalytics() {
               </div>
             )}
             {range !== 'custom' && rangeError && <p role="alert" className="text-sm text-alarm">{rangeError}</p>}
-            {error && <p role="alert" className="text-sm text-alarm">{error} Showing the last figures that loaded.</p>}
+            {error && (
+              <p role="alert" className="rounded-lg border border-rule bg-alarm-soft px-3 py-2 text-sm text-ink-2">
+                The figures could not be refreshed — showing the last ones that loaded. <button type="button" className="font-semibold text-accent hover:underline" onClick={() => load(range, applied)}>Retry</button>
+              </p>
+            )}
 
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
               <div>
-                <p className="metric-label">Registrations in {RANGE_NAME[rangeKey]}</p>
+                <p className="metric-label">Registered {RANGE_NAME[rangeKey]}</p>
                 <p className="metric-value mt-1">{fmtNum(selected.registrations)}</p>
               </div>
               <div>
@@ -230,7 +252,7 @@ export function RegistrationAnalytics() {
                   Registration → Paid
                   <InfoTip label="How conversion is calculated" align="right">
                     <b className="font-semibold text-ink">Formula:</b> members who registered in this period and became paid subscribers by the end of it ÷ all members who registered in this period.
-                    <br /><b className="font-semibold text-ink">Cutoff:</b> {fmtDay(data.range.toDay, true)}, end of day IST. Paid means a subscription bought through a recorded payment; administrator grants and offline payments that were never linked are not counted, so this is a lower bound.
+                    <br /><b className="font-semibold text-ink">Cutoff:</b> {fmtDay(data.range.toDay, true)}, end of day IST. Only payment-linked subscriptions count, so this is a lower bound.
                   </InfoTip>
                 </p>
                 {conversion.available === true ? (
@@ -248,15 +270,16 @@ export function RegistrationAnalytics() {
             </div>
 
             <div style={{ height: 260 }} role="img"
-              aria-label={`Daily registrations from ${fmtDay(data.range.fromDay, true)} to ${fmtDay(data.range.toDay, true)}: ${selected.registrations} in total, busiest day ${peak === 1 && selected.registrations === 0 ? 'none' : peak}.`}>
+              aria-label={`Daily registrations from ${fmtDay(data.range.fromDay, true)} to ${fmtDay(data.range.toDay, true)}: ${selected.registrations} in total${selected.registrations ? `, busiest day ${peak}` : ''}.`}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={series} margin={{ left: -12, right: 8, top: 8, bottom: 0 }}>
+                <LineChart data={series} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
                   <CartesianGrid vertical={false} stroke="var(--rule)" />
                   <XAxis dataKey="day" tickFormatter={d => fmtDay(d)} tick={AXIS_TICK} axisLine={false} tickLine={false} interval={tickEvery} minTickGap={12} />
                   <YAxis allowDecimals={false} domain={[0, peak < 4 ? 4 : 'auto']} tick={AXIS_TICK} axisLine={false} tickLine={false} width={44} />
-                  <Tooltip cursor={{ fill: 'var(--surface-2)' }} content={<DayTooltip />} />
-                  <Bar dataKey="count" fill="var(--accent)" radius={[4, 4, 0, 0]} maxBarSize={28} isAnimationActive={false} />
-                </BarChart>
+                  <Tooltip cursor={{ stroke: 'var(--faint)', strokeDasharray: '3 3' }} content={<DayTooltip />} />
+                  <Line type="linear" dataKey="count" stroke="var(--accent)" strokeWidth={2.25} isAnimationActive={false}
+                    dot={series.length <= 45 ? { r: 3, fill: 'var(--accent)', strokeWidth: 0 } : false} activeDot={{ r: 5 }} />
+                </LineChart>
               </ResponsiveContainer>
             </div>
             {selected.registrations === 0 && (
@@ -264,35 +287,56 @@ export function RegistrationAnalytics() {
             )}
           </div>
 
-          {/* Subscriptions: a different question from the lead pipeline, so a different label and scope. */}
-          <div className="card card-pad">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h3 className="card-title flex items-center gap-2"><CreditCard size={16} className="text-accent" aria-hidden="true" />Subscriptions</h3>
-                <p className="mt-1 text-sm text-muted"><span className="badge badge-neutral mr-2">All members</span>Today's state of every registered account</p>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+            {/* Verification: the same eligible members as the cards above, all time — Verified + Not verified = Total Registered Users. */}
+            <div className="card card-pad lg:col-span-2">
+              <h3 className="card-title flex items-center gap-2"><ShieldCheck size={16} className="text-accent" aria-hidden="true" />Verification</h3>
+              <p className="mt-1 text-sm text-muted"><span className="badge badge-neutral mr-2">All members</span>All time</p>
+              <div className="mt-3" style={{ height: 96 }} role="img"
+                aria-label={`Verified ${cards.verified} of ${cards.total} members, ${pctOf(cards.verified, cards.total)} percent; not verified ${cards.unverified}.`}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={verification} layout="vertical" margin={{ left: 0, right: 64, top: 0, bottom: 0 }}>
+                    <XAxis type="number" hide domain={[0, Math.max(1, cards.total)]} />
+                    <YAxis dataKey="name" type="category" width={92} tick={AXIS_TICK} axisLine={false} tickLine={false} interval={0} />
+                    <Tooltip cursor={{ fill: 'var(--surface-2)' }} formatter={(v: number, _n: string, p: any) => [`${fmtNum(v)} (${pctOf(v, cards.total)}%)`, p.payload.name]} />
+                    <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={18} isAnimationActive={false}>
+                      {verification.map(v => <Cell key={v.name} fill={v.color} />)}
+                      <LabelList dataKey="value" position="right" formatter={(v: number) => `${fmtNum(v)} · ${pctOf(v, cards.total)}%`} style={{ fill: 'var(--ink)', fontSize: 12, fontWeight: 600 }} />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
-              <div className="text-right">
-                <p className="metric-label flex items-center justify-end gap-1.5">
-                  Active Paid Subscribers
-                  <InfoTip label="What counts as paid" align="right">
-                    Members holding a running subscription they bought through a recorded Paid payment. Trials, expired and cancelled subscriptions are never counted. Access granted by an administrator, Pro approvals and offline payments that were not linked to the subscription are shown separately, because nothing records that they were paid.
-                  </InfoTip>
-                </p>
-                <p className="metric-value">{fmtNum(subs.activePaid)}</p>
-              </div>
+              <p className="mt-2 text-xs text-muted">{fmtNum(cards.verified)} + {fmtNum(cards.unverified)} = {fmtNum(cards.total)} registered members.</p>
             </div>
-            <ul className="mt-4 grid grid-cols-1 gap-x-8 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
-              {SUB_ORDER.map(s => (
-                <li key={s} className="flex items-center gap-2.5 text-sm">
-                  <span className="min-w-0 flex-1 truncate text-ink-2">{SUB_LABEL[s]}</span>
-                  <span className="font-semibold tabular-nums text-ink">{fmtNum(subs[s])}</span>
-                  <span className="w-10 text-right text-xs tabular-nums text-muted">{pctOf(subs[s], cards.total)}%</span>
-                </li>
-              ))}
-            </ul>
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-rule pt-4">
-              <DataNote>The lead-pipeline "Subscribed Leads" count above is your own leads marked Subscriber. It is a sales status, not a payment, and is not the same number.</DataNote>
-              <Link to="/sales/registered-users" className={buttonClass('outline', 'sm')}><UserX size={14} aria-hidden="true" /> View my registered users <ArrowRight size={14} aria-hidden="true" /></Link>
+
+            {/* Subscriptions: a different question from the lead pipeline, so a different label and scope. */}
+            <div className="card card-pad lg:col-span-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="card-title flex items-center gap-2"><CreditCard size={16} className="text-accent" aria-hidden="true" />Subscriptions</h3>
+                  <p className="mt-1 text-sm text-muted"><span className="badge badge-neutral mr-2">All members</span>Today's state of every registered account</p>
+                </div>
+                <div className="text-right">
+                  <p className="metric-label flex items-center justify-end gap-1.5">
+                    Payment-linked Paid Subscribers
+                    <InfoTip label="What counts as payment-linked paid" align="right">{PAID_EXPLAINER}</InfoTip>
+                  </p>
+                  <p className="metric-value">{fmtNum(subs.activePaid)}</p>
+                </div>
+              </div>
+              <ul className="mt-4 grid grid-cols-1 gap-x-8 gap-y-2 sm:grid-cols-2">
+                {SUB_ORDER.map(s => (
+                  <li key={s} className="flex items-center gap-2.5 text-sm">
+                    <span className="min-w-0 flex-1 truncate text-ink-2">{SUB_LABEL[s]}</span>
+                    <span className="font-semibold tabular-nums text-ink">{fmtNum(subs[s])}</span>
+                    <span className="w-10 text-right text-xs tabular-nums text-muted">{pctOf(subs[s], cards.total)}%</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-rule pt-4">
+                <DataNote>"Subscribed Leads" above counts your own leads marked Subscriber — a sales status, not a payment.</DataNote>
+                <Link to="/sales/registered-users" className={buttonClass('outline', 'sm')}>View my registered users <ArrowRight size={14} aria-hidden="true" /></Link>
+              </div>
             </div>
           </div>
         </>

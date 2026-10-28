@@ -38,7 +38,7 @@ export const SUB_STATUSES: SubStatus[] = ['paid', 'institution', 'granted', 'tri
 /** The statuses that hold running access of some kind. Everything else is somebody a sales call could still convert. */
 export const ACTIVE_STATUSES: SubStatus[] = ['paid', 'institution', 'granted'];
 export const SUB_LABEL: Record<SubStatus, string> = {
-  paid: 'Active · Paid', institution: 'Active · Via institution', granted: 'Active · Not payment-linked',
+  paid: 'Paid · Payment-linked', institution: 'Active · Via institution', granted: 'Active · No payment link',
   trial: 'Trial', expired: 'Expired', cancelled: 'Cancelled', none: 'No subscription',
 };
 
@@ -107,9 +107,9 @@ export interface RegistrationSummary {
   range: { key: string; fromDay: string; toDay: string; days: number };
   previous: { fromDay: string; toDay: string };
   /** All-members scope, fixed windows — they do not follow the range filter. */
-  cards: { total: number; today: number; last7: number; last30: number; verified: number };
+  cards: { total: number; today: number; last7: number; last30: number; verified: number; unverified: number };
   /** Follows the range filter. */
-  selected: { registrations: number; previousRegistrations: number; growth: Growth; verified: number };
+  selected: { registrations: number; previousRegistrations: number; growth: Growth; verified: number; unverified: number };
   series: { day: string; count: number }[];
   /** All members, today's state. */
   subscriptions: Record<SubStatus, number> & { withoutActive: number; activePaid: number };
@@ -125,11 +125,13 @@ export async function registrationSummary(db: Db, staffRoles: readonly string[],
   const [[c], series, subRows, [conv]] = await Promise.all([
     db.$queryRaw`SELECT count(*)::int AS total,
         count(*) FILTER (WHERE u."emailVerifiedAt" IS NOT NULL)::int AS verified,
+        count(*) FILTER (WHERE u."emailVerifiedAt" IS NULL)::int AS unverified,
         count(*) FILTER (WHERE ${inWindow(today)})::int AS today,
         count(*) FILTER (WHERE ${inWindow(d7)})::int AS last7,
         count(*) FILTER (WHERE ${inWindow(d30)})::int AS last30,
         count(*) FILTER (WHERE ${inWindow(win)})::int AS selected,
         count(*) FILTER (WHERE ${inWindow(win)} AND u."emailVerifiedAt" IS NOT NULL)::int AS "selectedVerified",
+        count(*) FILTER (WHERE ${inWindow(win)} AND u."emailVerifiedAt" IS NULL)::int AS "selectedUnverified",
         count(*) FILTER (WHERE ${inWindow(prev)})::int AS previous
       FROM "User" u WHERE ${eligible}`,
     db.$queryRaw`SELECT to_char((u."createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD') AS day, count(*)::int AS count
@@ -152,8 +154,8 @@ export async function registrationSummary(db: Db, staffRoles: readonly string[],
     generatedAt: now.toISOString(),
     range: { key: rangeKey, fromDay: win.fromDay, toDay: win.toDay, days: win.days },
     previous: { fromDay: prev.fromDay, toDay: prev.toDay },
-    cards: { total: n(c.total), today: n(c.today), last7: n(c.last7), last30: n(c.last30), verified: n(c.verified) },
-    selected: { registrations: n(c.selected), previousRegistrations: n(c.previous), growth: growth(n(c.selected), n(c.previous)), verified: n(c.selectedVerified) },
+    cards: { total: n(c.total), today: n(c.today), last7: n(c.last7), last30: n(c.last30), verified: n(c.verified), unverified: n(c.unverified) },
+    selected: { registrations: n(c.selected), previousRegistrations: n(c.previous), growth: growth(n(c.selected), n(c.previous)), verified: n(c.selectedVerified), unverified: n(c.selectedUnverified) },
     series: zeroFill((series as { day: string; count: number }[]).map(r => ({ day: r.day, count: n(r.count) })), win),
     subscriptions: { ...by, withoutActive, activePaid: by.paid },
     conversion: conversion(n(conv.cohort), n(conv.converted)),
@@ -162,8 +164,16 @@ export async function registrationSummary(db: Db, staffRoles: readonly string[],
 
 // ── Assigned members ────────────────────────────────────────────────────────
 
-/** Members behind leads assigned to this executive. EXISTS, so one member behind two leads is one row. */
-const assignedSql = (me: string) => Prisma.sql`EXISTS (SELECT 1 FROM "Lead" l WHERE l."assignedToId" = ${me} AND lower(l."email") = lower(u."email"))`;
+/**
+ * Members behind leads assigned to this executive. EXISTS, so one member behind two leads is one row.
+ *
+ * Ownership is only ever decided by the lead's email, and an address can sit on leads of more than one executive (a signup, then an
+ * enquiry, each assigned separately). Whose member that is, is then not knowable, so such a member is listed for nobody: `ambiguousSql`
+ * finds them, they are counted for the caller without being named, and nothing about them is returned. Unassigned leads do not count.
+ */
+const mineSql = (me: string) => Prisma.sql`EXISTS (SELECT 1 FROM "Lead" l WHERE l."assignedToId" = ${me} AND lower(l."email") = lower(u."email"))`;
+const otherSql = (me: string) => Prisma.sql`EXISTS (SELECT 1 FROM "Lead" o WHERE o."assignedToId" IS NOT NULL AND o."assignedToId" <> ${me} AND lower(o."email") = lower(u."email"))`;
+const assignedSql = (me: string) => Prisma.sql`${mineSql(me)} AND NOT ${otherSql(me)}`;
 
 /** Escape LIKE wildcards so a search for "100%" matches the text and not everything. */
 const likePattern = (q: string) => `%${q.replace(/[\\%_]/g, c => `\\${c}`)}%`;
@@ -197,14 +207,17 @@ export async function assignedMembers(db: Db, staffRoles: readonly string[], me:
     FROM "User" u WHERE ${where}`;
 
   const offset = (query.page - 1) * query.pageSize;
-  const [rows, [t]] = await Promise.all([
+  const [rows, [t], [amb]] = await Promise.all([
     db.$queryRaw`SELECT x."name", x."email", x."organization", x."createdAt", x."verified", x."subStatus", x."leadId"
       FROM (${base}) x ${outerWhere} ORDER BY x."createdAt" DESC, x."_id" LIMIT ${query.pageSize} OFFSET ${offset}`,
     db.$queryRaw`SELECT count(*)::int AS total FROM (${base}) x ${outerWhere}`,
+    db.$queryRaw`SELECT count(*)::int AS n FROM "User" u WHERE ${eligibleSql(staffRoles)} AND ${mineSql(me)} AND ${otherSql(me)}`,
   ]);
   const total = n(t.total);
   return {
     total, page: query.page, pageSize: query.pageSize, pages: Math.max(1, Math.ceil(total / query.pageSize)),
+    /** Members matching your leads and another executive's too: not listed, because whose they are cannot be told. */
+    ambiguous: n(amb.n),
     members: (rows as any[]).map(r => ({
       name: r.name, email: r.email, organization: r.organization, registeredAt: r.createdAt,
       verified: !!r.verified, subscription: r.subStatus as SubStatus, subscriptionLabel: SUB_LABEL[r.subStatus as SubStatus], leadId: r.leadId,
@@ -219,6 +232,9 @@ interface Deps {
   authenticateJWT: express.RequestHandler;
   staffRoles: readonly string[];
 }
+
+/** Set only on a localhost run against a seeded test database, so the screens say so. Never set in production. */
+const isDemo = () => process.env.REGISTRATION_DEMO_DATA === '1';
 
 const SUMMARY_TTL_MS = 60_000;
 /** A refresh may recompute at most this often, so the button cannot be used to hammer the database. */
@@ -256,13 +272,13 @@ export function registrationAnalyticsRouter({ db, authenticateJWT, staffRoles }:
       const refresh = req.query.refresh === '1';
       if (hit && now.getTime() - hit.at < (refresh ? REFRESH_MIN_AGE_MS : SUMMARY_TTL_MS)) {
         res.set('Cache-Control', 'no-store');
-        return res.json(hit.body);
+        return res.json({ ...hit.body, demo: isDemo() });
       }
       const body = await registrationSummary(db, staffRoles, resolved.window, resolved.key, now);
       if (cache.size > 200) cache.clear();
       cache.set(key, { at: now.getTime(), body });
       res.set('Cache-Control', 'no-store');
-      res.json(body);
+      res.json({ ...body, demo: isDemo() });
     } catch (e: any) {
       console.error('registration summary:', e?.message);
       res.status(500).json({ error: 'Could not load registration analytics.' });
@@ -280,7 +296,7 @@ export function registrationAnalyticsRouter({ db, authenticateJWT, staffRoles }:
         followUp: req.query.view === 'verified-unsubscribed',
       });
       res.set('Cache-Control', 'no-store');
-      res.json(out);
+      res.json({ ...out, demo: isDemo() });
     } catch (e: any) {
       console.error('registration users:', e?.message);
       res.status(500).json({ error: 'Could not load your registered members.' });
@@ -295,7 +311,7 @@ export function registrationAnalyticsRouter({ db, authenticateJWT, staffRoles }:
         db.subscriptionRequest.count({ where: { planType: 'Pro', status: 'Pending' } }),
       ]);
       res.set('Cache-Control', 'no-store');
-      res.json({ verifiedUnsubscribed: { total: list.total, members: list.members }, pendingEnquiries });
+      res.json({ verifiedUnsubscribed: { total: list.total, members: list.members }, pendingEnquiries, demo: isDemo() });
     } catch (e: any) {
       console.error('registration follow-ups:', e?.message);
       res.status(500).json({ error: 'Could not load follow-ups.' });

@@ -141,7 +141,8 @@ try {
   check('last ms of the 3rd lands inside, first ms of the 4th does not', after.series[2].count - before.series[2].count === 1);
   const prevB = after.selected.previousRegistrations - before.selected.previousRegistrations;
   check('the 28 Feb 23:59:59.999 IST member belongs to the previous period', prevB === 1, { prevB });
-  check('verified counts use emailVerifiedAt: 2 of the new members', after.cards.verified - before.cards.verified === 2 && after.selected.verified - before.selected.verified === 2);
+  check('verified + unverified = total, for the cards and for the selected window (one population)', after.cards.verified + after.cards.unverified === after.cards.total && after.selected.verified + after.selected.unverified === after.selected.registrations, { c: after.cards, s: after.selected });
+  check('verified counts use emailVerifiedAt: 2 of the new members', after.cards.verified - before.cards.verified === 2 && after.selected.verified - before.selected.verified === 2 && after.selected.unverified - before.selected.unverified === 4);
 
   section('Fixed windows follow the clock, not the filter');
   {
@@ -253,6 +254,19 @@ try {
   check('follow-up = assigned, verified, no running subscription (a-one and a-four only)', fu.members.map(m => m.email).sort().join() === [a1.email, a4.email].sort().join(), fu.members.map(m => m.email));
   check('a row carries only the permitted columns', same(Object.keys(all.members[0]).sort(), ['email', 'leadId', 'name', 'organization', 'registeredAt', 'subscription', 'subscriptionLabel', 'verified']), Object.keys(all.members[0]));
 
+
+  section('Ambiguous ownership: the same address on leads of two executives');
+  const both = await mkUser('claimed-by-two', { displayName: 'Both Claim', emailVerifiedAt: new Date(), createdAt: D('2001-05-08T10:00:00Z') });
+  await mkLead(both.email, execA.id); await mkLead(both.email, execB.id);
+  const half = await mkUser('one-owner-one-unassigned', { displayName: 'One Owner', emailVerifiedAt: new Date(), createdAt: D('2001-05-09T10:00:00Z') });
+  await mkLead(half.email, execA.id); await mkLead(half.email, null);
+  const aAfter = await assignedMembers(db, STAFF, execA.id, { page: 1, pageSize: 50 }), bAfter = await assignedMembers(db, STAFF, execB.id, { page: 1, pageSize: 50 });
+  check('a member claimed by two executives is listed for neither', !aAfter.members.some(m => m.email === both.email) && !bAfter.members.some(m => m.email === both.email));
+  check('each is told how many were held back, without names', aAfter.ambiguous === 1 && bAfter.ambiguous === 1 && !JSON.stringify(aAfter).includes('Both Claim'), { a: aAfter.ambiguous, b: bAfter.ambiguous });
+  check('a duplicate UNASSIGNED lead does not make ownership ambiguous', aAfter.members.some(m => m.email === half.email) && aAfter.ambiguous === 1);
+  check('search for the ambiguous member by exact address finds nothing', (await assignedMembers(db, STAFF, execA.id, { page: 1, pageSize: 50, q: both.email })).total === 0);
+  check('the follow-up list does not include the ambiguous member', !(await assignedMembers(db, STAFF, execA.id, { page: 1, pageSize: 50, followUp: true })).members.some(m => m.email === both.email));
+
   // ── 5. Through the real routes ────────────────────────────────────────────
   section('5. Routes: access, read-only, isolation, regression');
   const tokA = await session(execA), tokB = await session(execB);
@@ -282,13 +296,13 @@ try {
   check('a repeat within the cache window returns the same generatedAt (cached, refresh time visible)', c1.data.generatedAt === c2.data.generatedAt);
 
   const listA = await call('GET', '/api/sales/registrations/users?pageSize=50', tokA), listB = await call('GET', '/api/sales/registrations/users?pageSize=50', tokB);
-  check('A\'s list over HTTP is A\'s five; B\'s is B\'s one', listA.data?.total === 5 && listB.data?.total === 1 && listB.data.members[0].email === bOne.email, { a: listA.data?.total, b: listB.data?.total });
+  check('A\'s list over HTTP is A\'s six (the five + the one with an unassigned duplicate); B\'s is B\'s one', listA.data?.total === 6 && listB.data?.total === 1 && listB.data.members[0].email === bOne.email, { a: listA.data?.total, b: listB.data?.total });
   check('the list never carries ids, phone numbers or password fields', !/"id"|contact|phone|password|whatsapp/i.test(JSON.stringify(listA.data)), Object.keys(listA.data?.members?.[0] || {}));
   check('B searching for A\'s member by exact address finds nothing', (await call('GET', `/api/sales/registrations/users?q=${encodeURIComponent(a1.email)}`, tokB)).data?.total === 0);
   check('page size is capped at 50', (await call('GET', '/api/sales/registrations/users?pageSize=5000', tokA)).data?.pageSize === 50);
   check('junk paging falls back safely', (await call('GET', '/api/sales/registrations/users?page=-4&pageSize=abc', tokA)).data?.page === 1);
   const fus = await call('GET', '/api/sales/registrations/follow-ups', tokA);
-  check('follow-ups: A\'s two verified-but-unsubscribed members, plus the enquiry count', fus.status === 200 && fus.data.verifiedUnsubscribed.total === 2 && typeof fus.data.pendingEnquiries === 'number', fus.data);
+  check('follow-ups: A\'s three verified-but-unsubscribed members (a-one, a-four, one-owner), plus the enquiry count', fus.status === 200 && fus.data.verifiedUnsubscribed.total === 3 && typeof fus.data.pendingEnquiries === 'number', fus.data);
   check('super admin sees only members assigned to themselves, not everyone', (await call('GET', '/api/sales/registrations/users', tokSuper)).data?.total === 0);
 
   // Direct API attempts and URL manipulation.
@@ -328,11 +342,59 @@ try {
   check('the member\'s record and subscriptions are untouched', (await snap()) === s0 && (await subCount()) === n0);
   check('a manager is held to the same boundary', (await call('PUT', `/api/admin/users/${a2.id}/role`, tokMgr, { role: 'SuperAdmin' })).status === 403);
 
+
+  section('Unknown /api paths answer in JSON, not with the app shell');
+  {
+    for (const p of ['/api/definitely-not-a-route', '/api/sales/registrations-typo', '/api/sales/registrations/never']) {
+      const r = await fetch(BASE + p, { headers: { Authorization: `Bearer ${tokA}` } });
+      const ct = r.headers.get('content-type') || '';
+      check(`GET ${p} → 404 JSON`, r.status === 404 && ct.includes('json'), { status: r.status, ct });
+    }
+    const page = await fetch(BASE + '/sales');
+    check('a page route still gets the app shell', page.status === 200 && (page.headers.get('content-type') || '').includes('html'));
+  }
+
+  section('Lead routes: ownership');
+  {
+    const mine = await db.lead.findFirst({ where: { assignedToId: execA.id, email: a3.email } });
+    const theirs = await db.lead.findFirst({ where: { assignedToId: execB.id, email: bOne.email } });
+    const unassigned = await db.lead.findFirst({ where: { assignedToId: null, email: free.email } });
+    const own = await call('GET', `/api/sales/leads/${mine!.id}`, tokA);
+    check('an executive opens their own lead', own.status === 200 && own.data.id === mine!.id);
+    for (const [label, l] of [['another executive\'s', theirs], ['an unassigned', unassigned]] as const) {
+      const g = await call('GET', `/api/sales/leads/${l!.id}`, tokA);
+      const st = await call('PUT', `/api/sales/leads/${l!.id}/status`, tokA, { status: 'Negative' });
+      const it = await call('POST', `/api/sales/leads/${l!.id}/interactions`, tokA, { type: 'Note', notes: 'should not land' });
+      check(`${label} lead: detail, status and note are all 404`, g.status === 404 && st.status === 404 && it.status === 404, { g: g.status, st: st.status, it: it.status });
+      check(`${label} lead is unchanged and has no note`, (await db.lead.findUnique({ where: { id: l!.id } }))?.status !== 'Negative' && (await db.leadInteraction.count({ where: { leadId: l!.id } })) === 0);
+    }
+    check('a missing lead id is a 404, not a 500', (await call('GET', '/api/sales/leads/00000000-0000-0000-0000-000000000000', tokA)).status === 404);
+    check('a manager is held to their own leads too', (await call('GET', `/api/sales/leads/${mine!.id}`, tokMgr)).status === 404);
+    check('a super admin and a subscription manager can still open any lead (they read all leads already)', (await call('GET', `/api/sales/leads/${theirs!.id}`, tokSuper)).status === 200 && (await call('GET', `/api/sales/leads/${theirs!.id}`, tokSubMgr)).status === 200);
+    const note = await call('POST', `/api/sales/leads/${mine!.id}/interactions`, tokA, { type: 'Call', notes: 'spoke to them' });
+    check('an executive can still log a note on their own lead', note.status === 200 && note.data.notes === 'spoke to them');
+  }
+
+  section('POST /api/admin/subscription-requests needs an administrator');
+  {
+    const body = { userName: 'Stranger', email: `stranger${DOMAIN}`, planType: 'Pro', userId: a2.id };
+    const anon = await call('POST', '/api/admin/subscription-requests', null, body);
+    const exec = await call('POST', '/api/admin/subscription-requests', tokA, body);
+    check('no sign-in → 401 and nothing is filed', anon.status === 401 && (await db.subscriptionRequest.count({ where: { email: body.email } })) === 0, anon.status);
+    check('a sales executive → 403 and nothing is filed', exec.status === 403 && (await db.subscriptionRequest.count({ where: { email: body.email } })) === 0, exec.status);
+    check('an administrator may still file one', (await call('POST', '/api/admin/subscription-requests', tokSuper, body)).status === 200 && (await db.subscriptionRequest.count({ where: { email: body.email } })) === 1);
+    check('missing name or email → 400', (await call('POST', '/api/admin/subscription-requests', tokSuper, { planType: 'Pro' })).status === 400);
+    await db.subscriptionRequest.deleteMany({ where: { email: body.email } });
+    const pub = await call('POST', '/api/domain-request', null, { userName: 'Public', email: `public${DOMAIN}`, domain: 'Law' });
+    check('the public request-access form is untouched (still open, no sign-in)', pub.status !== 401 && pub.status !== 403, pub.status);
+    await db.subscriptionRequest.deleteMany({ where: { email: `public${DOMAIN}` } });
+  }
+
   section('Regression: admin and existing sales workflows');
   check('super admin still reaches Admin → Users', (await call('GET', '/api/admin/users?pageSize=1', tokSuper)).status === 200);
   check('super admin still reaches the accounts summary', (await call('GET', '/api/admin/accounts/summary', tokSuper)).status === 200);
   const ml = await call('GET', '/api/sales/my-leads', tokA);
-  check('My Leads still returns exactly the executive\'s own leads', ml.status === 200 && ml.data.length === 6 && ml.data.every((l: any) => l.assignedToId === execA.id), ml.data?.length);
+  check('My Leads still returns exactly the executive\'s own leads', ml.status === 200 && ml.data.length === 8 && ml.data.every((l: any) => l.assignedToId === execA.id), ml.data?.length);
   check('notifications, activity and enquiries still answer', (await call('GET', '/api/sales/notifications', tokA)).status === 200 && (await call('GET', '/api/sales/my-activity', tokA)).status === 200 && (await call('GET', '/api/sales/pro-applications?status=Pending', tokA)).status === 200);
   const lead0 = await db.lead.findFirst({ where: { assignedToId: execA.id, email: a2.email } });
   const st = await call('PUT', `/api/sales/leads/${lead0!.id}/status`, tokA, { status: 'Positive' });
