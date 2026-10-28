@@ -19,6 +19,8 @@ const { ingestionDb: db } = await import('../src/lib/ingestion/db.js');
 if ((await db.$queryRawUnsafe('select current_database() d'))[0].d !== 'stm_ingestion_test') throw new Error('refusing to run against anything but stm_ingestion_test');
 const O = await import('../src/lib/ingestion/openAlexJournals.js');
 const { SourceError } = await import('../src/lib/ingestion/articleSources.js');
+// Loading the ingestion database reads .env, which may now hold a real key; these tests are about the case with none, and must never send a real key anywhere.
+delete process.env.OPENALEX_API_KEY;
 
 let pass = 0, fail = 0;
 const check = (n: string, ok: boolean, d = '') => { ok ? pass++ : fail++; console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${n}${d ? '  — ' + d : ''}`); };

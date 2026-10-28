@@ -2,6 +2,7 @@ import { normaliseIssn } from '../ingestionWorker.js';
 import { canonicalDepartmentName } from '../departmentRegistry.js';
 import { journalDepartment } from './journalDepartment.js';
 import { classifyJournal } from './journalClassification.js';
+import { auditTitleMapping } from './journalMappingAudit.js';
 import type { JournalCandidate } from './journalSources.js';
 
 /**
@@ -21,7 +22,10 @@ import type { JournalCandidate } from './journalSources.js';
 export type Held = { id: string; title: string; issn: string | null; eissn: string | null; status: string; publisher?: string | null };
 export type Decision = { issn: string; decision: 'distinct' | 'blocked' | 'hold' };
 
-export type Outcome = 'ready' | 'duplicate' | 'conflict' | 'no_department' | 'no_publisher' | 'malformed' | 'outside_target' | 'classifier_disagrees' | 'duplicate_in_batch';
+export type Outcome = 'ready' | 'duplicate' | 'conflict' | 'no_department' | 'no_publisher' | 'malformed' | 'outside_target' | 'classifier_disagrees' | 'duplicate_in_batch' | 'weak_mapping';
+
+/** A source-specific department decision (OpenAlex: from the journal's topics). `confidence` must be 'high' for a journal to be inserted; anything less is review. */
+export type DeptDecision = { dept: string | null; confidence: 'high' | 'low'; reason?: string; evidence?: Record<string, any> };
 
 /** ISSN check digit (ISO 3297): eight characters, the last a weighted mod-11 check. */
 export function validIssn(v: string | null | undefined): boolean {
@@ -54,18 +58,20 @@ export type Planned = {
 export type Plan = {
   source: string; checked: number; ready: Planned[]; counts: Record<Outcome, number>;
   byDepartment: Record<string, Record<Outcome, number>>; samples: Partial<Record<Outcome, Planned[]>>;
+  /** Every row of the outcomes asked for with `keep` (for a review list). */
+  kept: Partial<Record<Outcome, Planned[]>>;
 };
-const blank = (): Record<Outcome, number> => ({ ready: 0, duplicate: 0, conflict: 0, no_department: 0, no_publisher: 0, malformed: 0, outside_target: 0, classifier_disagrees: 0, duplicate_in_batch: 0 });
+const blank = (): Record<Outcome, number> => ({ ready: 0, duplicate: 0, conflict: 0, no_department: 0, no_publisher: 0, malformed: 0, outside_target: 0, classifier_disagrees: 0, duplicate_in_batch: 0, weak_mapping: 0 });
 const SAMPLE = 8;
 
 /**
  * `targets`: only these departments are inserted; a candidate mapped elsewhere is `outside_target` (reported, not inserted).
  * `decisions`: recorded "distinct" decisions by ISSN, the one thing that lets a same-title journal through.
  */
-export function planCandidates(source: string, cands: JournalCandidate[], held: Held[], opts: { targets?: string[]; decisions?: Decision[]; skippedAtFetch?: number } = {}): Plan {
+export function planCandidates(source: string, cands: JournalCandidate[], held: Held[], opts: { targets?: string[]; decisions?: Decision[]; skippedAtFetch?: number; deptOf?: (c: JournalCandidate) => DeptDecision; keep?: Outcome[] } = {}): Plan {
   const idx = buildIndex(held);
   const distinct = new Set((opts.decisions || []).filter(d => d.decision === 'distinct').map(d => d.issn));
-  const plan: Plan = { source, checked: cands.length + (opts.skippedAtFetch || 0), ready: [], counts: blank(), byDepartment: {}, samples: {} };
+  const plan: Plan = { source, checked: cands.length + (opts.skippedAtFetch || 0), ready: [], counts: blank(), byDepartment: {}, samples: {}, kept: {} };
   plan.counts.malformed += opts.skippedAtFetch || 0;                              // dropped at the source for having no title or no usable ISSN
   const batchIds = new Map<string, JournalCandidate>(), batchTitles = new Map<string, JournalCandidate>();
 
@@ -75,6 +81,7 @@ export function planCandidates(source: string, cands: JournalCandidate[], held: 
     (plan.byDepartment[department || '(none)'] ||= blank())[outcome]++;
     const s = (plan.samples[outcome] ||= []); if (s.length < SAMPLE) s.push(p);
     if (outcome === 'ready') plan.ready.push(p);
+    if (opts.keep?.includes(outcome)) (plan.kept[outcome] ||= []).push(p);
   };
 
   for (const c of cands) {
@@ -82,7 +89,16 @@ export function planCandidates(source: string, cands: JournalCandidate[], held: 
     const ids = [issn, eissn, issnL].filter(Boolean) as string[];
     // Malformed: no usable identifier, or one that fails the ISSN check digit.
     if (!String(c.title || '').trim() || !issn || ids.some(i => !validIssn(i))) { put('malformed', c, null, !issn ? 'no usable ISSN' : 'an identifier fails the ISSN check digit'); continue; }
-    const mapping = canonicalDepartmentName(journalDepartment(c.title, c.subjects));
+    // The department: from the source's own evidence when it gives some (OpenAlex topics, `deptOf`), otherwise from the title by the existing mapping, whose title-only matches are then
+    // audited (journalMappingAudit.ts): a generic word, a non-English title matched on a short word, or another field's term is review, never a guess.
+    let decision: DeptDecision;
+    if (opts.deptOf) decision = opts.deptOf(c);
+    else {
+      const m = canonicalDepartmentName(journalDepartment(c.title, c.subjects));
+      if (m && !c.subjects.length) { const a = auditTitleMapping(c.title, c.publisherName, m); decision = a.verdict === 'good' ? { dept: m, confidence: 'high', evidence: { basis: 'title', audit: a.verdict } } : { dept: m, confidence: 'low', reason: `title-only match is ${a.verdict}: ${a.reasons[0]}${a.betterDepartment ? ` (the title points to ${a.betterDepartment})` : ''}` }; }
+      else decision = { dept: m, confidence: 'high', evidence: { basis: m ? 'title+subjects' : 'none' } };
+    }
+    const mapping = decision.dept;
     // 1–5. Any identifier we already hold, in either column: the same journal, whatever its title or status.
     const hit = ids.map(i => ({ i, h: idx.byIdentifier.get(i) })).find(x => x.h);
     if (hit) { put('duplicate', c, mapping, `identifier ${hit.i} is already held`, { matched: { id: hit.h!.id, status: hit.h!.status, via: hit.h!.issn === hit.i ? 'issn' : 'eissn' } }); continue; }
@@ -98,10 +114,11 @@ export function planCandidates(source: string, cands: JournalCandidate[], held: 
     }
     if (!mapping) { put('no_department', c, null, 'the title and subjects do not name a department'); continue; }
     if (opts.targets && !opts.targets.includes(mapping)) { put('outside_target', c, mapping, `${mapping} is not a target department`); continue; }
+    if (decision.confidence !== 'high') { put('weak_mapping', c, mapping, decision.reason || 'the department evidence is not strong enough', { evidence: { mapping, ...(decision.evidence || {}), classifier: { dept: null, tier: 'n/a', families: [] } } as any }); continue; }
     if (!String(c.publisherName || '').trim()) { put('no_publisher', c, mapping, 'no publisher recorded'); continue; }
     // The journal classifier (title and subjects, independent families) must not contradict the mapping.
-    const cl = classifyJournal({ title: c.title, subjects: c.subjects });
-    const evidence = { mapping, classifier: { dept: cl.dept, tier: cl.tier, families: cl.families as string[] } };
+    const cl = classifyJournal({ title: c.title, subjects: c.subjects });   // the journal classifier reads the same title and subjects
+    const evidence = { mapping, ...(decision.evidence || {}), classifier: { dept: cl.dept, tier: cl.tier, families: cl.families as string[] } };
     if (cl.dept && cl.dept !== mapping && cl.tier !== 'low' && cl.tier !== 'unclassifiable') { put('classifier_disagrees', c, mapping, `the classifier says ${cl.dept} (${cl.tier})`, { evidence }); continue; }
     for (const i of ids) batchIds.set(i, c); batchTitles.set(t, c);
     put('ready', c, mapping, `new; ${mapping}`, { evidence });
