@@ -68,6 +68,11 @@ const AYU_TOPIC = /ayurved|herbal|traditional (chinese |indian )?medicine|homeop
 /** The strictest of both designs: the department must hold at least this part of the journal's topic works, lead the runner-up by this factor, and rest on this many works. */
 export const MIN_SHARE = 0.5, LEAD = 1.5, MIN_WORKS = 30, MIN_LEAD_POINTS = 0.25;
 
+/** Agriculture versus biology: OpenAlex files botany and zoology under the same "Plant Science" / "Animal Science and Zoology" subfields as farming, and this product keeps botany in Life Sciences. A journal is
+ *  Agriculture only when the topics are specifically agricultural (crops, soil, horticulture, forestry, food, general agriculture) or its title says so. */
+const AGRI_SPECIFIC = new Set(['Agronomy and Crop Science', 'Soil Science', 'Horticulture', 'Forestry', 'Food Science', 'General Agricultural and Biological Sciences']);
+const AGRI_TITLE = /agri|crop|soil|farm|horticult|agronom|livestock|veterin|forest|food|plant breed|pertanian|peternakan|pangan|tarim|agro|fisher|aquacult|dairy|poultry|irrigat|rural|seed|pest|viticult|enolog|fitotecn|cultivo|cultura/i;
+
 const ELECTRONICS_WORDS = /telecommunication|communication|wireless|network|signal|electronic|\brf\b|microwave|antenna|photonic|optic|semiconductor|circuit|vlsi|embedded|sensor/i;
 const ELECTRICAL_WORDS = /\bpower\b|electrical|electric\b|energy|machines?|drives?|\bgrid\b|high voltage|control|automation|motor/i;
 /** Departments the title ITSELF names by the engine's title rules (a Nursing journal's title says nursing). Used only to catch a title that contradicts the topics. */
@@ -114,6 +119,10 @@ export function departmentFromTopics(source: { display_name?: string; topics?: T
   if (ev.total < MIN_WORKS) return { dept: top.department, confidence: 'low', reason: `only ${ev.total} topic works: too little to say`, evidence };
   if (top.topics < 2 || top.share < MIN_SHARE) return { dept: top.department, confidence: 'low', reason: `topic support is not strong enough (${pct(top.share)} of its works in ${top.topics} topic${top.topics === 1 ? '' : 's'})`, evidence };
   if (margin < MIN_LEAD_POINTS || (second && top.share < LEAD * second.share)) return { dept: top.department, confidence: 'low', reason: `${top.department} (${pct(top.share)}) does not clearly lead ${second?.department} (${pct(second?.share ?? 0)})`, evidence };
+  if (top.department === 'Agriculture') {
+    const specific = (source.topics || []).filter(x => AGRI_SPECIFIC.has(String(x?.subfield?.display_name || ''))).reduce((s, x) => s + (x.count || 1), 0) / (ev.total || 1);
+    if (specific < 0.25 && !AGRI_TITLE.test(title)) return { dept: top.department, confidence: 'low', reason: 'plant or animal topics alone do not tell agriculture from biology (no crop, soil, food or forestry topic, and the title does not say so)', evidence };
+  }
   if (top.department === 'Physiotherapy' && !THERAPY_WORDS.test(title)) return { dept: top.department, confidence: 'low', reason: SPORT_EDUCATION.test(title) ? 'a sport or physical-education journal, not physical therapy' : 'the title does not name therapy, rehabilitation or clinical practice (OpenAlex files sports science under this subfield)', evidence };
   if (top.department === 'Computer / IT' && LIBRARY_SCIENCE.test(title) && !COMPUTING_WORDS.test(title)) return { dept: top.department, confidence: 'low', reason: 'a library or information-science journal, not computing', evidence };
   const fromTitle = titleDepartment(title);
