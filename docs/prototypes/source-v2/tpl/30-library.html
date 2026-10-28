@@ -1,0 +1,119 @@
+
+    <!-- ================= CONTENT LIBRARY (1: departments) ================= -->
+    <sc-if value="{{isLibrary}}" hint-placeholder-val="{{ false }}">
+    <div class="lib stack">
+
+      <sc-if value="{{isLibDepts}}" hint-placeholder-val="{{ true }}">
+        <div class="page-head rise">
+          <div><h1 class="h-page">Content Library</h1><p class="sub" style="margin-top:6px;max-width:60ch">Search across everything your institution can read, or open a department to browse by content type.</p></div>
+        </div>
+        <section class="card pad rise gsearch" aria-label="Search the library" style="animation-delay:40ms">
+          <label class="search lg"><sc-icon name="search" size="20"></sc-icon><span class="sr">Search the entire library</span><input type="search" value="{{gq}}" onInput="{{setGq}}" onKeyDown="{{gKey}}" placeholder="Search titles, authors and keywords across all departments…"></label>
+          <button class="btn primary lg" onClick="{{gSearch}}">Search library</button>
+        </section>
+        <section class="libstats rise" style="animation-delay:80ms" aria-label="Library at a glance">
+          <sc-for list="{{libStats}}" as="st" key="{{st.l}}" hint-placeholder-count="4"><div class="libstat"><b class="num">{{st.n}}</b><span>{{st.l}}</span></div></sc-for>
+        </section>
+        <div class="lib-toolbar rise" style="animation-delay:110ms">
+          <div><h2 class="h-sec">Departments</h2><p class="sub">{{libCount}}</p></div>
+          <div class="lib-tools">
+            <label class="search" style="cursor:text;width:min(250px,100%)"><sc-icon name="search" size="17"></sc-icon><span class="sr">Filter departments</span><input type="search" value="{{lq}}" onInput="{{setLq}}" placeholder="Filter departments…"></label>
+            <label class="sel" style="width:150px"><span class="sr">Sort departments</span><select value="{{lsort}}" onChange="{{setLSort}}"><option value="az">Sort: A–Z</option><option value="size">Sort: Largest</option></select></label>
+            <div class="seg" role="group" aria-label="Layout"><sc-for list="{{views}}" as="vw" key="{{vw.l}}" hint-placeholder-count="2"><button class="{{vw.cls}}" aria-pressed="{{vw.on}}" onClick="{{vw.pick}}">{{vw.l}}</button></sc-for></div>
+          </div>
+        </div>
+        <sc-if value="{{isGrid}}" hint-placeholder-val="{{ true }}">
+          <section class="dgrid" aria-label="Departments">
+            <sc-for list="{{libDepts}}" as="d" key="{{d.key}}" hint-placeholder-count="4">
+              <article class="card dcard rise" style="{{d.delay}}">
+                <div class="dcard-top"><span class="ic"><sc-icon name="layers" size="22"></sc-icon></span><button class="iconbtn flat" onClick="{{d.quick}}" aria-label="Quick view of {{d.name}}"><sc-icon name="info" size="18"></sc-icon></button></div>
+                <div><h3 class="dname">{{d.name}}</h3><p class="dnum"><b class="num">{{d.total}}</b> resources</p></div>
+                <div class="track tall" aria-hidden="true"><sc-for list="{{d.bar}}" as="b" hint-placeholder-count="3"><span class="seg-bar" style="{{b.style}}"></span></sc-for></div>
+                <ul class="tlist"><sc-for list="{{d.types}}" as="t" key="{{t.t}}" hint-placeholder-count="3"><li><span><i style="{{t.dot}}"></i>{{t.t}}</span><b class="num">{{t.n}}</b></li></sc-for></ul>
+                <button class="btn secondary block" onClick="{{d.open}}" aria-label="Explore {{d.name}}">Explore department <sc-icon name="arrow" size="16"></sc-icon></button>
+              </article>
+            </sc-for>
+            <article class="card dcard rise add" style="animation-delay:200ms"><span class="ic" style="background:var(--blue-soft);color:var(--blue-ink)"><sc-icon name="plus" size="22"></sc-icon></span><div><h3 class="dname">Add a department</h3><p class="sub">Choose from 29 subjects when you subscribe.</p></div><button class="btn secondary block" style="margin-top:auto" onClick="{{goSubs}}">View subscription</button></article>
+          </section>
+        </sc-if>
+        <sc-if value="{{isList}}" hint-placeholder-val="{{ false }}">
+          <section class="card rise" style="overflow:hidden" aria-label="Departments">
+            <sc-for list="{{libDepts}}" as="d" key="{{d.key}}" hint-placeholder-count="4">
+              <button class="row lrow rise" style="{{d.delay}}" onClick="{{d.open}}" aria-label="Explore {{d.name}}"><span class="ic sm"><sc-icon name="layers" size="20"></sc-icon></span><span style="flex:1;min-width:0"><b class="dname" style="display:block;font-size:17px">{{d.name}}</b><span class="sub"><b class="num" style="color:var(--ink)">{{d.total}}</b> resources</span></span><span class="track hide-s" style="width:150px" aria-hidden="true"><sc-for list="{{d.bar}}" as="b" hint-placeholder-count="3"><span class="seg-bar" style="{{b.style}}"></span></sc-for></span><span class="tag ok hide-s">Available</span><sc-icon name="chevr" size="18" style="color:var(--faint)"></sc-icon></button>
+            </sc-for>
+          </section>
+        </sc-if>
+        <sc-if value="{{noLib}}" hint-placeholder-val="{{ false }}"><div class="empty card"><span class="ic"><sc-icon name="search" size="24"></sc-icon></span><b>No department matches your filter</b></div></sc-if>
+      </sc-if>
+
+      <!-- ================= (2: one department) ================= -->
+      <sc-if value="{{isLibDept}}" hint-placeholder-val="{{ false }}">
+        <nav class="crumbs rise" aria-label="Breadcrumb"><button onClick="{{goLibDepts}}"><sc-icon name="chevl" size="16"></sc-icon>Content Library</button><span aria-hidden="true">/</span><span class="cur" aria-current="page">{{dName}}</span></nav>
+        <section class="card dhead rise" style="animation-delay:40ms" aria-labelledby="dh">
+          <span class="ic xl"><sc-icon name="layers" size="30"></sc-icon></span>
+          <div style="flex:1 1 240px;min-width:0"><h1 class="h-page" id="dh" style="font-size:32px">{{dName}}</h1><p class="sub" style="margin-top:4px;font-size:15px">{{dUnlocked}} · <b class="num" style="color:var(--ink)">{{dTotal}}</b> resources</p></div>
+          <span class="tag ok" style="font-size:13px;padding:6px 14px"><sc-icon name="check" size="14" stroke="3"></sc-icon>Full access</span>
+        </section>
+        <section class="card pad rise" style="animation-delay:70ms;display:flex;flex-wrap:wrap;gap:12px;align-items:center" aria-label="Search this department">
+          <label class="search lg" style="flex:1 1 280px"><sc-icon name="search" size="20"></sc-icon><span class="sr">Search this department</span><input type="search" value="{{dq}}" onInput="{{setDq}}" onKeyDown="{{dKey}}" placeholder="Search {{dName}} by title, author or keyword…"></label>
+          <button class="btn primary lg" onClick="{{dSearch}}">Search</button><button class="btn secondary lg" onClick="{{browseAll}}">Browse everything</button>
+        </section>
+        <section aria-labelledby="ct-h">
+          <h2 class="h-sec" id="ct-h" style="margin-bottom:14px">Browse by content type</h2>
+          <div class="tgrid">
+            <sc-for list="{{dTypes}}" as="t" key="{{t.t}}" hint-placeholder-count="3">
+              <article class="card tcard lift rise" style="{{t.delay}}"><span class="ic"><sc-icon name="{{t.icon}}" size="24"></sc-icon></span><div><h3 class="dname">{{t.t}}</h3><p class="sub" style="margin-top:2px">{{t.desc}}</p></div><div><b class="tnum num">{{t.n}}</b><span class="sub"> items available</span><p class="sub" style="font-size:13px">{{t.pct}}</p></div><button class="btn primary block" onClick="{{t.browse}}" aria-label="Browse {{t.t}} in {{dName}}">Browse {{t.t}} <sc-icon name="arrow" size="16"></sc-icon></button></article>
+            </sc-for>
+          </div>
+        </section>
+        <section class="card rise" style="overflow:hidden;animation-delay:200ms" aria-labelledby="la-h2">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:18px 20px"><h2 class="h-sec" id="la-h2" style="font-size:18px">Latest in {{dName}}</h2><span class="tag sample">Sample titles</span></div>
+          <sc-for list="{{dLatest}}" as="it" key="{{it.key}}" hint-placeholder-count="5"><button class="row lrow rise" style="{{it.delay}}" onClick="{{it.open}}"><span style="flex:1;min-width:0"><b style="display:block;font-weight:600;font-size:16px;line-height:1.4">{{it.title}}</b><span class="sub">{{it.author}} · {{it.year}}</span></span><span class="tag mute">{{it.type}}</span><sc-icon name="chevr" size="18" style="color:var(--faint)"></sc-icon></button></sc-for>
+        </section>
+      </sc-if>
+
+      <!-- ================= (3: results) ================= -->
+      <sc-if value="{{isLibExplore}}" hint-placeholder-val="{{ false }}">
+        <nav class="crumbs rise" aria-label="Breadcrumb"><button onClick="{{goLibDepts}}">Content Library</button><sc-if value="{{crumbDept}}" hint-placeholder-val="{{ false }}"><span aria-hidden="true">/</span><button onClick="{{goDeptCrumb}}">{{exTitle}}</button></sc-if><span aria-hidden="true">/</span><span class="cur" aria-current="page">{{exTypeLabel}}</span></nav>
+        <div class="page-head rise" style="animation-delay:30ms">
+          <div><h1 class="h-page">{{exHeading}}</h1><p class="sub" style="margin-top:6px">Filter precisely and read in your secure viewer. <span class="tag sample" style="margin-left:4px">Sample results</span></p></div>
+          <div class="actions"><button class="btn secondary" onClick="{{backFromExplore}}"><sc-icon name="chevl" size="16"></sc-icon>{{backLabel}}</button></div>
+        </div>
+        <label class="search lg rise" style="animation-delay:60ms"><sc-icon name="search" size="20"></sc-icon><span class="sr">Search within these results</span><input type="search" value="{{exQ}}" onInput="{{setExQ}}" placeholder="Search within these results: title, author or keyword…"></label>
+        <div class="ex-layout">
+          <aside class="{{filtersCls}}" aria-label="Refine results">
+            <button class="fhead" onClick="{{toggleFilters}}" aria-expanded="{{exFiltersOpen}}"><span style="display:inline-flex;align-items:center;gap:10px;font-weight:650"><sc-icon name="gear" size="17"></sc-icon>Refine<sc-if value="{{hasChips}}" hint-placeholder-val="{{ false }}"><span class="tag info num" style="padding:1px 8px">{{filterCount}}</span></sc-if></span><span class="fcl"><sc-icon name="chevd" size="18"></sc-icon></span></button>
+            <div class="fbody">
+              <label class="field"><span class="lab">Department</span><span class="sel"><select class="inp" value="{{exDept}}" onChange="{{setExDept}}"><sc-for list="{{exDeptOpts}}" as="o" key="{{o.v}}" hint-placeholder-count="5"><option value="{{o.v}}">{{o.l}}</option></sc-for></select></span></label>
+              <label class="field"><span class="lab">Content type</span><span class="sel"><select class="inp" value="{{exType}}" onChange="{{setExType}}"><sc-for list="{{exTypeOpts}}" as="o" key="{{o.v}}" hint-placeholder-count="4"><option value="{{o.v}}">{{o.l}}</option></sc-for></select></span></label>
+              <div class="field" role="group" aria-labelledby="sa-l"><span class="lab" id="sa-l">Subject area</span>
+                <label class="search" style="height:40px;cursor:text"><sc-icon name="search" size="16"></sc-icon><span class="sr">Filter subject areas</span><input type="search" value="{{exSubQ}}" onInput="{{setExSubQ}}" placeholder="Filter subject areas…"></label>
+                <ul class="checks"><sc-for list="{{subjects}}" as="x" key="{{x.key}}" hint-placeholder-count="8"><li><button class="chk" role="checkbox" aria-checked="{{x.on}}" onClick="{{x.toggle}}"><span class="{{x.cls}}"><sc-icon name="check" size="13" stroke="3.6"></sc-icon></span><span>{{x.name}}</span></button></li></sc-for></ul>
+                <sc-if value="{{noSubjects}}" hint-placeholder-val="{{ false }}"><p class="sub">No subject area matches.</p></sc-if>
+              </div>
+              <button class="btn secondary block" onClick="{{clearAll}}">Clear all filters</button>
+            </div>
+          </aside>
+          <section class="results" aria-label="Results">
+            <div class="res-head">
+              <h2 class="h-sec" style="font-size:20px"><span class="num">{{exCount}}</span> results</h2>
+              <label class="sort"><span class="sub">Sort by</span><span class="sel" style="width:170px"><select value="{{exSort}}" onChange="{{setExSort}}"><option value="az">Title A–Z</option><option value="new">Newest first</option><option value="read">Most read</option></select></span></label>
+            </div>
+            <sc-if value="{{hasChips}}" hint-placeholder-val="{{ false }}"><div class="fchips"><sc-for list="{{chips}}" as="c" key="{{c.k}}" hint-placeholder-count="2"><span class="fchip">{{c.l}}<button onClick="{{c.rm}}" aria-label="Remove filter {{c.l}}"><sc-icon name="x" size="14" stroke="2.6"></sc-icon></button></span></sc-for><button class="link" onClick="{{clearAll}}" style="min-height:36px">Clear all</button></div></sc-if>
+            <div class="card" style="overflow:hidden">
+              <sc-for list="{{results}}" as="r" key="{{r.key}}" hint-placeholder-count="6">
+                <article class="result rise" style="{{r.delay}}">
+                  <span class="no num">{{r.no}}</span>
+                  <div class="rbody"><h3>{{r.title}}</h3><p class="sub">{{r.author}} · {{r.year}}</p><div class="rtags"><span class="tag teal">Full text</span><span class="tag mute">{{r.typeOne}}</span><span class="tag mute">{{r.dept}}</span><span class="tag mute">{{r.subject}}</span></div></div>
+                  <div class="rops"><button class="iconbtn" role="switch" aria-checked="{{r.saved}}" aria-label="{{r.saveLabel}}" onClick="{{r.save}}"><sc-icon name="star" size="18" style="{{r.starStyle}}"></sc-icon></button><button class="btn primary sm" onClick="{{r.read}}" aria-label="Read {{r.title}}">Read</button></div>
+                </article>
+              </sc-for>
+              <sc-if value="{{exNone}}" hint-placeholder-val="{{ false }}"><div class="empty"><span class="ic"><sc-icon name="search" size="24"></sc-icon></span><b>No results match these filters</b><span class="sub">Try removing a filter or searching for something broader.</span><button class="btn secondary sm" onClick="{{clearAll}}">Clear all filters</button></div></sc-if>
+            </div>
+            <sc-if value="{{hasMore}}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:6px"><button class="btn secondary" onClick="{{more}}">{{moreText}}</button><span class="sub" aria-live="polite">{{exShownText}}</span></div></sc-if>
+          </section>
+        </div>
+      </sc-if>
+
+    </div>
+    </sc-if>

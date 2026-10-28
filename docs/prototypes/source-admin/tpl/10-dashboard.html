@@ -1,0 +1,106 @@
+
+    <!-- ================= DASHBOARD ================= -->
+    <sc-if value="{{isDash}}" hint-placeholder-val="{{ true }}">
+      <div class="page-head rise">
+        <div><h1 class="h-page">Analytics Dashboard</h1><p class="sub" style="margin-top:4px">Real-time overview of the library's performance and user growth. <span class="tag sample" style="margin-left:4px">Sample data</span></p></div>
+        <div class="actions" style="align-items:center"><span class="sub" aria-live="polite">{{updatedText}}</span><button class="{{refreshCls}}" onClick="{{refresh}}" aria-label="Refresh the dashboard"><sc-icon name="refresh" size="18"></sc-icon></button></div>
+      </div>
+
+      <sc-if value="{{attention}}" hint-placeholder-val="{{ true }}">
+        <section class="banner warn rise" style="animation-delay:40ms">
+          <span class="ic"><sc-icon name="clock" size="17"></sc-icon></span>
+          <span class="txt"><b>{{attnText}}</b><span class="sub" style="display:block;color:inherit;opacity:.85">{{attnSub}}</span></span>
+          <button class="btn primary sm" onClick="{{openPending}}">Review requests</button>
+        </section>
+      </sc-if>
+
+      <section class="kpis" aria-label="Key figures">
+        <sc-for list="{{kpis}}" as="k" key="{{k.k}}" hint-placeholder-count="5">
+          <button class="{{k.cls}} rise" style="{{k.delay}}" onClick="{{k.open}}" aria-label="{{k.label}}: {{k.big}}">
+            <span class="k-top"><span class="k-ic"><sc-icon name="{{k.icon}}" size="18"></sc-icon></span><span class="k-label">{{k.label}}</span></span>
+            <b class="k-big num">{{k.big}}</b>
+            <sc-if value="{{k.split}}" hint-placeholder-val="{{ false }}"><span class="k-splitbar" aria-hidden="true"><i style="{{k.live}}"></i></span></sc-if>
+            <span class="k-sub">{{k.sub}}</span>
+            <span class="k-foot"><sc-if value="{{k.delta}}" hint-placeholder-val="{{ false }}"><span class="delta"><sc-icon name="{{k.dIcon}}" size="12" stroke="3"></sc-icon>{{k.delta}}</span></sc-if><sc-if value="{{k.action}}" hint-placeholder-val="{{ false }}"><span class="delta">Review <sc-icon name="arrow" size="12" stroke="3"></sc-icon></span></sc-if></span>
+            <svg class="k-spark" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true"><path pathLength="1" d="{{k.spark}}" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"></path></svg>
+          </button>
+        </sc-for>
+      </section>
+
+      <div class="split">
+        <section class="card pad grow rise" style="animation-delay:100ms" aria-labelledby="tr-h">
+          <div class="card-head"><div><h2 class="h-card" id="tr-h">Daily traffic</h2><p class="sub"><b class="num" style="color:var(--ink)">{{tTotal}}</b> {{tTotalLabel}} · {{tPeak}}</p></div>
+            <div class="seg" role="group" aria-label="Time range"><sc-for list="{{ranges}}" as="r" key="{{r.l}}" hint-placeholder-count="3"><button class="{{r.cls}}" aria-pressed="{{r.on}}" onClick="{{r.pick}}">{{r.l}}</button></sc-for></div></div>
+          <!--@include area t-->
+        </section>
+        <section class="card rise" style="animation-delay:140ms;overflow:hidden" aria-labelledby="tp-h">
+          <div class="card-head" style="padding:18px 20px 8px"><div><h2 class="h-card" id="tp-h">Top pages</h2><p class="sub">Most visited URLs</p></div></div>
+          <sc-for list="{{topPages}}" as="p" key="{{p.url}}" hint-placeholder-count="10"><button class="row pg rise" style="{{p.delay}}" onClick="{{p.open}}"><span class="no num">{{p.no}}</span><span class="pgb"><b>{{p.url}}</b><span class="bar"><i style="{{p.style}}"></i></span></span><span class="num cnt">{{p.n}}</span></button></sc-for>
+        </section>
+      </div>
+
+      <div class="split even">
+        <section class="card pad rise" style="animation-delay:100ms" aria-labelledby="cd-h">
+          <div class="card-head"><div><h2 class="h-card" id="cd-h">Content by domain</h2><p class="sub">Largest departments by items held</p></div></div>
+          <ul class="domlist"><sc-for list="{{domains}}" as="d" key="{{d.name}}" hint-placeholder-count="8"><li class="{{d.cls}}" onMouseEnter="{{d.enter}}" onMouseLeave="{{d.leave}}"><span class="dn">{{d.name}}</span><span class="dbar"><i class="seg-bar" style="{{d.style}}"></i></span><span class="dv num">{{d.n}}</span><span class="dp num">{{d.pct}}</span></li></sc-for></ul>
+          <p class="sub" style="margin-top:12px">+ other departments: <b class="num" style="color:var(--ink)">{{domOther}}</b> items</p>
+        </section>
+        <section class="card pad rise" style="animation-delay:140ms" aria-labelledby="ct-h">
+          <div class="card-head"><div><h2 class="h-card" id="ct-h">Content types</h2><p class="sub">Hover a type to isolate it</p></div></div>
+          <div class="donutwrap">
+            <div style="position:relative;width:170px;height:170px;flex:none"><svg width="170" height="170" viewBox="0 0 140 140" style="transform:rotate(-90deg)" role="img" aria-label="Content types: {{typeBig}} {{typeSmall}}"><circle cx="70" cy="70" r="50" fill="none" stroke="var(--surface-2)" stroke-width="16"></circle><sc-for list="{{types}}" as="t" key="{{t.name}}" hint-placeholder-count="8"><circle class="{{t.cls}}" cx="70" cy="70" r="50" fill="none" stroke="{{t.color}}" stroke-width="16" stroke-dasharray="{{t.da}}" stroke-dashoffset="{{t.off}}" onMouseEnter="{{t.enter}}" onMouseLeave="{{t.leave}}"></circle></sc-for></svg>
+              <div style="position:absolute;inset:0;display:grid;place-items:center;text-align:center;pointer-events:none;padding:0 22px"><div><b class="num" style="font-size:22px;letter-spacing:-.02em">{{typeBig}}</b><div class="sub" style="font-size:11.5px;line-height:1.3">{{typeSmall}}</div></div></div></div>
+            <ul class="typelist"><sc-for list="{{types}}" as="t2" key="{{t2.name}}" hint-placeholder-count="8"><li><button class="legend" onMouseEnter="{{t2.enter}}" onMouseLeave="{{t2.leave}}" onFocus="{{t2.enter}}" onBlur="{{t2.leave}}"><span style="display:inline-flex;align-items:center;gap:8px;min-width:0"><i style="{{t2.dot}}"></i><span class="tn">{{t2.name}}</span></span><span class="num tv"><b>{{t2.n}}</b> <span class="muted">{{t2.pct}}</span></span></button></li></sc-for></ul>
+          </div>
+        </section>
+      </div>
+
+      <div class="split even">
+        <section class="card pad grow rise" style="animation-delay:100ms" aria-labelledby="rg-h">
+          <div class="card-head"><div><h2 class="h-card" id="rg-h">Revenue growth</h2><p class="sub"><b class="num" style="color:var(--ink)">{{revTotal}}</b> over the last 13 months</p></div></div>
+          <div class="revplot" onMouseLeave="{{revLeave}}" role="group" aria-label="Revenue by month">
+            <sc-for list="{{revBars}}" as="b" key="{{b.key}}" hint-placeholder-count="13"><button class="{{b.cls}}" onMouseEnter="{{b.enter}}" onFocus="{{b.enter}}" onBlur="{{revLeave}}" aria-label="{{b.tip}}"><span class="rv num">{{b.value}}</span><span class="bw"><i style="{{b.h}}"></i></span><span class="rl">{{b.label}}</span></button></sc-for>
+          </div>
+          <p class="sub" style="margin-top:10px;min-height:20px" aria-live="polite">{{revHover}}</p>
+        </section>
+        <section class="card pad grow rise" style="animation-delay:140ms" aria-labelledby="ua-h">
+          <div class="card-head"><div><h2 class="h-card" id="ua-h">User acquisition</h2><p class="sub">New users per month</p></div></div>
+          <!--@include area u-->
+        </section>
+      </div>
+
+      <section class="card pad rise" style="animation-delay:100ms" aria-labelledby="in-h">
+        <div class="card-head"><div><h2 class="h-card" id="in-h"><sc-icon name="pin" size="16" style="vertical-align:-3px;margin-right:6px;color:var(--blue)"></sc-icon>India client distribution</h2><p class="sub">Platform-wide activity across Indian states. Choose a figure to colour the map.</p></div></div>
+        <div class="mstats" role="group" aria-label="Map figure"><sc-for list="{{mapStats}}" as="m" key="{{m.k}}" hint-placeholder-count="4"><button class="{{m.cls}}" aria-pressed="{{m.on}}" onClick="{{m.pick}}"><span class="mi"><sc-icon name="{{m.ic}}" size="16"></sc-icon></span><b class="num">{{m.n}}</b><span>{{m.l}}</span></button></sc-for></div>
+        <div class="india">
+          <div>
+            <div class="tilemap" role="group" aria-label="Tile map of Indian states, coloured by {{mapMetricLabel}}"><sc-for list="{{tiles}}" as="t" key="{{t.key}}" hint-placeholder-count="31"><button class="{{t.cls}}" style="{{t.style}}" aria-pressed="{{t.pressed}}" aria-label="{{t.label}}" onClick="{{t.pick}}">{{t.code}}</button></sc-for></div>
+            <div class="mlegend" aria-hidden="true"><span class="num">{{legendLow}}</span><span class="lg"><i></i><i></i><i></i><i></i><i></i></span><span class="num">{{legendHigh}} {{mapMetricLabel}}</span></div>
+          </div>
+          <div class="stack" style="gap:16px">
+            <div class="seldetail" aria-live="polite"><span class="eyebrow">Selected state</span><h3>{{sel.name}}</h3><div class="selnums"><span><b class="num">{{sel.users}}</b>users</span><span><b class="num">{{sel.quotes}}</b>quotations</span><span><b class="num">{{sel.contacts}}</b>contacts</span></div><p class="sub">{{sel.share}} of all users</p></div>
+            <div class="revcard"><span class="eyebrow">Total revenue</span><b class="num">{{mapRevenue}}</b></div>
+            <div><h3 class="h-card" style="margin-bottom:8px">State leaderboard · {{mapMetricLabel}}</h3>
+              <ol class="board"><sc-for list="{{board}}" as="b" key="{{b.key}}" hint-placeholder-count="8"><li><button onClick="{{b.pick}}"><span class="no num">{{b.no}}</span><span class="bn"><b>{{b.name}}</b><small>{{b.sub}}</small><span class="bar"><i class="seg-bar" style="{{b.style}}"></i></span></span><b class="num bv">{{b.val}}</b></button></li></sc-for></ol></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card rise" style="animation-delay:100ms;overflow:hidden" aria-labelledby="ra-h">
+        <div class="card-head" style="padding:18px 20px 12px"><h2 class="h-card" id="ra-h" style="font-size:17px">Recent activity</h2>
+          <div class="seg" role="group" aria-label="Activity type"><sc-for list="{{tabs}}" as="t" key="{{t.k}}" hint-placeholder-count="3"><button class="{{t.cls}}" aria-pressed="{{t.on}}" onClick="{{t.pick}}"><sc-icon name="{{t.ic}}" size="15"></sc-icon><span class="tl">{{t.l}}</span></button></sc-for></div></div>
+        <sc-if value="{{actQ}}" hint-placeholder-val="{{ true }}">
+          <div class="trow thead"><span>Customer</span><span>Plan (domain)</span><span>Amount</span><span>Status</span><span>Date</span></div>
+          <sc-for list="{{rowsQ}}" as="r" key="{{r.key}}" hint-placeholder-count="6"><div class="trow rise" style="{{r.delay}}"><span class="c1"><b>{{r.a}}</b></span><span class="c2">{{r.b}}</span><span class="c3 num">{{r.c}}</span><span class="c4"><span class="{{r.tone}}">{{r.st}}</span></span><span class="c5 sub">{{r.d}}</span></div></sc-for>
+        </sc-if>
+        <sc-if value="{{actP}}" hint-placeholder-val="{{ false }}">
+          <div class="trow thead"><span>Customer</span><span>Method</span><span>Amount</span><span>Status</span><span>Date</span></div>
+          <sc-for list="{{rowsP}}" as="r" key="{{r.key}}" hint-placeholder-count="5"><div class="trow rise" style="{{r.delay}}"><span class="c1"><b>{{r.a}}</b></span><span class="c2">{{r.b}}</span><span class="c3 num">{{r.c}}</span><span class="c4"><span class="{{r.tone}}">{{r.st}}</span></span><span class="c5 sub">{{r.d}}</span></div></sc-for>
+        </sc-if>
+        <sc-if value="{{actU}}" hint-placeholder-val="{{ false }}">
+          <div class="trow thead u"><span>Name</span><span>Account</span><span>State</span><span>Joined</span></div>
+          <sc-for list="{{rowsU}}" as="r" key="{{r.key}}" hint-placeholder-count="6"><div class="trow u rise" style="{{r.delay}}"><span class="c1"><b>{{r.a}}</b></span><span class="c2">{{r.b}}</span><span class="c3">{{r.c}}</span><span class="c5 sub">{{r.d}}</span></div></sc-for>
+        </sc-if>
+        <div style="padding:12px 20px;border-top:1px solid var(--line)"><button class="link" onClick="{{viewAll}}">View all <sc-icon name="arrow" size="15"></sc-icon></button></div>
+      </section>
+    </sc-if>

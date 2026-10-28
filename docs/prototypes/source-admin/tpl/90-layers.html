@@ -1,0 +1,49 @@
+
+  </div>
+  </main>
+</div>
+
+<!-- ============ PENDING REQUESTS DRAWER ============ -->
+<sc-if value="{{hasDrawer}}" hint-placeholder-val="{{ false }}">
+  <div class="scrim" onClick="{{closeDrawer}}"></div>
+  <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="pr-t" onKeyDown="{{trap}}">
+    <div class="drawer-head"><div><h2 class="h-sec" id="pr-t">Pending requests</h2><p class="sub num">{{pendingTotal}} waiting for a decision</p></div><button class="iconbtn" onClick="{{closeDrawer}}" aria-label="Close" autofocus="true"><sc-icon name="x" size="18"></sc-icon></button></div>
+    <div style="padding:0 24px 12px"><div class="seg" role="group" aria-label="Request type" style="flex-wrap:wrap"><sc-for list="{{pTabs}}" as="t" key="{{t.k}}" hint-placeholder-count="5"><button class="{{t.cls}}" aria-pressed="{{t.on}}" onClick="{{t.pick}}">{{t.l}} <span class="num" style="color:var(--muted)">{{t.n}}</span></button></sc-for></div></div>
+    <div class="drawer-body" style="padding-top:0;gap:0">
+      <sc-for list="{{pList}}" as="x" key="{{x.id}}" hint-placeholder-count="5">
+        <article class="preq rise"><span class="ic sm" style="background:var(--blue-soft);color:var(--blue-ink)"><sc-icon name="{{x.icon}}" size="18"></sc-icon></span><div style="flex:1;min-width:0"><b style="display:block">{{x.org}}</b><span class="sub" style="display:block">{{x.title}} · {{x.detail}}</span><span class="sub" style="font-size:12px">{{x.age}}</span><div style="display:flex;gap:8px;margin-top:10px"><button class="btn primary sm" onClick="{{x.review}}">Review</button><button class="btn secondary sm" onClick="{{x.done}}">Mark handled</button></div></div></article>
+      </sc-for>
+      <sc-if value="{{pEmpty}}" hint-placeholder-val="{{ false }}"><div class="empty"><span class="ic"><sc-icon name="check" size="24" stroke="3"></sc-icon></span><b>All caught up</b><span class="sub">Nothing is waiting here.</span></div></sc-if>
+    </div>
+    <div class="drawer-foot"><button class="btn secondary" style="flex:1" onClick="{{closeDrawer}}">Close</button></div>
+  </aside>
+</sc-if>
+
+<!-- ============ CONFIRM (risky switches) ============ -->
+<sc-if value="{{hasConfirm}}" hint-placeholder-val="{{ false }}">
+  <div class="scrim" onClick="{{confirmNo}}"></div>
+  <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="cf-t" aria-describedby="cf-d" onKeyDown="{{trap}}">
+    <span class="ic" style="background:var(--amber-soft);color:var(--amber)"><sc-icon name="alert" size="22"></sc-icon></span>
+    <h2 class="h-sec" id="cf-t" style="margin-top:12px">{{confirmTitle}}</h2><p class="sub" id="cf-d" style="margin-top:6px;font-size:14px">{{confirmBody}}</p>
+    <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap"><button class="btn secondary" style="flex:1" onClick="{{confirmNo}}" autofocus="true">Keep as it is</button><button class="btn primary" style="flex:1" onClick="{{confirmYes}}">Yes, turn it {{confirmWord}}</button></div>
+  </div>
+</sc-if>
+
+<!-- ============ COMMAND PALETTE ============ -->
+<sc-if value="{{palette}}" hint-placeholder-val="{{ false }}">
+  <div class="scrim" style="z-index:100" onClick="{{closePalette}}"></div>
+  <div class="palette" role="dialog" aria-modal="true" aria-label="Search" onKeyDown="{{palKey}}">
+    <input type="text" role="combobox" aria-expanded="true" aria-controls="pal-list" aria-activedescendant="{{palActive}}" aria-label="Search pages and actions" autofocus="true" value="{{pq}}" onInput="{{setPq}}" placeholder="Search pages and actions…" autocomplete="off">
+    <div id="pal-list" role="listbox" aria-label="Results" style="max-height:min(52vh,420px);overflow-y:auto;padding:6px 0">
+      <sc-for list="{{palItems}}" as="it" key="{{it.key}}" hint-placeholder-count="5"><button class="{{it.cls}}" id="{{it.id}}" role="option" aria-selected="{{it.sel}}" tabindex="-1" onMouseEnter="{{it.hover}}" onClick="{{it.pick}}"><span style="min-width:0;text-align:left"><b style="display:block;font-weight:600">{{it.label}}</b><span class="sub" style="font-size:12px">{{it.sub}}</span></span><span class="pal-kind">{{it.kind}}</span></button></sc-for>
+      <sc-if value="{{palEmpty}}" hint-placeholder-val="{{ false }}"><p class="sub" style="padding:24px;text-align:center">Nothing matches.</p></sc-if>
+    </div>
+    <p class="sub" style="padding:10px 20px;border-top:1px solid var(--line);font-size:12px">↑ ↓ to move · Enter to open · Esc to close</p>
+  </div>
+</sc-if>
+
+<sc-if value="{{toast}}" hint-placeholder-val="{{ false }}"><div class="toast" role="status"><span>{{toast}}</span><sc-if value="{{hasToastAct}}" hint-placeholder-val="{{ false }}"><button onClick="{{toastAct}}">{{toastLabel}}</button></sc-if></div></sc-if>
+
+<div class="proto"><button onClick="{{ctlReplay}}" aria-label="Prototype: replay the animations"><sc-icon name="refresh" size="15"></sc-icon><span class="t">Replay · sample data</span></button></div>
+
+</div>

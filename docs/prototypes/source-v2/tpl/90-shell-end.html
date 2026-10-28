@@ -1,0 +1,123 @@
+
+  </div>
+  </main>
+</div>
+
+<!-- ============ DEPARTMENT DRAWER ============ -->
+<sc-if value="{{hasPanel}}" hint-placeholder-val="{{ false }}">
+  <div class="scrim" onClick="{{closePanel}}"></div>
+  <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="dp-t" onKeyDown="{{trap}}">
+    <div class="drawer-head"><div><span class="eyebrow">Department</span><h2 class="h-sec" id="dp-t" style="font-size:24px;margin-top:2px">{{pName}}</h2><p class="sub num">{{pTotal}} resources in your access</p></div><button class="iconbtn" onClick="{{closePanel}}" aria-label="Close" autofocus="true"><sc-icon name="x" size="18"></sc-icon></button></div>
+    <div class="drawer-body">
+      <section class="card pad" style="display:flex;flex-direction:column;gap:14px;box-shadow:none"><h3 class="h-card">Content distribution</h3>
+        <sc-for list="{{pTypes}}" as="t" key="{{t.l}}" hint-placeholder-count="3"><div><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px"><span>{{t.l}}</span><span class="sub num">{{t.n}} · {{t.pct}}%</span></div><div class="track"><div class="seg-bar" style="{{t.style}}"></div></div></div></sc-for>
+      </section>
+      <section class="card" style="overflow:hidden;box-shadow:none"><div style="padding:16px 18px;display:flex;justify-content:space-between;align-items:center"><h3 class="h-card">Latest resources</h3><span class="tag sample">Sample titles</span></div>
+        <sc-for list="{{pTitles}}" as="t" key="{{t.t}}" hint-placeholder-count="3"><button class="row rise" style="{{t.delay}}" onClick="{{t.open}}"><span style="flex:1;min-width:0;font-weight:600">{{t.t}}</span><span class="tag mute">{{t.kind}}</span><sc-icon name="chevr" size="16" style="color:var(--faint)"></sc-icon></button></sc-for>
+      </section>
+    </div>
+    <div class="drawer-foot"><button class="btn primary" style="flex:1" onClick="{{openInLibrary}}">Open in Library</button><button class="btn secondary" onClick="{{closePanel}}">Close</button></div>
+  </aside>
+</sc-if>
+
+<!-- ============ ADD USER DRAWER ============ -->
+<sc-if value="{{drawerUser}}" hint-placeholder-val="{{ false }}">
+  <div class="scrim" onClick="{{closeDrawer}}"></div>
+  <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="au-t" onKeyDown="{{trap}}">
+    <div class="drawer-head"><div><h2 class="h-sec" id="au-t">Add user</h2><p class="sub">Register a member of your institution. Fields marked * are required.</p></div><button class="iconbtn" onClick="{{closeDrawer}}" aria-label="Close"><sc-icon name="x" size="18"></sc-icon></button></div>
+    <div class="drawer-body">
+      <div class="two">
+        <label class="{{nameCls}}"><span class="lab">Full name <span class="req">*</span></span><input class="inp" type="text" autofocus="true" value="{{fName}}" onInput="{{setName}}" placeholder="User name" autocomplete="off"><span class="msg" aria-live="polite">{{errName}}</span></label>
+        <label class="{{emailCls}}"><span class="lab">Email <span class="req">*</span></span><input class="inp" type="email" value="{{fEmail}}" onInput="{{setEmail}}" placeholder="user@university.edu" autocomplete="off"><span class="msg" aria-live="polite">{{errEmail}}</span></label>
+      </div>
+      <label class="{{mobileCls}}"><span class="lab">Mobile number</span><input class="inp" type="tel" value="{{fMobile}}" onInput="{{setMobile}}" placeholder="+91 9876543210"><span class="msg" aria-live="polite">{{errMobile}}</span></label>
+      <div class="field" role="group" aria-labelledby="acct-l"><span class="lab" id="acct-l">Account type <span class="req">*</span></span>
+        <div class="seg" style="align-self:flex-start"><sc-for list="{{acctOpts}}" as="a" key="{{a.name}}" hint-placeholder-count="3"><button class="{{a.cls}}" aria-pressed="{{a.pressed}}" onClick="{{a.pick}}"><sc-if value="{{a.locked}}" hint-placeholder-val="{{ false }}"><sc-icon name="lock" size="13"></sc-icon></sc-if>{{a.name}}<sc-if value="{{a.locked}}" hint-placeholder-val="{{ false }}"><span class="premium-tag">Premium</span></sc-if></button></sc-for></div>
+        <span class="hint">How this person uses the library. It decides what the account can do. Their professional designation below does not.</span>
+      </div>
+      <div class="field" role="group" aria-labelledby="desig-l"><span class="lab" id="desig-l">Professional designation <span class="req">*</span></span>
+        <div style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{desigOpts}}" as="d" key="{{d.name}}" hint-placeholder-count="4"><button class="{{d.cls}}" aria-pressed="{{d.pressed}}" onClick="{{d.pick}}"><span class="tick"><sc-icon name="check" size="14" stroke="3.4"></sc-icon></span>{{d.name}}</button></sc-for></div>
+        <span class="msg" aria-live="polite">{{errDesig}}</span><span class="hint">The list follows the account type. A title never changes what the person can open.</span>
+      </div>
+      <div class="two">
+        <label class="field"><span class="lab">Branch</span><input class="inp" type="text" value="{{fBranch}}" onInput="{{setBranch}}" placeholder="e.g. Computer Science"></label>
+        <label class="field"><span class="lab">Department</span><input class="inp" type="text" value="{{fDept}}" onInput="{{setDept}}" placeholder="e.g. Engineering"></label>
+      </div>
+      <label class="{{passCls}}"><span class="lab">Temporary password <span class="req">*</span></span>
+        <span class="pw"><input class="inp" type="{{passType}}" value="{{fPass}}" onInput="{{setPass}}" placeholder="At least 8 characters" autocomplete="new-password"><button type="button" onClick="{{togglePass}}" aria-label="{{passLabel}}"><sc-if value="{{showPass}}" hint-placeholder-val="{{ false }}"><sc-icon name="eyeoff" size="18"></sc-icon></sc-if><sc-if value="{{hidePass}}" hint-placeholder-val="{{ true }}"><sc-icon name="eye" size="18"></sc-icon></sc-if></button></span>
+        <span class="msg" aria-live="polite">{{errPass}}</span><span class="hint">They are asked to change it the first time they sign in.</span>
+      </label>
+    </div>
+    <div class="drawer-foot"><button class="btn primary" style="flex:1" onClick="{{submitUser}}"><sc-icon name="plus" size="17"></sc-icon>Add user</button><button class="btn secondary" onClick="{{closeDrawer}}">Cancel</button></div>
+  </aside>
+</sc-if>
+
+<!-- ============ ADD FEEDBACK DRAWER ============ -->
+<sc-if value="{{drawerFeedback}}" hint-placeholder-val="{{ false }}">
+  <div class="scrim" onClick="{{closeDrawer}}"></div>
+  <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="fb-t" onKeyDown="{{trap}}">
+    <div class="drawer-head"><div><h2 class="h-sec" id="fb-t">Add feedback</h2><p class="sub">Tell us how STM Digital Library is working for your institution.</p></div><button class="iconbtn" onClick="{{closeDrawer}}" aria-label="Close"><sc-icon name="x" size="18"></sc-icon></button></div>
+    <div class="drawer-body">
+      <div class="field" role="group" aria-labelledby="rt-l"><span class="lab" id="rt-l">Rating <span class="req">*</span></span>
+        <div class="stars"><sc-for list="{{stars}}" as="s" key="{{s.n}}" hint-placeholder-count="5"><button class="{{s.cls}}" aria-pressed="{{s.pressed}}" aria-label="{{s.label}}" onClick="{{s.pick}}" autofocus="{{s.first}}"><sc-icon name="star" size="26"></sc-icon></button></sc-for></div>
+        <span class="msg" aria-live="polite">{{errRating}}</span>
+      </div>
+      <label class="field"><span class="lab">Topic</span><span class="sel"><select class="inp" value="{{fbCat}}" onChange="{{setFbCat}}"><option>General</option><option>Content</option><option>Usability</option><option>Subscription</option><option>Users and access</option></select></span></label>
+      <label class="{{msgCls}}"><span class="lab">Your feedback <span class="req">*</span></span><textarea class="inp" rows="5" value="{{fbMsg}}" onInput="{{setFbMsg}}" placeholder="What is working well? What could be better?"></textarea><span class="msg" aria-live="polite">{{errMsg}}</span></label>
+    </div>
+    <div class="drawer-foot"><button class="btn primary" style="flex:1" onClick="{{submitFeedback}}"><sc-icon name="send" size="16"></sc-icon>Submit feedback</button><button class="btn secondary" onClick="{{closeDrawer}}">Cancel</button></div>
+  </aside>
+</sc-if>
+
+<!-- ============ READER (secure viewer) ============ -->
+<sc-if value="{{hasReader}}" hint-placeholder-val="{{ false }}">
+  <div class="reader" role="dialog" aria-modal="true" aria-labelledby="rd-t" onKeyDown="{{rKey}}">
+    <div class="reader-top">
+      <button class="iconbtn" onClick="{{rClose}}" aria-label="Close the viewer" autofocus="true"><sc-icon name="x" size="18"></sc-icon></button>
+      <div style="flex:1;min-width:0"><h2 id="rd-t" class="rd-title">{{rTitle}}</h2><p class="sub" style="font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{rMeta}}</p></div>
+      <span class="pill warn hide-s"><sc-icon name="clock" size="14"></sc-icon>{{rSession}}</span>
+      <button class="btn secondary sm" aria-pressed="{{rSaved}}" onClick="{{rSave}}"><sc-icon name="star" size="16" style="{{rStar}}"></sc-icon>{{rSaveLabel}}</button>
+    </div>
+    <div class="prog" style="border-radius:0;height:3px"><i style="{{rProgress}}"></i></div>
+    <div class="reader-stage">
+      <article class="sheet" aria-label="{{rPageText}}">
+        <div class="wm" aria-hidden="true">Secure viewer · STM journals · Sample</div>
+        <sc-if value="{{rFirstPage}}" hint-placeholder-val="{{ true }}"><div style="margin-bottom:28px"><span class="tag mute">{{rType}}</span><div class="ln" style="height:22px;width:82%;margin-top:14px"></div><div class="ln" style="height:22px;width:58%"></div></div></sc-if>
+        <sc-for list="{{rLines}}" as="l" key="{{l.key}}" hint-placeholder-count="12"><div class="ln" style="{{l.style}};{{l.gap}}"></div></sc-for>
+        <p class="sub" style="margin-top:28px;text-align:center;font-size:12.5px">Sample page. The real document appears here in the secure viewer.</p>
+      </article>
+    </div>
+    <div class="reader-foot"><button class="btn secondary" disabled="{{rFirst}}" onClick="{{rPrev}}"><sc-icon name="chevl" size="16"></sc-icon>Previous</button><span class="num" style="font-weight:600" aria-live="polite">{{rPageText}}</span><button class="btn primary" disabled="{{rLast}}" onClick="{{rNext}}">Next<sc-icon name="chevr" size="16"></sc-icon></button></div>
+  </div>
+</sc-if>
+
+<!-- ============ COMMAND PALETTE ============ -->
+<sc-if value="{{palette}}" hint-placeholder-val="{{ false }}">
+  <div class="scrim" style="z-index:100" onClick="{{closePalette}}"></div>
+  <div class="palette" role="dialog" aria-modal="true" aria-label="Search" onKeyDown="{{palKey}}">
+    <input type="text" role="combobox" aria-expanded="true" aria-controls="pal-list" aria-activedescendant="{{palActive}}" aria-label="Search pages, departments and members" autofocus="true" value="{{pq}}" onInput="{{setPq}}" placeholder="Search library, members, departments…" autocomplete="off">
+    <div id="pal-list" role="listbox" aria-label="Results" style="max-height:min(52vh,420px);overflow-y:auto;padding:6px 0">
+      <sc-for list="{{palItems}}" as="it" key="{{it.key}}" hint-placeholder-count="5"><button class="{{it.cls}}" id="{{it.id}}" role="option" aria-selected="{{it.sel}}" tabindex="-1" onMouseEnter="{{it.hover}}" onClick="{{it.pick}}"><span style="min-width:0;text-align:left"><b style="display:block;font-weight:600">{{it.label}}</b><span class="sub" style="font-size:12px">{{it.sub}}</span></span><span class="pal-kind">{{it.kind}}</span></button></sc-for>
+      <sc-if value="{{palEmpty}}" hint-placeholder-val="{{ false }}"><p class="sub" style="padding:24px;text-align:center">Nothing matches. Try a member's name or a department.</p></sc-if>
+    </div>
+    <p class="sub" style="padding:10px 20px;border-top:1px solid var(--line);font-size:12px">↑ ↓ to move · Enter to open · Esc to close</p>
+  </div>
+</sc-if>
+
+<sc-if value="{{toast}}" hint-placeholder-val="{{ false }}"><div class="toast" role="status"><span>{{toast}}</span><sc-if value="{{hasToastAct}}" hint-placeholder-val="{{ false }}"><button onClick="{{toastAct}}">{{toastLabel}}</button></sc-if></div></sc-if>
+
+<!-- ============ PROTOTYPE CONTROLS (secondary, not part of the product) ============ -->
+<div class="proto">
+  <sc-if value="{{ctl}}" hint-placeholder-val="{{ false }}">
+    <div class="pop" role="region" aria-label="Prototype controls">
+      <div style="padding:12px 14px"><b>Prototype controls</b><p class="sub" style="font-size:12px;margin-top:2px">Sample data: members, charts and activity are not real.</p></div>
+      <div class="menu-item" style="min-height:44px"><span style="flex:1"><b style="font-weight:600;display:block">{{ctlPremiumNow}}</b></span><button class="btn secondary sm" onClick="{{ctlPremium}}">{{ctlPremiumLabel}}</button></div>
+      <button class="menu-item" onClick="{{ctlReplay}}"><sc-icon name="refresh" size="16"></sc-icon>Replay animations</button>
+      <button class="menu-item" onClick="{{ctlFeed}}" role="switch" aria-checked="{{feedOn}}"><span style="flex:1">Sample live activity</span><span class="{{feedSwitchCls}}"></span></button>
+      <button class="menu-item" onClick="{{ctlReset}}"><sc-icon name="x" size="16"></sc-icon>Reset prototype</button>
+    </div>
+  </sc-if>
+  <button onClick="{{toggleCtl}}" aria-expanded="{{ctl}}" aria-haspopup="true" aria-label="Prototype controls"><sc-icon name="gear" size="15"></sc-icon><span class="t">Prototype</span></button>
+</div>
+
+</div>

@@ -1,0 +1,12 @@
+<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+  <div style="position:relative;width:132px;height:132px;flex:none">
+    <svg width="132" height="132" viewBox="0 0 140 140" style="transform:rotate(-90deg)" role="img" aria-label="Reader engagement: {{donutBig}} {{donutSmall}}">
+      <circle cx="70" cy="70" r="50" fill="none" stroke="var(--surface-2)" stroke-width="16"></circle>
+      <sc-for list="{{donut}}" as="d" key="{{d.label}}" hint-placeholder-count="3"><circle class="{{d.cls}}" cx="70" cy="70" r="50" fill="none" stroke="{{d.color}}" stroke-width="16" stroke-dasharray="{{d.da}}" stroke-dashoffset="{{d.off}}" onMouseEnter="{{d.enter}}" onMouseLeave="{{d.leave}}" onClick="{{d.pick}}"></circle></sc-for>
+    </svg>
+    <div style="position:absolute;inset:0;display:grid;place-items:center;text-align:center;pointer-events:none"><div><b style="font-size:26px;letter-spacing:-.02em" class="num">{{donutBig}}</b><div class="sub" style="font-size:11.5px">{{donutSmall}}</div></div></div>
+  </div>
+  <div style="flex:1 1 150px;min-width:0;display:flex;flex-direction:column;gap:2px">
+    <sc-for list="{{donut}}" as="d2" key="{{d2.label}}" hint-placeholder-count="3"><button class="legend" onMouseEnter="{{d2.enter}}" onMouseLeave="{{d2.leave}}" onFocus="{{d2.enter}}" onBlur="{{d2.leave}}" onClick="{{d2.pick}}" title="{{d2.desc}}"><span style="display:inline-flex;align-items:center;gap:8px"><i style="{{d2.dot}}"></i>{{d2.label}}</span><b class="num">{{d2.count}}</b></button></sc-for>
+  </div>
+</div>

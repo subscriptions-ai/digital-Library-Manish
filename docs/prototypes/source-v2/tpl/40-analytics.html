@@ -1,0 +1,59 @@
+
+    <!-- ================= LEARNING ANALYTICS ================= -->
+    <sc-if value="{{isAnalytics}}" hint-placeholder-val="{{ false }}">
+      <div class="page-head rise">
+        <div><h1 class="h-page">Learning Analytics</h1><p class="sub" style="margin-top:4px">See who reads, when they read, and what they search for. <span class="tag sample" style="margin-left:4px">Sample data</span></p></div>
+        <div class="actions">
+          <sc-if value="{{unlocked}}" hint-placeholder-val="{{ false }}"><button class="btn secondary" onClick="{{exportReport}}"><sc-icon name="download" size="17"></sc-icon>Export report</button></sc-if>
+          <sc-if value="{{peek}}" hint-placeholder-val="{{ false }}"><button class="btn secondary" onClick="{{togglePeek}}">Hide sample analytics</button></sc-if>
+        </div>
+      </div>
+      <sc-if value="{{peek}}" hint-placeholder-val="{{ false }}"><div class="banner info rise"><span class="ic"><sc-icon name="info" size="17"></sc-icon></span><span class="txt"><b>You are viewing sample analytics.</b> With Premium, these panels show your own members' reading.</span><button class="btn primary sm" onClick="{{goSubs}}">Explore Premium</button></div></sc-if>
+
+      <section style="position:relative">
+        <div class="{{blurCls}}" aria-hidden="{{locked}}">
+          <div class="grid-kpi four keep">
+            <sc-for list="{{aKpis}}" as="k" key="{{k.l}}" hint-placeholder-count="4"><article class="card kpi compact rise" style="{{k.delay}};min-height:120px"><span class="eyebrow">{{k.l}}</span><b class="big">{{k.n}}</b><span class="sub foot">{{k.d}}</span></article></sc-for>
+          </div>
+          <section class="card pad rise"><!--@include chart--></section>
+          <div class="split even" style="align-items:start">
+            <section class="card pad rise" aria-labelledby="heat-h"><h2 class="h-card" id="heat-h">Usage by day and time</h2><p class="sub">Sessions by weekday and time of day</p>
+              <div style="display:grid;grid-template-columns:34px repeat(8,minmax(0,1fr));gap:5px;align-items:center;margin-top:14px">
+                <span></span><sc-for list="{{heatHours}}" as="h" key="{{h}}" hint-placeholder-count="8"><span class="sub" style="font-size:10.5px;text-align:center;white-space:nowrap">{{h}}</span></sc-for>
+                <sc-for list="{{heatRows}}" as="r" key="{{r.d}}" hint-placeholder-count="7"><span class="sub" style="font-size:11.5px">{{r.d}}</span><sc-for list="{{r.cells}}" as="c" key="{{c.key}}" hint-placeholder-count="8"><button class="heat" style="{{c.style}}" onMouseEnter="{{c.enter}}" onFocus="{{c.enter}}" aria-label="{{c.label}}"></button></sc-for></sc-for>
+              </div>
+              <p class="sub" style="margin-top:12px;min-height:20px" aria-live="polite">{{heatText}}</p>
+            </section>
+            <div class="stack">
+            <section class="card pad rise" aria-labelledby="mr-h"><h2 class="h-card" id="mr-h">Most-read content</h2>
+              <div class="stack" style="gap:14px;margin-top:14px"><sc-for list="{{topRead}}" as="t" key="{{t.name}}" hint-placeholder-count="5"><div><div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;margin-bottom:5px"><span style="font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{t.name}}</span><span class="sub num">{{t.n}}</span></div><div class="track"><div class="seg-bar" style="{{t.style}}"></div></div></div></sc-for></div>
+            </section>
+            <section class="card pad rise" aria-labelledby="da-h"><h2 class="h-card" id="da-h">Most active departments</h2>
+              <div class="stack" style="gap:14px;margin-top:14px"><sc-for list="{{deptAct}}" as="d" key="{{d.name}}" hint-placeholder-count="5"><div><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px"><span style="font-weight:500">{{d.name}}</span><span class="sub num">{{d.pct}}%</span></div><div class="track"><div class="seg-bar" style="{{d.style}}"></div></div></div></sc-for></div>
+            </section>
+            </div>
+          </div>
+          <div class="split even">
+            <section class="card pad rise" aria-labelledby="uf-h"><h2 class="h-card" id="uf-h">Searches without results</h2><p class="sub">Gaps worth telling your library</p>
+              <ul style="margin-top:12px;display:flex;flex-direction:column;gap:10px"><sc-for list="{{unfound}}" as="u" key="{{u.q}}" hint-placeholder-count="5"><li style="display:flex;justify-content:space-between;gap:10px;font-size:13.5px"><span>{{u.q}}</span><span class="tag warn num">{{u.n}}×</span></li></sc-for></ul>
+            </section>
+            <section class="card pad rise" aria-labelledby="re-h"><h2 class="h-card" id="re-h">Reader engagement</h2><div style="margin-top:14px"><!--@include donut--></div></section>
+          </div>
+            <section class="card rise" style="overflow:hidden" aria-labelledby="la-h"><div style="padding:18px 18px 12px"><h2 class="h-card" id="la-h">Live reading activity</h2></div>
+              <div aria-live="off"><sc-for list="{{feed}}" as="f" key="{{f.key}}" hint-placeholder-count="3"><div class="ev"><span class="avatar" style="width:34px;height:34px;font-size:12px" aria-hidden="true">{{f.ini}}</span><span style="flex:1;min-width:0"><b style="display:block;font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{f.title}}</b><span class="sub" style="font-size:12px">{{f.who}} · {{f.when}}</span></span></div></sc-for></div>
+            </section>
+        </div>
+        <sc-if value="{{locked}}" hint-placeholder-val="{{ true }}">
+          <div style="position:absolute;inset:0;display:grid;place-items:start center;padding:48px 16px 16px;background:color-mix(in srgb,var(--bg) 55%,transparent);border-radius:var(--r-lg)">
+            <div class="card pad rise" style="max-width:540px;text-align:center;display:flex;flex-direction:column;gap:12px;align-items:center;box-shadow:var(--pop)" role="region" aria-labelledby="unlock-h">
+              <span class="avatar" style="width:52px;height:52px;border-radius:16px;background:var(--blue-soft);color:var(--blue-ink)"><sc-icon name="lock" size="24"></sc-icon></span>
+              <h2 class="h-sec" id="unlock-h">Unlock Institutional Analytics</h2>
+              <p class="sub" style="font-size:14px;line-height:1.6">See who reads, when they read, which resources are most used, and what your users search for but cannot find.</p>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><span class="tag info">Active Readers</span><span class="tag info">Reading Timeline</span><span class="tag info">Most Read Content</span><span class="tag info">Usage Reports</span><span class="tag info">Search Insights</span></div>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:6px"><button class="btn primary" onClick="{{goSubs}}">Explore Premium</button><button class="btn secondary" onClick="{{togglePeek}}">Preview Sample Analytics</button></div>
+              <span class="sub" style="font-size:12px">Premium is priced per department per year. The preview uses sample data.</span>
+            </div>
+          </div>
+        </sc-if>
+      </section>
+    </sc-if>

@@ -1,0 +1,282 @@
+
+    <!-- ================= USERS ================= -->
+    <sc-if value="{{isUsers}}" hint-placeholder-val="{{ false }}">
+      <section class="rise" style="display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:flex-end">
+        <div><span class="eyebrow">Your people</span><h2 class="h1" style="font-size:30px;margin-top:4px">User management</h2><span class="sub">Add members, see who is reading and nudge the ones who have not started.</span></div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px"><button class="btn ghost" onClick="{{exportCsv}}">Export</button><button class="btn ghost" onClick="{{toastImport}}">Import users</button><button class="btn primary" onClick="{{openDrawer}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Add user</button></div>
+      </section>
+      <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px">
+        <sc-for list="{{stats}}" as="st" hint-placeholder-count="4">
+          <button class="{{st.cls}}" style="{{st.delay}}" aria-pressed="{{st.pressed}}" onClick="{{st.pick}}"><span class="eyebrow">{{st.l}}</span><div style="font-size:28px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums">{{st.n}}</div></button>
+        </sc-for>
+      </section>
+      <sc-if value="{{hasSel}}" hint-placeholder-val="{{ false }}">
+        <div class="bulk" role="region" aria-label="Actions for the selected members">
+          <b>{{selCount}} selected</b><span style="flex:1"></span>
+          <button class="btn ghost sm" onClick="{{remindSel}}">Send reminder</button><button class="btn ghost sm" onClick="{{removeSel}}">Remove</button><button class="btn ghost sm" onClick="{{clearSel}}">Clear</button>
+        </div>
+      </sc-if>
+      <section class="card rise" style="animation-delay:140ms;overflow:hidden">
+        <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:14px 18px">
+          <label class="search" style="max-width:340px;cursor:text"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg><input type="search" style="flex:1;min-width:0;border:0;background:none;color:var(--ink);font:inherit;outline:none" value="{{mq}}" onInput="{{setMq}}" placeholder="Search name, email or title…" aria-label="Search members"></label>
+          <div class="seg" role="group" aria-label="Sort by"><sc-for list="{{sorts}}" as="so" hint-placeholder-count="2"><button class="{{so.cls}}" aria-pressed="{{so.on}}" onClick="{{so.pick}}">{{so.l}}</button></sc-for></div>
+          <span style="flex:1"></span><span class="sub">Showing {{shownCount}}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:8px 18px;border-top:1px solid var(--rule);background:var(--surface-2)">
+          <button class="{{allCls}}" role="checkbox" aria-checked="{{allOn}}" aria-label="Select everyone shown" onClick="{{toggleAll}}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"></path></svg></button>
+          <span class="eyebrow" style="flex:1">Member</span><span class="eyebrow" style="width:110px">Type</span><span class="eyebrow" style="width:120px">Status</span><span style="width:34px"></span>
+        </div>
+        <sc-for list="{{members}}" as="m" key="{{m.key}}" hint-placeholder-count="3">
+          <div class="rise" style="{{m.rowStyle}}">
+            <div class="row" style="flex-wrap:wrap">
+              <button class="{{m.cbCls}}" role="checkbox" aria-checked="{{m.sel}}" aria-label="Select this member" onClick="{{m.toggle}}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"></path></svg></button>
+              <span class="avatar">{{m.ini}}</span>
+              <span style="flex:1 1 200px;min-width:0"><b style="display:block">{{m.name}}</b><span class="sub">{{m.email}}</span></span>
+              <span style="width:110px"><span class="tag fac">{{m.type}}</span></span>
+              <span style="width:120px"><span class="{{m.statusCls}}">{{m.status}}</span></span>
+              <button class="iconbtn" style="width:34px;height:34px" aria-expanded="{{m.open}}" aria-label="Show details" onClick="{{m.expand}}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" style="{{m.chev}}"><path d="M6 9l6 6 6-6"></path></svg></button>
+            </div>
+            <sc-if value="{{m.open}}" hint-placeholder-val="{{ false }}">
+              <div class="detail">
+                <div><span class="eyebrow">Designation</span><div style="font-weight:600">{{m.desig}}</div><span class="sub">{{m.last}}</span></div>
+                <sc-if value="{{m.hasContact}}" hint-placeholder-val="{{ false }}"><div><span class="eyebrow">Contact</span><div style="font-weight:600">{{m.contactLine}}</div></div></sc-if>
+                <div><span class="eyebrow">Sessions this month</span><div style="font-size:22px;font-weight:700">{{m.sessions}}</div></div>
+                <div><span class="eyebrow">Recently opened</span><ul style="margin:4px 0 0;padding-left:16px;font-size:13px;color:var(--ink-2)"><sc-for list="{{m.itemList}}" as="it" hint-placeholder-count="2"><li>{{it}}</li></sc-for></ul></div>
+                <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start">
+                  <sc-if value="{{m.canRemind}}" hint-placeholder-val="{{ true }}"><button class="btn ghost sm" disabled="{{m.remindOff}}" onClick="{{m.remind}}">{{m.remindLabel}}</button></sc-if>
+                  <button class="btn danger sm" onClick="{{m.remove}}">Remove</button>
+                </div>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+        <sc-if value="{{noMembers}}" hint-placeholder-val="{{ false }}"><div style="padding:40px 20px;text-align:center;border-top:1px solid var(--rule)"><b>No member matches</b><div class="sub" style="margin:4px 0 12px">Try a different search or filter.</div><button class="btn ghost sm" onClick="{{clearFilters}}">Clear filters</button></div></sc-if>
+      </section>
+    </sc-if>
+
+    <!-- ================= LIBRARY ================= -->
+    <sc-if value="{{isLibrary}}" hint-placeholder-val="{{ false }}">
+      <section class="rise" style="display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:flex-end">
+        <div><span class="eyebrow">What you hold</span><h2 class="h1" style="font-size:30px;margin-top:4px">Content library</h2><span class="sub">{{libCount}}. Open a department to see what is inside.</span></div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+          <label class="search" style="max-width:300px;cursor:text"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg><input type="search" style="flex:1;min-width:0;border:0;background:none;color:var(--ink);font:inherit;outline:none" value="{{lq}}" onInput="{{setLq}}" placeholder="Search departments…" aria-label="Search departments"></label>
+          <div class="seg" role="group" aria-label="Sort"><sc-for list="{{lsorts}}" as="so" hint-placeholder-count="2"><button class="{{so.cls}}" aria-pressed="{{so.on}}" onClick="{{so.pick}}">{{so.l}}</button></sc-for></div>
+          <div class="seg" role="group" aria-label="Layout"><sc-for list="{{views}}" as="vw" hint-placeholder-count="2"><button class="{{vw.cls}}" aria-pressed="{{vw.on}}" onClick="{{vw.pick}}">{{vw.l}}</button></sc-for></div>
+        </div>
+      </section>
+      <sc-if value="{{isGrid}}" hint-placeholder-val="{{ true }}">
+        <section style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px">
+          <sc-for list="{{libDepts}}" as="d" key="{{d.key}}" hint-placeholder-count="4">
+            <article class="card lift rise" style="{{d.delay}}">
+              <button class="tile" style="flex-direction:column;gap:14px;padding:20px" onClick="{{d.open}}">
+                <span style="display:flex;justify-content:space-between;width:100%;align-items:center"><span class="ico"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"></path><path d="M3 13l9 5 9-5"></path></svg></span><span class="tag ok">Open</span></span>
+                <span><b style="font-size:17px;display:block">{{d.name}}</b><span class="sub">{{d.total}} items</span></span>
+                <span class="track" style="width:100%;height:6px"><span class="seg-bar" style="{{d.barA}}"></span><span class="seg-bar" style="{{d.barB}}"></span><span class="seg-bar" style="{{d.barC}}"></span></span>
+                <span class="link" style="font-size:13px">Open department →</span>
+              </button>
+            </article>
+          </sc-for>
+          <article class="card lift rise" style="border-style:dashed;animation-delay:300ms"><button class="tile" style="flex-direction:column;align-items:flex-start;justify-content:center;gap:10px;padding:20px" onClick="{{goSubs}}"><span class="ico"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></span><b>Add a department</b><span class="sub">Choose from 29 subjects</span></button></article>
+        </section>
+      </sc-if>
+      <sc-if value="{{isList}}" hint-placeholder-val="{{ false }}">
+        <section class="card rise" style="overflow:hidden">
+          <sc-for list="{{libDepts}}" as="d" key="{{d.key}}" hint-placeholder-count="4">
+            <button class="row rise" style="{{d.delay}}" onClick="{{d.open}}"><span class="tile ico" style="width:36px;height:36px;padding:0;border-radius:10px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"></path><path d="M3 13l9 5 9-5"></path></svg></span><b style="flex:1">{{d.name}}</b><span class="track" style="width:160px;height:6px"><span class="seg-bar" style="{{d.barA}}"></span><span class="seg-bar" style="{{d.barB}}"></span><span class="seg-bar" style="{{d.barC}}"></span></span><span style="width:96px;text-align:right;font-variant-numeric:tabular-nums">{{d.total}}</span></button>
+          </sc-for>
+        </section>
+      </sc-if>
+      <sc-if value="{{noLib}}" hint-placeholder-val="{{ false }}"><p class="sub">No department matches your search.</p></sc-if>
+    </sc-if>
+
+    <!-- ================= ANALYTICS ================= -->
+    <sc-if value="{{isAnalytics}}" hint-placeholder-val="{{ false }}">
+      <section class="rise" style="display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:flex-end">
+        <div><span class="eyebrow">Premium</span><h2 class="h1" style="font-size:30px;margin-top:4px">Learning analytics</h2><span class="sub">See who reads, when, how much, and what they searched for and did not find.</span></div>
+        <div style="display:flex;gap:10px">
+          <sc-if value="{{unlocked}}" hint-placeholder-val="{{ false }}"><button class="btn ghost" onClick="{{exportReport}}">Export report</button></sc-if>
+          <sc-if value="{{free}}" hint-placeholder-val="{{ true }}"><button class="btn ghost" aria-pressed="{{peek}}" onClick="{{togglePeek}}">{{peekLabel}}</button></sc-if>
+        </div>
+      </section>
+      <section class="rise" style="position:relative;animation-delay:80ms;border-radius:16px">
+        <div style="display:flex;flex-direction:column;gap:16px" class="{{blurCls}}" aria-hidden="{{locked}}">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px">
+            <sc-for list="{{aKpis}}" as="k" hint-placeholder-count="4"><div class="card rise" style="padding:16px;{{k.delay}}"><span class="eyebrow">{{k.l}}</span><div style="font-size:26px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums">{{k.n}}</div></div></sc-for>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:16px">
+            <div class="card" style="flex:2 1 420px;min-width:0;padding:20px"><h3 class="h2">When your members read</h3><span class="sub">Sessions by weekday and time of day</span>
+              <div style="display:grid;grid-template-columns:34px repeat(8,minmax(0,1fr));gap:5px;align-items:center;margin-top:14px">
+                <span></span><sc-for list="{{heatHours}}" as="h" hint-placeholder-count="8"><span style="font-size:10.5px;color:var(--muted);text-align:center;white-space:nowrap">{{h}}</span></sc-for>
+                <sc-for list="{{heatRows}}" as="r" hint-placeholder-count="7"><span style="font-size:11.5px;color:var(--muted)">{{r.d}}</span><sc-for list="{{r.cells}}" as="c" key="{{c.key}}" hint-placeholder-count="8"><button class="heat" style="{{c.style}}" onMouseEnter="{{c.enter}}" aria-label="{{c.key}}"></button></sc-for></sc-for>
+              </div>
+              <div class="sub" style="margin-top:12px;min-height:20px" aria-live="polite">{{heatText}}</div>
+            </div>
+            <div style="flex:1 1 260px;min-width:0;display:flex;flex-direction:column;gap:16px">
+              <div class="card" style="padding:20px"><h3 class="h2">Most read</h3>
+                <div style="display:flex;flex-direction:column;gap:12px;margin-top:12px"><sc-for list="{{topRead}}" as="t" hint-placeholder-count="4"><div><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px"><span style="font-weight:500">{{t.name}}</span><span class="sub">{{t.n}}</span></div><div class="track" style="height:7px"><div class="seg-bar" style="{{t.style}}"></div></div></div></sc-for></div>
+              </div>
+              <div class="card" style="padding:20px"><h3 class="h2">Searched, not found</h3><span class="sub">Gaps worth telling your library</span>
+                <ul style="list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:8px"><sc-for list="{{unfound}}" as="u" hint-placeholder-count="5"><li style="display:flex;justify-content:space-between;gap:10px;font-size:13px"><span>{{u.q}}</span><b class="tag wait">{{u.n}}×</b></li></sc-for></ul>
+              </div>
+            </div>
+          </div>
+        </div>
+        <sc-if value="{{locked}}" hint-placeholder-val="{{ true }}">
+          <div style="position:absolute;inset:0;display:grid;place-items:center;padding:20px;background:color-mix(in srgb,var(--ground) 45%,transparent);border-radius:16px">
+            <div class="card swap" style="max-width:520px;padding:28px;text-align:center;display:flex;flex-direction:column;gap:12px;align-items:center;box-shadow:var(--pop)">
+              <span class="logo" style="width:46px;height:46px;border-radius:14px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 118 0v3"></path></svg></span>
+              <h3 style="margin:0;font-size:22px;letter-spacing:-.02em">Unlock institutional analytics</h3>
+              <p class="sub" style="margin:0;font-size:14px;line-height:1.6">Analytics opens with a Premium department subscription, for everyone you add. The summary on your dashboard stays open either way.</p>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><span class="pill teal">Active readers</span><span class="pill teal">User-wise usage</span><span class="pill teal">Reading timeline</span><span class="pill teal">Reports</span></div>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:6px"><button class="btn primary" onClick="{{goSubs}}">Subscribe from ₹7,990*</button><button class="btn ghost" onClick="{{togglePeek}}">Peek with sample data</button></div>
+              <span class="sub" style="font-size:12px">*per department per year, when 5 or more are chosen. 18% GST extra.</span>
+            </div>
+          </div>
+        </sc-if>
+      </section>
+    </sc-if>
+
+    <!-- ================= SUBSCRIPTIONS ================= -->
+    <sc-if value="{{isSubs}}" hint-placeholder-val="{{ false }}">
+      <section class="rise" style="background:var(--navy);color:#fff;border-radius:18px;padding:26px 28px;display:flex;flex-wrap:wrap;gap:20px;align-items:center;justify-content:space-between;position:relative;overflow:hidden">
+        <div class="shimmer" style="position:absolute;inset:0;opacity:.18;pointer-events:none"></div>
+        <div style="flex:1 1 380px;position:relative"><span style="font-size:11px;font-weight:600;letter-spacing:.12em;color:var(--amber);text-transform:uppercase">{{premiumLabel}}</span><h2 style="margin:8px 0 6px;font-size:28px;line-height:1.15;letter-spacing:-.02em">Full institutional access, priced by the departments you choose</h2><p style="margin:0;opacity:.8;max-width:56ch">No session clock, your own users, live analytics and reports. The price updates as you choose.</p></div>
+        <button class="btn light" style="position:relative" onClick="{{toastTalk}}">Talk to our team</button>
+      </section>
+
+      <div class="stepper rise" style="animation-delay:60ms" role="list" aria-label="Subscription steps">
+        <sc-for list="{{stepper}}" as="st" hint-placeholder-count="3">
+          <div class="{{st.cls}}" role="listitem"><span class="n"><sc-if value="{{st.done}}" hint-placeholder-val="{{ false }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"></path></svg></sc-if><sc-if value="{{st.notDone}}" hint-placeholder-val="{{ true }}">{{st.num}}</sc-if></span>{{st.l}}</div>
+          <sc-if value="{{st.showLine}}" hint-placeholder-val="{{ true }}"><div class="stline"><i style="{{st.line}}"></i></div></sc-if>
+        </sc-for>
+      </div>
+
+      <!-- step 1 -->
+      <sc-if value="{{step1}}" hint-placeholder-val="{{ true }}">
+      <section style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">
+        <article class="card rise swap" style="animation-delay:100ms;flex:2 1 520px;min-width:0;padding:22px;display:flex;flex-direction:column;gap:16px">
+          <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;align-items:baseline"><div><h3 class="h2">Choose your departments</h3><span class="sub">Groups only help you find a subject. The price is per department.</span></div><span class="pill teal">{{selCount}} selected</span></div>
+          <label class="search" style="max-width:none;flex:none;cursor:text"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg><input type="search" style="flex:1;min-width:0;border:0;background:none;color:var(--ink);font:inherit;outline:none" value="{{sq}}" onInput="{{setSq}}" placeholder="Search departments…" aria-label="Search departments"></label>
+          <div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{gtabs}}" as="g" hint-placeholder-count="7"><button class="{{g.cls}}" style="min-height:30px;font-size:12px" aria-pressed="{{g.pressed}}" onClick="{{g.pick}}">{{g.l}}</button></sc-for></div>
+          <sc-for list="{{groups}}" as="g" key="{{g.key}}" hint-placeholder-count="3">
+            <div class="swap">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span class="eyebrow">{{g.g}} · {{g.count}}</span><button class="link" style="font-size:12px" onClick="{{g.toggle}}">{{g.allLabel}}</button></div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{g.chips}}" as="c" key="{{c.key}}" hint-placeholder-count="5"><button class="{{c.cls}}" aria-pressed="{{c.pressed}}" onClick="{{c.toggle}}"><svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"></path></svg>{{c.name}}</button></sc-for></div>
+            </div>
+          </sc-for>
+          <sc-if value="{{noMatch}}" hint-placeholder-val="{{ false }}"><p class="sub">No department matches your search.</p></sc-if>
+        </article>
+
+        <article class="card rise" style="animation-delay:160ms;flex:1 1 330px;min-width:0;padding:22px;display:flex;flex-direction:column;gap:16px">
+          <h3 class="h2">Your price</h3>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><sc-for list="{{tiers}}" as="t" hint-placeholder-count="5"><div class="{{t.cls}}"><div style="font-size:11px;color:var(--muted);font-weight:600">{{t.l}}</div><div style="font-weight:700;font-variant-numeric:tabular-nums">{{t.price}}</div></div></sc-for></div>
+          <div><div class="meter" role="img" aria-label="Progress to the 5 department rate"><i style="{{meterStyle}}"></i></div><div class="sub" style="margin-top:8px;font-size:12.5px" aria-live="polite">{{nudge}}</div></div>
+          <dl style="margin:0;display:grid;grid-template-columns:1fr auto;gap:8px 12px;font-size:14px">
+            <dt style="color:var(--muted)">Departments</dt><dd style="margin:0;text-align:right;font-weight:600">{{selCount}} × {{unitPrice}}</dd>
+            <dt style="color:var(--muted)">Subtotal</dt><dd style="margin:0;text-align:right;font-weight:600;font-variant-numeric:tabular-nums">{{subtotal}}</dd>
+            <dt style="color:var(--muted)">GST (18%)</dt><dd style="margin:0;text-align:right;font-weight:600;font-variant-numeric:tabular-nums">{{gst}}</dd>
+          </dl>
+          <div style="border-top:1px solid var(--rule);padding-top:14px;display:flex;justify-content:space-between;align-items:baseline"><span style="font-weight:600">Total per year</span><b style="font-size:30px;letter-spacing:-.02em;font-variant-numeric:tabular-nums">{{totalShown}}</b></div>
+          <button class="btn primary" disabled="{{cantContinue}}" onClick="{{toReview}}">Review order →</button>
+          <span class="sub" style="font-size:12px">The amount is shown before payment. The subscription runs 12 months from purchase.</span>
+        </article>
+      </section>
+      </sc-if>
+
+      <!-- step 2 -->
+      <sc-if value="{{step2}}" hint-placeholder-val="{{ false }}">
+      <section class="card rise swap" style="max-width:720px;padding:24px;display:flex;flex-direction:column;gap:16px">
+        <div><h3 class="h2">Review your order</h3><span class="sub">Check the departments and the amount. Nothing is charged in this prototype.</span></div>
+        <div style="border:1px solid var(--rule);border-radius:12px;overflow:hidden">
+          <sc-for list="{{reviewRows}}" as="r" key="{{r.key}}" hint-placeholder-count="4"><div class="row rise" style="{{r.delay}};padding:10px 16px"><span style="flex:1">{{r.name}}</span><span style="font-variant-numeric:tabular-nums">{{r.price}}</span></div></sc-for>
+        </div>
+        <dl style="margin:0;display:grid;grid-template-columns:1fr auto;gap:8px 12px">
+          <dt style="color:var(--muted)">Subtotal</dt><dd style="margin:0;text-align:right;font-weight:600">{{subtotal}}</dd>
+          <dt style="color:var(--muted)">GST (18%)</dt><dd style="margin:0;text-align:right;font-weight:600">{{gst}}</dd>
+          <dt style="font-weight:700;font-size:16px">Total</dt><dd style="margin:0;text-align:right;font-weight:700;font-size:22px">{{totalShown}}</dd>
+        </dl>
+        <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn ghost" onClick="{{toChoose}}">← Back</button><button class="btn primary" style="flex:1" onClick="{{pay}}">Confirm and pay</button></div>
+      </section>
+      </sc-if>
+
+      <!-- step 3 -->
+      <sc-if value="{{processing}}" hint-placeholder-val="{{ false }}">
+      <section class="card rise" style="max-width:720px;padding:48px 24px;display:flex;flex-direction:column;gap:16px;align-items:center;text-align:center"><div class="spin" role="status" aria-label="Processing"></div><b>Setting up your subscription…</b><span class="sub">This takes a moment.</span></section>
+      </sc-if>
+      <sc-if value="{{step3}}" hint-placeholder-val="{{ false }}">
+      <section class="card rise" style="max-width:720px;padding:44px 24px;display:flex;flex-direction:column;gap:14px;align-items:center;text-align:center;position:relative;overflow:hidden">
+        <sc-for list="{{confetti}}" as="c" key="{{c.key}}" hint-placeholder-count="12"><span class="conf" style="{{c.style}}"></span></sc-for>
+        <span class="check-big"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"></path></svg></span>
+        <h3 style="margin:0;font-size:26px;letter-spacing:-.02em">Premium is active</h3>
+        <p class="sub" style="margin:0;font-size:15px">{{paidText}}. Reading has no session limit until {{renewal}}, and analytics is open.</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:8px"><button class="btn primary" onClick="{{goOverview}}">Go to the dashboard</button><button class="btn ghost" onClick="{{goAnalytics}}">Open analytics</button></div>
+      </section>
+      </sc-if>
+    </sc-if>
+
+    </div>
+  </main>
+</div>
+
+<!-- LIBRARY DEPARTMENT PANEL -->
+<sc-if value="{{hasPanel}}" hint-placeholder-val="{{ false }}">
+  <div class="scrim" onClick="{{closePanel}}"></div>
+  <aside class="panel" role="dialog" aria-label="Department details" tabindex="-1">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><div><span class="eyebrow">Department</span><h3 style="margin:2px 0 0;font-size:26px;letter-spacing:-.02em">{{pName}}</h3><span class="sub">{{pTotal}} items in your access</span></div><button class="iconbtn" style="width:34px;height:34px" onClick="{{closePanel}}" aria-label="Close"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button></div>
+    <div class="card" style="padding:18px;display:flex;flex-direction:column;gap:14px"><b>What is inside</b>
+      <sc-for list="{{pTypes}}" as="t" hint-placeholder-count="3"><div><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px"><span>{{t.l}}</span><span class="sub">{{t.n}} · {{t.pct}}%</span></div><div class="track" style="height:8px"><div class="seg-bar" style="{{t.style}}"></div></div></div></sc-for>
+    </div>
+    <div class="card" style="overflow:hidden"><div style="padding:16px 18px"><b>Sample titles</b><div class="sub" style="font-size:12px">The real list loads from the library.</div></div>
+      <sc-for list="{{pTitles}}" as="t" hint-placeholder-count="3"><button class="row rise" style="{{t.delay}}" onClick="{{t.open}}"><span style="flex:1;min-width:0;font-weight:600">{{t.t}}</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></button></sc-for>
+    </div>
+    <button class="btn primary" style="margin-top:auto" onClick="{{closePanel}}">Open in the library</button>
+  </aside>
+</sc-if>
+
+<!-- ADD USER DRAWER -->
+<sc-if value="{{drawer}}" hint-placeholder-val="{{ false }}">
+  <div class="scrim" onClick="{{closeDrawer}}"></div>
+  <aside class="drawer" role="dialog" aria-label="Add a user" onKeyDown="{{drawerKey}}">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><div><h3 style="margin:0;font-size:20px;letter-spacing:-.02em">Add a user</h3><span class="sub">They get an email to set a password.</span></div><button class="iconbtn" style="width:34px;height:34px" onClick="{{closeDrawer}}" aria-label="Close"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button></div>
+    <div class="two">
+      <label class="{{nameCls}}"><span>Full name <span class="req">*</span></span><input type="text" autofocus="true" value="{{fName}}" onInput="{{setName}}" placeholder="User name"><span class="msg">{{errName}}</span></label>
+      <label class="{{emailCls}}"><span>Email <span class="req">*</span></span><input type="email" value="{{fEmail}}" onInput="{{setEmail}}" placeholder="user@university.edu"><span class="msg">{{errEmail}}</span></label>
+    </div>
+    <label class="{{mobileCls}}">Mobile number<input type="tel" value="{{fMobile}}" onInput="{{setMobile}}" placeholder="+91 9876543210"><span class="msg">{{errMobile}}</span></label>
+    <div class="field"><span>Account type <span class="req">*</span></span>
+      <div class="seg" role="group" aria-label="Account type" style="align-self:flex-start"><sc-for list="{{acctOpts}}" as="a" hint-placeholder-count="3"><button class="{{a.cls}}" aria-pressed="{{a.pressed}}" onClick="{{a.pick}}"><sc-if value="{{a.locked}}" hint-placeholder-val="{{ false }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 118 0v3"></path></svg></sc-if>{{a.name}}<sc-if value="{{a.locked}}" hint-placeholder-val="{{ false }}"><span class="pro">PRO</span></sc-if></button></sc-for></div>
+      <span class="hintline">How this person uses the library. It decides what the account can do; their professional designation below does not.</span>
+    </div>
+    <div class="field"><span>Professional designation <span class="req">*</span></span>
+      <div style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{desigOpts}}" as="d" key="{{d.name}}" hint-placeholder-count="4"><button class="{{d.cls}}" aria-pressed="{{d.pressed}}" onClick="{{d.pick}}"><svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"></path></svg>{{d.name}}</button></sc-for></div>
+      <span class="msg" style="color:var(--alarm);font-weight:500;font-size:12px">{{errDesig}}</span>
+      <span class="hintline">The list follows the account type. A title never changes what the person can open.</span>
+    </div>
+    <div class="two">
+      <label class="field">Branch<input type="text" value="{{fBranch}}" onInput="{{setBranch}}" placeholder="e.g. Computer Science"></label>
+      <label class="field">Department<input type="text" value="{{fDept}}" onInput="{{setDept}}" placeholder="e.g. Engineering"></label>
+    </div>
+    <label class="{{passCls}}"><span>Temporary password <span class="req">*</span></span>
+      <span class="pwrap"><input type="{{passType}}" value="{{fPass}}" onInput="{{setPass}}" placeholder="At least 8 characters" autocomplete="new-password"><button type="button" onClick="{{togglePass}}" aria-label="{{passLabel}}"><sc-if value="{{showPass}}" hint-placeholder-val="{{ false }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18M10.6 6.1A10 10 0 0112 6c6 0 9.5 6 9.5 6a17 17 0 01-3.1 3.8M6.6 6.7C3.9 8.5 2.5 12 2.5 12S6 18 12 18c1.5 0 2.9-.4 4-1"></path></svg></sc-if><sc-if value="{{hidePass}}" hint-placeholder-val="{{ true }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12S6 6 12 6s9.5 6 9.5 6-3.5 6-9.5 6S2.5 12 2.5 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></sc-if></button></span>
+      <span class="msg">{{errPass}}</span><span class="hintline">They are asked to change it the first time they sign in.</span>
+    </label>
+    <div style="margin-top:auto;display:flex;gap:10px"><button class="btn primary" style="flex:1" onClick="{{submitUser}}">Add user</button><button class="btn ghost" onClick="{{closeDrawer}}">Cancel</button></div>
+  </aside>
+</sc-if>
+
+<!-- COMMAND PALETTE -->
+<sc-if value="{{palette}}" hint-placeholder-val="{{ false }}">
+  <div class="scrim" style="z-index:100" onClick="{{closePalette}}"></div>
+  <div class="palette" role="dialog" aria-label="Search">
+    <input type="text" autofocus="true" value="{{pq}}" onInput="{{setPq}}" onKeyDown="{{palKey}}" placeholder="Search pages, departments and members…" aria-label="Search pages, departments and members">
+    <div style="max-height:min(52vh,420px);overflow-y:auto;padding:6px 0">
+      <sc-for list="{{palItems}}" as="it" key="{{it.key}}" hint-placeholder-count="5"><button class="{{it.cls}}" onMouseEnter="{{it.hover}}" onClick="{{it.pick}}"><span style="min-width:0;text-align:left"><b style="display:block;font-weight:600">{{it.label}}</b><span class="sub" style="font-size:12px">{{it.sub}}</span></span><span class="pal-kind">{{it.kind}}</span></button></sc-for>
+      <sc-if value="{{palEmpty}}" hint-placeholder-val="{{ false }}"><div class="sub" style="padding:24px;text-align:center">Nothing matches. Try a member's name or a department.</div></sc-if>
+    </div>
+    <div class="sub" style="padding:10px 20px;border-top:1px solid var(--rule);font-size:12px">↑ ↓ to move · Enter to open · Esc to close</div>
+  </div>
+</sc-if>
+
+<sc-if value="{{toast}}" hint-placeholder-val="{{ false }}"><div class="toast" role="status"><span>{{toast}}</span><sc-if value="{{hasToastAct}}" hint-placeholder-val="{{ false }}"><button onClick="{{toastAct}}">{{toastLabel}}</button></sc-if></div></sc-if>
+
+</div>

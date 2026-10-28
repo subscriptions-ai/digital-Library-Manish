@@ -1,0 +1,38 @@
+
+    <!-- ================= INSTITUTION PROFILE ================= -->
+    <sc-if value="{{isProfile}}" hint-placeholder-val="{{ false }}">
+      <div class="page-head rise">
+        <div><h1 class="h-page">Institution Profile</h1><p class="sub" style="margin-top:4px">Manage your institution's contact information and details.</p></div>
+        <div class="actions"><button class="btn secondary" disabled="{{clean}}" onClick="{{discardProfile}}">Discard changes</button><button class="btn primary" disabled="{{clean}}" onClick="{{saveProfile}}">Save profile</button></div>
+      </div>
+      <section class="card pad rise" style="display:flex;flex-wrap:wrap;align-items:center;gap:18px" aria-labelledby="id-h">
+        <span class="logo" style="width:72px;height:72px;border-radius:18px;font-size:22px" aria-hidden="true">ST</span>
+        <div style="flex:1 1 220px;min-width:0"><h2 class="h-sec" id="id-h">STM journals</h2><p class="sub" style="display:flex;align-items:center;gap:6px;margin-top:2px"><sc-icon name="lock" size="14"></sc-icon>The institution name is managed by your administrator.</p></div>
+        <span class="tag info">{{planChip}}</span>
+      </section>
+      <div class="split even" style="align-items:start">
+        <section class="card pad rise" style="display:flex;flex-direction:column;gap:16px;animation-delay:40ms" aria-labelledby="ci-h">
+          <h2 class="h-card" id="ci-h">Contact information</h2>
+          <label class="field"><span class="lab">Contact person</span><input class="inp" type="text" value="{{pf.contact.val}}" onInput="{{pf.contact.set}}" placeholder="Full name"></label>
+          <label class="field"><span class="lab">Contact phone</span><input class="inp" type="tel" value="{{pf.phone.val}}" onInput="{{pf.phone.set}}" placeholder="+91 98765 43210"></label>
+          <label class="field"><span class="lab">City / district</span><input class="inp" type="text" value="{{pf.city.val}}" onInput="{{pf.city.set}}" placeholder="City or district"></label>
+          <label class="field"><span class="lab">Website</span><input class="inp" type="url" value="{{pf.website.val}}" onInput="{{pf.website.set}}" placeholder="https://university.edu.in"></label>
+          <label class="field"><span class="lab">Full address</span><textarea class="inp" rows="3" value="{{pf.address.val}}" onInput="{{pf.address.set}}" placeholder="Building, block, street, state, PIN code"></textarea></label>
+        </section>
+        <div class="stack">
+          <section class="card pad rise" style="display:flex;flex-direction:column;gap:16px;animation-delay:80ms" aria-labelledby="idt-h">
+            <div><h2 class="h-card" id="idt-h">Institution details</h2><p class="sub">Helps us suggest relevant departments and plans.</p></div>
+            <label class="field"><span class="lab">Courses offered <span class="hint">(comma separated)</span></span><input class="inp" type="text" value="{{pf.courses.val}}" onInput="{{pf.courses.set}}" placeholder="e.g. Engineering, Nursing, Architecture, MBA"></label>
+            <div class="two">
+              <label class="field"><span class="lab">Total number of courses</span><input class="inp" type="number" min="0" value="{{pf.totalCourses.val}}" onInput="{{pf.totalCourses.set}}" placeholder="e.g. 15"></label>
+              <label class="field"><span class="lab">Student body size</span><span class="sel"><select class="inp" value="{{pf.size.val}}" onChange="{{pf.size.set}}"><option value="">Select size…</option><sc-for list="{{sizes}}" as="z" key="{{z.x}}" hint-placeholder-count="5"><option value="{{z.x}}">{{z.x}}</option></sc-for></select></span></label>
+            </div>
+          </section>
+          <section class="card pad rise" style="display:flex;flex-direction:column;gap:12px;animation-delay:120ms" aria-labelledby="ap-h">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><h2 class="h-card" id="ap-h">Academic profile</h2><button class="link" style="font-size:13px" onClick="{{goSubs}}">Change departments</button></div>
+            <p class="sub">Departments your institution has selected.</p>
+            <div style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{heldChips}}" as="h" key="{{h.d}}" hint-placeholder-count="4"><span class="tag teal" style="font-size:12.5px;padding:5px 12px">{{h.d}}</span></sc-for></div>
+          </section>
+        </div>
+      </div>
+    </sc-if>

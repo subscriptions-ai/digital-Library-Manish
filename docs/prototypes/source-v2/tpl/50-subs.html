@@ -1,0 +1,105 @@
+
+    <!-- ================= SUBSCRIPTIONS ================= -->
+    <sc-if value="{{isSubs}}" hint-placeholder-val="{{ false }}">
+      <div class="page-head rise">
+        <div><h1 class="h-page">Subscriptions</h1><p class="sub" style="margin-top:4px">Review your plan and choose the departments your institution needs.</p></div>
+        <div class="actions"><button class="btn secondary" onClick="{{talk}}"><sc-icon name="message" size="17"></sc-icon>Talk to our team</button></div>
+      </div>
+
+      <div class="split even">
+        <section class="card pad rise" aria-labelledby="plan-h" style="animation-delay:40ms">
+          <span class="eyebrow">Current plan</span>
+          <sc-if value="{{free}}" hint-placeholder-val="{{ true }}">
+            <h2 class="h-sec" id="plan-h" style="margin-top:6px">Free Institutional Preview</h2>
+            <ul style="margin-top:12px;display:flex;flex-direction:column;gap:10px">
+              <li class="benefit"><span class="ic" style="background:var(--amber-soft);color:var(--amber)"><sc-icon name="clock" size="13" stroke="2.6"></sc-icon></span>30-minute reading sessions</li>
+              <li class="benefit"><span class="ic" style="background:var(--amber-soft);color:var(--amber)"><sc-icon name="clock" size="13" stroke="2.6"></sc-icon></span>Up to 4 sessions a day</li>
+              <li class="benefit"><span class="ic" style="background:var(--amber-soft);color:var(--amber)"><sc-icon name="clock" size="13" stroke="2.6"></sc-icon></span>2-hour interval between sessions</li>
+            </ul>
+          </sc-if>
+          <sc-if value="{{premium}}" hint-placeholder-val="{{ false }}">
+            <h2 class="h-sec" id="plan-h" style="margin-top:6px">Premium Institutional Access</h2>
+            <p class="sub" style="margin-top:8px">Unlimited reading sessions until {{renewal}}. You can change your departments below.</p>
+          </sc-if>
+        </section>
+        <section class="card pad rise" aria-labelledby="ben-h" style="animation-delay:80ms">
+          <span class="eyebrow">What Premium adds</span>
+          <h2 class="h-sec" id="ben-h" style="margin-top:6px">Everything your institution needs</h2>
+          <ul style="margin-top:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px 16px">
+            <li class="benefit"><span class="ic"><sc-icon name="check" size="13" stroke="3"></sc-icon></span>Unlimited reading sessions</li>
+            <li class="benefit"><span class="ic"><sc-icon name="check" size="13" stroke="3"></sc-icon></span>Full subscribed content</li>
+            <li class="benefit"><span class="ic"><sc-icon name="check" size="13" stroke="3"></sc-icon></span>User management</li>
+            <li class="benefit"><span class="ic"><sc-icon name="check" size="13" stroke="3"></sc-icon></span>Institutional analytics</li>
+            <li class="benefit"><span class="ic"><sc-icon name="check" size="13" stroke="3"></sc-icon></span>Usage reports</li>
+            <li class="benefit"><span class="ic"><sc-icon name="check" size="13" stroke="3"></sc-icon></span>Department-based subscription</li>
+          </ul>
+        </section>
+      </div>
+
+      <section class="card pad rise" style="animation-delay:120ms" aria-labelledby="tier-h">
+        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;align-items:baseline"><h2 class="h-card" id="tier-h">Price per department, per year</h2><span class="sub">18% GST extra. Tap a tier to see how many departments it needs.</span></div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:14px">
+          <sc-for list="{{tiers}}" as="t" key="{{t.l}}" hint-placeholder-count="5"><button class="{{t.cls}}" aria-pressed="{{t.on}}" onClick="{{t.pick}}"><span class="sub" style="font-size:12px;font-weight:600;display:block">{{t.l}}</span><b class="num">{{t.price}}</b></button></sc-for>
+        </div>
+      </section>
+
+      <nav class="stepper rise" style="animation-delay:150ms" aria-label="Subscription steps">
+        <sc-for list="{{stepper}}" as="st" key="{{st.l}}" hint-placeholder-count="3">
+          <div class="{{st.cls}}" aria-current="{{st.cur}}"><span class="n"><sc-if value="{{st.done}}" hint-placeholder-val="{{ false }}"><sc-icon name="check" size="14" stroke="3.4"></sc-icon></sc-if><sc-if value="{{st.notDone}}" hint-placeholder-val="{{ true }}">{{st.num}}</sc-if></span><span class="lt">{{st.l}}</span></div>
+          <sc-if value="{{st.showLine}}" hint-placeholder-val="{{ true }}"><div class="stline"><i style="{{st.line}}"></i></div></sc-if>
+        </sc-for>
+      </nav>
+
+      <sc-if value="{{step1}}" hint-placeholder-val="{{ true }}">
+        <div class="split pick">
+          <section class="card pad rise" style="display:flex;flex-direction:column;gap:16px" aria-labelledby="pick-h">
+            <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;align-items:baseline"><div><h2 class="h-card" id="pick-h">Choose departments</h2><p class="sub">Groups only help you find a subject. Price is per department.</p></div><span class="tag info num">{{selCount}} selected</span></div>
+            <label class="search" style="cursor:text"><sc-icon name="search" size="17"></sc-icon><span class="sr">Search departments</span><input type="search" value="{{sq}}" onInput="{{setSq}}" placeholder="Search departments…"></label>
+            <div style="display:flex;flex-wrap:wrap;gap:8px" role="group" aria-label="Filter by category"><sc-for list="{{gtabs}}" as="g" key="{{g.l}}" hint-placeholder-count="7"><button class="{{g.cls}}" aria-pressed="{{g.pressed}}" onClick="{{g.pick}}">{{g.l}}</button></sc-for></div>
+            <sc-for list="{{groups}}" as="g" key="{{g.key}}" hint-placeholder-count="3">
+              <div role="group" aria-label="{{g.g}}">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px"><span class="eyebrow">{{g.g}} · {{g.count}}</span><button class="link" style="font-size:13px;min-height:32px" onClick="{{g.toggle}}">{{g.allLabel}}</button></div>
+                <div style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{g.chips}}" as="c" key="{{c.key}}" hint-placeholder-count="5"><button class="{{c.cls}}" aria-pressed="{{c.pressed}}" onClick="{{c.toggle}}"><span class="tick"><sc-icon name="check" size="14" stroke="3.4"></sc-icon></span>{{c.name}}</button></sc-for></div>
+              </div>
+            </sc-for>
+            <sc-if value="{{noMatch}}" hint-placeholder-val="{{ false }}"><p class="sub">No department matches your search.</p></sc-if>
+          </section>
+
+          <section class="card pad rise" style="display:flex;flex-direction:column;gap:14px;animation-delay:60ms" aria-labelledby="sum-h">
+            <h2 class="h-card" id="sum-h">Order summary</h2>
+            <div><div class="meter" role="img" aria-label="Progress toward the chosen price tier"><i style="{{meterStyle}}"></i></div><p class="sub" style="margin-top:8px;font-size:12.5px" aria-live="polite">{{nudge}}</p></div>
+            <dl style="display:grid;grid-template-columns:1fr auto;gap:8px 12px;font-size:14px">
+              <dt class="muted">Departments</dt><dd style="text-align:right;font-weight:600" class="num">{{selCount}} × {{unitPrice}}</dd>
+              <dt class="muted">Subtotal</dt><dd style="text-align:right;font-weight:600" class="num">{{subtotal}}</dd>
+              <dt class="muted">GST (18%)</dt><dd style="text-align:right;font-weight:600" class="num">{{gst}}</dd>
+            </dl>
+            <div style="border-top:1px solid var(--line);padding-top:14px;display:flex;justify-content:space-between;align-items:baseline;gap:8px"><span style="font-weight:600">Total per year</span><b class="big num" style="font-size:28px">{{totalShown}}</b></div>
+            <button class="btn primary block" disabled="{{cantContinue}}" onClick="{{toReview}}">Review order <sc-icon name="arrow" size="16"></sc-icon></button>
+            <p class="sub" style="font-size:12px">The amount is shown before payment. The subscription runs 12 months from purchase.</p>
+          </section>
+        </div>
+        <div class="sumbar" role="region" aria-label="Order total"><span><span class="sub" style="font-size:12px;display:block">{{selCount}} {{selWord}} · incl. GST</span><b class="num" style="font-size:20px">{{totalShown}}</b></span><button class="btn primary" disabled="{{cantContinue}}" onClick="{{toReview}}">Review order</button></div>
+      </sc-if>
+
+      <sc-if value="{{step2}}" hint-placeholder-val="{{ false }}">
+        <section class="card pad rise" style="max-width:720px;display:flex;flex-direction:column;gap:16px" aria-labelledby="rev-h">
+          <div><h2 class="h-sec" id="rev-h">Review your order</h2><p class="sub">Check the departments and the amount. Nothing is charged in this prototype.</p></div>
+          <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;max-height:340px;overflow-y:auto"><sc-for list="{{reviewRows}}" as="r" key="{{r.key}}" hint-placeholder-count="4"><div class="row rise" style="{{r.delay}};padding:10px 16px"><span style="flex:1">{{r.name}}</span><span class="num">{{r.price}}</span></div></sc-for></div>
+          <dl style="display:grid;grid-template-columns:1fr auto;gap:8px 12px"><dt class="muted">Subtotal</dt><dd style="text-align:right;font-weight:600" class="num">{{subtotal}}</dd><dt class="muted">GST (18%)</dt><dd style="text-align:right;font-weight:600" class="num">{{gst}}</dd><dt style="font-weight:700;font-size:16px">Total</dt><dd style="text-align:right;font-weight:700;font-size:22px" class="num">{{totalShown}}</dd></dl>
+          <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn secondary" onClick="{{toChoose}}"><sc-icon name="chevl" size="16"></sc-icon>Back</button><button class="btn primary" style="flex:1;min-width:180px" onClick="{{pay}}">Confirm and pay</button></div>
+        </section>
+      </sc-if>
+
+      <sc-if value="{{processing}}" hint-placeholder-val="{{ false }}">
+        <section class="card pad rise" style="max-width:720px;display:flex;flex-direction:column;gap:14px;align-items:center;text-align:center;padding:48px 20px" aria-live="polite"><div class="spin" role="status" aria-label="Processing"></div><b>Setting up your subscription…</b></section>
+      </sc-if>
+      <sc-if value="{{step3}}" hint-placeholder-val="{{ false }}">
+        <section class="card pad rise" style="max-width:720px;display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center;padding:44px 20px;position:relative;overflow:hidden" aria-live="polite">
+          <sc-for list="{{confetti}}" as="c" key="{{c.key}}" hint-placeholder-count="10"><span class="conf" style="{{c.style}}" aria-hidden="true"></span></sc-for>
+          <span class="check-big"><sc-icon name="check" size="40" stroke="2.8"></sc-icon></span>
+          <h2 class="h-sec" style="font-size:24px">Premium is active</h2>
+          <p class="sub" style="font-size:15px">{{paidText}}. Reading has no session limit until {{renewal}}, and analytics is open.</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:8px"><button class="btn primary" onClick="{{goOverview}}">Go to the dashboard</button><button class="btn secondary" onClick="{{goAnalytics}}">Open analytics</button></div>
+        </section>
+      </sc-if>
+    </sc-if>

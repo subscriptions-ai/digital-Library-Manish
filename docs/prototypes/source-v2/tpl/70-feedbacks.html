@@ -1,0 +1,18 @@
+
+    <!-- ================= MY FEEDBACKS ================= -->
+    <sc-if value="{{isFeedbacks}}" hint-placeholder-val="{{ false }}">
+      <div class="page-head rise">
+        <div><h1 class="h-page">My Feedbacks</h1><p class="sub" style="margin-top:4px">View the feedback and ratings submitted by your institution.</p></div>
+        <div class="actions"><button class="btn primary" onClick="{{openAddFeedback}}"><sc-icon name="plus" size="17"></sc-icon>Add Feedback</button></div>
+      </div>
+      <sc-if value="{{fbEmpty}}" hint-placeholder-val="{{ true }}">
+        <section class="card rise empty" style="padding:56px 20px"><span class="ic"><sc-icon name="message" size="26"></sc-icon></span><h2 class="h-sec">No feedback submitted yet</h2><p class="sub" style="max-width:40ch">Share your experience with STM Digital Library. Your ratings help us improve the platform for your institution.</p><button class="btn primary" style="margin-top:8px" onClick="{{openAddFeedback}}">Add Feedback</button></section>
+      </sc-if>
+      <sc-if value="{{fbAny}}" hint-placeholder-val="{{ false }}">
+        <section class="stack" aria-label="Submitted feedback">
+          <sc-for list="{{fbList}}" as="f" key="{{f.id}}" hint-placeholder-count="2">
+            <article class="card pad rise"><div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;align-items:center"><div style="display:flex;align-items:center;gap:10px"><span class="stars" role="img" aria-label="{{f.label}}" style="gap:2px"><sc-for list="{{f.stars}}" as="s" key="{{s.n}}" hint-placeholder-count="5"><sc-icon name="star" size="18" style="{{s.style}};fill:currentColor"></sc-icon></sc-for></span><span class="tag mute">{{f.cat}}</span></div><span class="sub">{{f.date}}</span></div><p style="margin-top:10px;line-height:1.6">{{f.msg}}</p></article>
+          </sc-for>
+        </section>
+      </sc-if>
+    </sc-if>

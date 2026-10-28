@@ -1,0 +1,85 @@
+<div class="app {{themeCls}}" style="--mw:{{mw}}px">
+<a class="skip" href="#main">Skip to content</a>
+
+<!-- ============ SIDEBAR (same navy as the live admin, grouped and searchable) ============ -->
+<aside class="{{sideCls}}" aria-label="Sidebar" aria-hidden="{{sideHidden}}" onKeyDown="{{sideKey}}">
+  <div class="side-head">
+    <span class="logo" aria-hidden="true">ST</span>
+    <span class="name">STM ADMIN</span>
+    <button class="iconbtn flat" onClick="{{toggleSide}}" aria-label="{{sideToggleLabel}}"><sc-icon name="{{sideToggleIcon}}" size="18"></sc-icon></button>
+  </div>
+  <sc-if value="{{showNavSearch}}" hint-placeholder-val="{{ true }}"><label class="navsearch"><sc-icon name="search" size="16"></sc-icon><span class="sr">Find a page</span><input type="search" value="{{navq}}" onInput="{{setNavq}}" placeholder="Find a page…"></label></sc-if>
+  <nav class="side-scroll" aria-label="Admin navigation">
+    <button class="{{dashItem.cls}}" onClick="{{dashItem.go}}" aria-current="{{dashItem.cur}}" aria-label="Dashboard" onMouseEnter="{{dashItem.enter}}" onMouseLeave="{{dashItem.leave}}" onFocus="{{dashItem.enter}}" onBlur="{{dashItem.leave}}"><sc-icon name="grid" size="19"></sc-icon><span class="lbl">Dashboard</span></button>
+    <sc-for list="{{navGroups}}" as="g" key="{{g.id}}" hint-placeholder-count="4">
+      <div class="grp-wrap">
+        <button class="{{g.cls}}" aria-expanded="{{g.open}}" aria-label="{{g.label}}" onClick="{{g.toggle}}" onMouseEnter="{{g.enter}}" onMouseLeave="{{g.leave}}" onFocus="{{g.enter}}" onBlur="{{g.leave}}"><sc-icon name="{{g.icon}}" size="19"></sc-icon><span class="lbl grp-l">{{g.label}}</span><sc-if value="{{g.hasBadge}}" hint-placeholder-val="{{ false }}"><span class="nav-badge">{{g.badge}}</span></sc-if><sc-icon class="lbl chev" name="{{g.chev}}" size="15"></sc-icon></button>
+        <sc-if value="{{g.open}}" hint-placeholder-val="{{ false }}">
+          <ul class="subs">
+            <sc-for list="{{g.items}}" as="n" key="{{n.id}}" hint-placeholder-count="5"><li><button class="{{n.cls}}" onClick="{{n.go}}" aria-current="{{n.cur}}"><sc-icon name="{{n.icon}}" size="15"></sc-icon><span class="lbl">{{n.label}}</span><sc-if value="{{n.hasBadge}}" hint-placeholder-val="{{ false }}"><span class="nav-badge sm">{{n.badge}}</span></sc-if></button></li></sc-for>
+          </ul>
+        </sc-if>
+      </div>
+    </sc-for>
+    <sc-if value="{{hasNavq}}" hint-placeholder-val="{{ false }}"><button class="link" style="color:#8fb0ff;margin:6px 12px;min-height:34px" onClick="{{clearNavq}}">Clear search</button></sc-if>
+  </nav>
+  <div class="side-foot">
+    <button class="{{myAccount.cls}}" onClick="{{myAccount.go}}" aria-label="My Account" onMouseEnter="{{myAccount.enter}}" onMouseLeave="{{myAccount.leave}}" onFocus="{{myAccount.enter}}" onBlur="{{myAccount.leave}}"><sc-icon name="key" size="19"></sc-icon><span class="lbl">My Account</span></button>
+    <button class="nav signout" onClick="{{signOut}}" aria-label="Sign out" onMouseEnter="{{signEnter}}" onMouseLeave="{{signLeave}}" onFocus="{{signEnter}}" onBlur="{{signLeave}}"><sc-icon name="logout" size="19"></sc-icon><span class="lbl">Sign Out</span></button>
+    <div class="usercard"><span class="avatar" aria-hidden="true">SU</span><span class="lbl"><b>Super Admin</b><small>SuperAdmin</small></span></div>
+  </div>
+</aside>
+<sc-if value="{{showSideScrim}}" hint-placeholder-val="{{ false }}"><div class="side-scrim" onClick="{{closeNav}}"></div></sc-if>
+<sc-if value="{{tip}}" hint-placeholder-val="{{ false }}"><div class="tooltip" role="tooltip" style="{{tipStyle}}">{{tipText}}</div></sc-if>
+
+<!-- ============ MAIN ============ -->
+<div class="main">
+  <header class="top">
+    <div class="left">
+      <button class="iconbtn burger" onClick="{{openNav}}" aria-label="Open the menu"><sc-icon name="menu" size="20"></sc-icon></button>
+      <div class="title">{{pageTitle}}</div>
+    </div>
+    <div class="mid">
+      <button class="search" onClick="{{openPalette}}" aria-label="Search pages and actions" aria-haspopup="dialog"><sc-icon name="search" size="17"></sc-icon><span class="t">Search pages and actions…</span><span class="kbd">Ctrl K</span></button>
+    </div>
+    <div class="right">
+      <div style="position:relative">
+        <button class="btn secondary sm sysbtn" onClick="{{toggleSys}}" aria-label="System switches" aria-haspopup="true" aria-expanded="{{sysOpen}}"><sc-icon name="toggle" size="17"></sc-icon><span class="hide-s">{{sysBtnLabel}}</span><sc-if value="{{sysDot}}" hint-placeholder-val="{{ false }}"><span class="sysdot" aria-label="A system switch is not in its normal state"></span></sc-if></button>
+        <sc-if value="{{sysOpen}}" hint-placeholder-val="{{ false }}">
+          <div class="pop" style="width:min(360px,92vw)" role="region" aria-label="System switches">
+            <div style="padding:14px 16px 6px"><b>System switches</b><p class="sub" style="font-size:12.5px;margin-top:2px">These change behaviour for every visitor. Risky ones ask first.</p></div>
+            <div class="sw-row"><span><b>Email verification</b><small>{{emailText}}</small></span><button class="{{emailCls}}" role="switch" aria-checked="{{sysEmail}}" aria-label="Email verification" onClick="{{toggleEmail}}"></button></div>
+            <div class="sw-row"><span><b>Stealth mode</b><small>{{stealthText}}</small></span><button class="{{stealthCls}}" role="switch" aria-checked="{{sysStealth}}" aria-label="Stealth mode" onClick="{{toggleStealth}}"></button></div>
+            <p class="sub" style="padding:10px 16px 14px;font-size:12px">Stealth mode hides search, quotation, plans, FAQ, agency and demo pages.</p>
+          </div>
+        </sc-if>
+      </div>
+      <button class="iconbtn" onClick="{{toggleTheme}}" aria-label="{{themeLabel}}"><sc-icon name="{{themeIcon}}" size="18"></sc-icon></button>
+      <div style="position:relative">
+        <button class="iconbtn" onClick="{{toggleNotif}}" aria-label="Notifications" aria-haspopup="true" aria-expanded="{{notif}}"><sc-icon name="bell" size="18"></sc-icon><sc-if value="{{unread}}" hint-placeholder-val="{{ true }}"><span style="position:absolute;top:8px;right:9px;width:9px;height:9px;border-radius:50%;background:var(--red);border:2px solid var(--surface)"></span></sc-if></button>
+        <sc-if value="{{notif}}" hint-placeholder-val="{{ false }}">
+          <div class="pop" role="region" aria-label="Notifications">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px"><b>Notifications</b><button class="link" style="font-size:12.5px;min-height:32px" onClick="{{markRead}}">Mark all read</button></div>
+            <sc-for list="{{notifs}}" as="n" key="{{n.id}}" hint-placeholder-count="3"><div class="menu-item" style="align-items:flex-start;padding-top:10px;padding-bottom:10px"><span style="width:8px;height:8px;border-radius:50%;background:var(--blue);margin-top:7px;flex:none"></span><span><span>{{n.title}}</span><span class="sub" style="display:block;font-size:12px">{{n.when}}</span></span></div></sc-for>
+          </div>
+        </sc-if>
+      </div>
+      <span class="avatar hide-s" role="img" aria-label="Signed in as Super Admin">SU</span>
+    </div>
+  </header>
+  <sc-if value="{{popsOpen}}" hint-placeholder-val="{{ false }}"><div class="pop-scrim" onClick="{{closePops}}"></div></sc-if>
+
+  <main id="main" tabindex="-1" style="outline:none">
+  <div class="page enter" key="{{epochKey}}">
+
+    <sc-if value="{{isLoading}}" hint-placeholder-val="{{ false }}">
+      <div class="stack" aria-busy="true" aria-label="Loading">
+        <div class="skel" style="height:64px"></div>
+        <div class="kpis"><div class="skel" style="height:150px"></div><div class="skel" style="height:150px"></div><div class="skel" style="height:150px"></div><div class="skel" style="height:150px"></div><div class="skel" style="height:150px"></div></div>
+        <div class="skel" style="height:340px"></div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isOther}}" hint-placeholder-val="{{ false }}">
+      <section class="card empty rise" style="padding:64px 20px"><span class="ic"><sc-icon name="folder" size="26"></sc-icon></span><h1 class="h-sec">{{pageTitle}}</h1><p class="sub" style="max-width:46ch">This page is part of the live admin but not of this dashboard prototype.</p><button class="btn primary" style="margin-top:8px" onClick="{{dashItem.go}}"><sc-icon name="grid" size="16"></sc-icon>Back to the dashboard</button></section>
+    </sc-if>

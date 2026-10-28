@@ -1,0 +1,128 @@
+<div class="app mob {{themeCls}}">
+  <header class="mhead">
+    <span class="logo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg></span>
+    <span style="flex:1;min-width:0"><b style="display:block;line-height:1.2">STM journals</b><span class="sub" style="font-size:12px">{{tabTitle}}</span></span>
+    <sc-if value="{{free}}" hint-placeholder-val="{{ true }}"><span class="pill amber" style="font-variant-numeric:tabular-nums">{{clock}}</span></sc-if>
+    <sc-if value="{{premium}}" hint-placeholder-val="{{ false }}"><span class="pill green">Unlimited</span></sc-if>
+    <button class="iconbtn" onClick="{{toggleTheme}}" aria-label="Switch between light and dark mode" style="width:38px;height:38px">
+      <sc-if value="{{isDark}}" hint-placeholder-val="{{ false }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg></sc-if>
+      <sc-if value="{{isLight}}" hint-placeholder-val="{{ true }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"></path></svg></sc-if>
+    </button>
+  </header>
+
+  <div class="mscroll" key="{{tabKey}}">
+    <sc-if value="{{isLoading}}" hint-placeholder-val="{{ false }}"><div class="skel" style="height:150px"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div class="skel" style="height:96px"></div><div class="skel" style="height:96px"></div></div><div class="skel" style="height:230px"></div></sc-if>
+
+    <!-- HOME -->
+    <sc-if value="{{isHome}}" hint-placeholder-val="{{ true }}">
+      <section class="card rise" style="padding:18px;display:flex;flex-direction:column;gap:6px">
+        <span class="eyebrow">{{greeting}}</span>
+        <p style="margin:0;font-size:17px;line-height:1.35">Your people can read <b style="font-variant-numeric:tabular-nums">{{kItems}}</b> items across <b>{{kDepts}}</b> departments.</p>
+        <div style="display:flex;align-items:center;gap:14px;margin-top:8px">
+          <div style="position:relative;width:64px;height:64px;flex:none"><svg width="64" height="64" viewBox="0 0 112 112" style="transform:rotate(-90deg)" aria-hidden="true"><circle cx="56" cy="56" r="48" fill="none" stroke="var(--surface-2)" stroke-width="12"></circle><circle cx="56" cy="56" r="48" fill="none" stroke="var(--accent)" stroke-width="12" stroke-linecap="round" stroke-dasharray="301.6" stroke-dashoffset="{{heroOff}}"></circle></svg><div style="position:absolute;inset:0;display:grid;place-items:center"><b style="font-size:14px">{{stepCount}}</b></div></div>
+          <span class="sub" style="flex:1">Setup progress. {{nextStep}}</span>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:10px"><button class="btn primary" style="flex:1" onClick="{{openAdd}}">Add users</button><button class="btn ghost" style="flex:1" onClick="{{goLibrary}}">Browse</button></div>
+      </section>
+      <sc-if value="{{bannerWarn}}" hint-placeholder-val="{{ true }}">
+        <section class="rise" style="animation-delay:80ms;display:flex;align-items:center;gap:12px;background:var(--caution-soft);border:1px solid color-mix(in srgb,var(--caution) 30%,transparent);border-radius:16px;padding:12px 14px"><span class="dot"></span><span style="flex:1;font-size:13px">{{pendingShort}}</span><button class="btn primary sm" onClick="{{sendReminders}}">Remind</button></section>
+      </sc-if>
+      <sc-if value="{{bannerSent}}" hint-placeholder-val="{{ false }}">
+        <section class="rise" style="display:flex;align-items:center;gap:12px;background:var(--success-soft);border-radius:16px;padding:12px 14px;font-size:13px"><span class="check-big" style="width:28px;height:28px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"></path></svg></span><span style="flex:1">Reminder sent. They will see it next time they sign in.</span></section>
+      </sc-if>
+      <section style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <article class="card rise" style="animation-delay:120ms;padding:14px"><span class="eyebrow">Departments</span><div style="font-size:30px;font-weight:700;letter-spacing:-.02em;line-height:1.15">{{kDepts}}</div><span class="sub" style="font-size:12px">In your access</span></article>
+        <article class="card rise" style="animation-delay:170ms;padding:14px"><span class="eyebrow">Members</span><div style="font-size:30px;font-weight:700;letter-spacing:-.02em;line-height:1.15">{{kMembers}}</div><span class="sub" style="font-size:12px">{{kRead}} reading</span></article>
+      </section>
+      <section class="card rise" style="animation-delay:200ms;padding:16px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div><b>Reading activity</b><div class="sub" style="font-size:12px">{{chartNote}}</div></div><div class="seg" role="group" aria-label="Metric"><sc-for list="{{metrics}}" as="m" hint-placeholder-count="2"><button class="{{m.cls}}" aria-pressed="{{m.on}}" onClick="{{m.pick}}">{{m.l}}</button></sc-for></div></div>
+        <div class="plot" key="{{chartKey}}">
+          <sc-for list="{{grid}}" as="g" hint-placeholder-count="3"><div class="gridline" style="{{g.style}}"></div><span class="gridlbl" style="{{g.lstyle}}">{{g.label}}</span></sc-for>
+          <svg viewBox="0 0 600 200" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible" aria-hidden="true"><defs><linearGradient id="mAreaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--s1);stop-opacity:.34"></stop><stop offset="1" style="stop-color:var(--s1);stop-opacity:0"></stop></linearGradient></defs><path class="area" d="{{areaD}}" fill="url(#mAreaGrad)"></path><path class="line" pathLength="1" d="{{lineD}}" fill="none" stroke="var(--s1)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          <sc-for list="{{hits}}" as="h" key="{{h.key}}" hint-placeholder-count="7"><button class="hit" style="{{h.style}}" onClick="{{h.enter}}" aria-label="{{h.label}}"></button></sc-for>
+          <sc-if value="{{hasHover}}" hint-placeholder-val="{{ false }}"><div class="cross" style="{{crossStyle}}"></div><div class="pt" style="{{ptStyle}}"></div><div class="tip" style="{{tipStyle}}">{{tipText}}</div></sc-if>
+        </div>
+        <div style="display:flex;margin-left:30px"><sc-for list="{{xlabels}}" as="x" hint-placeholder-count="7"><span style="{{x.style}}">{{x.l}}</span></sc-for></div>
+      </section>
+      <sc-if value="{{free}}" hint-placeholder-val="{{ true }}"><section class="rise" style="animation-delay:240ms;background:var(--side-card);color:#fff;border-radius:16px;padding:18px;display:flex;align-items:center;gap:14px"><div style="flex:1"><span style="font-size:13px;font-weight:600;opacity:.85">Next reading session in</span><div style="font-size:38px;font-weight:700;letter-spacing:-.03em;line-height:1.1;font-variant-numeric:tabular-nums">{{clock}}</div></div><button class="btn amber sm" onClick="{{goPlan}}">Go Premium</button></section></sc-if>
+      <sc-if value="{{premium}}" hint-placeholder-val="{{ false }}"><section class="rise" style="background:var(--side-card);color:#fff;border-radius:16px;padding:18px;display:flex;align-items:center;gap:14px"><b style="font-size:44px;line-height:1">∞</b><div><b style="font-size:16px">No session limit</b><div style="font-size:13px;opacity:.85">Active until {{renewal}}</div></div></section></sc-if>
+      <section class="card rise" style="animation-delay:260ms;overflow:hidden"><div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px"><div style="display:flex;align-items:center;gap:8px"><b>Live activity</b><span class="pill green" style="padding:2px 9px"><span class="dot live"></span>Live</span></div></div><sc-for list="{{feed}}" as="f" key="{{f.key}}" hint-placeholder-count="3"><div class="ev"><span class="avatar" style="width:32px;height:32px;font-size:12px">{{f.ini}}</span><span style="flex:1;min-width:0"><b style="display:block;font-weight:600;font-size:13px">{{f.title}}</b><span class="sub" style="font-size:12px">{{f.who}} · {{f.when}}</span></span></div></sc-for></section>
+    </sc-if>
+
+    <!-- MEMBERS -->
+    <sc-if value="{{isMembers}}" hint-placeholder-val="{{ false }}">
+      <label class="search" style="flex:none;max-width:none;cursor:text"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg><input type="search" style="flex:1;min-width:0;border:0;background:none;color:var(--ink);font:inherit;outline:none" value="{{mq}}" onInput="{{setMq}}" placeholder="Search members…" aria-label="Search members"></label>
+      <div class="hscroll"><sc-for list="{{filters}}" as="f" hint-placeholder-count="4"><button class="{{f.cls}}" style="flex:none" aria-pressed="{{f.pressed}}" onClick="{{f.pick}}">{{f.l}} · {{f.n}}</button></sc-for></div>
+      <sc-for list="{{members}}" as="m" key="{{m.key}}" hint-placeholder-count="3">
+        <article class="card rise" style="{{m.rowStyle}};padding:14px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;gap:12px"><span class="avatar">{{m.ini}}</span><span style="flex:1;min-width:0"><b style="display:block">{{m.name}}</b><span class="sub" style="font-size:12px;display:block;overflow:hidden;text-overflow:ellipsis">{{m.desig}} · {{m.last}}</span></span><span class="{{m.statusCls}}">{{m.status}}</span></div>
+          <sc-if value="{{m.canRemind}}" hint-placeholder-val="{{ true }}"><div style="display:flex;gap:8px"><button class="btn ghost sm" style="flex:1" disabled="{{m.remindOff}}" onClick="{{m.remind}}">{{m.remindLabel}}</button><button class="btn danger sm" onClick="{{m.remove}}">Remove</button></div></sc-if>
+        </article>
+      </sc-for>
+      <sc-if value="{{noMembers}}" hint-placeholder-val="{{ false }}"><p class="sub" style="text-align:center;padding:24px 0">No member matches.</p></sc-if>
+      <button class="btn primary" style="position:sticky;bottom:0;box-shadow:var(--pop)" onClick="{{openAdd}}">+ Add a member</button>
+    </sc-if>
+
+    <!-- LIBRARY -->
+    <sc-if value="{{isLibrary}}" hint-placeholder-val="{{ false }}">
+      <label class="search" style="flex:none;max-width:none;cursor:text"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg><input type="search" style="flex:1;min-width:0;border:0;background:none;color:var(--ink);font:inherit;outline:none" value="{{lq}}" onInput="{{setLq}}" placeholder="Search departments…" aria-label="Search departments"></label>
+      <span class="sub">{{libCount}}</span>
+      <sc-for list="{{libDepts}}" as="d" key="{{d.key}}" hint-placeholder-count="4">
+        <article class="card lift rise" style="{{d.delay}}"><button class="tile" style="flex-direction:column;gap:10px" onClick="{{d.open}}"><span style="display:flex;justify-content:space-between;align-items:baseline;width:100%"><b style="font-size:16px">{{d.name}}</b><span class="sub">{{d.total}}</span></span><span class="track" style="width:100%;height:6px"><span class="seg-bar" style="{{d.barA}}"></span><span class="seg-bar" style="{{d.barB}}"></span><span class="seg-bar" style="{{d.barC}}"></span></span></button></article>
+      </sc-for>
+      <sc-if value="{{noLib}}" hint-placeholder-val="{{ false }}"><p class="sub" style="text-align:center;padding:24px 0">No department matches.</p></sc-if>
+    </sc-if>
+
+    <!-- PLAN -->
+    <sc-if value="{{isPlan}}" hint-placeholder-val="{{ false }}">
+      <section class="rise" style="background:var(--navy);color:#fff;border-radius:18px;padding:18px"><span style="font-size:11px;font-weight:600;letter-spacing:.12em;color:var(--amber);text-transform:uppercase">{{premiumLabel}}</span><h2 style="margin:6px 0 4px;font-size:21px;line-height:1.2;letter-spacing:-.02em">Choose departments. The price updates as you go.</h2><span style="font-size:13px;opacity:.8">₹9,990 for one, ₹7,990 each from five. 18% GST extra.</span></section>
+      <div class="hscroll"><sc-for list="{{gtabs}}" as="g" hint-placeholder-count="5"><button class="{{g.cls}}" style="flex:none;min-height:32px;font-size:12px" aria-pressed="{{g.pressed}}" onClick="{{g.pick}}">{{g.l}}</button></sc-for></div>
+      <sc-for list="{{groups}}" as="g" key="{{g.key}}" hint-placeholder-count="3">
+        <div class="swap"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span class="eyebrow">{{g.g}} · {{g.count}}</span><button class="link" style="font-size:12px" onClick="{{g.toggle}}">{{g.allLabel}}</button></div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{g.chips}}" as="c" key="{{c.key}}" hint-placeholder-count="4"><button class="{{c.cls}}" aria-pressed="{{c.pressed}}" onClick="{{c.toggle}}"><svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"></path></svg>{{c.name}}</button></sc-for></div></div>
+      </sc-for>
+      <div class="pricebar"><span style="flex:1;min-width:0"><span class="sub" style="font-size:12px;display:block">{{selCount}} selected · {{nudgeShort}}</span><b style="font-size:20px;font-variant-numeric:tabular-nums">{{totalShown}}</b></span><button class="btn primary" disabled="{{cantContinue}}" onClick="{{openReview}}">Review</button></div>
+    </sc-if>
+  </div>
+
+  <nav class="tabbar" aria-label="Main">
+    <button class="{{tabs.home}}" onClick="{{goHome}}"><span class="pip"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"></rect><rect x="14" y="3" width="7" height="5" rx="1.5"></rect><rect x="14" y="12" width="7" height="9" rx="1.5"></rect><rect x="3" y="16" width="7" height="5" rx="1.5"></rect></svg></span>Home</button>
+    <button class="{{tabs.members}}" onClick="{{goMembers}}"><span class="pip"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c.6-3.4 3.3-5.5 6.5-5.5s5.9 2.1 6.5 5.5"></path></svg></span>Members<sc-if value="{{hasBadge}}" hint-placeholder-val="{{ true }}"><span class="nav-badge">{{pendingBadge}}</span></sc-if></button>
+    <button class="{{tabs.library}}" onClick="{{goLibrary}}"><span class="pip"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C4.5 4 8 4 12 6c4-2 7.5-2 10-.5V19c-2.5-1.5-6-1.5-10 .5-4-2-7.5-2-10-.5z"></path></svg></span>Library</button>
+    <button class="{{tabs.plan}}" onClick="{{goPlan}}"><span class="pip"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="2.5"></rect><path d="M2.5 10h19"></path></svg></span>Plan</button>
+  </nav>
+
+  <!-- SHEETS -->
+  <sc-if value="{{hasSheet}}" hint-placeholder-val="{{ false }}">
+    <div class="scrim" onClick="{{closeSheet}}"></div>
+    <div class="sheet" role="dialog" aria-label="Details">
+      <span class="grab"></span>
+      <sc-if value="{{sheetDept}}" hint-placeholder-val="{{ false }}">
+        <div><span class="eyebrow">Department</span><h3 style="margin:2px 0 0;font-size:24px;letter-spacing:-.02em">{{pName}}</h3><span class="sub">{{pTotal}} items in your access</span></div>
+        <div class="card" style="padding:16px;display:flex;flex-direction:column;gap:12px"><b>What is inside</b><sc-for list="{{pTypes}}" as="t" hint-placeholder-count="3"><div><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px"><span>{{t.l}}</span><span class="sub">{{t.n}} · {{t.pct}}%</span></div><div class="track" style="height:8px"><div class="seg-bar" style="{{t.style}}"></div></div></div></sc-for></div>
+        <div class="card" style="overflow:hidden"><div style="padding:14px 16px"><b>Sample titles</b></div><sc-for list="{{pTitles}}" as="t" hint-placeholder-count="3"><button class="row rise" style="{{t.delay}}" onClick="{{t.open}}"><span style="flex:1;min-width:0;font-weight:600">{{t.t}}</span></button></sc-for></div>
+      </sc-if>
+      <sc-if value="{{sheetAdd}}" hint-placeholder-val="{{ false }}">
+        <div><h3 style="margin:0;font-size:20px;letter-spacing:-.02em">Add a member</h3><span class="sub">They get an email to set a password.</span></div>
+        <label class="{{nameCls}}"><span>Full name <span class="req">*</span></span><input type="text" value="{{fName}}" onInput="{{setName}}" placeholder="User name"><span class="msg">{{errName}}</span></label>
+        <label class="{{emailCls}}"><span>Email <span class="req">*</span></span><input type="email" value="{{fEmail}}" onInput="{{setEmail}}" placeholder="user@university.edu"><span class="msg">{{errEmail}}</span></label>
+        <label class="{{mobileCls}}">Mobile number<input type="tel" value="{{fMobile}}" onInput="{{setMobile}}" placeholder="+91 9876543210"><span class="msg">{{errMobile}}</span></label>
+        <div class="field"><span>Account type <span class="req">*</span></span><div class="seg" role="group" aria-label="Account type" style="align-self:flex-start"><sc-for list="{{acctOpts}}" as="a" hint-placeholder-count="3"><button class="{{a.cls}}" aria-pressed="{{a.pressed}}" onClick="{{a.pick}}"><sc-if value="{{a.locked}}" hint-placeholder-val="{{ false }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 118 0v3"></path></svg></sc-if>{{a.name}}<sc-if value="{{a.locked}}" hint-placeholder-val="{{ false }}"><span class="pro">PRO</span></sc-if></button></sc-for></div><span class="hintline">How this person uses the library. It decides what the account can do; their designation does not.</span></div>
+        <div class="field"><span>Professional designation <span class="req">*</span></span><div style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{desigOpts}}" as="d" key="{{d.name}}" hint-placeholder-count="4"><button class="{{d.cls}}" aria-pressed="{{d.pressed}}" onClick="{{d.pick}}"><svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"></path></svg>{{d.name}}</button></sc-for></div><span class="msg" style="color:var(--alarm);font-weight:500;font-size:12px">{{errDesig}}</span></div>
+        <div class="two"><label class="field">Branch<input type="text" value="{{fBranch}}" onInput="{{setBranch}}" placeholder="e.g. Computer Science"></label><label class="field">Department<input type="text" value="{{fDept}}" onInput="{{setDept}}" placeholder="e.g. Engineering"></label></div>
+        <label class="{{passCls}}"><span>Temporary password <span class="req">*</span></span><span class="pwrap"><input type="{{passType}}" value="{{fPass}}" onInput="{{setPass}}" placeholder="At least 8 characters" autocomplete="new-password"><button type="button" onClick="{{togglePass}}" aria-label="{{passLabel}}"><sc-if value="{{showPass}}" hint-placeholder-val="{{ false }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18M10.6 6.1A10 10 0 0112 6c6 0 9.5 6 9.5 6a17 17 0 01-3.1 3.8M6.6 6.7C3.9 8.5 2.5 12 2.5 12S6 18 12 18c1.5 0 2.9-.4 4-1"></path></svg></sc-if><sc-if value="{{hidePass}}" hint-placeholder-val="{{ true }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12S6 6 12 6s9.5 6 9.5 6-3.5 6-9.5 6S2.5 12 2.5 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></sc-if></button></span><span class="msg">{{errPass}}</span><span class="hintline">They are asked to change it the first time they sign in.</span></label>
+        <button class="btn primary" onClick="{{submitUser}}">Add member</button>
+      </sc-if>
+      <sc-if value="{{sheetReview}}" hint-placeholder-val="{{ false }}">
+        <div><h3 style="margin:0;font-size:20px;letter-spacing:-.02em">Review your order</h3><span class="sub">Nothing is charged in this prototype.</span></div>
+        <div style="border:1px solid var(--rule);border-radius:12px;overflow:hidden;max-height:200px;overflow-y:auto"><sc-for list="{{reviewRows}}" as="r" key="{{r.key}}" hint-placeholder-count="3"><div class="row" style="padding:9px 14px"><span style="flex:1;font-size:13px">{{r.name}}</span><span style="font-variant-numeric:tabular-nums;font-size:13px">{{r.price}}</span></div></sc-for></div>
+        <dl style="margin:0;display:grid;grid-template-columns:1fr auto;gap:6px 12px"><dt style="color:var(--muted)">Subtotal</dt><dd style="margin:0;text-align:right;font-weight:600">{{subtotal}}</dd><dt style="color:var(--muted)">GST (18%)</dt><dd style="margin:0;text-align:right;font-weight:600">{{gst}}</dd><dt style="font-weight:700">Total</dt><dd style="margin:0;text-align:right;font-weight:700;font-size:20px">{{totalShown}}</dd></dl>
+        <button class="btn primary" onClick="{{pay}}">Confirm and pay</button>
+      </sc-if>
+      <sc-if value="{{sheetBusy}}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:30px 0"><div class="spin"></div><b>Setting up your subscription…</b></div></sc-if>
+      <sc-if value="{{sheetDone}}" hint-placeholder-val="{{ false }}"><div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:12px;padding:18px 0;text-align:center;overflow:hidden"><sc-for list="{{confetti}}" as="c" key="{{c.key}}" hint-placeholder-count="10"><span class="conf" style="{{c.style}}"></span></sc-for><span class="check-big"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"></path></svg></span><h3 style="margin:0;font-size:22px">Premium is active</h3><span class="sub">{{paidText}}</span><button class="btn primary" style="width:100%" onClick="{{doneHome}}">Go to the dashboard</button></div></sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{toast}}" hint-placeholder-val="{{ false }}"><div class="toast" role="status"><span>{{toast}}</span><sc-if value="{{hasToastAct}}" hint-placeholder-val="{{ false }}"><button onClick="{{toastAct}}">{{toastLabel}}</button></sc-if></div></sc-if>
+</div>
