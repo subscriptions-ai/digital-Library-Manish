@@ -92,3 +92,32 @@ idempotence; a changed row between preview and apply is skipped; the engine and 
 2. After reading the Phase 0 list: the decision screen (Phase 1), which writes only decision records.
 3. Phase 2 and 3 for a first small batch (for example the two-DOAJ pairs and the same-publisher, same-title pairs), then the rest.
 4. Whether to add `mergedIntoId`, and any prevention change.
+
+## 9. Addendum, 2026-10-28 (still plan only: no data or schema was touched)
+
+**The numbers, reconciled.** Production holds **87** pairs; re-measured read-only on 2026-10-28 with the same results (34 both public, 21 one public,
+32 neither; 63 same title, 24 different). The "19" in circulation is the subset the DOAJ identity-conflict check can see (it only looks at journals DOAJ
+lists), and it is a different thing from the 26 DOAJ identity conflicts (a DOAJ journal we do NOT hold, whose title matches one we do). Merging the 87
+and accepting conflicts as distinct are independent decisions; do the merge first so an accepted-distinct import cannot add a new pair.
+
+**What changed since the plan was written.** Public visibility is now status-only (24,209 public on 2026-10-28). The 34 both-public pairs therefore show
+one title twice on the public site as before, but the 21 one-public pairs matter more than they did: a hidden twin is one status change away from being listed.
+
+**Source metadata preservation.** `Journal` has no free-form metadata column, so what survives a merge is what the columns hold. Before retiring a row,
+the mapping row `journal.merge.v1:<retiredId>` must store the retired row *whole* (every column, including `rightsBasis`, `rightsVerifiedBy`,
+`licence`, `licenceIsNC`, `homepage`, `subjects`, `createdAt`, `lastIngestedAt`, `fetchCursor`, `nextEligibleAt`), not just identifiers, so nothing about where it
+came from is lost and a reversal restores it exactly. The survivor keeps its own rights fields; the retired row's ISSN/e-ISSN that the survivor lacks are
+copied into the survivor's empty `eissn`, and any identifier that cannot fit (the survivor already has both) stays resolvable through the mapping row.
+
+**Redirects.** Both journal routes (`/api/library/journal/:key`, `/volume`) already accept an id, ISSN or e-ISSN. Add one lookup: when a key matches no
+public journal, consult `journal.merge.v1:*` (by retired id or any stored identifier) and answer **301** to the survivor. The retired row is `Rejected`,
+so every public list already excludes it; the redirect only keeps old links and citations alive.
+
+**Rollback, exactly.** Per pair, from its mapping row, in one transaction: (1) re-read the survivor; refuse if a later merge also targeted it; (2) set the
+retired row back to its stored columns; (3) move back only the article ids listed in the mapping row (articles added to the survivor since stay with it);
+(4) clear the survivor fields the merge filled, only where they still hold the value the merge wrote; (5) recompute both rows' counters; (6) delete the
+mapping row and write one audit entry. A pair whose survivor changed in the meantime is reported, not forced. A full database backup (`npm run backup`)
+is taken before the first batch, and the batches are small so a bad rule is seen on ten pairs, not eighty-seven.
+
+**Ordering with the other open work.** Deploy pagination first (production department pages are currently 1.2 to 1.7 MB); merge a small first batch
+(the two both-DOAJ pairs and the same-title, same-publisher pairs); only then consider accepting any DOAJ identity conflict as distinct.
