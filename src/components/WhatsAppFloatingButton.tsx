@@ -58,7 +58,7 @@ export function WhatsAppFloatingButton() {
       <WhatsAppIcon className="h-6 w-6 shrink-0 sm:h-7 sm:w-7" />
       <span
         role="tooltip"
-        className="pointer-events-none absolute right-full mr-3 hidden whitespace-nowrap rounded-md bg-ink px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 sm:block"
+        className="pointer-events-none absolute right-full mr-3 hidden whitespace-nowrap rounded-md bg-ink px-2.5 py-1.5 text-xs font-medium text-surface opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 sm:block"
       >
         Chat with us on WhatsApp
       </span>
