@@ -62,7 +62,13 @@ const DayTooltip = ({ active, payload }: any) => {
   );
 };
 
-export function RegistrationAnalytics() {
+/**
+ * `dashboard`: the sales dashboard's section (registrations, verification, subscriptions, conversion).
+ * `platform`: the Registered Users page's "Platform Overview — All Members": the four fixed-window counts, the filtered daily chart with its
+ * comparison, and a compact engagement summary with the reconciliation against the Admin Users screen. Both read the one summary endpoint.
+ */
+export function RegistrationAnalytics({ variant = 'dashboard' }: { variant?: 'dashboard' | 'platform' }) {
+  const platform = variant === 'platform';
   const [range, setRange] = useState<RangeKey>('30d');
   const today = istDay(new Date());
   const [from, setFrom] = useState('');
@@ -109,11 +115,11 @@ export function RegistrationAnalytics() {
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div>
         <div className="flex flex-wrap items-center gap-2">
-          <h2 id="reg-h" className="text-xs font-semibold uppercase tracking-wider text-muted">User registrations</h2>
+          <h2 id="reg-h" className="text-xs font-semibold uppercase tracking-wider text-muted">{platform ? 'Platform Overview — All Members' : 'User registrations'}</h2>
           <span className="badge badge-neutral">All members</span>
           {demo && <DemoBadge />}
         </div>
-        <p className="mt-1 text-sm text-muted">Every registered customer account, not only your leads. Dates are in IST.</p>
+        <p className="mt-1 text-sm text-muted">{platform ? 'Every registered member on the platform, not only the ones assigned to you. Counts only; dates are in IST.' : 'Every registered customer account, not only your leads. Dates are in IST.'}</p>
       </div>
       {data && (
         <div className="flex items-center gap-3">
@@ -168,6 +174,14 @@ export function RegistrationAnalytics() {
       ) : (
         <>
           {/* Fixed windows: these four do not follow the filter below. */}
+          {platform ? (
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              <StatCard label="Total Registered Users" value={fmtNum(cards.total)} icon={Users} context="All members · all time" />
+              <StatCard label="Registered Today" value={fmtNum(cards.today)} icon={UserPlus} context="All members · since 12:00 AM IST" />
+              <StatCard label="Registered Last 7 Days" value={fmtNum(cards.last7)} icon={CalendarDays} context="All members · 7 days incl. today" />
+              <StatCard label="Registered Last 30 Days" value={fmtNum(cards.last30)} icon={CalendarDays} context="All members · 30 days incl. today" />
+            </div>
+          ) : (<>
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             <StatCard label="Total Registered Users" value={fmtNum(cards.total)} icon={Users} context="All members · all time" />
             <StatCard label="Registered Today" value={fmtNum(cards.today)} icon={UserPlus} context="All members · since 12:00 AM IST" />
@@ -198,6 +212,7 @@ export function RegistrationAnalytics() {
               <p className="metric-context mt-1">All members · selected period ({selLabel})</p>
             </div>
           </div>
+          </>)}
 
           {/* Everything in this card follows the filter. */}
           <div className="card card-pad space-y-5" aria-busy={busy}>
@@ -232,6 +247,24 @@ export function RegistrationAnalytics() {
               </p>
             )}
 
+            {platform ? (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div>
+                  <p className="metric-label">Registered {RANGE_NAME[rangeKey]}</p>
+                  <p className="metric-value mt-1">{fmtNum(selected.registrations)}</p>
+                  <p className="metric-context mt-1">{selLabel}</p>
+                </div>
+                <div>
+                  <p className="metric-label">Previous equivalent period</p>
+                  <p className="metric-value mt-1">{fmtNum(selected.previousRegistrations)}</p>
+                  <p className="metric-context mt-1">{prevLabel}</p>
+                </div>
+                <div>
+                  <p className="metric-label">Change</p>
+                  <div className="mt-2"><GrowthLine g={selected.growth} prevLabel={prevLabel} /></div>
+                </div>
+              </div>
+            ) : (
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
               <div>
                 <p className="metric-label">Registered {RANGE_NAME[rangeKey]}</p>
@@ -268,6 +301,7 @@ export function RegistrationAnalytics() {
                 )}
               </div>
             </div>
+            )}
 
             <div style={{ height: 260 }} role="img"
               aria-label={`Daily registrations from ${fmtDay(data.range.fromDay, true)} to ${fmtDay(data.range.toDay, true)}: ${selected.registrations} in total${selected.registrations ? `, busiest day ${peak}` : ''}.`}>
@@ -287,6 +321,7 @@ export function RegistrationAnalytics() {
             )}
           </div>
 
+          {platform ? <EngagementSummary data={data} /> : (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
             {/* Verification: the same eligible members as the cards above, all time — Verified + Not verified = Total Registered Users. */}
             <div className="card card-pad lg:col-span-2">
@@ -339,8 +374,74 @@ export function RegistrationAnalytics() {
               </div>
             </div>
           </div>
+          )}
         </>
       )}
     </section>
+  );
+}
+
+
+/** One compact pair: two counts of the same registered members that add up to the total, with a bar to show the split. */
+function SplitStat({ title, a, b, total, tone }: { title: string; a: { label: string; value: number }; b: { label: string; value: number }; total: number; tone: string }) {
+  const pct = (v: number) => (total > 0 ? Math.round((v / total) * 100) : 0);
+  return (
+    <div className="min-w-0">
+      <p className="metric-label">{title}</p>
+      <div className="mt-2 grid grid-cols-2 gap-3">
+        <div><p className="text-2xl font-bold leading-none tabular-nums text-ink">{fmtNum(a.value)}</p><p className="mt-1 text-xs text-muted">{a.label} · {pct(a.value)}%</p></div>
+        <div><p className="text-2xl font-bold leading-none tabular-nums text-ink">{fmtNum(b.value)}</p><p className="mt-1 text-xs text-muted">{b.label} · {pct(b.value)}%</p></div>
+      </div>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface-2" role="img" aria-label={`${a.label} ${a.value} of ${total}, ${pct(a.value)} percent; ${b.label} ${b.value}.`}>
+        <div className="h-full rounded-full" style={{ width: `${pct(a.value)}%`, background: tone }} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Engagement of the registered members, and how the total is reached from the Admin Users screen. The reconciliation is the answer to "why does
+ * Admin → Users say a different number": that screen lists every row of the User table, this page counts customers.
+ */
+function EngagementSummary({ data }: { data: Summary }) {
+  const { cards, engagement: e, reconciliation: r } = data;
+  const parts = [
+    { label: 'Staff and administrator accounts', value: r.staff },
+    { label: 'Demo accounts', value: r.demo },
+    { label: 'In the deletion queue or deleted', value: r.removed },
+    { label: 'Anonymised accounts', value: r.anonymised },
+  ];
+  return (
+    <div className="card card-pad space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 className="card-title flex items-center gap-2"><ShieldCheck size={16} className="text-accent" aria-hidden="true" />Engagement</h3>
+        <span className="badge badge-neutral">All members</span><span className="badge badge-neutral">All time</span>
+      </div>
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+        <SplitStat title="Email verification" a={{ label: 'Verified', value: cards.verified }} b={{ label: 'Unverified', value: cards.unverified }} total={cards.total} tone="var(--success)" />
+        <SplitStat title="Reading" a={{ label: 'Have read content', value: e.haveRead }} b={{ label: 'Never opened content', value: e.neverOpened }} total={cards.total} tone="var(--accent)" />
+      </div>
+      <DataNote>
+        "Have read" means the member opened an item in the reader. Signing in, searching or looking at a record page does not count.
+      </DataNote>
+      <details className="group rounded-lg border border-rule bg-surface-2/50 px-3 py-2 text-sm">
+        <summary className="flex cursor-pointer items-center gap-2 font-semibold text-ink-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+          <Info size={14} aria-hidden="true" /> How this compares with the Admin Users page
+        </summary>
+        <div className="mt-3 space-y-3 text-xs text-ink-2">
+          <p>The Admin Users page lists every account in the system, staff included. This page counts registered members only, so the two differ by exactly the accounts below.</p>
+          <ul className="divide-y divide-rule rounded-lg border border-rule bg-surface">
+            <li className="flex items-center justify-between gap-3 px-3 py-2"><span>All accounts (Admin Users total)</span><b className="tabular-nums text-ink">{fmtNum(r.allAccounts)}</b></li>
+            {parts.map(p => <li key={p.label} className="flex items-center justify-between gap-3 px-3 py-2"><span className="text-muted">− {p.label}</span><span className="tabular-nums">{fmtNum(p.value)}</span></li>)}
+            <li className="flex items-center justify-between gap-3 bg-accent-soft px-3 py-2"><span className="font-semibold text-ink">= Total Registered Users</span><b className="tabular-nums text-ink">{fmtNum(r.registered)}</b></li>
+          </ul>
+          <p>
+            Admin Users shows {fmtNum(r.allAccountsVerified)} verified and {fmtNum(r.allAccountsHaveRead)} who have read something across all {fmtNum(r.allAccounts)} accounts;
+            across the {fmtNum(r.registered)} registered members they are {fmtNum(cards.verified)} and {fmtNum(e.haveRead)}.
+            Accounts an institution added are members and are included ({fmtNum(r.institutionMembers)} of them belong to an institution).
+          </p>
+        </div>
+      </details>
+    </div>
   );
 }

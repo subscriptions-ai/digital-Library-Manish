@@ -40,3 +40,27 @@ The dev server (`npm run dev`, no watch) had been started before these routes ex
 ## Known gaps
 - `/api/domain-request` (public) has no rate limit beyond the global API limiter.
 - Optional indexes if the Subscription table grows large: `Subscription(userId)`, `Subscription(institutionId)`, `Payment(status)`. Not added; no migration is needed for this feature.
+
+## Platform Overview on /sales/registered-users
+
+The Registered Users page now opens with "Platform Overview — All Members": the same `/api/sales/registrations/summary` the dashboard reads (`<RegistrationAnalytics variant="platform" />`), so nothing is counted twice or differently.
+
+| Figure | Definition |
+|---|---|
+| Total Registered Users | Eligible members, all time (see "Eligible member" above). |
+| Registered Today / Last 7 / Last 30 Days | Fixed IST windows over the same members; they do not follow the chart's filter. |
+| Daily registrations | Follows 7 Days / 30 Days / Custom (IST, zero-filled days), with the previous equivalent period; no percentage when that period is zero. |
+| Verified / Unverified | `emailVerifiedAt` set / null. Adds up to the total. |
+| Have read content / Never opened content | `User.lastReadAt`, the field Admin → Users counts as "Have read something". It is set only when a signed-in member's open of an item is granted; signing in, searching and viewing a record page do not set it. Adds up to the total. |
+
+### Reconciliation with Admin → Users
+
+Admin → Users lists **every row of the User table** (its default query has no filter), so its total includes staff, demo, deletion-queue/deleted and anonymised accounts. The page shows the exact walk, each account in one bucket in this order:
+
+`all accounts = staff + demo + deletion queue/deleted + anonymised + registered members`
+
+It also shows Admin's verified and have-read figures over all accounts beside the member figures. Accounts an institution added are members and are counted; their number is shown as information, not deducted. No counting rule was changed to make a particular total match.
+
+### Permissions
+
+The summary is counts only (no name, no email) and is available to SalesExecutive, SalesManager and SuperAdmin through GET only. Individual records stay limited to the executive's assigned leads (`/users`, `/follow-ups`); `/users` now also returns `assignedTotal`, the unfiltered assigned count, which the table reads against. The page adds no create, edit, delete, reset, role, subscription or export route.
