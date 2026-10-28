@@ -14,6 +14,11 @@ export type Summary = {
   range: { key: string; fromDay: string; toDay: string; days: number };
   previous: { fromDay: string; toDay: string };
   cards: { total: number; today: number; last7: number; last30: number; verified: number; unverified: number };
+  engagement: { haveRead: number; neverOpened: number };
+  reconciliation: {
+    allAccounts: number; staff: number; demo: number; removed: number; anonymised: number; registered: number;
+    allAccountsVerified: number; allAccountsHaveRead: number; institutionMembers: number;
+  };
   selected: { registrations: number; previousRegistrations: number; growth: Growth; verified: number; unverified: number };
   series: { day: string; count: number }[];
   subscriptions: Record<SubStatus, number> & { withoutActive: number; activePaid: number };
@@ -24,7 +29,7 @@ export type Member = {
   name: string | null; email: string; organization: string | null; registeredAt: string;
   verified: boolean; subscription: SubStatus; subscriptionLabel: string; leadId: string | null;
 };
-export type MemberPage = { total: number; page: number; pageSize: number; pages: number; ambiguous?: number; demo?: boolean; members: Member[] };
+export type MemberPage = { total: number; assignedTotal: number; page: number; pageSize: number; pages: number; ambiguous?: number; demo?: boolean; members: Member[] };
 export type FollowUps = { demo?: boolean; verifiedUnsubscribed: { total: number; members: Member[] }; pendingEnquiries: number };
 
 export const SUB_ORDER: SubStatus[] = ['paid', 'institution', 'granted', 'trial', 'expired', 'cancelled', 'none'];

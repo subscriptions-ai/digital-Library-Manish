@@ -108,6 +108,22 @@ export interface RegistrationSummary {
   previous: { fromDay: string; toDay: string };
   /** All-members scope, fixed windows — they do not follow the range filter. */
   cards: { total: number; today: number; last7: number; last30: number; verified: number; unverified: number };
+  /**
+   * Whether registered members ever opened something in the reader — `User.lastReadAt`, the field the Admin Users screen counts as "Have read something".
+   * It is set only when a signed-in member's open of an item is granted (see markRead in server.ts); signing in, searching or viewing a record page does not set it.
+   */
+  engagement: { haveRead: number; neverOpened: number };
+  /**
+   * How "Total Registered Users" is reached from every row of the User table, which is what the Admin Users screen lists. Each account is in exactly
+   * one bucket, in this order, so the parts always add up: all = staff + demo + removed + anonymised + registered.
+   */
+  reconciliation: {
+    allAccounts: number; staff: number; demo: number; removed: number; anonymised: number; registered: number;
+    /** Admin Users' own verified / have-read figures over all accounts, so each can be set beside the matching figure here. */
+    allAccountsVerified: number; allAccountsHaveRead: number;
+    /** Part of `registered`, not a deduction: accounts an institution added or that belong to one. */
+    institutionMembers: number;
+  };
   /** Follows the range filter. */
   selected: { registrations: number; previousRegistrations: number; growth: Growth; verified: number; unverified: number };
   series: { day: string; count: number }[];
@@ -122,10 +138,12 @@ export async function registrationSummary(db: Db, staffRoles: readonly string[],
   const today = todayWindow(now), d7 = lastDaysWindow(7, now), d30 = lastDaysWindow(30, now), prev = previousWindow(win);
   const overLimit = await overLimitInstitutionIds(db, now);
 
-  const [[c], series, subRows, [conv]] = await Promise.all([
+  const [[c], series, subRows, [conv], [rec]] = await Promise.all([
     db.$queryRaw`SELECT count(*)::int AS total,
         count(*) FILTER (WHERE u."emailVerifiedAt" IS NOT NULL)::int AS verified,
         count(*) FILTER (WHERE u."emailVerifiedAt" IS NULL)::int AS unverified,
+        count(*) FILTER (WHERE u."lastReadAt" IS NOT NULL)::int AS "haveRead",
+        count(*) FILTER (WHERE u."institutionId" IS NOT NULL)::int AS "institutionMembers",
         count(*) FILTER (WHERE ${inWindow(today)})::int AS today,
         count(*) FILTER (WHERE ${inWindow(d7)})::int AS last7,
         count(*) FILTER (WHERE ${inWindow(d30)})::int AS last30,
@@ -144,6 +162,18 @@ export async function registrationSummary(db: Db, staffRoles: readonly string[],
           WHERE s."userId" = u."id" AND s."planName" NOT ILIKE '%trial%' AND p."status" IN ('Paid', 'Success')
             AND s."createdAt" >= u."createdAt" AND s."createdAt" < ${win.end}))::int AS converted
       FROM "User" u WHERE ${eligible} AND ${inWindow(win)}`,
+    // Every account, bucketed in a fixed order so the buckets are exclusive. The same rule as eligibleSql, taken apart.
+    db.$queryRaw`SELECT count(*)::int AS "allAccounts",
+        count(*) FILTER (WHERE u."role" IN (${Prisma.join([...staffRoles])}))::int AS staff,
+        count(*) FILTER (WHERE u."role" NOT IN (${Prisma.join([...staffRoles])}) AND u."isDemoAccount" = true)::int AS demo,
+        count(*) FILTER (WHERE u."role" NOT IN (${Prisma.join([...staffRoles])}) AND u."isDemoAccount" = false
+                           AND u."status" IN (${PENDING_DELETION}, ${DELETED}))::int AS removed,
+        count(*) FILTER (WHERE u."role" NOT IN (${Prisma.join([...staffRoles])}) AND u."isDemoAccount" = false
+                           AND u."status" NOT IN (${PENDING_DELETION}, ${DELETED}) AND u."purgedAt" IS NOT NULL)::int AS anonymised,
+        count(*) FILTER (WHERE ${eligible})::int AS registered,
+        count(*) FILTER (WHERE u."emailVerifiedAt" IS NOT NULL)::int AS "allAccountsVerified",
+        count(*) FILTER (WHERE u."lastReadAt" IS NOT NULL)::int AS "allAccountsHaveRead"
+      FROM "User" u`,
   ]);
 
   const by = Object.fromEntries(SUB_STATUSES.map(s => [s, 0])) as Record<SubStatus, number>;
@@ -155,6 +185,11 @@ export async function registrationSummary(db: Db, staffRoles: readonly string[],
     range: { key: rangeKey, fromDay: win.fromDay, toDay: win.toDay, days: win.days },
     previous: { fromDay: prev.fromDay, toDay: prev.toDay },
     cards: { total: n(c.total), today: n(c.today), last7: n(c.last7), last30: n(c.last30), verified: n(c.verified), unverified: n(c.unverified) },
+    engagement: { haveRead: n(c.haveRead), neverOpened: n(c.total) - n(c.haveRead) },
+    reconciliation: {
+      allAccounts: n(rec.allAccounts), staff: n(rec.staff), demo: n(rec.demo), removed: n(rec.removed), anonymised: n(rec.anonymised), registered: n(rec.registered),
+      allAccountsVerified: n(rec.allAccountsVerified), allAccountsHaveRead: n(rec.allAccountsHaveRead), institutionMembers: n(c.institutionMembers),
+    },
     selected: { registrations: n(c.selected), previousRegistrations: n(c.previous), growth: growth(n(c.selected), n(c.previous)), verified: n(c.selectedVerified), unverified: n(c.selectedUnverified) },
     series: zeroFill((series as { day: string; count: number }[]).map(r => ({ day: r.day, count: n(r.count) })), win),
     subscriptions: { ...by, withoutActive, activePaid: by.paid },
@@ -207,15 +242,18 @@ export async function assignedMembers(db: Db, staffRoles: readonly string[], me:
     FROM "User" u WHERE ${where}`;
 
   const offset = (query.page - 1) * query.pageSize;
-  const [rows, [t], [amb]] = await Promise.all([
+  const filteredNow = !!(query.q || query.verified || query.subscription || query.followUp);
+  const [rows, [t], [amb], assignedAll] = await Promise.all([
     db.$queryRaw`SELECT x."name", x."email", x."organization", x."createdAt", x."verified", x."subStatus", x."leadId"
       FROM (${base}) x ${outerWhere} ORDER BY x."createdAt" DESC, x."_id" LIMIT ${query.pageSize} OFFSET ${offset}`,
     db.$queryRaw`SELECT count(*)::int AS total FROM (${base}) x ${outerWhere}`,
     db.$queryRaw`SELECT count(*)::int AS n FROM "User" u WHERE ${eligibleSql(staffRoles)} AND ${mineSql(me)} AND ${otherSql(me)}`,
+    // Everyone assigned to the caller, whatever the filters: the figure the table's own count is read against.
+    filteredNow ? db.$queryRaw`SELECT count(*)::int AS total FROM "User" u WHERE ${eligibleSql(staffRoles)} AND ${assignedSql(me)}` : Promise.resolve(null),
   ]);
   const total = n(t.total);
   return {
-    total, page: query.page, pageSize: query.pageSize, pages: Math.max(1, Math.ceil(total / query.pageSize)),
+    total, assignedTotal: assignedAll ? n((assignedAll as any[])[0].total) : total, page: query.page, pageSize: query.pageSize, pages: Math.max(1, Math.ceil(total / query.pageSize)),
     /** Members matching your leads and another executive's too: not listed, because whose they are cannot be told. */
     ambiguous: n(amb.n),
     members: (rows as any[]).map(r => ({

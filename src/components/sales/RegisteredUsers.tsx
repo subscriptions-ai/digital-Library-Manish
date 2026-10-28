@@ -4,6 +4,7 @@ import { BadgeCheck, Clock, Eye, MailQuestion, Search, Sparkles, Users, ArrowRig
 import { Badge, EmptyState, PageHeader, Skeleton, SkeletonRows, Button, buttonClass } from '../ui';
 import { SmartPagination } from '../SmartPagination';
 import { DataNote, FilterBar, SearchField, SelectField } from './salesUi';
+import { RegistrationAnalytics } from './RegistrationAnalytics';
 import {
   ApiErrorState, asApiError, DemoBadge, fmtNum, fmtRegistered, getJson, SubscriptionBadge, SUB_LABEL, SUB_ORDER,
   type ApiError, type FollowUps, type Member, type MemberPage,
@@ -104,12 +105,20 @@ export function RegisteredUsers() {
           <span className="badge badge-neutral align-middle"><Eye size={12} aria-hidden="true" /> View only</span>
           {demo && <DemoBadge />}
         </span>}
-        description="View members linked to your assigned leads."
+        description="Platform-wide registration figures, and the members behind your assigned leads."
       />
-      <div className="space-y-6">
-        {/* Follow-ups */}
-        <section aria-labelledby="fu-h" className="space-y-3">
-          <h2 id="fu-h" className="text-xs font-semibold uppercase tracking-wider text-muted">Follow-ups</h2>
+      <div className="space-y-8">
+        {/* Everyone on the platform: counts only, the same for every sales user, never changed by the filters below. */}
+        <RegistrationAnalytics variant="platform" />
+
+        <section aria-labelledby="ru-h" className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 id="ru-h" className="text-xs font-semibold uppercase tracking-wider text-muted">My Assigned Members</h2>
+            <span className="badge badge-neutral">My assigned</span>
+            {data && <span className="badge badge-accent tabular-nums" aria-label={`${fmtNum(data.assignedTotal)} assigned members in total`}>{fmtNum(data.assignedTotal)} assigned in total</span>}
+          </div>
+
+          {/* Follow-ups sit with the table they lead into. */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <FollowUpCard icon={MailQuestion} label="Verified, not subscribed" scope="My assigned"
               hint="Confirmed their email and hold no running subscription."
@@ -119,14 +128,6 @@ export function RegisteredUsers() {
               hint="Members asking for help to subscribe. Shared by the whole sales team, not limited to your leads."
               count={followUps ? followUps.pendingEnquiries : null} error={followError} onRetry={loadFollowUps}
               action={<Link to="/sales/pro-applications" className={buttonClass('outline', 'sm')}>Open enquiries <ArrowRight size={14} aria-hidden="true" /></Link>} />
-          </div>
-        </section>
-
-        {/* The table */}
-        <section aria-labelledby="ru-h" className="space-y-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 id="ru-h" className="text-xs font-semibold uppercase tracking-wider text-muted">{view ? 'Verified, not subscribed' : 'My registered users'}</h2>
-            <span className="badge badge-neutral">My assigned</span>
           </div>
 
           <FilterBar>
@@ -148,7 +149,7 @@ export function RegisteredUsers() {
           )}
 
           <p className="text-sm text-muted" aria-live="polite">
-            {data ? <><b className="tabular-nums text-ink">{fmtNum(data.total)}</b> {data.total === 1 ? 'member' : 'members'}{filtered ? ' match your filters' : ' linked to your assigned leads'}</> : ' '}
+            {data ? <><b className="tabular-nums text-ink">{fmtNum(data.total)}</b> {data.total === 1 ? 'member' : 'members'}{filtered ? <> {data.total === 1 ? 'matches' : 'match'} your filters, of <b className="tabular-nums text-ink">{fmtNum(data.assignedTotal)}</b> assigned to you</> : ' linked to your assigned leads'}</> : ' '}
           </p>
 
           <div className="card overflow-hidden">
@@ -204,7 +205,7 @@ export function RegisteredUsers() {
             </DataNote>
           )}
           <DataNote>
-            Only members behind leads assigned to you are listed, matched by the email on the lead. Overall registration counts for everyone are on the Dashboard. This page is view only: it cannot edit accounts, change verification or subscriptions, or export data.
+            Only members behind leads assigned to you are listed, matched by the email on the lead; the platform figures above are counts for everyone and do not change with these filters. This page is view only: it cannot edit accounts, change verification or subscriptions, or export data.
           </DataNote>
         </section>
       </div>

@@ -399,6 +399,65 @@ try {
   const lead0 = await db.lead.findFirst({ where: { assignedToId: execA.id, email: a2.email } });
   const st = await call('PUT', `/api/sales/leads/${lead0!.id}/status`, tokA, { status: 'Positive' });
   check('an executive can still update their own lead\'s status (existing workflow unchanged)', st.status === 200 && st.data.status === 'Positive');
+
+  // ── 6. Platform overview: engagement, reconciliation with Admin → Users ───
+  section('6. Platform Overview: engagement counts and the reconciliation with Admin → Users');
+  {
+    const W6 = windowOfDays('2001-05-01', '2001-05-03')!;
+    const b = await registrationSummary(db, STAFF, W6, 'custom');
+    const read = new Date('2001-05-02T05:00:00Z');
+    await mkUser('p-read', { lastReadAt: read, emailVerifiedAt: new Date(), createdAt: D('2001-05-02T05:00:00Z') });
+    await mkUser('p-never', { createdAt: D('2001-05-02T05:00:00Z') });
+    await mkUser('p-inst-member', { role: 'Student', lastReadAt: read, createdAt: D('2001-05-02T05:00:00Z') });
+    await mkUser('px-staff-read', { role: 'ContentManager', lastReadAt: read, emailVerifiedAt: new Date() });
+    await mkUser('px-demo-read', { isDemoAccount: true, lastReadAt: read });
+    await mkUser('px-deleted-read', { status: 'DELETED', lastReadAt: read });
+    await mkUser('px-pending', { status: 'PENDING_DELETION' });
+    await mkUser('px-purged', { purgedAt: new Date() });
+    await mkUser('px-demo-staff', { role: 'SalesExecutive', isDemoAccount: true });
+    const a = await registrationSummary(db, STAFF, W6, 'custom');
+    const d = (k: (x: typeof a) => number) => k(a) - k(b);
+    check('Have read counts members with a reading event, and not staff, demo or removed accounts', d(x => x.engagement.haveRead) === 2, d(x => x.engagement.haveRead));
+    check('Never opened rises by one (the member who only registered)', d(x => x.engagement.neverOpened) === 1, d(x => x.engagement.neverOpened));
+    check('Have read + never opened = total registered members, always', a.engagement.haveRead + a.engagement.neverOpened === a.cards.total);
+    check('Verified + unverified = total, always', a.cards.verified + a.cards.unverified === a.cards.total);
+    check('the nine fixtures move "all accounts" by nine', d(x => x.reconciliation.allAccounts) === 9, d(x => x.reconciliation.allAccounts));
+    check('...into the right buckets: 3 registered, 2 staff, 1 demo, 2 removed, 1 anonymised', d(x => x.reconciliation.registered) === 3 && d(x => x.reconciliation.staff) === 2 && d(x => x.reconciliation.demo) === 1 && d(x => x.reconciliation.removed) === 2 && d(x => x.reconciliation.anonymised) === 1, a.reconciliation);
+    const rc = a.reconciliation;
+    check('buckets are exclusive: all = staff + demo + removed + anonymised + registered', rc.allAccounts === rc.staff + rc.demo + rc.removed + rc.anonymised + rc.registered, rc);
+    check('registered in the reconciliation is the card total, one definition', rc.registered === a.cards.total);
+    check('institution members are included and shown, not deducted', a.reconciliation.institutionMembers >= 0 && d(x => x.reconciliation.registered) === 3);
+
+    // The same numbers through the real routes, against Admin → Users.
+    // A range no earlier request used, so this is computed now and not served from the one-minute cache.
+    const sum = await call('GET', '/api/sales/registrations/summary?range=custom&from=2001-05-01&to=2001-05-03', tokA);
+    const adm = await call('GET', '/api/admin/users?limit=1', tokSuper);
+    check('the sales summary carries the reconciliation and engagement', sum.status === 200 && !!sum.data.reconciliation && !!sum.data.engagement, Object.keys(sum.data || {}));
+    check('Admin Users total = all accounts in the reconciliation', adm.data?.total === sum.data.reconciliation.allAccounts, { admin: adm.data?.total, rec: sum.data?.reconciliation?.allAccounts });
+    check('Admin Users verified = the reconciliation\'s all-accounts verified', adm.data?.counts?.verified === sum.data.reconciliation.allAccountsVerified);
+    check('Admin Users "have read" = the reconciliation\'s all-accounts have-read', adm.data?.counts?.everRead === sum.data.reconciliation.allAccountsHaveRead);
+    check('Admin Users filtered to exclude nothing else but staff is still larger than Registered Users (they are different populations)', adm.data.total >= sum.data.cards.total);
+    // Independent database cross-check.
+    const [raw] = await db.$queryRawUnsafe<any[]>(`select count(*)::int total, count(*) filter (where "lastReadAt" is not null)::int read, count(*) filter (where "emailVerifiedAt" is not null)::int ver from "User" where role not in (${STAFF.map(r => `'${r}'`).join(',')}) and "isDemoAccount" = false and status not in ('PENDING_DELETION','DELETED') and "purgedAt" is null`);
+    check('an independent SQL count agrees: total, have read, verified', raw.total === sum.data.cards.total && raw.read === sum.data.engagement.haveRead && raw.ver === sum.data.cards.verified, { raw, cards: sum.data.cards, e: sum.data.engagement });
+
+    // Aggregate only: the summary carries no member.
+    const blob = JSON.stringify(sum.data);
+    check('the summary contains no email address or name', !/@[a-z0-9-]+\.(invalid|com|in)/i.test(blob) && !blob.includes('displayName'), blob.slice(0, 200));
+    // Filters on the assigned table never move the platform figures.
+    const plain = await call('GET', '/api/sales/registrations/summary?range=30d', tokA);
+    await call('GET', '/api/sales/registrations/users?q=zzzz&verified=yes&subscription=paid', tokA);
+    const again = await call('GET', '/api/sales/registrations/summary?range=30d', tokA);
+    check('platform figures are the same before and after filtering the assigned table', JSON.stringify(plain.data.cards) === JSON.stringify(again.data.cards) && JSON.stringify(plain.data.engagement) === JSON.stringify(again.data.engagement));
+    // assignedTotal
+    const all = await call('GET', '/api/sales/registrations/users', tokA);
+    const some = await call('GET', '/api/sales/registrations/users?verified=yes', tokA);
+    check('assignedTotal is the unfiltered total whatever the filters', all.data.assignedTotal === all.data.total && some.data.assignedTotal === all.data.total && some.data.total <= all.data.total, { all: [all.data.total, all.data.assignedTotal], some: [some.data.total, some.data.assignedTotal] });
+    // Permissions: all three roles read the aggregate; a member, a publisher and an unauthenticated caller do not.
+    check('a sales executive, a sales manager and a super admin may read it', [tokA, tokMgr, tokSuper].every(Boolean) && (await call('GET', '/api/sales/registrations/summary', tokMgr)).status === 200 && (await call('GET', '/api/sales/registrations/summary', tokSuper)).status === 200);
+    check('no sign-in → 401', (await call('GET', '/api/sales/registrations/summary', null)).status === 401);
+    check('an executive still cannot read the admin user directory', (await call('GET', '/api/admin/users?limit=1', tokA)).status === 403);
+  }
 } catch (e: any) {
   fail++; console.log('  FAIL  unexpected error —', e?.stack || e);
 } finally {
