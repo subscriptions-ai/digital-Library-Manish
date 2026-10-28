@@ -27,7 +27,9 @@ const file = process.argv.slice(2).find(a => !a.startsWith('--'));
   const db = (await p.$queryRawUnsafe('select current_database() d'))[0].d;
   const startedAt = new Date().toISOString();
   const out = { database: db, runId: plan.runId, source: plan.source, dry: DRY, startedAt, requested: rows.length, inserted: 0, skippedIdentifierHeld: 0, skippedTitleHeld: 0, skippedRace: 0, failed: 0, firstError: null, batches: 0, insertedIds: [] };
-  const basis = `${plan.source === 'OpenAlex Sources' ? 'OpenAlex' : plan.source === 'ROAD' ? 'ROAD' : plan.source === 'NLM Catalog' ? 'NLM Catalog' : 'Crossref'} listing — OA unverified`;
+  // The label names the source that listed the journal; a plan that merges several sources can carry it per row (row.basisSource), otherwise it is the plan's own source.
+  const LABEL = { 'OpenAlex Sources': 'OpenAlex', 'OpenAlex': 'OpenAlex', 'ROAD': 'ROAD', 'NLM Catalog': 'NLM Catalog', 'CINAHL': 'CINAHL', 'SciELO': 'SciELO', 'Crossref Journals': 'Crossref', 'Crossref': 'Crossref' };
+  const basisFor = (r) => `${LABEL[r.basisSource || plan.source] || 'Crossref'} listing — OA unverified`;
 
   for (let i = 0; i < rows.length; i += BATCH) {
     const batch = rows.slice(i, i + BATCH);
@@ -49,7 +51,7 @@ const file = process.argv.slice(2).find(a => !a.startsWith('--'));
             title: r.title, issn: r.issn, eissn: r.eissn || null, publisherName: r.publisherName || null, country: r.country || null, homepage: r.homepage || null,
             domain: r.domain, subjects: r.subjects || [],
             // Nothing is claimed that has not been checked.
-            openAccess: false, licence: null, licenceIsNC: null, rightsBasis: basis, rightsVerifiedAt: null, rightsVerifiedBy: null,
+            openAccess: false, licence: null, licenceIsNC: null, rightsBasis: basisFor(r), rightsVerifiedAt: null, rightsVerifiedBy: null,
             status: 'MetadataOnly',
           },
           select: { id: true },
