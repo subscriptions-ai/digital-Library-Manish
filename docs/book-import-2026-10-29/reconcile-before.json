@@ -1,0 +1,307 @@
+{
+  "snapshot": {
+    "at": "2026-10-29T06:55:30.898Z",
+    "db": "postgres"
+  },
+  "totals": {
+    "book_rows": 102190,
+    "book_ids": 102190,
+    "book_public": 65582,
+    "legacy_rows": 48984,
+    "legacy_ids": 48984,
+    "legacy_public": 29344,
+    "shared_ids": 0
+  },
+  "book": [
+    {
+      "bucket": "2 public · catalogue record only (links to the source)",
+      "n": 65582
+    },
+    {
+      "bucket": "3 held · Draft, no department (review queue)",
+      "n": 36508
+    },
+    {
+      "bucket": "4 held · Draft, department assigned",
+      "n": 100
+    }
+  ],
+  "legacy": [
+    {
+      "bucket": "1 public · full text served here",
+      "n": 27352
+    },
+    {
+      "bucket": "2 public · listed, file not validated",
+      "n": 1992
+    },
+    {
+      "bucket": "3 held · Draft, file check failed",
+      "n": 19555
+    },
+    {
+      "bucket": "4 held · Draft though the file validated (hidden by an admin)",
+      "n": 85
+    }
+  ],
+  "overlap": {
+    "structured_public": 65582,
+    "legacy_public": 29344,
+    "structured_titles_also_in_legacy": 4359,
+    "distinct_titles_listed": 81973
+  },
+  "byDept": [
+    {
+      "department": "(none)",
+      "new_total": 36508,
+      "new_public": 0,
+      "archived_total": 0,
+      "archived_public": 0
+    },
+    {
+      "department": "Nursing",
+      "new_total": 14777,
+      "new_public": 14777,
+      "archived_total": 2068,
+      "archived_public": 939
+    },
+    {
+      "department": "Medical Sciences",
+      "new_total": 13874,
+      "new_public": 13870,
+      "archived_total": 2841,
+      "archived_public": 1656
+    },
+    {
+      "department": "Law",
+      "new_total": 8505,
+      "new_public": 8505,
+      "archived_total": 5168,
+      "archived_public": 2828
+    },
+    {
+      "department": "Agriculture",
+      "new_total": 7758,
+      "new_public": 7758,
+      "archived_total": 1888,
+      "archived_public": 1240
+    },
+    {
+      "department": "Energy",
+      "new_total": 5138,
+      "new_public": 5138,
+      "archived_total": 2301,
+      "archived_public": 1487
+    },
+    {
+      "department": "Computer / IT",
+      "new_total": 4888,
+      "new_public": 4888,
+      "archived_total": 1034,
+      "archived_public": 1034
+    },
+    {
+      "department": "Pharmacy",
+      "new_total": 2061,
+      "new_public": 2061,
+      "archived_total": 1999,
+      "archived_public": 694
+    },
+    {
+      "department": "Life Sciences",
+      "new_total": 1589,
+      "new_public": 1589,
+      "archived_total": 1499,
+      "archived_public": 896
+    },
+    {
+      "department": "Dental",
+      "new_total": 1574,
+      "new_public": 1478,
+      "archived_total": 1996,
+      "archived_public": 1051
+    },
+    {
+      "department": "Education and Social Sciences",
+      "new_total": 1217,
+      "new_public": 1217,
+      "archived_total": 2146,
+      "archived_public": 1341
+    },
+    {
+      "department": "Bio Technology",
+      "new_total": 970,
+      "new_public": 970,
+      "archived_total": 2136,
+      "archived_public": 1410
+    },
+    {
+      "department": "Chemistry",
+      "new_total": 893,
+      "new_public": 893,
+      "archived_total": 2302,
+      "archived_public": 1425
+    },
+    {
+      "department": "Arts",
+      "new_total": 874,
+      "new_public": 874,
+      "archived_total": 1993,
+      "archived_public": 1992
+    },
+    {
+      "department": "Commerce",
+      "new_total": 432,
+      "new_public": 432,
+      "archived_total": 1995,
+      "archived_public": 1310
+    },
+    {
+      "department": "Science",
+      "new_total": 428,
+      "new_public": 428,
+      "archived_total": 0,
+      "archived_public": 0
+    },
+    {
+      "department": "Architecture",
+      "new_total": 191,
+      "new_public": 191,
+      "archived_total": 0,
+      "archived_public": 0
+    },
+    {
+      "department": "Management",
+      "new_total": 173,
+      "new_public": 173,
+      "archived_total": 261,
+      "archived_public": 72
+    },
+    {
+      "department": "Physiotherapy",
+      "new_total": 173,
+      "new_public": 173,
+      "archived_total": 0,
+      "archived_public": 0
+    },
+    {
+      "department": "Electronics & Telecommunication Engineering",
+      "new_total": 45,
+      "new_public": 45,
+      "archived_total": 435,
+      "archived_public": 385
+    },
+    {
+      "department": "Civil / Construction Engineering",
+      "new_total": 45,
+      "new_public": 45,
+      "archived_total": 2114,
+      "archived_public": 1311
+    },
+    {
+      "department": "Mechanical Engineering",
+      "new_total": 42,
+      "new_public": 42,
+      "archived_total": 132,
+      "archived_public": 49
+    },
+    {
+      "department": "Electrical Engineering",
+      "new_total": 21,
+      "new_public": 21,
+      "archived_total": 1062,
+      "archived_public": 1062
+    },
+    {
+      "department": "Material Science",
+      "new_total": 9,
+      "new_public": 9,
+      "archived_total": 680,
+      "archived_public": 473
+    },
+    {
+      "department": "Chemical Engineering",
+      "new_total": 3,
+      "new_public": 3,
+      "archived_total": 150,
+      "archived_public": 112
+    },
+    {
+      "department": "Applied Mechanics",
+      "new_total": 2,
+      "new_public": 2,
+      "archived_total": 2064,
+      "archived_public": 1211
+    },
+    {
+      "department": "Social Sciences",
+      "new_total": 0,
+      "new_public": 0,
+      "archived_total": 23,
+      "archived_public": 12
+    },
+    {
+      "department": "Engineering",
+      "new_total": 0,
+      "new_public": 0,
+      "archived_total": 4090,
+      "archived_public": 1624
+    },
+    {
+      "department": "Medical",
+      "new_total": 0,
+      "new_public": 0,
+      "archived_total": 2061,
+      "archived_public": 0
+    },
+    {
+      "department": "Applied Sciences",
+      "new_total": 0,
+      "new_public": 0,
+      "archived_total": 2052,
+      "archived_public": 2016
+    },
+    {
+      "department": "Multidisciplinary",
+      "new_total": 0,
+      "new_public": 0,
+      "archived_total": 47,
+      "archived_public": 28
+    },
+    {
+      "department": "Nano Technology",
+      "new_total": 0,
+      "new_public": 0,
+      "archived_total": 2439,
+      "archived_public": 1682
+    },
+    {
+      "department": "Physiotheraphy",
+      "new_total": 0,
+      "new_public": 0,
+      "archived_total": 4,
+      "archived_public": 2
+    },
+    {
+      "department": "Ayurveda",
+      "new_total": 0,
+      "new_public": 0,
+      "archived_total": 4,
+      "archived_public": 2
+    }
+  ],
+  "checks": {
+    "New buckets add up to Book rows": true,
+    "Archived buckets add up to legacy Book rows": true,
+    "New public buckets = Published": true,
+    "Archived public buckets = non-Draft": true,
+    "no id appears in both tables": true,
+    "ids are unique within each table": true
+  },
+  "admin": {
+    "New": 102190,
+    "Archived": 48984
+  },
+  "publicFigure": 94926,
+  "uniqueBookIds": 151174
+}
