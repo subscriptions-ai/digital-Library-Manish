@@ -1,4 +1,5 @@
 import { CANONICAL_NAMES, canonicalDepartmentName } from './departmentRegistry';
+import { classifyStatus, isPubliclyListed, legacyPublicWhere } from './publicStatus';
 
 /**
  * The admin content sections (Books, Periodicals, Magazines, Case Reports, Theses, Conference Proceedings, Educational Videos, Newsletters):
@@ -17,8 +18,12 @@ import { CANONICAL_NAMES, canonicalDepartmentName } from './departmentRegistry';
  * "New" and "Archived" are two COLLECTIONS (two tables), not publication statuses; each table has its own lifecycle. A Published archived
  * item is as public as a Published new one.
  *
- * PUBLIC = what the public library lists: a new record with status Published; an archived record whose status is not Draft (the legacy table
- * holds a lower-case "published" on some rows, so statuses are compared without regard to case).
+ * PUBLIC = what the public library lists (src/lib/publicStatus.ts): a new record with status Published; an archived record unless its status
+ * withholds it (draft, rejected, hidden, deleted, review …, compared without regard to case: the legacy table holds a lower-case "published").
+ * The legacy table also holds a status no rule names ("Open Access" on 846 production theses): the public catalogue lists those, so they are
+ * counted as public AND reported separately as `unrecognisedListed`, never folded into Published. Three different things are kept apart:
+ * publicly LISTED (this), READABLE under a reader's entitlement (a reader-side figure: /api/user/library-overview) and FULL TEXT held here
+ * (`summary.readable`, always a subset of the listed ones).
  *
  * A record is filed under ONE department (a single `domain` string), so department counts plus Unassigned add up to the filtered total with
  * nothing counted twice. UNASSIGNED is no department, a blank one, or one the registry does not recognise; it is never folded into a department
@@ -53,6 +58,7 @@ export type ContentFilters = {
   domain?: string;
 };
 
+export type StatusFilter = '' | 'Published' | 'Draft' | 'Rejected' | 'Other';
 export type ContentSort = 'added' | 'oldest' | 'title';
 export const parseSort = (v: unknown): ContentSort => (v === 'oldest' || v === 'title' ? v : 'added');
 
@@ -67,7 +73,7 @@ function baseWhere(section: AdminSection, c: Collection): any {
   return section === 'Periodicals' ? { OR: [{ contentType: 'Periodicals' }, { contentType: null }] } : { contentType: section };
 }
 const draft = (c: Collection) => (c === 'archived' ? { status: { equals: 'Draft', mode: 'insensitive' } } : { status: 'Draft' });
-const publicOf = (c: Collection) => (c === 'archived' ? { NOT: { status: { equals: 'Draft', mode: 'insensitive' } } } : { status: 'Published' });
+const publicOf = (c: Collection) => (c === 'archived' ? legacyPublicWhere : { status: 'Published' });
 
 /** Prisma where for one section and collection. `withDomain: false` is what the department counts use: every other filter, no department. */
 export async function contentWhere(section: AdminSection, c: Collection, f: ContentFilters, spellings: Spellings, opts: { withDomain?: boolean } = {}): Promise<any> {
@@ -81,7 +87,10 @@ export async function contentWhere(section: AdminSection, c: Collection, f: Cont
     else if (section === 'Periodicals') fields.push('journalName', 'doi');
     and.push({ OR: fields.map(ci) });
   }
-  if (f.status) and.push(c === 'archived' ? { status: { equals: f.status, mode: 'insensitive' } } : { status: f.status });
+  if (f.status === 'Other') {
+    // Every status the table's own words do not name: a withheld one that is not draft/rejected, or one no rule recognises.
+    and.push(c === 'archived' ? { NOT: { status: { in: ['published', 'draft', 'rejected'], mode: 'insensitive' } } } : { status: { notIn: ['Published', 'Draft', 'Rejected'] } });
+  } else if (f.status) and.push(c === 'archived' ? { status: { equals: f.status, mode: 'insensitive' } } : { status: f.status });
   if (f.visibility === 'public') and.push(publicOf(c));
   if (opts.withDomain !== false && f.domain) {
     if (f.domain === NO_DEPARTMENT) {
@@ -113,7 +122,16 @@ export type SectionOverview = {
   departments: DepartmentCount[];
   unassigned: { total: number; public: number; blank: number; unrecognised: number; labels: { name: string; count: number }[] };
   /** The whole collection, no filter: what the cards show. */
-  summary: { total: number; public: number; draft: number; rejected: number; other: number; unassigned: number; readable: number | null };
+  summary: {
+    total: number; public: number; draft: number; rejected: number;
+    /** Not public and not draft/rejected: a withheld status (hidden, deleted, review …) or, in the New collection, a state this code does not know. */
+    other: number;
+    /** Archived only: listed publicly although the status is one no rule names (e.g. "Open Access"). Included in `public`. */
+    unrecognisedListed: number;
+    unassigned: number; readable: number | null;
+  };
+  /** Every status found in the collection, with how it is read — so nothing is hidden inside "other". */
+  statuses: { status: string; count: number; class: string; listed: boolean }[];
   /** Both collections side by side. `archived` is null for an account that may not list it. */
   collections: { new: { total: number; public: number }; archived: { total: number; public: number } | null };
   /** departments + unassigned: compare with the table's total. */
@@ -140,18 +158,34 @@ export async function sectionOverview(db: any, spellings: Spellings, section: Ad
   const otherModel = db[modelName(section, other)];
   const otherBase = baseWhere(section, other);
 
-  const [byDomain, publicByDomain, total, listed, drafts, rejected, readableN, counted, otherTotal, otherPublic] = await Promise.all([
+  // One pass over the status column classifies every record (so no state hides inside a count of "everything else"); the other collection only
+  // needs its two totals.
+  const [byDomain, publicByDomain, byStatus, readableN, counted, otherStatuses] = await Promise.all([
     model.groupBy({ by: ['domain'], where: facet, _count: { _all: true } }),
     model.groupBy({ by: ['domain'], where: publicFacet, _count: { _all: true } }),
-    model.count({ where: base }),
-    model.count({ where: { AND: [base, publicOf(c)] } }),
-    model.count({ where: { AND: [base, draft(c)] } }),
-    c === 'new' ? model.count({ where: { AND: [base, { status: 'Rejected' }] } }) : Promise.resolve(0),
+    model.groupBy({ by: ['status'], where: base, _count: { _all: true } }),
     readable ? model.count({ where: readable }) : Promise.resolve(null),
     model.count({ where: facet }),
-    otherModel.count({ where: otherBase }),
-    otherModel.count({ where: { AND: [otherBase, publicOf(other)] } }),
+    otherModel.groupBy({ by: ['status'], where: otherBase, _count: { _all: true } }),
   ]);
+  const tally = (coll: Collection, groups: { status: string; _count: { _all: number } }[]) => {
+    const t = { total: 0, public: 0, draft: 0, rejected: 0, other: 0, unrecognisedListed: 0 };
+    const statuses: SectionOverview['statuses'] = [];
+    for (const g of groups) {
+      const n = g._count._all, k = classifyStatus(coll, g.status), listedHere = isPubliclyListed(coll, g.status);
+      t.total += n;
+      if (listedHere) t.public += n;
+      if (k === 'draft') t.draft += n;
+      else if (k === 'rejected') t.rejected += n;
+      else if (!listedHere) t.other += n;
+      if (coll === 'archived' && listedHere && k === 'unrecognised') t.unrecognisedListed += n;
+      statuses.push({ status: g.status, count: n, class: k, listed: listedHere });
+    }
+    return { t, statuses: statuses.sort((a, b) => b.count - a.count) };
+  };
+  const mineT = tally(c, byStatus), otherT = tally(other, otherStatuses);
+  const total = mineT.t.total, listed = mineT.t.public, drafts = mineT.t.draft, rejected = mineT.t.rejected;
+  const otherTotal = otherT.t.total, otherPublic = otherT.t.public;
 
   const rows = new Map<string, DepartmentCount>(CANONICAL_NAMES.map(n => [n, { name: n, total: 0, public: 0 }]));
   const unassigned = { total: 0, public: 0, blank: 0, unrecognised: 0, labels: [] as { name: string; count: number }[] };
@@ -183,7 +217,8 @@ export async function sectionOverview(db: any, spellings: Spellings, section: Ad
   return {
     section, collection: c, unit: SECTION_LABELS[section].unit[c], generatedAt: new Date().toISOString(),
     departments, unassigned,
-    summary: { total, public: listed, draft: drafts, rejected, other: Math.max(0, total - listed - drafts - rejected), unassigned: unassignedAll, readable: readableN },
+    summary: { total, public: listed, draft: drafts, rejected, other: mineT.t.other, unrecognisedListed: mineT.t.unrecognisedListed, unassigned: unassignedAll, readable: readableN },
+    statuses: mineT.statuses,
     collections: c === 'new' ? { new: mine, archived: archivedVisible ? theirs : null } : { new: theirs, archived: mine },
     filteredTotal, filteredPublic, reconciles: filteredTotal === counted,
   };

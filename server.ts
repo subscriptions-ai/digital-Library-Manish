@@ -52,6 +52,7 @@ import { parseJournalPaging, queryJournalPage, publicScope, subjectSlugSql } fro
 import { COMPANY_DETAILS, currentIssuer } from "./src/config.js";
 import { discoveryFiltersFrom, discoveryAnd, andOnto, libraryView, libraryFacets, availabilityWhere } from "./src/lib/libraryQuery.js";
 import { availabilityOf } from "./src/lib/libraryAvailability.js";
+import { legacyPublicWhere, legacyPublicSql } from "./src/lib/publicStatus.js";
 import { contentWhere, contentOrderBy, sectionOverview, parseSort, isSection, type Collection } from "./src/lib/adminContent.js";
 import { cleanSubjectFacets } from "./src/lib/subjectFacets.js";
 
@@ -618,7 +619,7 @@ async function startServer() {
     // rows found under all those spellings are each counted once.
     const domains = scope ? await deptSpellings.expand(scope) : undefined;
     const inDomains = domains?.length ? { domain: { in: domains } } : {};
-    const live = { status: { not: "Draft" } };
+    const live = legacyPublicWhere;
 
     // Everything else on the archived shelf — theses, magazines, case reports,
     // proceedings, videos, newsletters. A reader opens those too, so a figure
@@ -681,7 +682,7 @@ async function startServer() {
                 count(*) filter (where c."contentType" = 'Books')::int,
                 count(*) filter (where c."contentType" not in ('Periodicals', 'Books'))::int
            from "Content" c
-          where c.status <> 'Draft' and c."domain" is not null ${f('c')}
+          where ${legacyPublicSql('c')} and c."domain" is not null ${f('c')}
           group by 1
        ) t
        group by 1
@@ -700,7 +701,7 @@ async function startServer() {
 
   app.get("/api/public/counts", async (req, res) => {
     try {
-      const live = { status: { not: "Draft" } };
+      const live = legacyPublicWhere;
       const pub = { status: "Published" };
 
       const [counts, articles, newBooks, theses, legacyTotal] = await Promise.all([
@@ -758,7 +759,7 @@ async function startServer() {
       const [legacy, articles, books] = await Promise.all([
         prisma.content.groupBy({
           by: ['domain'],
-          where: { status: { not: 'Draft' }, domain: { not: null } },
+          where: { ...legacyPublicWhere, domain: { not: null } },
           _count: { id: true },
         }),
         (prisma as any).article.groupBy({
@@ -4347,7 +4348,7 @@ async function startServer() {
   // from is recorded on the row rather than enforced by a foreign key.
   // Only something a reader can open can be saved: a draft, or an id that exists nowhere, is "no longer exists".
   const favouriteKindOf = async (id: string): Promise<'Content' | 'Article' | 'Book' | null> => {
-    if (await prisma.content.count({ where: { id, status: { not: 'Draft' } } })) return 'Content';
+    if (await prisma.content.count({ where: { id, ...legacyPublicWhere } })) return 'Content';
     if (await (prisma as any).article.count({ where: { id, status: 'Published' } })) return 'Article';
     if (await (prisma as any).book.count({ where: { id, status: 'Published' } })) return 'Book';
     return null;
@@ -4733,7 +4734,7 @@ async function startServer() {
            from "Book" b where b.status = 'Published' and b."domain" is not null group by 1,2,3`), // listed = Published: the same test as publicBookSql in src/lib/publicBooks.ts
       q(`select c."domain" d, c."contentType" t,
                 case when c."fileUrl" is not null and c."validationStatus" = 'VALID_VIEWABLE' then 'readable' else 'metadata' end k, count(*)::int n
-           from "Content" c where c.status <> 'Draft' and c."domain" is not null group by 1,2,3`),
+           from "Content" c where ${legacyPublicSql('c')} and c."domain" is not null group by 1,2,3`),
     ]);
     const rows = [
       ...arts.map(r => ({ domain: r.d, contentType: r.t, collection: 'new' as const, availability: r.k, n: r.n })),
@@ -4844,7 +4845,7 @@ async function startServer() {
       let legacyDepts: string[] = []; let legacyTypes: string[] = [];
       const entSpellings = isAdmin ? [] : await deptSpellings.expand(ent.departments);
       if (isAdmin || scopeDomains.size) {
-        const legacyWhere: any = { status: { not: 'Draft' } };
+        const legacyWhere: any = { ...legacyPublicWhere };
         if (!isAdmin) {
           legacyWhere.domain = { in: entSpellings };
           if (subOr.length && !subOr.some(c => !c.contentType)) legacyWhere.AND = [{ OR: subOr }];
@@ -4870,7 +4871,7 @@ async function startServer() {
 
       // ARCHIVED — all published legacy content (browse the whole archive)
       // The archive is browsed within the account's departments too: its filters never list a department the account does not hold.
-      const archivedWhere: any = { status: { not: 'Draft' }, ...(isAdmin ? {} : { domain: { in: entSpellings } }) };
+      const archivedWhere: any = { ...legacyPublicWhere, ...(isAdmin ? {} : { domain: { in: entSpellings } }) };
       const [adg, acg] = await Promise.all([
         prisma.content.groupBy({ by: ['domain'], where: archivedWhere }),
         prisma.content.groupBy({ by: ['contentType'], where: archivedWhere }),
@@ -4900,7 +4901,8 @@ async function startServer() {
   app.get("/api/content/filters", async (req: any, res) => {
     try {
       const { domain, subjectArea, contentType, search } = req.query;
-      const where: any = { status: "Published" };
+      // The same records the list shows (src/lib/publicStatus.ts); an exact "Published" left out the lower-case rows and the unrecognised-status ones the list includes.
+      const where: any = { ...legacyPublicWhere };
       if (domain) {
         const domainList = String(domain).split(',').map(d => d.trim()).filter(Boolean);
         // A department is every spelling of it the catalogue holds.
@@ -4992,7 +4994,7 @@ async function startServer() {
       const take = parseInt(limit as string);
 
       // Build prisma WHERE clause
-      const where: any = { status: { not: "Draft" } };
+      const where: any = { ...legacyPublicWhere };
       // domain may be a single value or a comma-joined list ("All Subscribed Domains")
       if (domain) {
         const doms = String(domain).split(',').map(s => s.trim()).filter(Boolean);
@@ -5242,7 +5244,7 @@ async function startServer() {
   };
 
   const resolveViewable = async (id: string, isAdmin: boolean) => {
-    const c = await prisma.content.findFirst({ where: isAdmin ? { id } : { id, status: { not: 'Draft' } } });
+    const c = await prisma.content.findFirst({ where: isAdmin ? { id } : { id, ...legacyPublicWhere } });
     if (c) return { kind: 'content' as const, item: c, fileUrl: c.fileUrl, title: c.title, contentType: c.contentType, accessType: c.accessType, status: c.status };
     const a = await (prisma as any).article.findFirst({ where: isAdmin ? { id } : { id, status: 'Published' } });
     if (a) return { kind: 'article' as const, item: a, fileUrl: a.pdfUrl, title: a.title, contentType: a.contentType || 'Periodicals', accessType: a.accessType || 'OpenAccess', status: a.status };
@@ -7555,7 +7557,7 @@ async function startServer() {
         // Published alone made this page's shelves smaller than the library's.
         prisma.content.groupBy({
           by: ['contentType'],
-          where: { domain: { in: spelled }, status: { not: 'Draft' } },
+          where: { domain: { in: spelled }, ...legacyPublicWhere },
           _count: { id: true },
           orderBy: { contentType: 'asc' },
         }),
@@ -10909,7 +10911,7 @@ async function startServer() {
   app.get("/api/library/content/:id", authenticateJWT, async (req: any, res: any) => {
     try {
       const c = await prisma.content.findFirst({
-        where: { id: req.params.id, status: { not: 'Draft' } },
+        where: { id: req.params.id, ...legacyPublicWhere },
         select: {
           id: true, title: true, description: true, authors: true, domain: true,
           contentType: true, subjectArea: true, tags: true, views: true,
@@ -10929,7 +10931,7 @@ async function startServer() {
       const related = await prisma.content.findMany({
         where: {
           id: { not: c.id },
-          status: { not: 'Draft' },
+          ...legacyPublicWhere,
           domain: c.domain || undefined,
           contentType: c.contentType,
         },
@@ -11543,7 +11545,7 @@ async function startServer() {
         collectionCounts(),
         (prisma as any).$queryRawUnsafe(
           `select "contentType" as type, count(*)::int as n from "Content"
-           where status <> 'Draft' and "contentType" not in ('Periodicals', 'Books')
+           where ${legacyPublicSql('"Content"')} and "contentType" not in ('Periodicals', 'Books')
            group by 1 order by 2 desc`),
         (prisma as any).$queryRawUnsafe(
           `select coalesce("accessStatus", 'MetadataOnly') as s, count(*)::int as n from (

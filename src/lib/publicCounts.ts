@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { publicJournalCount } from './publicJournals';
+import { legacyPublicWhere } from './publicStatus';
 
 /**
  * Counts by content kind, for the library's headline row and the AI
@@ -14,7 +15,7 @@ export async function contentTypeCounts(prisma: PrismaClient): Promise<Record<st
   const [legacy, articles, newBooks, journals] = await Promise.all([
     prisma.content.groupBy({
       by: ['contentType'],
-      where: { status: { not: 'Draft' } },
+      where: legacyPublicWhere,
       _count: { id: true },
     }),
     (prisma as any).article.count({ where: { status: 'Published' } }),

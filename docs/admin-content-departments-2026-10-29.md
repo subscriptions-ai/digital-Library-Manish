@@ -37,9 +37,15 @@ New: `src/lib/adminContent.ts`, `src/lib/adminContentUrl.ts`, `src/lib/useModalF
 
 The reported counter was not taken as a cause. In the browser every section was opened at 1085px and the app's console errors and failed requests were recorded: none from the application. The only failing request in development is Vite's hot-reload socket (`:24678`, refused), which does not exist in a production build. The real defect found in this area was different: the section counts were fetched with `.catch(() => 0)`, so a refused request showed as an empty collection.
 
+## Integration with the Books release (status 2026-10-29)
+
+`origin/main` (`9603179`, the deployed commit) already contains the Books-count release: `publicBooks.ts`, `adminBooks.ts`, `BooksOverview.tsx` and its own `ContentListView.tsx`. This branch (`feat/email-due-users-overlap`) does not contain it, and merging the two conflicts in `server.ts` and `ContentListView.tsx` (checked with a dry-run merge). Two pages cannot both own `/admin/books`; **which one survives is a product decision that has not been taken here.**
+
+Evidence for the decision: on the same dataset (local QA copy) the Books-only overview (`booksOverview`) and the generic one (`sectionOverview` for Books) return identical department totals and public counts, Unassigned, card figures and filtered totals for both collections and for no filter, a text search and a status filter (6 combinations, identical); the Books suite (`test-books-overview`, 41 checks) still passes against this branch. The Books session has built an integration branch off `origin/main` (`integrate/books-admin-2026-10-29`) in which the generic page replaces its own, `publicStatus.ts` is the single legacy rule across public counters, lists, item gates and search, and `publicBooks.ts` uses it. With this task's final versions of `ContentListView.tsx`, `ContentOverview.tsx` and `test-admin-content.ts` copied onto that branch (all files tracked; nothing untracked), `tsc` is clean, the production build succeeds, `test-admin-content` passes 497/497 and `test-public-books` 20/20. This branch's own commit builds on `HEAD` alone (`tsc` clean in a clean worktree).
+
 ## Remaining issues
 
-* `BooksOverview.tsx`, `adminBooks.ts` and the `/api/admin/library/books/overview` route (another session's uncommitted work) are no longer used by the page; the generic code does the same job for Books. They can be removed once that session has committed.
+* On `origin/main`, `BooksOverview.tsx` / `adminBooks.ts` / the `/api/admin/library/books/overview` route exist (the Books release); on this branch they do not. If the generic page is chosen, the integration branch already deletes them.
 * `Article.domain` values such as "Engineering" are not in the registry, so they count as Unassigned (1,596 locally in new Periodicals). Deciding where they belong is a data decision, not made here.
 * The department panel appears from 1400px because the admin sidebar takes 256px; the threshold is `DEPARTMENT_PANEL_MIN_WIDTH`.
 * Production figures were not looked at and must not be compared with local fixture counts.

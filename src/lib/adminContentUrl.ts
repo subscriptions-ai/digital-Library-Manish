@@ -7,7 +7,7 @@ import { NO_DEPARTMENT, type Collection, type ContentSort } from './adminContent
  *
  *   collection  new | archived   (absent = the reader has not chosen; the page then opens the New collection and never switches on its own)
  *   q           search text
- *   status      Published | Draft | Rejected
+ *   status      Published | Draft | Rejected | Other   (Other = a status none of the first three names)
  *   visibility  public           (absent = every record)
  *   domain      a department name, or "__none" for Unassigned
  *   sort        added | oldest | title
@@ -17,7 +17,7 @@ import { NO_DEPARTMENT, type Collection, type ContentSort } from './adminContent
 export type AdminListState = {
   collection: Collection | '';
   q: string;
-  status: '' | 'Published' | 'Draft' | 'Rejected';
+  status: '' | 'Published' | 'Draft' | 'Rejected' | 'Other';
   visibility: '' | 'public';
   domain: string;
   sort: ContentSort;
@@ -36,7 +36,7 @@ export function parseAdminList(sp: URLSearchParams): AdminListState {
   return {
     collection: c === 'archived' || c === 'new' ? c : '',
     q: clean(sp.get('q'), 200),
-    status: st === 'Published' || st === 'Draft' || st === 'Rejected' ? st : '',
+    status: st === 'Published' || st === 'Draft' || st === 'Rejected' || st === 'Other' ? st : '',
     visibility: sp.get('visibility') === 'public' ? 'public' : '',
     domain: sp.get('domain') === NO_DEPARTMENT ? NO_DEPARTMENT : clean(sp.get('domain'), 120),
     sort: sort === 'oldest' || sort === 'title' ? sort : 'added',

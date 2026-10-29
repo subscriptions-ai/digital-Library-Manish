@@ -68,6 +68,12 @@ export function SectionSummary({ state, section, collection }: { state: Overview
           </div>
         ))}
       </div>
+      {!failed && s && (s.unrecognisedListed > 0 || s.other > 0) && (
+        <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-[11.5px] leading-snug text-amber-900" role="note">
+          {s.unrecognisedListed > 0 && <>{n(s.unrecognisedListed)} {L.plural} carry a status no rule recognises ({(state.data?.statuses || []).filter(x => x.class === 'unrecognised').map(x => `“${x.status}” ${n(x.count)}`).join(', ')}). The public catalogue lists them because it only withholds known non-public states, so they are counted as public here and kept apart from Published. Nothing was changed; whether they should be Published is for their owners to decide. </>}
+          {s.other > 0 && <>{n(s.other)} are in some other non-public state (see the “Other status” filter). </>}
+        </p>
+      )}
       <p className="mt-2 text-[11.5px] text-slate-500">
         {failed ? (
           <span role="alert">Could not load the summary. <button type="button" onClick={state.retry} className="font-bold underline">Retry</button></span>
@@ -154,7 +160,7 @@ export function DepartmentFacet({ state, domain, onPick, visibility, section, co
             <span>All departments</span><span className="tabular-nums">{n(allCount)}</span>
           </button>
           {departments.map(d => row(d.name, d.name, count(d)))}
-          {un && row(NO_DEPARTMENT, 'Unassigned / unclassified', count(un), {
+          {un && row(NO_DEPARTMENT, 'Unassigned or unrecognised department', count(un), {
             italic: true,
             title: un.unrecognised ? `${n(un.blank)} with no department, ${n(un.unrecognised)} filed under a name that is not in the department list` : `${L.plural} with no department`,
           })}

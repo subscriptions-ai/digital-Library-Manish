@@ -14,6 +14,7 @@ import jwt from 'jsonwebtoken';
 import { ADMIN_SECTIONS, SECTION_LABELS, NO_DEPARTMENT, isSection, parseSort, type AdminSection, type Collection } from '../src/lib/adminContent.js';
 import { parseAdminList, toAdminParams, applyAdminPatch, DEFAULT_ADMIN_LIST, isNarrowed } from '../src/lib/adminContentUrl.js';
 import { CANONICAL_NAMES } from '../src/lib/departmentRegistry.js';
+import { classifyStatus, isPubliclyListed, legacyPublicSql, WITHHELD_STATUSES } from '../src/lib/publicStatus.js';
 import { CONTENT_TYPES } from '../src/constants.js';
 
 const env = readFileSync(new URL('../.env', import.meta.url), 'utf8');
@@ -33,6 +34,18 @@ section('1a. The sections and what one record is');
   check('"Add Thesis", not "Add These"', SECTION_LABELS.Theses.singular === 'Thesis' && SECTION_LABELS['Case Reports'].singular === 'Case Report');
   check('only the library\'s own sections are accepted', isSection('Magazines') && !isSection('Journals') && !isSection(undefined) && !isSection('books'));
   check('sort is whitelisted', parseSort('title') === 'title' && parseSort('oldest') === 'oldest' && parseSort('DROP TABLE') === 'added');
+}
+section('1a2. What a status means (src/lib/publicStatus.ts)');
+{
+  const A = (x: string) => classifyStatus('archived', x);
+  check('Published in any case is published; Draft in any case is draft', A('Published') === 'published' && A('published') === 'published' && A(' PUBLISHED ') === 'published' && A('DRAFT') === 'draft' && A('draft') === 'draft');
+  check('hidden, deleted, rejected, review, withdrawn … are withheld, not public', ['Hidden', 'DELETED', 'Rejected', 'Pending', 'In Review', 'needs review', 'Unpublished', 'Withdrawn', 'Archived', 'Takedown'].every(x => !isPubliclyListed('archived', x)));
+  check('the archived rule never lists a withheld state, in any case', (WITHHELD_STATUSES as readonly string[]).every(x => !isPubliclyListed('archived', x) && !isPubliclyListed('archived', x.toUpperCase())));
+  check('an unrecognised status ("Open Access") is classed as such, and stays listed as the public catalogue lists it today', A('Open Access') === 'unrecognised' && isPubliclyListed('archived', 'Open Access'));
+  check('lower-case published is listed', isPubliclyListed('archived', 'published'));
+  check('the New collection lists ONLY an explicit Published', isPubliclyListed('new', 'Published') && !isPubliclyListed('new', 'published') && !isPubliclyListed('new', 'Open Access') && !isPubliclyListed('new', 'Draft') && !isPubliclyListed('new', 'Rejected') && !isPubliclyListed('new', 'whatever'));
+  check('a missing status is not listed in New and is unrecognised in Archived', !isPubliclyListed('new', null) && classifyStatus('archived', null) === 'unrecognised');
+  check('the SQL twin names the same states', (WITHHELD_STATUSES as readonly string[]).every(x => legacyPublicSql('c').includes(`'${x}'`)));
 }
 section('1b. The address of a table');
 {
@@ -80,7 +93,12 @@ const FX = (c: Collection): Fx[] => [
   { domain: null, status: 'Published' },
   { domain: '', status: 'Draft' },
   { domain: 'Engineering', status: c === 'archived' ? 'published' : 'Published' },   // not a department of the registry; archived rows carry a lower-case status
-  ...(c === 'new' ? [{ domain: 'Law', status: 'Rejected' }] : []),
+  ...(c === 'new' ? [{ domain: 'Law', status: 'Rejected' }] : [
+    // the states the archived table can hold besides its own two words
+    { domain: 'Law', status: 'Open Access' },   // recognised by no rule — listed today, reported apart
+    { domain: 'Nursing', status: 'Hidden' },    // withheld: must never be public
+    { domain: 'Law', status: 'DRAFT' },         // a draft in capitals
+  ]),
 ];
 const journal = await (db as any).journal.create({ data: { title: `Journal ${TAG}`, issn: `9${RUN.slice(-3).padStart(3, '0')}-0000`, status: 'Accepted' } }).catch(() => null);
 if (journal) made.journals.push(journal.id);
@@ -135,7 +153,8 @@ try {
     for (const c of ['new', 'archived'] as Collection[]) {
       section(`2. ${sec} · ${c === 'new' ? 'New' : 'Archived'} collection`);
       const fx = expected[`${sec}|${c}`];
-      const isPublic = (f: Fx) => (c === 'new' ? f.status === 'Published' : f.status.toLowerCase() !== 'draft');
+      // Worked out here, not by the code under test: new = exactly Published; archived = not one of the withheld words.
+      const isPublic = (f: Fx) => (c === 'new' ? f.status === 'Published' : !['draft', 'rejected', 'hidden', 'deleted', 'pending', 'review', 'withdrawn', 'unpublished', 'archived'].includes(f.status.toLowerCase()));
       const ov = (await get(ovUrl(sec, c))).data;
       check('the overview answers for this section and collection', ov?.section === sec && ov?.collection === c && !!ov.generatedAt, ov?.error);
       check('says what one record is', ov.unit === SECTION_LABELS[sec].unit[c], ov.unit);
@@ -148,6 +167,9 @@ try {
       check('the unrecognised name is listed so someone can decide', ov.unassigned.labels.some((l: any) => l.name === 'Engineering'));
       check('departments + Unassigned = the filtered total = the table total', ov.filteredTotal === fx.length && ov.reconciles === true && (await get(listUrl(sec, c))).data.total === fx.length, [ov.filteredTotal, fx.length]);
       check('…and for public only', ov.filteredPublic === fx.filter(isPublic).length && (await get(listUrl(sec, c, '&visibility=public'))).data.total === fx.filter(isPublic).length);
+      // Choosing a department narrows the TABLE, never the department list: the overview does not take a department at all.
+      const withDept = (await get(ovUrl(sec, c, '&domain=Law'))).data;
+      check('choosing a department does not change any department count or hide any department', JSON.stringify(withDept.departments) === JSON.stringify(ov.departments) && withDept.unassigned.total === ov.unassigned.total);
       // clicking a department filters the table to exactly that count
       const nur = await get(listUrl(sec, c, '&domain=Nursing'));
       check('Nursing: the table shows exactly its count', nur.data.total === want('Nursing').length && nur.data.data.every((r: any) => r.domain === 'Nursing'));
@@ -156,9 +178,19 @@ try {
       check('Nursing + public only', (await get(listUrl(sec, c, '&domain=Nursing&visibility=public'))).data.total === want('Nursing').filter(isPublic).length);
       // counts follow the other filters, and the other departments stay discoverable
       const dr = (await get(ovUrl(sec, c, '&status=Draft'))).data;
-      const draftN = fx.filter(f => f.status === 'Draft').length;
+      const draftN = fx.filter(f => f.status.toLowerCase() === 'draft' && (c === 'archived' || f.status === 'Draft')).length;
       check('status=Draft: counts follow it, every department stays listed', dr.filteredTotal === draftN && dr.departments.length === CANONICAL_NAMES.length && (await get(listUrl(sec, c, '&status=Draft'))).data.total === draftN);
       check('status=Published matches the lower-case archived rows too', (await get(listUrl(sec, c, '&status=Published'))).data.total === fx.filter(f => f.status.toLowerCase() === 'published').length);
+      if (c === 'archived') {
+        // The reader-facing list and the admin's "public" must be the same set (a withheld state is never public; the unrecognised one is, and is reported).
+        const reader = await get(`/api/content/list?contentType=${encodeURIComponent(sec)}&search=${TAG}&limit=100`, null);
+        check('the public list (a visitor) shows exactly the records the admin counts as public', reader.data.total === fx.filter(isPublic).length && !reader.data.data.some((r: any) => String(r.status).toLowerCase() === 'hidden'), [reader.data.total, fx.filter(isPublic).length]);
+        check('"Other status" finds the hidden and the unrecognised one, and nothing else', (await get(listUrl(sec, c, '&status=Other'))).data.total === 2);
+        check('the overview reports the unrecognised-but-listed record apart from Published', ov.summary.unrecognisedListed === 1 && ov.statuses.some((x: any) => x.status === 'Open Access' && x.class === 'unrecognised' && x.listed === true), ov.summary);
+        check('the hidden record is counted as "other" and is not public', ov.summary.other === 1 && ov.statuses.some((x: any) => x.status === 'Hidden' && x.listed === false));
+      } else {
+        check('New: "Other status" is empty and nothing unrecognised is listed', (await get(listUrl(sec, c, '&status=Other'))).data.total === 0 && ov.summary.unrecognisedListed === 0);
+      }
       const found = (await get(`${c === 'archived' ? '/api/admin/content' : '/api/admin/library/items'}?contentType=${encodeURIComponent(sec)}&search=${encodeURIComponent(TAG + ' ' + sec + ' ' + c + ' #')}&limit=100`)).data;
       check('search finds the section\'s own rows only', found.total === fx.length);
       // sort + paging
@@ -173,6 +205,10 @@ try {
       const baseWhere = c === 'archived' ? { contentType: sec } : sec === 'Books' ? {} : sec === 'Periodicals' ? { OR: [{ contentType: 'Periodicals' }, { contentType: null }] } : { contentType: sec };
       const wholeOv = (await get(`/api/admin/library/overview?contentType=${encodeURIComponent(sec)}&collection=${c}`)).data;
       const [rawTotal, rawDraft] = [await model.count({ where: baseWhere }), await model.count({ where: { AND: [baseWhere, c === 'archived' ? { status: { equals: 'Draft', mode: 'insensitive' } } : { status: 'Draft' }] } })];
+      // The tiers: public ⊂ total, full text here ⊂ public; and every status found is accounted for.
+      const sumSt = wholeOv.statuses.reduce((n: number, x: any) => n + x.count, 0);
+      check('every status in the collection is listed with how it is read, and they add up to the total', sumSt === wholeOv.summary.total, [sumSt, wholeOv.summary.total]);
+      check('listed ⊆ total and full text here ⊆ listed', wholeOv.summary.public <= wholeOv.summary.total && (wholeOv.summary.readable === null || wholeOv.summary.readable <= wholeOv.summary.public), wholeOv.summary);
       check('cards: total and draft equal an independent count', wholeOv.summary.total === rawTotal && wholeOv.summary.draft === rawDraft, [wholeOv.summary, rawTotal, rawDraft]);
       check('cards: total = departments + Unassigned (no filter)', wholeOv.filteredTotal === rawTotal && wholeOv.reconciles);
       check('cards: public + draft + rejected + other = total', wholeOv.summary.public + wholeOv.summary.draft + wholeOv.summary.rejected + wholeOv.summary.other === wholeOv.summary.total);
