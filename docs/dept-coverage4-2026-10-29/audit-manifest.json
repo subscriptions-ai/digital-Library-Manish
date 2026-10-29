@@ -7,7 +7,9 @@
  "frozenManifest": {
   "file": "manifest-frozen.json",
   "sha256": "c5fc33cfb29f96c6b998695b09fd4345d76c34172ffc92eb3b39536e6428e2eb",
-  "candidates": 18
+  "candidates": 18,
+  "sha256AfterRedaction": "9dab05017caf1c55a1ef0afd88dfba940b1807551d231a9aa5583abc12b4a235",
+  "redactionLog": "docs/dept-coverage6-2026-10-29/redaction-log.json"
  },
  "planChecksums": {
   "plan-canary.json": "85a12cd1c0b15cbf1fa95b88dbd62d149f2c5f54b4cad10ebb1a90fa950940e9",

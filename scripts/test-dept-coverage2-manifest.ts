@@ -35,7 +35,8 @@ check('publication evidence is lineage-aware: direct Crossref deposits, or OpenA
 check('the hand holds are all recorded with a reason', json('hand-holds.json').every((h: any) => h.reason && h.title));
 if (existsSync(`${dir}/audit-manifest.json`)) {
   const audit = json('audit-manifest.json');
-  check('the manifest checksum in the audit manifest matches the bytes on disk', createHash('sha256').update(read('manifest-frozen.json')).digest('hex') === audit.frozenManifest.sha256);
+  const mfHash = createHash('sha256').update(read('manifest-frozen.json')).digest('hex');
+  check('the manifest checksum in the audit manifest matches the bytes on disk (or the recorded post-redaction checksum)', mfHash === audit.frozenManifest.sha256 || mfHash === audit.frozenManifest.sha256AfterRedaction);
   const ins = audit.inserted;
   check('the inserted ids are unique, equal the frozen count, canary first', new Set(ins.ids).size === ins.ids.length && ins.ids.length === rows.length && ins.canaryIds.length === canary.rows.length && ins.restIds.length === rest.rows.length && ins.ids.slice(0, ins.canaryIds.length).every((i: string, k: number) => i === ins.canaryIds[k]));
   check('the rollback is bound to the exact id list, not to a label alone, and was not executed', /id = ANY\s*\(/.test(audit.rollback.sql) && /NOT EXISTS/.test(audit.rollback.sql) && /RETURNING/.test(audit.rollback.sql) && audit.rollback.executed === false);

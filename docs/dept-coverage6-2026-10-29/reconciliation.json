@@ -1,0 +1,103 @@
+{
+ "catalogueAt": "2026-10-29T08:05:12.079Z",
+ "allRecordTotals": {
+  "allJournals": 54902,
+  "status": {
+   "NeedsReview": 25607,
+   "MetadataOnly": 16455,
+   "Accepted": 12840
+  }
+ },
+ "departments": {
+  "Bio Technology": {
+   "total": 778,
+   "public": 443,
+   "publicWithPublishedArticles": 272,
+   "needsReview": 335
+  },
+  "Electrical Engineering": {
+   "total": 572,
+   "public": 357,
+   "publicWithPublishedArticles": 153,
+   "needsReview": 215
+  },
+  "Electronics & Telecommunication Engineering": {
+   "total": 510,
+   "public": 218,
+   "publicWithPublishedArticles": 51,
+   "needsReview": 292
+  }
+ },
+ "cumulativeAdditions": {
+  "rounds": {
+   "dept-coverage2": 71,
+   "dept-coverage3": 4,
+   "dept-coverage4": 18,
+   "dept-coverage5": 2,
+   "dept-coverage6": 0
+  },
+  "verifiedPresentInProduction": 95,
+  "ceiling": 2000,
+  "remainingAllowance": 1905
+ },
+ "candidatePool(round5 final, unchanged by round 6)": {
+  "netNew": 50389,
+  "outOfScope": 47695,
+  "heldInScope": 2678,
+  "eligible": 16,
+  "inserted": 2,
+  "manualHold": 14
+ },
+ "holdTaxonomy": {
+  "rejected (confirmed non-journal/ceased/invalid ISSN)": 267,
+  "rejected (department not supported by rule, or non-Latin title)": 651,
+  "unresolved: identity": 35,
+  "unresolved: publication evidence": 283,
+  "unresolved: one kind of department evidence": 1442,
+  "manual hold": 14,
+  "sum": 2692
+ },
+ "singleEvidencePool": {
+  "total": 1442,
+  "mutuallyExclusiveCategories": {
+   "readable site, no department phrase": 413,
+   "site unreachable": 339,
+   "robots.txt disallows (incl. redirect destination)": 250,
+   "no homepage found": 199,
+   "readable site, 1-2 department phrases (ambiguous)": 181,
+   "readable site, phrases present but not strong enough (neighbouring department also named, or no clear lead)": 38,
+   "readable site, another department leads (contradicted)": 22
+  },
+  "sum": 1442,
+  "byDepartment": {
+   "Bio Technology": 331,
+   "Electrical Engineering": 700,
+   "Electronics & Telecommunication Engineering": 411
+  },
+  "note": "the previous report listed only the first four categories (1,201) beside the three readable ones; all seven are one partition of the 1,442. \"About 1,440\" is this number."
+ },
+ "springerPages": {
+  "candidates": 230,
+  "partition": {
+   "listed homepage unreadable, re-pointed to the official Springer/Nature journal page": 201,
+   "listing already pointed at a Springer/Nature page": 22,
+   "entered the candidate set after the vocabulary update (read in the later 35-page pass)": 7
+  },
+  "dispositionOfTheSame230": {
+   "lacked scope (no department phrase on the landing page)": 157,
+   "ambiguous (1-2 phrases)": 63,
+   "scope confirmed (3+ phrases, clear lead)": 8,
+   "contradicted (another target department leads)": 2,
+   "sum": 230
+  },
+  "overlap": "the two partitions are two views of the same 230 candidates: membership (by how the page was reached) and disposition (what the page said). They are independent, not additive. The \"201\" in the earlier text was the first partition only. Page text was discarded in the robots incident, so a cross-tabulation cannot be recomputed.",
+  "afterPurge": "all evidence from link.springer.com discarded; aims-and-scope pages disallowed (226 of 229 skipped)"
+ },
+ "shortlist": {
+  "file": "manual-review-shortlist.csv",
+  "journals": 105,
+  "Electrical Engineering": 80,
+  "Electronics & Telecommunication Engineering": 25,
+  "Bio Technology": 0
+ }
+}

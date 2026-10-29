@@ -18,23 +18,41 @@ PH={
 PHR={d:re.compile(r'\b(?:'+p+r')\b',re.I) for d,p in PH.items()}
 CEASE=re.compile(r'(ceased publication|no longer (published|accepting)|has been discontinued|publication (has )?(stopped|suspended)|journal (is )?(closed|archived)|archived journal)',re.I)
 LINK=re.compile(r'<a\b[^>]*href=["\']([^"\']+)["\'][^>]*>(.*?)</a>',re.I|re.S)
+POLITE=float(os.environ.get('STM_POLITE_SECONDS','1.0'))
 robots={}; rl=threading.Lock(); last={}; ll=threading.Lock()
 def polite(host):
     with ll:
-        t=time.time(); w=last.get(host,0)+1.0-t; last[host]=max(t,last.get(host,0)+1.0)
+        t=time.time(); w=last.get(host,0)+POLITE-t; last[host]=max(t,last.get(host,0)+POLITE)
     if w>0: time.sleep(w)
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self,req,fp,code,msg,headers,newurl): return None      # redirects are followed by hand so that EVERY hop is checked against robots.txt first
+_opener=urllib.request.build_opener(_NoRedirect())
+MAX_HOPS=5
+_tl=threading.local()
+def get_ex(url,limit=400_000):
+    """Fetch one page, following redirects by hand. Before EVERY request (the first one and each redirect target, on any host or path) robots.txt is consulted; a disallowed URL is never
+    requested and no content is returned. At most MAX_HOPS redirects. -> {status, html, final, chain, reason}"""
+    chain=[url]; cur=url
+    for hop in range(MAX_HOPS+1):
+        if not allowed(cur): return {'status':0,'html':None,'final':cur,'chain':chain,'reason':'robots-disallowed' if hop==0 else 'robots-disallowed (redirect destination)'}
+        polite(urllib.parse.urlparse(cur).netloc)
+        req=urllib.request.Request(cur,headers={'User-Agent':UA,'Accept':'text/html,application/xhtml+xml'})
+        try:
+            r=_opener.open(req,timeout=15)
+        except urllib.error.HTTPError as e:
+            loc=e.headers.get('Location') if e.headers else None
+            if e.code in (301,302,303,307,308) and loc:
+                nxt=urllib.parse.urljoin(cur,loc)
+                if not nxt.lower().startswith(('http://','https://')): return {'status':e.code,'html':None,'final':cur,'chain':chain,'reason':'redirect to a non-http URL'}
+                chain.append(nxt); cur=nxt; continue
+            return {'status':e.code,'html':None,'final':cur,'chain':chain,'reason':f'http {e.code}'}
+        except Exception: return {'status':0,'html':None,'final':cur,'chain':chain,'reason':'unreachable'}
+        ct=r.headers.get('Content-Type','')
+        if 'html' not in ct.lower() and 'xml' not in ct.lower(): return {'status':r.status,'html':None,'final':cur,'chain':chain,'reason':'not html'}
+        return {'status':r.status,'html':r.read(limit).decode(r.headers.get_content_charset() or 'utf-8','replace'),'final':cur,'chain':chain,'reason':'ok'}
+    return {'status':0,'html':None,'final':cur,'chain':chain,'reason':f'more than {MAX_HOPS} redirects'}
 def get(url,limit=400_000):
-    polite(urllib.parse.urlparse(url).netloc)
-    req=urllib.request.Request(url,headers={'User-Agent':UA,'Accept':'text/html,application/xhtml+xml'})
-    try:
-        r=urllib.request.urlopen(req,timeout=15); ct=r.headers.get('Content-Type','')
-        if 'html' not in ct.lower() and 'xml' not in ct.lower(): return r.status,None,url
-        final=r.geturl()
-        # a redirect may lead to another host whose robots.txt forbids automated access: the destination is checked too, and its content is discarded if disallowed
-        if urllib.parse.urlparse(final).netloc!=urllib.parse.urlparse(url).netloc and not allowed(final): return 0,None,final
-        return r.status,r.read(limit).decode(r.headers.get_content_charset() or 'utf-8','replace'),final
-    except urllib.error.HTTPError as e: return e.code,None,url
-    except Exception as e: return 0,None,url
+    x=get_ex(url,limit); _tl.last=x; return x['status'],x['html'],x['final']
 def allowed(url):
     p=urllib.parse.urlparse(url); host=p.scheme+'://'+p.netloc
     with rl:
@@ -57,9 +75,9 @@ def one(rec):
     if not url or not url.startswith('http'): out['status']='no homepage'; return rec['key'],out
     try:
         if not allowed(url): out['status']='robots-disallowed'; return rec['key'],out
-        st,h,final=get(url)
-        if h is None: out['status']=f'unreachable ({st})'; return rec['key'],out
-        texts=[text_of(h)]; out['pages'].append({'url':final,'status':st,'at':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'sha256':hashlib.sha256(texts[0].encode()).hexdigest()})
+        x=get_ex(url); st,h,final=x['status'],x['html'],x['final']
+        if h is None: out['status']=x['reason'] if x['reason'].startswith('robots-disallowed') else f'unreachable ({st})'; out['chain']=x['chain']; return rec['key'],out
+        texts=[text_of(h)]; out['pages'].append({'url':final,'status':st,'at':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'sha256':hashlib.sha256(texts[0].encode()).hexdigest(),'chain':x['chain'] if len(x['chain'])>1 else None})
         host=urllib.parse.urlparse(final).netloc; seen={final}; more=[]
         for href,label in LINK.findall(h):
             lab=re.sub(r'<[^>]+>','',label)

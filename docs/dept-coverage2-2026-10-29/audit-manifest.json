@@ -10,7 +10,9 @@
   "file": "manifest-frozen.json",
   "sha256": "fbba9dab9b3ce827571e9cd20a9a1cb55f723df33ddfa87ac7f1291902ebfb4f",
   "candidates": 71,
-  "sha256Note": "sha256 of manifest-frozen.json AFTER NUL/control characters were stripped from evidence strings following the canary audit failure; the sha256 before that is in resave-note.json (no journal field differs)"
+  "sha256Note": "sha256 of manifest-frozen.json AFTER NUL/control characters were stripped from evidence strings following the canary audit failure; the sha256 before that is in resave-note.json (no journal field differs)",
+  "sha256AfterRedaction": "7c0973f77fb2566b9e2e7ecc8823df1de17dbdf5f966727a8b4217bfbc94ba66",
+  "redactionLog": "docs/dept-coverage6-2026-10-29/redaction-log.json"
  },
  "planChecksums": {
   "plan-canary.json": "c0e01d82ce82c2dabfbd7f9eb6800f9a4f3d7d09f274803a4bdcbb94f8a46381",

@@ -1,0 +1,94 @@
+{
+ "at": "2026-10-29T08:07:32Z",
+ "applied": true,
+ "hostsChecked": 71,
+ "affectedJournals": {
+  "Cellular and Molecular Bioengineering": {
+   "issn": "1865-5025",
+   "department": "Bio Technology",
+   "files": [
+    "docs/dept-coverage2-2026-10-29/manifest-frozen.json",
+    "docs/dept-coverage2-2026-10-29/plan-all.json",
+    "docs/dept-coverage2-2026-10-29/plan-canary.json"
+   ]
+  },
+  "Biomass Conversion and Biorefinery": {
+   "issn": "2190-6815",
+   "department": "Bio Technology",
+   "files": [
+    "docs/dept-coverage2-2026-10-29/manifest-frozen.json",
+    "docs/dept-coverage2-2026-10-29/plan-all.json",
+    "docs/dept-coverage2-2026-10-29/plan-canary.json"
+   ]
+  },
+  "Journal of Signal Processing Systems": {
+   "issn": "1939-8018",
+   "department": "Electronics & Telecommunication Engineering",
+   "files": [
+    "docs/dept-coverage2-2026-10-29/manifest-frozen.json",
+    "docs/dept-coverage2-2026-10-29/plan-all.json",
+    "docs/dept-coverage2-2026-10-29/plan-rest-1.json",
+    "docs/dept-coverage2-2026-10-29/plan-rest.json"
+   ]
+  },
+  "e+i Elektrotechnik und Informationstechnik": {
+   "issn": "0932-383X",
+   "department": "Electrical Engineering",
+   "files": [
+    "docs/dept-coverage4-2026-10-29/manifest-frozen.json",
+    "docs/dept-coverage4-2026-10-29/plan-all.json",
+    "docs/dept-coverage4-2026-10-29/plan-canary.json"
+   ]
+  }
+ },
+ "changedFiles": [
+  {
+   "file": "docs/dept-coverage2-2026-10-29/manifest-frozen.json",
+   "rowsRedacted": 3,
+   "sha256Before": "fbba9dab9b3ce827571e9cd20a9a1cb55f723df33ddfa87ac7f1291902ebfb4f",
+   "sha256After": "7c0973f77fb2566b9e2e7ecc8823df1de17dbdf5f966727a8b4217bfbc94ba66"
+  },
+  {
+   "file": "docs/dept-coverage2-2026-10-29/plan-all.json",
+   "rowsRedacted": 3,
+   "sha256Before": "d8583c6be49d8e2d86cb5f30d8d8e3a2edccbe2fcca01e7f41960f72b8a72946",
+   "sha256After": "cfb0fa728e0f1d546bf8cbb0368e7c3f55e3fc695c35188b490d9d0e62684a54"
+  },
+  {
+   "file": "docs/dept-coverage2-2026-10-29/plan-canary.json",
+   "rowsRedacted": 2,
+   "sha256Before": "c0e01d82ce82c2dabfbd7f9eb6800f9a4f3d7d09f274803a4bdcbb94f8a46381",
+   "sha256After": "765cf7c210547e3a73a92c7a8eed30f574b8abf2daec33e75414523f0663aa3f"
+  },
+  {
+   "file": "docs/dept-coverage2-2026-10-29/plan-rest-1.json",
+   "rowsRedacted": 1,
+   "sha256Before": "d765ccf32d6a1019e2142f5aa8ede56abd549365ea36fed4a0c62e2470dfc8b2",
+   "sha256After": "4ed529c904a1c0fae29571a5f4cb1dc9eb806eb67a8abbaa476eaad517724275"
+  },
+  {
+   "file": "docs/dept-coverage2-2026-10-29/plan-rest.json",
+   "rowsRedacted": 1,
+   "sha256Before": "d765ccf32d6a1019e2142f5aa8ede56abd549365ea36fed4a0c62e2470dfc8b2",
+   "sha256After": "4ed529c904a1c0fae29571a5f4cb1dc9eb806eb67a8abbaa476eaad517724275"
+  },
+  {
+   "file": "docs/dept-coverage4-2026-10-29/manifest-frozen.json",
+   "rowsRedacted": 1,
+   "sha256Before": "c5fc33cfb29f96c6b998695b09fd4345d76c34172ffc92eb3b39536e6428e2eb",
+   "sha256After": "9dab05017caf1c55a1ef0afd88dfba940b1807551d231a9aa5583abc12b4a235"
+  },
+  {
+   "file": "docs/dept-coverage4-2026-10-29/plan-all.json",
+   "rowsRedacted": 1,
+   "sha256Before": "85a12cd1c0b15cbf1fa95b88dbd62d149f2c5f54b4cad10ebb1a90fa950940e9",
+   "sha256After": "96b3f1996c67f318ad04bab98ca1d3ac63e0cbd6ceafef15a75060633b3eb838"
+  },
+  {
+   "file": "docs/dept-coverage4-2026-10-29/plan-canary.json",
+   "rowsRedacted": 1,
+   "sha256Before": "85a12cd1c0b15cbf1fa95b88dbd62d149f2c5f54b4cad10ebb1a90fa950940e9",
+   "sha256After": "96b3f1996c67f318ad04bab98ca1d3ac63e0cbd6ceafef15a75060633b3eb838"
+  }
+ ]
+}

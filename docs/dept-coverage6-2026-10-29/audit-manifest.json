@@ -1,0 +1,16 @@
+{
+ "runId": "dept-coverage6-2026-10-29-25715162",
+ "inserted": 0,
+ "reason": "no candidate satisfied all established rules on admissible evidence; no production write was made",
+ "cumulativeVerified": 95,
+ "remainingAllowance": 1905,
+ "productionBefore": {
+  "total": 54902,
+  "status": {
+   "NeedsReview": 25607,
+   "MetadataOnly": 16455,
+   "Accepted": 12840
+  }
+ },
+ "tests": "see report.md"
+}

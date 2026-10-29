@@ -1,0 +1,27 @@
+{
+ "Crawler redirect handling and evidence audit": {
+  "status": "complete",
+  "retrieved": "2026-10-29T08:13:26Z",
+  "query": "aims_scope.get_ex (every hop checked against robots.txt); robots_audit.py over rounds 2-5 scope files and the recovery file; redact_disallowed_evidence.py over every committed manifest (71 hosts)",
+  "fetched": 0,
+  "notes": "12 redirect tests pass. 4 inserted journals affected, redacted with a log; production audit rows unchanged (decision pending).",
+  "rawFiles": {}
+ },
+ "Wiley KBART (not supplied)": {
+  "status": "blocked",
+  "retrieved": "2026-10-29T08:13:27Z",
+  "query": "https://onlinelibrary.wiley.com/library-info/resources/discovery/kbart2019: not repeated; no file in data/dept-coverage4/raw",
+  "fetched": 0,
+  "notes": "Needs a person: manual-exports.md.",
+  "rawFiles": {}
+ },
+ "Manual-review shortlist (Crossref, OpenAlex, PubMed APIs only)": {
+  "status": "complete",
+  "retrieved": "2026-10-29T08:13:28Z",
+  "query": "publication_evidence.py for the 240 strongest single-evidence candidates; no web page was crawled",
+  "fetched": 240,
+  "pagination": "250 candidates with one strong subject signal; 105 with current Crossref deposits and a publisher",
+  "notes": "Electrical 80, Electronics & Telecom 25, Bio Technology 0.",
+  "rawFiles": {}
+ }
+}
