@@ -22,3 +22,7 @@ scripts/brochure/.build/
 
 # Written by scripts/correct-member-roles.ts --apply (member emails inside): keep out of git
 member-roles-applied-*.json
+
+# Nursing coverage: raw third-party lists and the production snapshot (facts only, kept on disk for reuse, never committed)
+data/nursing-coverage/raw/
+data/nursing-coverage/work/

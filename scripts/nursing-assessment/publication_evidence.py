@@ -67,7 +67,9 @@ def run(rows,workers=6):
     with ThreadPoolExecutor(workers) as ex:
         for i,(k,ev) in enumerate(ex.map(one,rows)):
             out[k]=ev
-            if (i+1)%50==0: print(i+1,flush=True)
+            if (i+1)%50==0:
+                print(i+1,flush=True)
+                if (i+1)%200==0 and len(sys.argv)>2: json.dump(out,open(sys.argv[2]+'.partial','w'))   # checkpoint: a stopped run keeps what it has
     return out
 if __name__=='__main__':
     rows=json.load(open(sys.argv[1])); out=run(rows); json.dump(out,open(sys.argv[2],'w')); print('done',len(out))

@@ -1,0 +1,93 @@
+[
+ {
+  "title": "Independent nurse : every week for primary care and community nurses",
+  "issns": [
+   "1747-9800",
+   "2052-2843"
+  ],
+  "reason": "trade publication: a weekly magazine for primary-care nurses (Independent Nurse)"
+ },
+ {
+  "title": "British Journal of Healthcare Assistants",
+  "issns": [
+   "1753-1586",
+   "2052-4420"
+  ],
+  "reason": "scope not Nursing: the journal is for healthcare assistants; the Nursing signal came from the alternate title \"Internurse\""
+ },
+ {
+  "title": "TVZ : het vakblad voor de verpleging",
+  "issns": [
+   "0303-6456",
+   "1380-3425",
+   "2468-1342"
+  ],
+  "reason": "trade journal (vakblad) of the Dutch nursing profession"
+ },
+ {
+  "title": "Nurse author & editor",
+  "issns": [
+   "1054-2353",
+   "1750-4910"
+  ],
+  "reason": "newsletter-type quarterly of nursing editors, not a research journal (held in the earlier run for the same reason)"
+ },
+ {
+  "title": "Etkili Hemşirelik Dergisi",
+  "issns": [
+   "2149-0333"
+  ],
+  "reason": "same title as another candidate (Etkili Hemsirelik Dergisi, ISSN 2980-3527) under a different publisher: unresolved same-title conflict"
+ },
+ {
+  "title": "Etkili Hemşirelik Dergisi",
+  "issns": [
+   "2980-3527"
+  ],
+  "reason": "same title as another candidate (Etkili Hemsirelik Dergisi, ISSN 2149-0333) under a different publisher: unresolved same-title conflict"
+ },
+ {
+  "title": "JURNAL PENGABDIAN KESEHATAN MASYARAKAT AKADEMI KEPERAWATAN HUSADA KARYA JAYA",
+  "issns": [
+   "2808-3253"
+  ],
+  "reason": "scope ambiguous: a community-service journal of a nursing academy, no Nursing aims evidence"
+ },
+ {
+  "title": "The British journal of infection control",
+  "issns": [
+   "1469-0446",
+   "1754-7156",
+   "1757-1774"
+  ],
+  "reason": "renamed: the ISSN now carries Journal of Infection Prevention (infection prevention, not nursing-specific); the Nursing signal belongs to the old title and publisher"
+ },
+ {
+  "title": "Journal of Community Empowerment for Health",
+  "issns": [
+   "2654-8283"
+  ],
+  "reason": "scope not Nursing-specific: community empowerment / public health journal; the nursing signal is only the faculty name in the publisher string"
+ },
+ {
+  "title": "The Oklahoma nurse",
+  "issns": [
+   "0030-1787"
+  ],
+  "reason": "newsletter / state-association magazine with a single recent work found (held in the earlier run as newsletter-type)"
+ },
+ {
+  "title": "Wiley series on developments in nursing research",
+  "issns": [
+   "0737-6065"
+  ],
+  "reason": "book series (Wiley series on developments in nursing research), not a journal"
+ },
+ {
+  "title": "Stat",
+  "issns": [
+   "0038-9986"
+  ],
+  "reason": "newsletter-type serial of a state nurses association (held in the earlier run for the same reason)"
+ }
+]

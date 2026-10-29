@@ -1,0 +1,93 @@
+{
+ "OpenAlex": {
+  "read": 15947,
+  "pooled": 2268
+ },
+ "CINAHL": {
+  "coverageRowsReadAcrossEditions": 33485,
+  "distinctAcademicJournalIssns": 4964,
+  "nursingDisciplineIssns": 593
+ },
+ "NLM Catalog": {
+  "read": 3614,
+  "withValidIssn": 2055
+ },
+ "DOAJ": {
+  "read": 389
+ },
+ "SciELO": {
+  "read": 2280
+ },
+ "KoreaMed": {
+  "read": 501,
+  "renameRelations": 210,
+  "kamjeMemberRows": 297
+ },
+ "J-STAGE": {
+  "read": 4509
+ },
+ "recordsPooled": 18525,
+ "recordsWithoutValidIssn": {
+  "OpenAlex": 377,
+  "NLM Catalog": 1559,
+  "J-STAGE": 103
+ },
+ "clusters": 14217,
+ "summary": {
+  "held in catalogue": 4599,
+  "net-new candidate (tier A)": 1198,
+  "  of which inserted by: Nursing expansion run (80)": 80,
+  "title conflict": 220,
+  "no independent Nursing evidence": 7645,
+  "  of which inserted by: NLM import run (70)": 32,
+  "net-new candidate (tier B)": 384,
+  "net-new candidate (tier C)": 171
+ },
+ "bySource": {
+  "OpenAlex": {
+   "records": 1891,
+   "held in catalogue": 1160,
+   "net-new candidate": 397,
+   "title conflict": 80,
+   "no independent Nursing evidence": 251
+  },
+  "CINAHL": {
+   "records": 4964,
+   "held in catalogue": 1824,
+   "net-new candidate": 334,
+   "title conflict": 70,
+   "no independent Nursing evidence": 2700
+  },
+  "NLM Catalog": {
+   "records": 2055,
+   "held in catalogue": 478,
+   "net-new candidate": 1300,
+   "title conflict": 180,
+   "no independent Nursing evidence": 52
+  },
+  "SciELO": {
+   "records": 2280,
+   "no independent Nursing evidence": 732,
+   "held in catalogue": 1467,
+   "title conflict": 1,
+   "net-new candidate": 4
+  },
+  "DOAJ": {
+   "records": 389,
+   "held in catalogue": 387
+  },
+  "J-STAGE": {
+   "records": 4406,
+   "held in catalogue": 399,
+   "no independent Nursing evidence": 3832,
+   "net-new candidate": 71
+  },
+  "KoreaMed": {
+   "records": 501,
+   "held in catalogue": 143,
+   "no independent Nursing evidence": 146,
+   "net-new candidate": 1
+  }
+ },
+ "previouslyHeld": 1379
+}

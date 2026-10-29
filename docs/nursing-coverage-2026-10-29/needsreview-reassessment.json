@@ -1,0 +1,12359 @@
+{
+"status": "PREVIEW ONLY: no status change is made or proposed by this run",
+"linkedEarlierAssessment": {
+"docs/nursing-assessment-2026-10-28/plan-needsreview-to-metadataonly.json": "6c707d3be5f124afd99afe692d19f96c0b7747c0e30876de335a36e3d84f2474",
+"docs/nursing-assessment-2026-10-28/held.json": "5a108ff8bead959dd242b3307c9fff6f6a1e6d2045beefe2faf1e0d507b0b12c",
+"docs/nursing-assessment-2026-10-28/report.md": "162f37c65f89895c845cc3a7e2f6b0fc28d375de6f20661ef9c517453774f233"
+},
+"recordsReScoredWithTheNewSources": 742,
+"newScopeTier": {
+"A": 384,
+"C": 215,
+"B": 142,
+"X": 1
+},
+"rows": [
+{
+"id": "daee58c0-2aec-48e6-ab95-128fe8586599",
+"title": "Nursing Standard",
+"issn": "0029-6570",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Royal College of Nursing",
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "9851dab9-9e1a-4ac3-aa21-c43d978eccbf",
+"title": "AJN American Journal of Nursing",
+"issn": "0002-936X",
+"newTier": "A",
+"signals": [
+"NLM",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "57063589-7e06-418c-93f7-48bee8dc8105",
+"title": "Nursing",
+"issn": "0360-4039",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "4487ca94-48c9-4090-91bb-9e61d22ca8b2",
+"title": "Journal of Advanced Nursing",
+"issn": "0309-2402",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "707a252a-8e9c-4fcd-bbc8-b11c6bf23025",
+"title": "British Journal of Nursing",
+"issn": "0966-0461",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "5bdcb57f-83c3-42c9-adcd-14896d260383",
+"title": "Nursing Research",
+"issn": "0029-6562",
+"newTier": "A",
+"signals": [
+"NLM",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Research"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "9143a3d1-4253-4987-baf7-06e19d7df432",
+"title": "Journal of Clinical Nursing",
+"issn": "0962-1067",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "b32b455a-9d3d-480a-8faf-fce1763c79f9",
+"title": "JONA The Journal of Nursing Administration",
+"issn": "0002-0443",
+"newTier": "A",
+"signals": [
+"NLM",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "ce26e7e9-7106-4fd5-949a-17e6a864c487",
+"title": "Journal of Psychosocial Nursing and Mental Health Services",
+"issn": "0279-3695",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Psychiatric Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "89b16ed8-7e3d-4950-a551-97f7c05140aa",
+"title": "Nursing Children and Young People",
+"issn": "2046-2336",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Royal College of Nursing of the United Kingdom (The)",
+"nlmHeadings": [
+"Nursing",
+"Pediatric Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "cce8a16b-dc3c-4caa-96b4-ad7a06865794",
+"title": "Geriatric Nursing",
+"issn": "0197-4572",
+"newTier": "A",
+"signals": [
+"NLM",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Geriatric Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "37afd462-4e82-402b-a898-a556cd09c701",
+"title": "JOGN Nursing",
+"issn": "0090-0311",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses",
+"Pediatric Nursing",
+"Obstetric Nursing",
+"Neonatal Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "1551669b-956e-408d-a288-d4142b656077",
+"title": "Journal of Obstetric Gynecologic & Neonatal Nursing",
+"issn": "0884-2175",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses",
+"Pediatric Nursing",
+"Obstetric Nursing",
+"Neonatal Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "cb6adb86-8d9f-4e12-8207-dae5ef57fdd5",
+"title": "Journal of Emergency Nursing",
+"issn": "0099-1767",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses",
+"Emergency Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "c6701b94-5573-4824-9141-dc33ddeb2b5f",
+"title": "Journal of Gerontological Nursing",
+"issn": "0098-9134",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care",
+"Geriatric Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "6d848037-96ad-4516-bbd2-0c7c38994a6a",
+"title": "Journal of Wound Ostomy and Continence Nursing",
+"issn": "1071-5754",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "561d43a2-0d51-4ccf-bb52-24c6f248692b",
+"title": "Nursing Older People",
+"issn": "1472-0795",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Royal College of Nursing",
+"nlmHeadings": [
+"Nursing",
+"Geriatric Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "b56f89e3-89ef-4692-a66e-eb0cdcd457c9",
+"title": "Journal of Pediatric Nursing",
+"issn": "0882-5963",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Pediatric Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "680e755d-00e1-4ed7-84df-30cbaa09a285",
+"title": "International Journal of Nursing Studies",
+"issn": "0020-7489",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "df2c6553-24c4-43ed-a5d8-9b2b4bb81b45",
+"title": "Journal of Nursing Education",
+"issn": "0148-4834",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Education, Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "359eea83-2b88-42aa-878c-2487835f7a11",
+"title": "Journal of PeriAnesthesia Nursing",
+"issn": "1089-9472",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses",
+"Perioperative Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "69ed86c8-4ad2-4de0-9595-64de2581c522",
+"title": "MCN The American Journal of Maternal/Child Nursing",
+"issn": "0361-929X",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Pediatric Nursing",
+"Obstetric Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "057f26dd-4c7a-4284-8d2f-545547b99a91",
+"title": "Nursing Clinics of North America",
+"issn": "0029-6465",
+"newTier": "A",
+"signals": [
+"NLM",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "fc400e57-16a7-414f-aaed-d7a91d44d621",
+"title": "Journal of Nursing Management",
+"issn": "0966-0429",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "1b55e471-e94f-45ee-ada5-b5267a0377d8",
+"title": "Orthopaedic Nursing",
+"issn": "0744-6020",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+],
+"publisher": "National Association of Orthopaedic Nurses"
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "2f3670b2-4687-4ea9-8c96-ffb106b5bbc6",
+"title": "The Journal of Continuing Education in Nursing",
+"issn": "0022-0124",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Education, Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "a3aa6491-5db3-45d5-8231-1079a3e5b753",
+"title": "Revista de Enfermagem UFPE on line",
+"issn": "1981-8963",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Revista de Enfermagem UFPE",
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "41f1d61f-c075-4b85-8d6f-9c1a680c9aa9",
+"title": "British Journal of Community Nursing",
+"issn": "1462-4753",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care",
+"Community Health Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "0923a6e3-f9fb-4c56-9981-b728900b111f",
+"title": "Practice Nursing",
+"issn": "0964-9271",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "2d893fb4-11d9-4653-9927-7a8256366ece",
+"title": "Cancer Nursing Practice",
+"issn": "1475-4266",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Royal College of Nursing",
+"nlmHeadings": [
+"Nursing",
+"Oncology Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "0cff1f79-c823-4414-b438-823509df5b1b",
+"title": "Western Journal of Nursing Research",
+"issn": "0193-9459",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Research"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "88dddd62-4d7f-4da2-ac00-d8e2b9fd7555",
+"title": "Journal of Professional Nursing",
+"issn": "8755-7223",
+"newTier": "A",
+"signals": [
+"NLM",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "9af48557-aa07-4199-b9b6-79b559e13e0f",
+"title": "Cancer Nursing",
+"issn": "0162-220X",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses",
+"Oncology Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "439b9d96-2422-472e-8bfe-c519767e9b95",
+"title": "Issues in Mental Health Nursing",
+"issn": "0161-2840",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Psychiatric Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "b0e34103-7e6c-48b9-a964-54e16a2e8a93",
+"title": "Nursing and Residential Care",
+"issn": "1465-9301",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care",
+"Nurses"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "a378bec9-568b-4abb-abbd-d7da88bb9a34",
+"title": "Nursing Outlook",
+"issn": "0029-6554",
+"newTier": "A",
+"signals": [
+"NLM",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Public Health Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "d6001999-fbc6-4c20-a348-f8bf2811aab8",
+"title": "Dental Nursing",
+"issn": "1749-6799",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "8dec13f2-fdb5-4d3c-9a59-6da6f1085c43",
+"title": "Nursing Ethics",
+"issn": "0969-7330",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "e8824733-f106-4aa3-8670-6fa1fc4fbc99",
+"title": "Journal of Nursing Scholarship",
+"issn": "1527-6546",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+],
+"publisher": "Sigma Theta Tau National Honor Society Of Nursing"
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "fd4afdf7-0f64-402d-8c89-8ace699e681e",
+"title": "Image the Journal of Nursing Scholarship",
+"issn": "0743-5150",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+],
+"publisher": "Sigma Theta Tau National Honor Society Of Nursing"
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "d20a44ce-887a-4d20-85d2-7a09f746858a",
+"title": "European Journal of Oncology Nursing",
+"issn": "1462-3889",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Oncology Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "ea9f3e0b-3022-4bb2-ac81-0daec843359e",
+"title": "Nursing Journal of India",
+"issn": "0029-6503",
+"newTier": "A",
+"signals": [
+"NLM",
+"OA",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Trained Nurses Association of India",
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "e2024c0b-0076-43be-a6b0-3606ecd43a43",
+"title": "Occupational Health Nursing",
+"issn": "0029-7933",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses",
+"Occupational Health Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "28f61e2f-2a4f-4283-8eb0-2c1ca4620a6f",
+"title": "Dimensions of Critical Care Nursing",
+"issn": "0730-4625",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Critical Care Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "98df3128-cad8-4315-89b4-63a9bc281c2c",
+"title": "Journal of Psychiatric and Mental Health Nursing",
+"issn": "1351-0126",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Psychiatric Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "56f4b93b-f117-44c0-a51a-54f9060b0542",
+"title": "Gastroenterology Nursing",
+"issn": "1042-895X",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "1db7428a-9c42-4a8a-adb7-29c4a3368b85",
+"title": "Public Health Nursing",
+"issn": "0737-1209",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Public Health Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "3bb98699-18cf-426d-b21c-d08ac95af33d",
+"title": "Evidence-Based Nursing",
+"issn": "1367-6539",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "94d0d882-f21f-4aa5-9695-f19571caf693",
+"title": "Intensive and Critical Care Nursing",
+"issn": "0964-3397",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care",
+"Nurses",
+"Critical Care Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "83e68fd5-6303-4ac7-a9fd-63c3361f1eac",
+"title": "Journal of Neuroscience Nursing",
+"issn": "0888-0395",
+"newTier": "A",
+"signals": [
+"NLM",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+],
+"publisher": "American Association of Neuroscience Nurses"
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "9692bd83-96f5-449e-8cd7-f59ff1e837c3",
+"title": "Journal of Christian Nursing",
+"issn": "0743-2550",
+"newTier": "A",
+"signals": [
+"NLM",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care",
+"Nurses"
+],
+"publisher": "Nurses Christian Fellowship"
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "08118a61-bed4-41df-a0eb-14835e24d717",
+"title": "Rehabilitation Nursing Journal",
+"issn": "0278-4807",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses",
+"Rehabilitation Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "b6f1860b-ad98-4797-a5e6-5cb244dd1bbb",
+"title": "Archives of Psychiatric Nursing",
+"issn": "0883-9417",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Psychiatric Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "d6f5cf6b-48bd-48a5-9500-b51e6e5ed9b4",
+"title": "Nursing Administration Quarterly",
+"issn": "0363-9568",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "97608ddd-ed5f-415c-ab60-a5041eab22c6",
+"title": "Research in Nursing & Health",
+"issn": "0160-6891",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "b3827fef-20cf-4d13-a6ca-d4a90f3b4a92",
+"title": "Nursing Edição Brasileira",
+"issn": "1415-8264",
+"newTier": "A",
+"signals": [
+"CINAHL",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+]
+},
+{
+"id": "c26ead19-7a2f-428e-95a4-21bdc35bb99c",
+"title": "Veterinary Nursing Journal",
+"issn": "1741-5349",
+"newTier": "A",
+"signals": [
+"NLM",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+],
+"publisher": "British Veterinary Nursing Association"
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "f66855b0-5283-4142-b7ca-c96d7a3fa56f",
+"title": "Pain Management Nursing",
+"issn": "1524-9042",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "e63e93f1-0423-4d2e-b2a6-bd2a864a0769",
+"title": "Clinical Journal of Oncology Nursing",
+"issn": "1538-067X",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Oncology Nursing Society",
+"nlmHeadings": [
+"Nursing",
+"Oncology Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "9aaa0be2-c6ac-43ab-92d9-b382578be45d",
+"title": "Nursing Forum",
+"issn": "0029-6473",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "8825ee1d-9105-4126-8bd4-ba270bdccfce",
+"title": "Journal of Research in Nursing",
+"issn": "1361-4096",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care",
+"Nursing Research"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "f8c21602-b3c1-4556-ab41-97cc3b6411d8",
+"title": "International Journal of Palliative Nursing",
+"issn": "1357-6321",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "7a4375cc-0e38-4434-a170-ff4e6874cdab",
+"title": "British Journal of Cardiac Nursing",
+"issn": "1749-6403",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "fbfe57c8-b3de-4171-8389-a4ffd80ce5f3",
+"title": "Nursing Science Quarterly",
+"issn": "0894-3184",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "492eac5d-c535-46e1-ad83-36fae58479cb",
+"title": "Seminars in Oncology Nursing",
+"issn": "0749-2081",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Oncology Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "59d1d6e9-075c-413f-b45f-311b00a03c56",
+"title": "Plastic Surgical Nursing",
+"issn": "0741-5206",
+"newTier": "A",
+"signals": [
+"NLM",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses",
+"Perioperative Nursing"
+],
+"publisher": "Plastic Surgical Nursing"
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "cfa07431-fc20-4e53-afb3-0870839b3cfe",
+"title": "Plastic and Aesthetic Nursing",
+"issn": "2770-3509",
+"newTier": "A",
+"signals": [
+"NLM",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses",
+"Perioperative Nursing"
+],
+"publisher": "Plastic Surgical Nursing"
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "021fd1a3-44e3-4a63-b4d0-e2c49147ac44",
+"title": "Applied Nursing Research",
+"issn": "0897-1897",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Research"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "855bf18f-7c0f-47c5-81bd-ed452e5debea",
+"title": "Oncology Nursing Forum",
+"issn": "1538-0688",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Oncology Nursing Society",
+"nlmHeadings": [
+"Nursing",
+"Oncology Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "c76f8ea5-087e-4123-9be7-8537a808edcc",
+"title": "Nursing (Ed española)",
+"issn": "0212-5382",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "641de4b7-3b46-4d7a-9d15-0c4c383f9a5b",
+"title": "Critical Care Nursing Clinics of North America",
+"issn": "0899-5885",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care",
+"Critical Care Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "f635d5a7-5903-4b00-bc96-f7bc29201bd8",
+"title": "International Nursing Review",
+"issn": "0020-8132",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "578bb764-3735-4669-b51c-20aa76c46b82",
+"title": "Journal of Korean Academy of Nursing",
+"issn": "2005-3673",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Korean Society of Nursing Science",
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+]
+},
+"listedBy": [
+"CINAHL",
+"KoreaMed",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "70457f19-22e3-4e5c-977c-60950c7e21b5",
+"title": "Daehan ganho haghoeji",
+"issn": "0378-004X",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Korean Society of Nursing Science",
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+]
+},
+"listedBy": [
+"CINAHL",
+"KoreaMed",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "8ddbc789-93e3-44e3-96c4-cf2b104504fb",
+"title": "Nursing Education Perspectives",
+"issn": "1536-5026",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "National League for Nursing",
+"nlmHeadings": [
+"Nursing",
+"Education, Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "f9ef3773-cec2-48ac-9549-9b4181efd4dc",
+"title": "Gastrointestinal Nursing",
+"issn": "1479-5248",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "8009b56b-980a-4d36-bc9c-b810de86af42",
+"title": "The Journal of Perinatal & Neonatal Nursing",
+"issn": "0893-2190",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Neonatal Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "eac4e195-e60e-4cb1-9b19-7056e6cb75cb",
+"title": "Clinical Simulation in Nursing",
+"issn": "1876-1399",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Education, Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "26b07758-31ce-466e-be20-12a6830aba2c",
+"title": "Journal of Transcultural Nursing",
+"issn": "1043-6596",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "3a0f2f43-c9fd-453e-815d-0bce29b70487",
+"title": "Journal of Nursing Care Quality",
+"issn": "1057-3631",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "042d3ef5-82ef-4c3f-a0d0-ceeb02117db9",
+"title": "Journal of Hospice and Palliative Nursing",
+"issn": "1522-2179",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+],
+"publisher": "Nursecom, Inc."
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "c5cc30cb-5aa2-46a5-bdd0-ceed78275b86",
+"title": "Advances in Nursing Science",
+"issn": "0161-9268",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "708c9225-1958-4d3b-b85e-0e4e217b9ba6",
+"title": "Holistic Nursing Practice",
+"issn": "0887-9311",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "9408d134-6f81-4129-ac05-a465b2a8f69f",
+"title": "Malahayati Nursing Journal",
+"issn": "2655-2728",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "70edb2e7-2860-481c-bb38-b681054f7714",
+"title": "Journal of Nursing Education and Practice",
+"issn": "1925-4040",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "43c9d440-fb88-4ed6-a682-234283e8e018",
+"title": "Teaching and Learning in Nursing",
+"issn": "1557-3087",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Research",
+"Education, Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "487be603-69cb-48ff-970f-e503b344c46d",
+"title": "Journal of Pediatric Oncology Nursing",
+"issn": "1043-4542",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Association of Pediatric Oncology Nurses",
+"nlmHeadings": [
+"Nursing",
+"Nurses",
+"Pediatric Nursing",
+"Oncology Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "7c845c88-d9ac-4de8-aaba-6f7ca07d944a",
+"title": "British Journal of Theatre Nursing (United Kingdom)",
+"issn": "1353-0224",
+"newTier": "A",
+"signals": [
+"NLM",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses",
+"Perioperative Nursing"
+],
+"publisher": "National Association of Theatre Nurses"
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "4004fc4d-74d3-4e96-8c7d-dea4e3e38632",
+"title": "British Journal of Perioperative Nursing (United Kingdom)",
+"issn": "1467-1026",
+"newTier": "A",
+"signals": [
+"NLM",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses",
+"Perioperative Nursing"
+],
+"publisher": "National Association of Theatre Nurses"
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "9f5c0039-cb24-4445-ad75-8e573a815793",
+"title": "Journal of Clinical and Nursing Research",
+"issn": "2208-3685",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "ed6310df-79a7-49e8-a7a2-ea6c529e0342",
+"title": "British Journal of Neuroscience Nursing",
+"issn": "1747-0307",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "c7dd3d4a-83f9-44a4-af9c-d705be283bb3",
+"title": "Journal of Neonatal Nursing",
+"issn": "1355-1841",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses",
+"Neonatal Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "8f0bea6c-a477-4cc1-ad8f-77fefb41fe32",
+"title": "Nursing for Women s Health",
+"issn": "1751-4851",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses",
+"Obstetric Nursing",
+"Neonatal Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "2ccd551a-1bd9-47f5-b686-60f3c2534289",
+"title": "Journal of Nursing & Care",
+"issn": "2167-1168",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "98dec7c1-2046-46c6-a52d-90fcecf6b538",
+"title": "Journal of Radiology Nursing",
+"issn": "1546-0843",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "113bd46f-6a79-4fe1-8972-3293b070b950",
+"title": "Critical Care Nursing Quarterly",
+"issn": "0887-9303",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Education, Nursing",
+"Critical Care Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "f9c23294-ad85-4fc7-9920-bb992ed02ec2",
+"title": "The Journal of School Nursing",
+"issn": "1059-8405",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses",
+"School Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "20e8b95c-4764-461f-80e4-19bd60c40ddb",
+"title": "Collegian Journal of the Royal College of Nursing Australia",
+"issn": "1322-7696",
+"newTier": "A",
+"signals": [
+"NLM",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "930d1a95-e2df-4a1b-8ad6-ad3b3bc509a9",
+"title": "Journal of Aesthetic Nursing",
+"issn": "2050-3717",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "899f9f0e-96c6-4525-af3a-8712652efdb5",
+"title": "Nursing",
+"issn": "1381-5911",
+"newTier": "A",
+"signals": [
+"NLM",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "421f7ec8-6878-4530-b3f9-03c9a1de946e",
+"title": "Journal of Vascular Nursing",
+"issn": "1062-0303",
+"newTier": "A",
+"signals": [
+"NLM",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+],
+"publisher": "Elsevier Inc. on behalf of Society for Vascular Nursing, Inc."
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "41f06abd-92d1-4854-a82d-043d8486187b",
+"title": "British Journal of School Nursing",
+"issn": "1752-2803",
+"newTier": "A",
+"signals": [
+"NLM",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"School Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "dcf0b7c2-1bdb-4317-9c0a-a5aa3c5e5611",
+"title": "Journal of Trauma Nursing",
+"issn": "1078-7496",
+"newTier": "A",
+"signals": [
+"NLM",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+],
+"publisher": "Nursecom"
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "f9e7f96e-6eed-4762-9c28-2ca21c8cf1f8",
+"title": "Neonatal Network The Journal of Neonatal Nursing",
+"issn": "0730-0832",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses",
+"Pediatric Nursing",
+"Neonatal Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "d69da023-71b7-4088-95ae-d32c9c23fbaf",
+"title": "International Journal of Nursing Education",
+"issn": "0974-9349",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "ef05615a-b0de-45a8-a642-fbbea2c0f61d",
+"title": "Nursing Made Incredibly Easy!",
+"issn": "1544-5186",
+"newTier": "A",
+"signals": [
+"NLM",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "ba278bd8-246d-49b7-87e4-997b45fbb1ad",
+"title": "Nordic journal of nursing research",
+"issn": "0107-4083",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"DOAJ",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Research"
+]
+},
+"listedBy": [
+"CINAHL",
+"DOAJ",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "78d95ec2-d2c7-4fab-b535-237763b2801f",
+"title": "Nursing Science",
+"issn": "2168-5657",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "8ed13e0f-9c19-4552-9761-86d2351e94c1",
+"title": "Borneo Nursing Journal (BNJ)",
+"issn": "2654-8453",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "19371921-7b03-42c3-b495-e665bf7c0ce5",
+"title": "Journal of Holistic Nursing",
+"issn": "0898-0101",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "4885ddf4-a02d-4d56-b961-918fda26b239",
+"title": "Journal of Addictions Nursing",
+"issn": "1088-4602",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "e8e4a384-05b3-4687-8a78-d497f1902ba2",
+"title": "Clinical Nursing Research",
+"issn": "1054-7738",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care",
+"Nursing Research"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "f9e83771-0831-4e06-9092-788f6f5799b1",
+"title": "Journal of Child and Adolescent Psychiatric Nursing",
+"issn": "1073-6077",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses",
+"Psychiatric Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "c24ae695-7f2b-4a00-b6cc-b4dfcfe2c6cf",
+"title": "International Emergency Nursing",
+"issn": "1755-599X",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Research",
+"Emergency Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "9ae4a996-74eb-4160-a6c4-2cd5d66cca8e",
+"title": "国际护理与健康",
+"issn": "2717-5650",
+"newTier": "A",
+"signals": [
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+]
+},
+{
+"id": "9d93a3f1-1ab8-44f6-843e-df0006c69dd3",
+"title": "Nursing Journal CMU",
+"issn": "2821-9120",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "8f3d9004-228f-4039-8dac-953252fd6e08",
+"title": "Journal of Infusion Nursing",
+"issn": "1533-1458",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "3f52278c-50b6-40c7-885b-c898dcce52fa",
+"title": "Worldviews on Evidence-Based Nursing",
+"issn": "1545-102X",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "c4feccd8-286d-4687-b6dc-2c9214745434",
+"title": "Journal of Korean Academy of Nursing Administration",
+"issn": "1225-9330",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Korean Academy of Nursing Administration",
+"nlmHeadings": [
+"Nursing",
+"Nursing Care"
+]
+},
+"listedBy": [
+"CINAHL",
+"KoreaMed",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "428e9fab-ecfe-47dd-a02f-d850a6da2760",
+"title": "Asian Journal of Nursing Education and Research",
+"issn": "2231-1149",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "0b2aeef2-7347-45f1-8d09-081f89dd5697",
+"title": "Korean Journal of Adult Nursing",
+"issn": "1225-4886",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Korean Society of Adult Nursing",
+"nlmHeadings": [
+"Nursing",
+"Nursing Care",
+"Geriatric Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"KoreaMed",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "83601147-8c05-4ee2-85ad-33cc5f24343e",
+"title": "Biological Research For Nursing",
+"issn": "1099-8004",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Research"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "5ddf52a8-1312-45fb-9ab1-0ae26ac6ba80",
+"title": "Journal of Korean Academy of Psychiatric and Mental Health Nursing",
+"issn": "1225-8482",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Korean Academy of Psychiatric & Mental Health Nursing",
+"nlmHeadings": [
+"Nursing",
+"Psychiatric Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"KoreaMed",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "82099e6a-a918-45e0-a096-12d953b09c08",
+"title": "Research in Community and Public Health Nursing",
+"issn": "1225-9594",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Korean Academy of Community Health Nursing",
+"nlmHeadings": [
+"Nursing",
+"Community Health Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"KoreaMed",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "d93f6308-10ae-4991-b1ea-01fab0ff4caf",
+"title": "Accident and Emergency Nursing",
+"issn": "0965-2302",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care",
+"Emergency Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "2517d4c6-6e72-46b3-b017-971a5fb8b1b7",
+"title": "Canadian Journal of Nursing Leadership",
+"issn": "1929-6355",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+],
+"publisher": "Longwoods Pub. Corp. [for the] Academy of Canadian Executive Nurses"
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "42a42862-6128-425a-b19b-dd7bf21e1323",
+"title": "Journal of Fundamental Nursing Science",
+"issn": "1225-9012",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Korean Academy of Fundamentals of Nursing",
+"nlmHeadings": [
+"Nursing",
+"Nursing Care"
+]
+},
+"listedBy": [
+"CINAHL",
+"KoreaMed",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "b5ba8316-c129-4625-ba66-a13f2b3f8d42",
+"title": "Journal of Community Health Nursing",
+"issn": "0737-0016",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Community Health Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "70a1bb5f-7ab8-4794-81ae-ec3858606405",
+"title": "Open Journal of Nursing",
+"issn": "2162-5336",
+"newTier": "A",
+"signals": [
+"NLM",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "d302e923-991b-4368-b7d8-9eb189b5fc56",
+"title": "Journal of Korean Biological Nursing Science",
+"issn": "2383-6415",
+"newTier": "A",
+"signals": [
+"NLM",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Korean Society of Biological Nursing Science",
+"nlmHeadings": [
+"Nursing",
+"Nursing Research"
+]
+},
+"listedBy": [
+"CINAHL",
+"KoreaMed",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "362ebf37-68f3-4805-8dd5-3db142dc4eca",
+"title": "Creative Nursing",
+"issn": "1078-4535",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "8d1ad0a5-143a-42be-afd9-c455d9a21cd1",
+"title": "International Journal of Nursing Education and Research",
+"issn": "2347-8640",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "bedc5007-788e-4842-9e37-ffaef3fdc569",
+"title": "Journal of Nursing and Therapeutic Care",
+"issn": "2985-1432",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "84f2483e-8509-449e-90a4-e49ced2ab21b",
+"title": "Journal of Nursing Measurement",
+"issn": "1061-3749",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses",
+"Nursing Assessment"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "be7a6789-b719-43f2-a351-946858bab0c4",
+"title": "Journal for Specialists in Pediatric Nursing",
+"issn": "1539-0136",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses",
+"Pediatric Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "33412134-da51-4c28-ab8b-0018e222231b",
+"title": "Australasian Emergency Nursing Journal",
+"issn": "1574-6267",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Emergency Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "aba3b577-c6bb-4871-a619-fe69bff2fc4b",
+"title": "IOSR Journal of Nursing and health Science",
+"issn": "2320-1940",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "bed11546-95e2-4ed6-a282-c13859778d16",
+"title": "Women s Health Nursing",
+"issn": "3022-7666",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"DOAJ",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Korean Academy of Women Health Nursing",
+"nlmHeadings": [
+"Nursing",
+"Obstetric Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"DOAJ",
+"KoreaMed",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "0c60cd19-df4d-4481-a13f-d631dcb4f33c",
+"title": "International journal of nursing sciences",
+"issn": "2096-6296",
+"newTier": "A",
+"signals": [
+"NLM",
+"OA",
+"DOAJ",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care"
+],
+"publisher": "Chinese Nursing Association with production and hosting by Elsevier B.V."
+},
+"listedBy": [
+"CINAHL",
+"DOAJ",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "916b6648-d3d6-4c99-90ee-93051aa6cc22",
+"title": "Scholarly Inquiry for Nursing Practice",
+"issn": "0889-7182",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "5177eb7e-5a81-47c1-b663-8317a73c2d48",
+"title": "The Journal of Korean Academic Society of Nursing Education",
+"issn": "1225-9578",
+"newTier": "A",
+"signals": [
+"NLM",
+"OA",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Korean Academic Society of Nursing Education",
+"nlmHeadings": [
+"Nursing",
+"Education, Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"KoreaMed",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "225003aa-50d6-4f1c-b8a0-a23823c0030b",
+"title": "Journal of Family Nursing",
+"issn": "1074-8407",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "777b12b8-ad87-4082-81fa-6dfc1b7cff25",
+"title": "Journal of Forensic Nursing",
+"issn": "1556-3693",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses",
+"Forensic Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "9c61477b-40e7-452d-ba5b-00edd037987d",
+"title": "Turkiye Klinikleri Journal of Nursing Sciences",
+"issn": "1308-092X",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "bf4ce791-0f8d-4bf9-b342-7eda752b3f35",
+"title": "Issues in Comprehensive Pediatric Nursing",
+"issn": "0146-0862",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses",
+"Pediatric Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "7d38bf82-d18a-4ccb-a9d7-da7c6c94727f",
+"title": "Journal of Orthopaedic Nursing",
+"issn": "1361-3111",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "d499de82-37e1-4be5-b1ca-93a6b215ff75",
+"title": "OJIN The Online Journal of Issues in Nursing",
+"issn": "1091-3734",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "American Nurses Association",
+"nlmHeadings": [
+"Nursing",
+"Nursing Research",
+"Nurses",
+"Education, Nursing",
+"Nursing, Practical"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "1d697f3c-0843-4c04-b349-09ff0b41f864",
+"title": "Advanced Emergency Nursing Journal",
+"issn": "1931-4485",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Emergency Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "991c4c21-75b1-481a-bc4a-8a283dd7f6e7",
+"title": "Nursing History Review",
+"issn": "1062-8061",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "1c5f058e-c968-4307-bed5-86a1eb54acb6",
+"title": "Policy Politics & Nursing Practice",
+"issn": "1527-1544",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "48a27199-49ff-4f31-ac4d-b097584fd08a",
+"title": "Journal of Korean Gerontological Nursing",
+"issn": "1229-5299",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Korean Gerontological Nursing Society",
+"nlmHeadings": [
+"Nursing",
+"Geriatric Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"KoreaMed",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "3e26e922-6f3e-4bc6-8106-61c98b02bab9",
+"title": "Journal of Nursing Science and Health",
+"issn": "2822-1133",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "a229321c-6329-4d94-ada7-7dcb50cec3ca",
+"title": "Nursing Critical Care",
+"issn": "1558-447X",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "a90f840d-f26f-44f0-b0d7-25d9b4207e18",
+"title": "Canadian Journal of Nursing Research",
+"issn": "0844-5621",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Research"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "61f21ef8-8eff-4d35-8b41-60bd05912d82",
+"title": "International Journal of Advances in Nursing Management",
+"issn": "2347-8632",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "53225ea3-4228-49fb-9d24-7a7938a1d8d1",
+"title": "The Malaysian Journal of Nursing",
+"issn": "2231-7007",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Malaysian Journal of Nursing",
+"nlmHeadings": [
+"Nursing",
+"Nursing Care"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "5bfcc371-b12a-4afb-afc8-76c40000b310",
+"title": "Journal of Korean Public Health Nursing",
+"issn": "1226-0290",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "af2867b5-934c-447b-9306-685e6c056ada",
+"title": "Newborn and Infant Nursing Reviews",
+"issn": "1527-3369",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care",
+"Neonatal Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "d9eb5773-df98-4cca-8a23-f1b8d530cede",
+"title": "International Journal of Nursing Terminologies and Classifications",
+"issn": "1541-5147",
+"newTier": "A",
+"signals": [
+"NLM",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Diagnosis"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "64309fa0-9994-48ec-b10a-d7ff05903d25",
+"title": "The Journal of Thailand Nursing and Midwifery Council",
+"issn": "1513-1262",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "395b9941-59c0-40a8-b643-0c160abaef4e",
+"title": "Journal of Nursing Regulation",
+"issn": "2155-8256",
+"newTier": "A",
+"signals": [
+"NLM",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "8bf60d92-9807-4e46-bc88-d0970824dd79",
+"title": "Canadian Oncology Nursing Journal",
+"issn": "1181-912X",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses",
+"Oncology Nursing"
+],
+"publisher": "Canadian Association of Nurses in Oncology"
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "8ed8f350-bbfb-4aff-ba9f-5327cdd5c219",
+"title": "Nursing & Midwifery Research Journal",
+"issn": "0974-150X",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care",
+"Nursing Research",
+"Midwifery"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "00e52e87-ce19-4681-94f3-69038eb172b2",
+"title": "International Journal of Advance Research in Nursing",
+"issn": "2617-9806",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "82cddcfc-5e72-4569-a827-5a0c82bfc222",
+"title": "Mansoura Nursing Journal",
+"issn": "2735-413X",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "1415e599-8f46-4d6f-ae58-9bd1bc495ddf",
+"title": "International Journal of Orthopaedic and Trauma Nursing",
+"issn": "1878-1241",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "02bd6460-7120-417a-8589-a327083d4599",
+"title": "Australian Journal of Advanced Nursing",
+"issn": "1447-4328",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Australian Nursing & Midwifery Federation",
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "07077d26-ff47-41be-a141-821d3139728b",
+"title": "Journal of Health and Nursing Research (Journal of Boromarajonani College of Nursing, Bangkok)",
+"issn": "2697-5041",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "bf783917-3b20-4f7b-9045-a59309465053",
+"title": "NURSING UPDATE Jurnal Ilmiah Ilmu Keperawatan P-ISSN 2085-5931 e-ISSN 2623-2871",
+"issn": "2085-5931",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "fdb226cc-d326-4bb2-88e7-32d94245b452",
+"title": "Медсестринство",
+"issn": "2411-1597",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "a84c9ddf-e760-45c8-821a-7e4a22d96d12",
+"title": "Nursing News Jurnal Ilmiah Keperawatan",
+"issn": "2527-9823",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "0f288bf5-4e40-42ee-bee2-0e4fc730260d",
+"title": "Journal of Renal Nursing",
+"issn": "2041-1448",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "d5599533-7d5e-4bf3-bf51-915df39eadde",
+"title": "Journal of Nursing Science Benha University",
+"issn": "2735-5802",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "b2eeddc6-20bd-498f-b8f1-3666a75f919e",
+"title": "Pacific Rim International Journal of Nursing Research",
+"issn": "1906-8107",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Thailand Nursing & Midwifery Council",
+"nlmHeadings": [
+"Nursing",
+"Nursing Research",
+"Midwifery"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "d04b4618-cd73-43d6-9fcf-152a08e53d4a",
+"title": "Urologic Nursing",
+"issn": "1053-816X",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Society of Urologic Nurses & Associates, Inc.",
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "fabf3e01-4414-4e82-afb5-5c719e79e838",
+"title": "Journal of Korean Academy of Child Health Nursing",
+"issn": "1226-1815",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Korean Academy of Child Health Nursing",
+"nlmHeadings": [
+"Nursing",
+"Pediatric Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"DOAJ",
+"KoreaMed",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "2fcf9572-48f1-44d7-ac30-ef6569e41124",
+"title": "The Southern College Network Journal of Nursing and Public Health",
+"issn": "2985-1750",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "8a985203-348d-4693-a90d-4cc876e5f32c",
+"title": "International Journal of Urological Nursing",
+"issn": "1749-7701",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "36fab718-55ae-4cf0-ba68-72f79151e04a",
+"title": "Complementary Therapies in Nursing and Midwifery",
+"issn": "1353-6117",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care",
+"Midwifery"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "3de08ffb-21fa-46e3-8ee5-d61cf28175e4",
+"title": "Nephrology Nursing Journal",
+"issn": "1526-744X",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "American Nephrology Nurses Association",
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "5b64e81f-55c2-47cf-85c1-33264e4a22f9",
+"title": "Journal of Nursing and Health",
+"issn": "2236-1987",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Journal of Nursing & Health (JONAH)",
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "a49507b0-ecd6-4d54-90ce-4094b93161eb",
+"title": "Research in Gerontological Nursing",
+"issn": "1940-4921",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Geriatric Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "46bc8253-52af-489f-851c-e85004a2e43c",
+"title": "International Journal of Nursing Knowledge",
+"issn": "2047-3087",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Diagnosis"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "995c0289-b3df-4d6d-ab36-66d39da81600",
+"title": "International Journal of Nursing Education Scholarship",
+"issn": "2194-5772",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Education, Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "9c0c47ca-1319-41b4-bc35-534c6846ea51",
+"title": "Jurnal Ilmiah Keperawatan (Scientific Journal of Nursing)",
+"issn": "2477-4391",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "030f2e77-fed5-43b9-8b33-423d0854e9f3",
+"title": "Advanced Practices in Nursing",
+"issn": "2573-0347",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "1aaa04fb-7d2a-4613-a82c-eadbc7690d8f",
+"title": "Journal of Education and Research in Nursing",
+"issn": "2618-5741",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"DOAJ",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"DOAJ",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "8457d371-84f7-488b-8bd1-65355a2931b6",
+"title": "Nursing Journal of The Ministry of Public Health",
+"issn": "0857-3743",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "a9eb4b39-ea0c-49fc-b332-38cb03d37592",
+"title": "Malahayati International Journal of Nursing and Health Science",
+"issn": "2620-9152",
+"newTier": "A",
+"signals": [
+"NLM",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+],
+"publisher": "Nursing Lecturer Association Faculty of Medicine Nursing and Health Sciences – Malahayati University"
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "3ff5cc7b-2106-4530-8444-232354229474",
+"title": "Asian Oncology Nursing",
+"issn": "2287-2434",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Korean Oncology Nursing Society",
+"nlmHeadings": [
+"Nursing",
+"Oncology Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"KoreaMed",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "c933e679-197d-4c10-8e01-33d03bef67f3",
+"title": "Journal of Korean Oncology Nursing",
+"issn": "1598-4559",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Korean Oncology Nursing Society",
+"nlmHeadings": [
+"Nursing",
+"Oncology Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"KoreaMed",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "6b2d7f6a-7f15-4115-9983-03cec9915c86",
+"title": "Africa Journal of Nursing and Midwifery",
+"issn": "1682-5055",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Midwifery"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "bba7de40-9888-47d5-abc0-1d971f216678",
+"title": "Journal of Nursing and Education",
+"issn": "1906-1773",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "0d497d34-d342-4bfb-b41f-73c988489f87",
+"title": "Clinical Effectiveness in Nursing",
+"issn": "1361-9004",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "a7aadf23-790b-4754-a480-4b4ad0a4ced3",
+"title": "Korean Journal of Military Nursing Research",
+"issn": "1975-664X",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "a974b53f-6333-4c22-a73c-0b62c4fb81a3",
+"title": "Advances in nursing and midwifery",
+"issn": "2538-399X",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Midwifery"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "8df09b8e-0625-4228-b4ea-b078f9e94122",
+"title": "British Journal of Mental Health Nursing",
+"issn": "2049-5919",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Psychiatric Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "87a1bc85-8ac0-4a03-a08c-6a95b97717d4",
+"title": "Nursing Science Journal of Thailand",
+"issn": "0125-8885",
+"newTier": "A",
+"signals": [
+"NLM",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care",
+"Education, Nursing"
+],
+"publisher": "Faculty of Nursing, Mahidol University"
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "fae0768a-1d4f-4aaa-ae41-89bcb37793e9",
+"title": "Global Academic Nursing Journal",
+"issn": "2675-5602",
+"newTier": "A",
+"signals": [
+"CINAHL",
+"OA",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Global Academic Nursing Journal"
+},
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+]
+},
+{
+"id": "75a3c96d-018b-463f-954c-bc54987bf449",
+"title": "International Journal of Trauma Nursing",
+"issn": "1075-4210",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "252ab92d-bf5b-4026-8447-1471bb1bbf08",
+"title": "Journal of Research in Nursing-Midwifery and Health Sciences",
+"issn": "2985-0061",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "bd6df482-7846-4b91-9135-1005f2bb336a",
+"title": "Jurnal Keperawatan Padjadjaran",
+"issn": "2338-5324",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Jurnal Keperawatan Padjadjaran",
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "e86eafcd-4648-4c11-ba9a-5e373e5f4154",
+"title": "Journal of Doctoral Nursing Practice",
+"issn": "2380-9418",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "2afb6e2d-8298-4b33-9ce7-b56c63b84562",
+"title": "Scenario - Il Nursing nella sopravvivenza",
+"issn": "1592-5951",
+"newTier": "A",
+"signals": [
+"CINAHL",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+]
+},
+{
+"id": "d71b9ee6-335b-4d8f-90b2-94df4210670b",
+"title": "The Open Nursing Journal",
+"issn": "1874-4346",
+"newTier": "A",
+"signals": [
+"NLM",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "b0221bed-1d32-46bc-9416-698ad8ce1178",
+"title": "The Journal of Faculty of Nursing Burapha University",
+"issn": "0858-4338",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "43a23739-d697-4a4c-85b1-a3bfe490ba8f",
+"title": "Tạp chí Khoa học Điều dưỡng",
+"issn": "2615-9589",
+"newTier": "A",
+"signals": [
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Nam Dinh University of Nursing"
+},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "0e8ee215-b25b-44d3-b2fa-118060426ffc",
+"title": "International Journal of Nursing and Health Services (IJNHS)",
+"issn": "2654-6310",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "6f0486d2-a0db-4a2d-87a4-5e9bd37d4d41",
+"title": "Journal of Psychiatric Nursing",
+"issn": "1309-3568",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Psychiatric Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "dca85693-4f87-440a-a942-c1aaf31bedf0",
+"title": "Journal of Psychiatric Nursing",
+"issn": "2149-374X",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Psychiatric Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "7a5fa384-dbd3-4613-9cf2-3075e8754c38",
+"title": "Zagazig Nursing Journal",
+"issn": "3009-738X",
+"newTier": "A",
+"signals": [
+"CINAHL",
+"OA",
+"DOAJ",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Zagazig Nursing Journal"
+},
+"listedBy": [
+"CINAHL",
+"DOAJ",
+"OpenAlex"
+]
+},
+{
+"id": "8f404d52-e6fe-4a88-a072-3c84c034e921",
+"title": "Korean Journal of Occupational Health Nursing",
+"issn": "2287-2531",
+"newTier": "A",
+"signals": [
+"NLM",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Korean Academic Society of Occupational Health Nursing",
+"nlmHeadings": [
+"Nursing",
+"Occupational Health Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"KoreaMed",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "c7b6086c-66a0-4440-9c83-2f13a94105df",
+"title": "Korean Journal of Occupational Health Nursing",
+"issn": "1225-9586",
+"newTier": "A",
+"signals": [
+"NLM",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Korean Academic Society of Occupational Health Nursing",
+"nlmHeadings": [
+"Nursing",
+"Occupational Health Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"KoreaMed",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "91dcc113-796d-4974-b4ff-94d4c3afcb84",
+"title": "Journal of Nursing and Public Health",
+"issn": "2338-7033",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "7a314ba5-778f-47e4-a13e-782cae025465",
+"title": "American Journal of Nursing Science",
+"issn": "2328-5745",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "29cca893-335c-483d-a882-d1c7bdb7df65",
+"title": "Intensive Care Nursing",
+"issn": "0266-612X",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care",
+"Nurses",
+"Critical Care Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "ee1946c6-8228-452d-899e-cd5fc4aebd3e",
+"title": "British Journal of Anaesthetic and Recovery Nursing",
+"issn": "1742-6456",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses",
+"Perioperative Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "64dfc6a7-f592-43c4-ac1e-4ebd6b8f0778",
+"title": "Menoufia Nursing Journal",
+"issn": "2735-3982",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "e84d217e-75e7-4460-b8e7-2f358fd23b58",
+"title": "Annual Review of Nursing Research",
+"issn": "0739-6686",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Research"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "9f1565c5-f2cd-4bd9-b5fa-7f0df1f1af1e",
+"title": "Sestrinski glasnik",
+"issn": "1331-7563",
+"newTier": "A",
+"signals": [
+"NLM",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "3faed41d-aec9-48eb-9e27-2abfbda33637",
+"title": "Coping Community of Publishing in Nursing",
+"issn": "2303-1298",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "222ef2fe-9778-4690-8812-35ada87b0770",
+"title": "Nursing Research and Innovation Journal",
+"issn": "2822-1370",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "6c33d9ee-1f25-4325-a0aa-f624a6d845b1",
+"title": "Journal of Pediatric Surgical Nursing",
+"issn": "2332-0249",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses",
+"Pediatric Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "e2a8fb1a-af59-4d59-b26e-8ce1195d991c",
+"title": "Journal of Nursing and Midwifery Sciences",
+"issn": "2345-5756",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care",
+"Midwifery"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "ecb06b77-acdb-4d4e-808a-b53614e649fa",
+"title": "The Korean Journal of Rehabilitation Nursing",
+"issn": "1229-294X",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"KoreaMed",
+"OpenAlex"
+]
+},
+{
+"id": "90a8d64a-cd7d-4595-b0af-7c72e36e01f9",
+"title": "Iraqi National Journal of Nursing Specialties",
+"issn": "2958-5740",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "eea7f9a1-0f88-4d81-b18d-f1ea70ae4734",
+"title": "Journal of Phrapokklao Nursing College, Chanthaburi",
+"issn": "2985-2463",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "ca7ee6ef-3c74-47d2-a809-ca429351c8da",
+"title": "Journal of Nursing Science Chulalongkorn University",
+"issn": "0858-1231",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "ef3ad0d8-0cb2-4f52-87c2-f916156ad027",
+"title": "Frontiers of Nursing",
+"issn": "2544-8994",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "9c056e50-a7e3-45d6-8a83-70ff69d9430d",
+"title": "MEDSURG Nursing",
+"issn": "1092-0811",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses",
+"Perioperative Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "cb6be71b-e65e-4a09-958f-a0591809af78",
+"title": "Perioperative Nursing Clinics",
+"issn": "1556-7931",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Perioperative Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "f93ffc2a-04f1-4b81-a4ff-7b7bb6832810",
+"title": "Jurnal Keperawatan Komprehensif",
+"issn": "2354-8428",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "28056534-e775-4e0e-ad6b-26de67bcfd72",
+"title": "Florence Nightingale Journal of Nursing",
+"issn": "2147-4923",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"DOAJ",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care"
+]
+},
+"listedBy": [
+"CINAHL",
+"DOAJ",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "8a275884-c0cf-4866-9855-25ec0bded368",
+"title": "Florence Nightingale Journal of Nursing",
+"issn": "2146-0639",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"DOAJ",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care"
+]
+},
+"listedBy": [
+"CINAHL",
+"DOAJ",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "1f257bf1-7943-484d-8db9-06a57e6891fe",
+"title": "Thai Red Cross Nursing Journal",
+"issn": "1906-7925",
+"newTier": "A",
+"signals": [
+"OA",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Srisavarindhira Thai Red Cross Institute of Nursing"
+},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "d71c322f-1b4d-4897-b0ab-90cb503ca5f7",
+"title": "International Journal of Advance Research in Medical Surgical Nursing",
+"issn": "2663-225X",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "762bb16c-69cb-40b7-b799-6ffe70bb263b",
+"title": "Progress in Cardiovascular Nursing",
+"issn": "0889-7204",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "b620bc5c-163d-4017-9473-3c8147d31a30",
+"title": "American Journal of Nursing Research",
+"issn": "2378-5594",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "c8ba7d25-66d0-4230-a789-656d3b94dde0",
+"title": "Canadian Journal of Emergency Nursing",
+"issn": "2293-3921",
+"newTier": "A",
+"signals": [
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "National Emergency Nurses Association"
+},
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+]
+},
+{
+"id": "88608ae2-3139-43ec-9623-4173eb8f08fc",
+"title": "NU Journal of Nursing and Health Sciences",
+"issn": "3027-6020",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "6da83322-3766-4012-9e9f-82247dd68026",
+"title": "i-manager’s Journal on Nursing",
+"issn": "2231-4504",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "9a4e0ed4-cb9f-4bd6-a4da-f05740ea9fd3",
+"title": "Journal of Public Health Nursing",
+"issn": "3057-014X",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "47ba14b8-a3c6-429b-b72c-06b53e160226",
+"title": "Pondicherry Journal of Nursing",
+"issn": "2279-0144",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "caa7ff5e-725d-41ee-98cd-746d31738eb0",
+"title": "International Journal of Advance Research in Community Health Nursing",
+"issn": "2664-1658",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "6935a618-684b-49df-8816-a0853bc79953",
+"title": "Journal of Midwifery and Nursing",
+"issn": "2656-0739",
+"newTier": "A",
+"signals": [
+"CINAHL",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+]
+},
+{
+"id": "b714b594-4e93-42a9-a94b-997f610e95e6",
+"title": "Journal of Holistic Nursing and Midwifery",
+"issn": "2251-8460",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"DOAJ",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Midwifery"
+]
+},
+"listedBy": [
+"CINAHL",
+"DOAJ",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "8f0e7a5e-b4e1-4734-b731-bbee4ccfff87",
+"title": "Journal of Applied Nursing and Health",
+"issn": "2657-1609",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "da40d726-1928-4b6c-bcb1-7a5b8938759b",
+"title": "Iranina Journal of Psychiatric Nursing",
+"issn": "2345-2501",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "570e443e-84b2-4c23-8210-2e7dbf6c02d9",
+"title": "Journal of Nursing and Health Science Research",
+"issn": "2822-0706",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "43fdfec9-93c5-4b17-be91-43e5b485a790",
+"title": "INDONESIAN NURSING JOURNAL OF EDUCATION AND CLINIC (INJEC)",
+"issn": "2527-8800",
+"newTier": "A",
+"signals": [
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Association of Indonesian Nurses Education Center (AINEC)"
+},
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+]
+},
+{
+"id": "03c77139-488b-48ce-9909-451c2a4761d0",
+"title": "Bariatric Nursing and Surgical Patient Care",
+"issn": "1557-1459",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "13a7f906-835d-432d-8a3d-d7c9b2f290bb",
+"title": "THE JOURNAL OF PSYCHIATRIC NURSING AND MENTAL HEALTH",
+"issn": "3027-8031",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "5e595176-55ff-4823-ad57-768a50d812e6",
+"title": "Kuakarun Journal of Nursing",
+"issn": "3057-1774",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "1c9ce91b-55b1-437f-86d6-fce843f2c0d9",
+"title": "journal of east-west nursing research",
+"issn": "1226-4938",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care",
+"Nursing Research"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "f9c248de-510a-4bf6-bf01-06f65fffd06b",
+"title": "Journal of Health and Nursing Education",
+"issn": "2730-2598",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "410d8064-809a-40d8-8b40-a208faff7fbf",
+"title": "International Journal of Nursing",
+"issn": "2373-7662",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "f1f9ee40-7c70-459a-9105-558c5322091d",
+"title": "Journal of Nursing and Health Research",
+"issn": "2985-1343",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "5eed1aa2-54de-42cd-abcb-2c8be6bfa286",
+"title": "Saudi Journal of Nursing and Health Care",
+"issn": "2616-7921",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "22332741-ca87-443d-84f7-3c01e0e5d501",
+"title": "International Journal of Nursing Care",
+"issn": "2320-8643",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "f87df498-fd60-4c53-905c-11fcafbed7ae",
+"title": "Journal of Nursing & Healthcare",
+"issn": "2475-529X",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "65c4d889-39cb-44d4-899d-348608693ba5",
+"title": "Journal of Academic Research in Nursing",
+"issn": "2149-4983",
+"newTier": "A",
+"signals": [
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+]
+},
+{
+"id": "d69751e9-c544-4110-ae89-6487c42fc564",
+"title": "Clinical Nursing Studies",
+"issn": "2324-7940",
+"newTier": "A",
+"signals": [
+"NLM",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "1a011e62-fd6b-4fc9-affe-130b5addfeb1",
+"title": "Minia Scientific Nursing Journal",
+"issn": "2785-9797",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "ddb8b04d-5c53-4c73-a844-ff7c9666793c",
+"title": "International Journal of Research in Paediatric Nursing",
+"issn": "2664-1291",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "16086e28-0c34-4747-9b3c-d443a6f1fb89",
+"title": "Nursing & Care Open Access Journal",
+"issn": "2572-8474",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "cf88df6e-352d-4c78-b448-c3089b56c8e5",
+"title": "Pielęgniarstwo Polskie",
+"issn": "0860-8466",
+"newTier": "A",
+"signals": [
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+]
+},
+{
+"id": "9b23ac75-d996-4cfb-831f-40bfc765cf9e",
+"title": "INTERNATIONAL JOURNAL OF NURSING AND MIDWIFERY SCIENCE (IJNMS)",
+"issn": "2686-0538",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "69e6d397-ba12-438d-ae5b-0dc89979b616",
+"title": "JOJ Nursing & Health Care",
+"issn": "2575-8551",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "1f9593fb-afed-4dc0-a30d-9ccbd63b2ad9",
+"title": "Nursing and Health Sciences Journal (NHSJ)",
+"issn": "2798-5059",
+"newTier": "A",
+"signals": [
+"CINAHL",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+]
+},
+{
+"id": "cf8452c6-b3a7-41c1-893b-2ff24f646613",
+"title": "Thai Journal of Cardio-Thoracic Nursing",
+"issn": "0857-605X",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "f87f9b39-9c0d-414e-80a1-6884c785434b",
+"title": "International Journal of Obstetrics and Gynaecological Nursing",
+"issn": "2664-2298",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "90a45d2c-e50f-4e16-a5c1-71bf646a64d8",
+"title": "Comprehensive Child and Adolescent Nursing",
+"issn": "2469-4193",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Pediatric Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "29a72593-448a-4df2-8fb3-152b5741edbe",
+"title": "Australian Emergency Nursing Journal",
+"issn": "1328-2743",
+"newTier": "A",
+"signals": [
+"NLM",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses",
+"Emergency Nursing"
+],
+"publisher": "Australian Emergency Nurses Association of NSW, Inc."
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "13cf26d5-cbe8-4d6d-9134-8743c97f9c18",
+"title": "International Journal of Advanced Psychiatric Nursing",
+"issn": "2664-1348",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "c86d8961-3507-49f5-baae-c9d78399b17e",
+"title": "Hacettepe Üniversitesi Hemşirelik Fakültesi Dergisi",
+"issn": "2148-3590",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "017abe97-1360-4837-b43b-d4a5ebfed52b",
+"title": "Jurnal Ilmiah Ilmu Keperawatan Indonesia",
+"issn": "2252-4096",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "1e894ed3-a90c-47bb-a79d-07b0889b759b",
+"title": "Pediatric Nursing",
+"issn": "0097-9805",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Pediatric Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "6f6b67d1-e6d8-4380-9bdd-394c13f66f84",
+"title": "The Journal of Nursing Trendz",
+"issn": "2229-6255",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "4f3ef15a-92e7-46a4-8ea1-efc0047d5bf5",
+"title": "Egyptian Journal of Nursing and Health Sciences",
+"issn": "2682-2571",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "fbabce46-e1d5-468b-b548-a935e4c95670",
+"title": "Medical - Surgical Nursing Journal",
+"issn": "2322-178X",
+"newTier": "A",
+"signals": [
+"CINAHL",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+]
+},
+{
+"id": "37547961-a743-4041-ab49-aa166e35d983",
+"title": "Indian Journal of Continuing Nursing Education",
+"issn": "2230-7354",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+],
+"publisher": "College of Nursing, Christian Medical College"
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "bdcff938-257a-4d11-84a4-d30e1d84ecf9",
+"title": "Journal of Korean Critical Care Nursing",
+"issn": "2005-212X",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Korean Society of Critical Care Nursing",
+"nlmHeadings": [
+"Nursing",
+"Critical Care Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"KoreaMed",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "65cd01c8-54bb-47a1-aefa-56badb4956c0",
+"title": "Journal of Japan Academy of Critical Care Nursing",
+"issn": "1880-8913",
+"newTier": "A",
+"signals": [
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Japan Society for Critical Care Nursing",
+"jstageOrganization": "Japan Academy of Critical Care Nursing"
+},
+"listedBy": [
+"CINAHL",
+"J-STAGE",
+"OpenAlex"
+]
+},
+{
+"id": "489deb8e-83e8-4221-bb95-0bd33e25f849",
+"title": "Proceedings of the International Conference on Nursing and Health Sciences",
+"issn": "2774-5104",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "1b63c0f5-b871-4cdb-b500-f907365e0a8c",
+"title": "International Journal of Midwifery and Nursing Practice",
+"issn": "2663-0427",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "5bbbd496-1123-4a39-baaf-6a64e2e640eb",
+"title": "Nursing & Primary Care",
+"issn": "2639-9474",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "c850e9b1-fab8-4df0-8ba2-5c07a4d23711",
+"title": "MEDALION JOURNAL Medical Research Nursing Health and Midwife Participation",
+"issn": "2986-7754",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "46f8c72b-b04b-4423-9a77-24dd193a2c83",
+"title": "International Journal of Psychiatric Nursing",
+"issn": "2394-9465",
+"newTier": "A",
+"signals": [
+"CINAHL",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+]
+},
+{
+"id": "853eb2ca-9d29-4de9-8df8-1d42dd4db6a9",
+"title": "International journal of Nursing Didactics",
+"issn": "2231-5454",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "ba24f7fe-863c-4d75-bc92-045035790457",
+"title": "Nursing Economic$",
+"issn": "0746-1739",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "2e6b1de0-019e-4de6-b3d4-7a12c024b0c9",
+"title": "Connect The World of Critical Care Nursing",
+"issn": "1748-6254",
+"newTier": "A",
+"signals": [
+"NLM",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses",
+"Critical Care Nursing"
+],
+"publisher": "Springer on behalf of the World Federation of Critical Care Nurses"
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "b3cfddfc-ed2f-47bc-93ca-b486a1f5f9ca",
+"title": "Revista Eletrônica Acervo Enfermagem",
+"issn": "2674-7189",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "0cbecb66-7a45-485f-8952-f4d8ae3ea48d",
+"title": "Indonesian Scholar Journal of Nursing and Midwifery Science (ISJNMS)",
+"issn": "2807-3096",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "43d56a75-a4a5-4829-9ded-5567e59f34ad",
+"title": "International Journal of Nursing and Health Care Research",
+"issn": "2688-9501",
+"newTier": "A",
+"signals": [
+"NLM",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "36e21486-60c6-4bba-ab6a-6961c7515892",
+"title": "Journal of Nursing Care",
+"issn": "2614-1698",
+"newTier": "A",
+"signals": [
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Journal of Nursing Care"
+},
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+]
+},
+{
+"id": "51b4a062-7ae0-4bdb-8dec-066977519b16",
+"title": "European Diabetes Nursing",
+"issn": "1551-7853",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "432a14fe-708d-49f0-a173-ca3c72e84604",
+"title": "COJ Nursing & Healthcare",
+"issn": "2577-2007",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "a4e5b8b4-e355-47ca-aa0f-1c0b5dbcb6cf",
+"title": "Egyptian Nursing Journal",
+"issn": "2090-6021",
+"newTier": "A",
+"signals": [
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+]
+},
+{
+"id": "60b8c5eb-d895-44b4-97d4-4f6903325092",
+"title": "International Journal of Nursing & Clinical Practices",
+"issn": "2394-4978",
+"newTier": "A",
+"signals": [
+"NLM",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "998384b5-7f2e-4a91-b056-7cb5a153ea72",
+"title": "International Journal of Nursing Healthcare and Hospital Administration",
+"issn": "3116-5966",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "a47ac80d-a32e-4ac0-95de-283785660d1d",
+"title": "Nursing Care and Health Technology Journal (NCHAT)",
+"issn": "2798-107X",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "28a9d15f-5d01-4096-9f77-26c914b7a579",
+"title": "Journal of Prachomklao College of Nursing, Phetchaburi Province",
+"issn": "2985-0150",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "70400b4e-fe0c-4981-a265-bae46c6fbd9d",
+"title": "INTERNATIONAL JOURNAL OF NURSING AND MEDICAL SCIENCE",
+"issn": "2454-6674",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "eee1507b-3f26-4fda-b608-bac58d685953",
+"title": "Chinese Nursing Research",
+"issn": "2095-7718",
+"newTier": "A",
+"signals": [
+"NLM",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Research"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "802be2f6-ba78-4847-9c57-6823d8dee41f",
+"title": "Education and Ethics in Nursing",
+"issn": "2322-5300",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "4718d0f5-2f1c-4704-91cd-f280d554f505",
+"title": "Journal of Perioperative Nursing in Australia",
+"issn": "1448-7535",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"DOAJ",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Australian College of Perioperative Nurses",
+"nlmHeadings": [
+"Nursing",
+"Nurses",
+"Perioperative Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"DOAJ",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "1806290b-dc09-4988-9ca1-a35fe055804b",
+"title": "Scientific Journal of Hamadan Nursing & Midwifery Faculty",
+"issn": "2008-2800",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "a1098592-f7ec-4dcc-9551-4331c0bf35de",
+"title": "Scientific Journal of Hamedan Nursing and Midwifery Faculty",
+"issn": "2008-2819",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "cedea185-5f3d-4fce-adfc-4a2ae40a9898",
+"title": "Journal of Nursing Social Studies Public Health and Rehabilitation",
+"issn": "1804-1868",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "fa726572-14b0-4840-84be-fd567b5cef72",
+"title": "Journal of Nursing and Health",
+"issn": "2502-1524",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "8fbf1cc8-0998-4277-8f26-debfc5ef28fb",
+"title": "Jurnal Ilmu Keperawatan (Journal of Nursing Science)",
+"issn": "2088-6012",
+"newTier": "A",
+"signals": [
+"DOAJ",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"DOAJ",
+"OpenAlex"
+]
+},
+{
+"id": "4e6ab94b-9749-4ee3-813e-3805cce3b9fd",
+"title": "Journal of Health Science Boromarajonani College of Nursing Sunpasitthiprasong",
+"issn": "3057-1421",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "6fdee6e5-726e-44e7-a214-0cbc00f16dde",
+"title": "Nursing & Healthcare International Journal",
+"issn": "2575-9981",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "b6d045a6-5013-4ef7-910b-67665c6b13d0",
+"title": "Nursing Communications",
+"issn": "2815-7206",
+"newTier": "A",
+"signals": [
+"CINAHL",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+]
+},
+{
+"id": "7791a818-36a2-4882-8a63-de60f4e0ddf9",
+"title": "Men in Nursing",
+"issn": "1558-6243",
+"newTier": "A",
+"signals": [
+"NLM",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "bd8aa325-3454-451c-9119-c9622121dd8c",
+"title": "African Journal of Health Nursing and Midwifery",
+"issn": "2689-9418",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Midwifery"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "c796c5e0-98ee-43d6-97f8-e7441143798e",
+"title": "International Journal of Nursing and Health Sciences",
+"issn": "2664-9187",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "655e15c6-7823-4e4e-8b89-afd6486dcdff",
+"title": "International Archives of Nursing and Health Care",
+"issn": "2469-5823",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "a5fbba94-b83d-4609-a7c9-850d7361bec7",
+"title": "Iranian Journal of Rehabilitation Research in Nursing",
+"issn": "2383-434X",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "4e94f29b-bdaf-4764-9b0e-95425811bff1",
+"title": "Journal of Boromarajonani College of Nursing, Surin",
+"issn": "2985-2900",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "83f9774c-8055-49f5-a173-89ea97c04485",
+"title": "IP Journal of Paediatrics and Nursing Science",
+"issn": "2582-4023",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "54bc997b-95e7-4832-b50b-1e46d3b21ebb",
+"title": "Healthcare Nursing Journal",
+"issn": "2655-6812",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "e2d7cde3-cc0b-42b5-bdcf-0b96a4bf6c97",
+"title": "Adi Husada Nursing Journal",
+"issn": "2443-4019",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "6ba99687-12c2-41fc-bad1-bc1b9a85b19c",
+"title": "Health Science Journal",
+"issn": "1791-809X",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Research"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "216f4ea4-5847-43b3-8fcd-abbb285edb65",
+"title": "Nursing and Public Health",
+"issn": "2082-9876",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "217f5118-6436-4eb1-a133-28228b4021fd",
+"title": "Journal of Community & Public Health Nursing",
+"issn": "2471-9846",
+"newTier": "A",
+"signals": [
+"NLM",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Public Health Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "038a13f4-69ea-4864-b38b-19261db6785e",
+"title": "International Journal of Nursing & Midwifery Research",
+"issn": "2455-9318",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "9e44af1a-0b8d-423e-9985-12bd769d0b7b",
+"title": "Journal Center of Research Publication in Midwifery and Nursing",
+"issn": "2580-5061",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "301c27de-82e5-430f-b474-4865d1261157",
+"title": "Journal of Nursing Practice and Education",
+"issn": "2775-0663",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "f84f38e0-df9c-426c-a926-046197ec7a57",
+"title": "GSTF Journal of Nursing and Health Care",
+"issn": "2345-718X",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "21e9b462-8d0f-4f00-a5fb-485009f56996",
+"title": "Journal of Health Medicine and Nursing",
+"issn": "2520-4025",
+"newTier": "A",
+"signals": [
+"CINAHL",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+]
+},
+{
+"id": "59be9234-8c42-4422-84e7-f3557815002c",
+"title": "Journal of Holistic Nursing Science",
+"issn": "1979-1453",
+"newTier": "A",
+"signals": [
+"CINAHL",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+]
+},
+{
+"id": "9d2db290-e7a1-45ba-8bc1-22660c78c60c",
+"title": "Nursing Praxis in New Zealand",
+"issn": "2423-012X",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"DOAJ",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "College of Nurses Aotearoa New Zealand",
+"nlmHeadings": [
+"Nursing",
+"Nursing Care"
+]
+},
+"listedBy": [
+"CINAHL",
+"DOAJ",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "e796bd9d-0c75-40e7-bc86-8201cccb3e9a",
+"title": "REAL in Nursing Journal",
+"issn": "2685-9068",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "9df9f63e-e4c2-4e2a-85ff-410bf25608fa",
+"title": "GFNPSS GLOBAL NURSING JOURNAL OF INDIA",
+"issn": "2581-8546",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "1237441b-c26b-4155-8f2d-84a61c2d9455",
+"title": "Al-Asalmiya Nursing Jurnal Ilmu Keperawatan (Journal of Nursing Sciences)",
+"issn": "2338-2112",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "19cccecd-dc80-43bc-898f-b29c506e705b",
+"title": "Nursing and Midwifery Journal",
+"issn": "2820-8404",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "0e56ea5b-45b7-4ec3-8351-3f1b8720537c",
+"title": "Middle East Journal of Nursing",
+"issn": "1834-8742",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "6ee97892-04a7-41cf-bb93-86d8aa95464d",
+"title": "International Journal of Studies in Nursing",
+"issn": "2424-9653",
+"newTier": "A",
+"signals": [
+"NLM",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "0235abf0-c7ae-4d45-b287-ca17438071b8",
+"title": "International Journal of Advanced Nursing Education and Research",
+"issn": "2207-3981",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "c0785030-5ff2-42b3-a279-540fe98c7668",
+"title": "Klabat Journal of Nursing",
+"issn": "2685-7154",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "40304941-01ee-403f-925d-17e3cc03c9ae",
+"title": "Media Husada Journal Of Nursing Science",
+"issn": "2747-1136",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "4934aba6-2d8a-4bdf-bdc9-86fe60004c37",
+"title": "International Journal of Advanced Nursing Studies",
+"issn": "2227-488X",
+"newTier": "A",
+"signals": [
+"NLM",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "d9a821eb-7f3a-4ea0-99d4-c4b2eaa4e262",
+"title": "Idea Nursing Journal",
+"issn": "2087-2879",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "d36688a8-2424-470b-a8a8-8a2aea162602",
+"title": "The Internet Journal of Advanced Nursing Practice",
+"issn": "1523-6064",
+"newTier": "A",
+"signals": [
+"NLM",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care",
+"Nursing, Practical"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "c2a60f10-8e62-4bf6-8d01-541b99232be8",
+"title": "Jurnal Keperawatan Profesional",
+"issn": "2355-679X",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "46a35549-1414-46cb-b04f-3053d3bf8e9c",
+"title": "Manipal Journal of Nursing and Health Sciences",
+"issn": "2582-7979",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Manipal Journal of Nursing & Health Sciences (MJNHS)",
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "377cf97f-6ae2-441e-8c92-bc3bd8df09e9",
+"title": "American Journal of Health Medicine and Nursing Practice",
+"issn": "2520-4017",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "7daefe8f-eae7-4115-a710-689169b35a76",
+"title": "Journal of Integrative Nursing and Palliative Care",
+"issn": "3006-5550",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "69419a70-b9a1-47ef-9dd2-cb5dbe000daa",
+"title": "Advances in Family Practice Nursing",
+"issn": "2589-420X",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "c04380f2-dd03-4291-84b8-0e10d28563bc",
+"title": "Hellenic Journal of Nursing Science",
+"issn": "1791-9002",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "8d7fca5f-e0d4-472b-b5af-bf7b8ab0429b",
+"title": "Indonesian Journal of Nursing Health Science",
+"issn": "2502-6127",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "007d423c-d8a1-40a5-a1e8-db08e54728da",
+"title": "The Journal of Boromarajonani College of Nursing, Suphanburi",
+"issn": "1905-1859",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "b6be864e-8095-478e-a163-d8cb89f46762",
+"title": "Texila International Journal of Nursing",
+"issn": "2520-3126",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "c600fecd-d79d-469d-a69c-0a850eeee5f1",
+"title": "Nursing Current Jurnal Keperawatan",
+"issn": "2089-922X",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "8dbcd498-e470-40cb-88c2-32937b334556",
+"title": "Window of Nursing Journal",
+"issn": "2721-3994",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "0ef5e6eb-f4a4-4d4f-8322-107403f0a0e8",
+"title": "International Journal of General Practice Nursing",
+"issn": "2981-9415",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "4360ed53-677f-4b8f-bf1f-35aa211a7864",
+"title": "Journal of Learning Disabilities for Nursing Health and Social Care",
+"issn": "1362-0177",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "f20de335-10f9-4db0-95da-efbfccce5fb5",
+"title": "Croatian Nursing Journal",
+"issn": "2584-5659",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "9ae2a99d-13aa-40a9-82d4-e4cb860bbc7c",
+"title": "Vajira Nursing Journal",
+"issn": "3027-8058",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "4958d766-9743-48da-83f1-b9c4875865ee",
+"title": "Macau Journal of Nursing",
+"issn": "1681-1534",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Macau Journal of Nursing",
+"nlmHeadings": [
+"Nursing",
+"Nursing Care"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "36488004-c4a3-4fca-819c-cca62ef75014",
+"title": "Nursing, Health, and Education Journal",
+"issn": "2630-0214",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "51124075-3eeb-4dea-b641-ac7c81a62283",
+"title": "Journal of Pediatric Hematology/Oncology Nursing",
+"issn": "2752-7530",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Pediatric Nursing",
+"Oncology Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "59c2d0c9-4bcb-4c52-9467-41d458e1b1d1",
+"title": "Journal of Nursing, Siam University",
+"issn": "3088-1137",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "acaa65f0-4451-417a-a3c0-28940c5ee1e5",
+"title": "Journal of Applied Nursing (Jurnal Keperawatan Terapan)",
+"issn": "2443-1125",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "6a5efac1-badf-4a9c-a336-b6e73921aac8",
+"title": "Journal of Nursing and Public Health Research",
+"issn": "2985-0916",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "f6cbffe4-4cdd-4723-9799-6c8ad3ecc215",
+"title": "JOURNAL EDUCATIONAL OF NURSING(JEN)",
+"issn": "2655-2418",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "6a58a144-43df-446d-bc91-81599a1848ed",
+"title": "Journal of Healthcare and Nursing Research",
+"issn": "2694-5789",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "0e77dd95-782a-4a0a-ad66-7bf7fa4719d5",
+"title": "International Journal For Research In Health Sciences And Nursing",
+"issn": "2208-2670",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "a541783f-97b1-4ebc-b9a2-d0ba286f8115",
+"title": "Chonnam Research Institute of Nursing Science",
+"issn": "2586-5013",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "bfdbb3d8-7aeb-4b78-9611-5891ca04189e",
+"title": "International Journal of Nursing and Midwifery",
+"issn": "2141-2456",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Midwifery"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "cccb44a4-2512-428f-a267-c95aaecadafe",
+"title": "Indonesian Trust Nursing Journal",
+"issn": "2986-2116",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "954b7ee7-4750-4f75-96b6-a7999a71e8dc",
+"title": "NURSEARCHER (Journal of Nursing & Midwifery Sciences)",
+"issn": "2958-9738",
+"newTier": "A",
+"signals": [
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+]
+},
+{
+"id": "8d9cd9fd-cb4c-48ad-8549-85f5f8c39084",
+"title": "Patria Artha Journal of Nursing Science",
+"issn": "2549-5674",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "c2f2db52-6aef-42d7-9a00-74f23bf479c5",
+"title": "Indian Journal of Nursing Sciences",
+"issn": "2581-463X",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "e9f15df2-600d-49db-8cc0-70f763fd83be",
+"title": "Nursing Sciences Journal",
+"issn": "2598-8220",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "5be47121-9648-4a1b-b3fb-f731f450c2f0",
+"title": "Journal of Medicine Nursing & Public Health",
+"issn": "2706-6606",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "eb90a181-bae1-4238-8641-677d5375329f",
+"title": "Journal of Medicine Nursing and Public health",
+"issn": "3105-3394",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "691a0ea6-bcda-4fa7-b368-5aa5bfec7af7",
+"title": "Nursing and Midwifery Journal",
+"issn": "2717-0306",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care",
+"Midwifery"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "0ca1c9cd-9143-4249-a3e8-87f115cadedf",
+"title": "British Journal of Community Health Nursing",
+"issn": "1362-4407",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+]
+},
+{
+"id": "593ae703-ae59-4acc-9600-09c6af926858",
+"title": "The Journal of Kyungpook Nursing Science",
+"issn": "1226-6302",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "91978cf1-acc2-4d79-8188-61237ce39891",
+"title": "Journal of Nursing Science & Practice",
+"issn": "2249-4758",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "ce77d6d6-4127-4188-a77f-2fb90209347c",
+"title": "NARAYANA NURSING JOURNAL",
+"issn": "2278-5361",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "519d6a5b-074d-4831-9c0d-d013fd5af132",
+"title": "INTERNATIONAL REFEREED JOURNAL OF NURSING RESEARCHES",
+"issn": "2148-4872",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "6b19c7f6-3146-47dc-a48a-95cb1785b6f9",
+"title": "Caring Indonesian Journal of Nursing Science",
+"issn": "2685-7162",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "4a90dc0f-db72-40fc-86d2-668befca544e",
+"title": "HIV Nursing",
+"issn": "1474-7359",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "da16bce4-2e4e-45af-9b8d-9ced26db6d07",
+"title": "Iris Journal of Nursing & Care",
+"issn": "2643-6892",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "0741c43e-0ff0-4c90-aee9-01fae25ed5d6",
+"title": "Journal of Research Development in Nursing and Midwifery",
+"issn": "2791-0563",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"DOAJ",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Midwifery"
+]
+},
+"listedBy": [
+"CINAHL",
+"DOAJ",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "4da8898b-8268-47b4-9000-a055d4ce544b",
+"title": "Journal of Research Development in Nursing and Midwifery",
+"issn": "1735-868X",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"DOAJ",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Midwifery"
+]
+},
+"listedBy": [
+"CINAHL",
+"DOAJ",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "99e108a4-b62c-4099-a223-803a60da2d36",
+"title": "Indian Journal of Holistic Nursing",
+"issn": "2348-2133",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "408a82cb-6141-4fdd-86ef-a6669e5c85b5",
+"title": "International Journal of Health Medicine and Nursing Practice",
+"issn": "2710-1150",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "2125f064-4557-402a-9f3f-91d036511a6b",
+"title": "Khatulistiwa Nursing Journal",
+"issn": "2655-772X",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "88d7f3d7-4932-4324-8ca9-11214aef8205",
+"title": "NAJ Nursing Applied Journal",
+"issn": "3026-5770",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "cd59745f-916e-44cc-97a7-8399e5c3f66b",
+"title": "Journal of World Future Medicine Health and Nursing",
+"issn": "2988-0459",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "08361c45-7b1e-4839-b24c-5f16ae5d5a94",
+"title": "Nursing Science Journal (NSJ)",
+"issn": "2722-4988",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "60080fa6-be07-48d8-90a8-d9d5ec382978",
+"title": "Journal of Nursing & Patient Care",
+"issn": "2573-4571",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "082df222-dc5d-4377-93e2-c8470eae229a",
+"title": "Journal of Medical & Clinical Nursing",
+"issn": "2755-0133",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "2469eb65-7f97-4087-b863-a73fce301b58",
+"title": "Indonesian Journal of Professional Nursing",
+"issn": "2746-5799",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "c222d6c9-caf7-49e8-8ad6-c1ed1910f8e0",
+"title": "Journal of Islamic Nursing",
+"issn": "2528-2549",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "8038c7e8-393f-4a46-a1d0-7ca8a9979720",
+"title": "Journal of Comprehensive Nursing Research and Care",
+"issn": "2581-3846",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "b1e4c5fc-5a16-44a8-8587-ab79e75f8bbe",
+"title": "Journal of Korean Society for Simulation in Nursing",
+"issn": "2288-6087",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "d2f5c373-50d7-40b6-8c2b-a78e767944ea",
+"title": "The Journal of Nursing Home Research Sciences",
+"issn": "2496-0799",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "9cebc479-43f9-46b2-88f4-6b629919c028",
+"title": "Journal of Nursing Education and Practice",
+"issn": "2798-9623",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "c0edebbd-24e0-4090-a384-491d2491e19e",
+"title": "Advanced Journal of Nursing",
+"issn": "2737-4963",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "721275a4-ef9b-4766-a433-96a178a0ce3d",
+"title": "EAS Journal of Nursing and Midwifery",
+"issn": "2663-0966",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "28f3451d-8154-4f3e-a709-a9c386569616",
+"title": "Nursing Law & Ethics",
+"issn": "0270-6636",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "98ad848a-557d-409c-b81c-b90221dfbe7b",
+"title": "International Journal of Nursing Research",
+"issn": "2456-1320",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Research"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "dd4ab157-2dda-4b84-bb96-e245518971f3",
+"title": "Bayero Journal of Nursing and Health Care",
+"issn": "2659-1464",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "81369d6e-a7d8-44db-b4f8-1c6f8bffbed0",
+"title": "South Asian Research Journal of Nursing and Healthcare",
+"issn": "2664-8059",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "e738576f-46d1-4bc9-ab6b-769578c33780",
+"title": "Journal of Nursing Practice Applications & Reviews of Research",
+"issn": "2329-4760",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Philippine Nurses Association of America",
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "c856d605-458a-4274-bc30-11ff155f15d4",
+"title": "Perspectives in Nursing Science",
+"issn": "2288-2898",
+"newTier": "A",
+"signals": [
+"NLM",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"KoreaMed",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "fc0dd128-a8e6-4b42-ae37-d94d933ab50a",
+"title": "Revista Española de Enfermería de Salud Mental",
+"issn": "2530-6707",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "e3c4dc42-07ac-48b3-abad-a41548048056",
+"title": "Journal Nursing Care and Biomolecular",
+"issn": "2548-6802",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "0526a5ea-eafb-46ff-90ec-1eb23cbc6957",
+"title": "Journal of Nursing Research Innovation and Health",
+"issn": "3056-9893",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "bfb51af0-7243-4b96-93f9-a53a01d8f728",
+"title": "Journal of Perioperative & Critical Intensive Care Nursing",
+"issn": "2471-9870",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "cc8b3980-f56f-49a2-9e7c-5972c40abc5d",
+"title": "Nursing and Palliative Care",
+"issn": "2397-9623",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "c2ecbd1b-7b9f-4bb5-be20-6941fd6ac06d",
+"title": "JENDELA NURSING JOURNAL",
+"issn": "2089-9580",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "5484fd0e-ee45-4c02-8b7c-42bdd0ae5510",
+"title": "The Korean Society for Veterinary Nursing",
+"issn": "2950-9033",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "a0a0c502-8a28-4e4d-80f5-d1e1360972a4",
+"title": "International Journal of Nursing and Health Science",
+"issn": "2454-7484",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "b0d6a976-5c98-4035-9ec9-88c2046341ff",
+"title": "Health & Nursing",
+"issn": "2586-0283",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "eef2cf32-8dfb-4d4e-a494-6d777c7d90ce",
+"title": "The Academic and Nursing Journal of Boromarajonani College of Nursing, Chakriraj",
+"issn": "2730-3993",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "4f32104d-b8e4-4ec9-9671-54339c4f133f",
+"title": "Sohag Journal of Nursing Science",
+"issn": "2974-3206",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "7183efea-69f6-4146-8f1e-3c1f3c9fef87",
+"title": "International Journal of Nursing Student Scholarship",
+"issn": "2291-6679",
+"newTier": "A",
+"signals": [
+"CINAHL",
+"OA",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "International Journal of Nursing Student Scholarship"
+},
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+]
+},
+{
+"id": "ba5777ca-1a13-40ae-9517-a9bfe00841ed",
+"title": "Journal of Nursing Law",
+"issn": "1073-7472",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "ab4341ac-3e0f-4ebf-88c0-e8556123ada1",
+"title": "Journal of International Nursing Research",
+"issn": "2436-3448",
+"newTier": "A",
+"signals": [
+"OA",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"jstageOrganization": "Japan Society of Nursing Research"
+},
+"listedBy": [
+"J-STAGE",
+"OpenAlex"
+]
+},
+{
+"id": "a9915043-46f5-4db6-a06c-4a9e474990db",
+"title": "Journal of Nursing Research Patient Safety and Practise",
+"issn": "2799-1210",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "3c866140-c4da-41c1-b72f-b4370fd1d387",
+"title": "Midwifery and Nursing Research",
+"issn": "2685-2020",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "20072850-59e2-4a1a-a6f9-749fbe4aa28f",
+"title": "Journal of Nursing Update",
+"issn": "2715-6192",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "f5e41485-e0a0-40f8-9f9e-10aaab75fa56",
+"title": "Online Journal of Cultural Competence in Nursing and Healthcare",
+"issn": "2160-2824",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Online Journal of Cultural Competence in Nursing & Healthcare",
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "783db9b8-fae5-4f20-9b0d-ce507d6cc064",
+"title": "Indonesian Journal of Nursing and Health Sciences",
+"issn": "2746-5497",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "6ae637a1-c185-4aec-89ca-e932dddadac7",
+"title": "ASJN (Aisyiyah Surakarta Journal of Nursing)",
+"issn": "2774-9096",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "b785e970-f703-42ff-bdbf-617dd723099d",
+"title": "Australian and New Zealand Journal of Mental Health Nursing",
+"issn": "1324-3780",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"OA",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses",
+"Psychiatric Nursing"
+],
+"publisher": "Blackwell Science for the Australian and New Zealand College of Mental Health Nurses"
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "f5bd8b96-05e7-4aea-ae55-87b47a59b951",
+"title": "Worldviews on Evidence-based Nursing presents the archives of Online Journal of Knowledge Synthesis for Nursing",
+"issn": "1072-7639",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "a184d36f-0804-42f1-a045-307e4594a2c8",
+"title": "Indonesian Journal of Nursing Research (IJNR)",
+"issn": "2615-6407",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "eb254a55-8a79-474a-9d59-f0874bef0908",
+"title": "Sygeplejevidenskab dk – Journal of Nursing Research & Professional Knowledge",
+"issn": "2794-6991",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "dbaf1b34-399f-4b29-a05b-8a769813d8e9",
+"title": "Critical Care Nursing",
+"issn": "2008-3084",
+"newTier": "A",
+"signals": [
+"CINAHL",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+]
+},
+{
+"id": "f4cc4f51-2372-4815-9937-8db9d109b497",
+"title": "The Nursing Scope",
+"issn": "0795-6541",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "8540d95d-ef98-4bb3-825c-2acc0f34f00b",
+"title": "Journal of Children s and Young People s Nursing",
+"issn": "1753-1594",
+"newTier": "A",
+"signals": [
+"CINAHL",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+]
+},
+{
+"id": "70219abd-f17b-423e-8de3-f04711f72dd7",
+"title": "Holistic Nursing and Health Science",
+"issn": "2622-4321",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "8a4e832c-55b3-490d-9969-78ffcbdca5bb",
+"title": "Journal of Modern Nursing Practice and Research",
+"issn": "2708-2202",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "0f6eafbb-ae7b-49b5-a69e-ebbcbb761ff5",
+"title": "Kenyan Journal of Nursing & Midwifery",
+"issn": "2518-8631",
+"newTier": "A",
+"signals": [
+"CINAHL",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+]
+},
+{
+"id": "1555825b-8616-42c3-a9c1-47aa44b0af00",
+"title": "Nursing, Health, and Public Health Journal",
+"issn": "2774-082X",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "a92e5040-0916-48b2-8b88-a566113a74a2",
+"title": "Journal of Nursing and Practice",
+"issn": "2578-7071",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "3b6724b5-afe9-443e-980d-63ed0a0d8e3f",
+"title": "D Nursing and Health Journal (DNHJ)",
+"issn": "2774-3802",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "496b39b2-39d4-4355-b4b2-b24c0afdacfe",
+"title": "International Journal of Pediatric Nursing",
+"issn": "2454-9126",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "84f5d6de-6ea0-4666-8f05-edaee5c0503e",
+"title": "Bima Nursing Journal",
+"issn": "2715-6834",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "5138e36f-c6f0-4c00-97d5-cdb58330e009",
+"title": "SAP Nursing Depths Series",
+"issn": "3125-2435",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "df93f724-d406-478e-9557-e0ff00a3d11b",
+"title": "SAP Nursing Depths Series",
+"issn": "3144-3648",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "ea1c7a0a-b079-40a6-994f-ab491fe17124",
+"title": "Nursing Information Journal",
+"issn": "2809-0152",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "53f29278-bb42-4e05-9a5d-8c9f6df5ae75",
+"title": "Madago Nursing Journal",
+"issn": "2746-9271",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "60ed8beb-41e7-4d16-8dc0-38d486302fd3",
+"title": "ARC Journal of Nursing and Healthcare",
+"issn": "2455-4324",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "212acf0a-4226-4f7b-a0e7-94dd2d577cf5",
+"title": "Journal of Farkhanda Institute of Nursing And Public Health (JFINPH)",
+"issn": "2788-5704",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "8deeed68-4108-4ce8-b825-f39ea8e857c3",
+"title": "Scientific Journal of Nursing Research",
+"issn": "2655-0024",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "976bec1e-af88-44a5-9cba-cb32e460bd78",
+"title": "The Journal of Palembang Nursing Studies",
+"issn": "2827-8496",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "d73d1df2-0506-4b53-950a-6f42e48392fc",
+"title": "Journal Nursing Research Publication Media (NURSEPEDIA)",
+"issn": "2828-9528",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "eee6d55c-dffb-469b-b921-5ac0a8b0f7b3",
+"title": "Nan Tongga Health And Nursing",
+"issn": "2085-336X",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "7327bcbf-62ab-4cd3-a79b-5053d1312b62",
+"title": "APHEIT Journal of Nursing and Health",
+"issn": "2697-4622",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "fe6775d4-0c7f-40c3-a162-1890c1a8e3a9",
+"title": "Asian Pacific Journal of Nursing and Health Sciences",
+"issn": "2581-7442",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "7a2df185-0ed1-4c98-8b80-0038e2267057",
+"title": "Journal Nursing Care Jurusan Keperawatan Politeknik Kesehatan Gorontalo",
+"issn": "2407-8859",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "a17615e3-efd4-42c3-8a30-d3304b3388e5",
+"title": "International Journal of Nursing Midwife and Health Related Cases",
+"issn": "2397-0758",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "2b2fbfe9-cef0-4030-b3f1-d986a1b92f5d",
+"title": "Journal of Research Development in Nursing and Midwifery",
+"issn": "1010-6510",
+"newTier": "X",
+"signals": [],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "e240ed51-842a-4d72-a505-94e56eb7ef61",
+"title": "Borobudur Nursing Review",
+"issn": "2777-0788",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "5e1a366c-7c1a-4d1d-949d-5d560479448f",
+"title": "Advancing Medical-Surgical Nursing",
+"issn": "3050-8592",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "1c741b1d-b7bd-46a8-92d6-2b5dd18e57dd",
+"title": "ISRN Nursing",
+"issn": "2090-5483",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "8a8559ca-fdde-4550-93a0-63309d636b29",
+"title": "Journal of Nursing",
+"issn": "2251-3582",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "a953fe61-6a6b-4455-ae5b-49ddf8fe644e",
+"title": "Journal of Nursing and Midwifery Sciences",
+"issn": "2829-4572",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "6abea8a2-d0e1-411b-89fe-02438a994185",
+"title": "Journal of Nursing and Allied Health",
+"issn": "3005-964X",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "8240d78c-1eba-49ca-a158-6b6a6af48015",
+"title": "JOSING Journal of Nursing and Health",
+"issn": "2746-0851",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "5d392cf6-663a-469c-a2de-47417c734bcf",
+"title": "Archives of Nursing Practice and Care",
+"issn": "2581-4265",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "0c1b7290-b0e9-4b20-8f19-7df1512124e4",
+"title": "CURRENT OPINION NURSING & RESEARCH",
+"issn": "2707-4676",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "20a0efaf-c22e-494f-901a-dcbd4d100561",
+"title": "Iranian Journal of Nursing Research",
+"issn": "1735-9074",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "d1646759-d1cf-4bc4-b13f-e94162c2c8b1",
+"title": "JHN Journal of Health and Nursing",
+"issn": "3025-8448",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "50cdaab3-f075-4d1e-891f-553a0b97cada",
+"title": "Journal of the Academy of Forensic Nursing",
+"issn": "2817-3848",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "80135b1b-1156-4e6c-8691-65b3a3c6dab0",
+"title": "Journal of Rural Community Nursing Practice",
+"issn": "2986-8424",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "263a9802-151a-4119-9744-39f930437e12",
+"title": "Mega Buana Journal of Nursing",
+"issn": "2829-1905",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "be83a6d6-fa4c-4d9e-a210-9aa2a4c7ede8",
+"title": "Global Health and Nursing (글로벌 건강과 간호)",
+"issn": "2233-5560",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "49291d4b-9968-4a26-8d7f-e3ae06eeb741",
+"title": "Korean Society of Evidence-Based Nursing",
+"issn": "2288-775X",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "7692537a-4e54-42c3-89a0-7cae42a56a18",
+"title": "Turkish Journal of Diabetes Nursing",
+"issn": "2791-8165",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "a7a7c642-e87d-4277-a2ff-e46c18ccc07d",
+"title": "Journal of Advanced Nursing and Health Sciences",
+"issn": "2774-5821",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "4f7dedc7-a3c2-4555-8a1a-cdc0e66d3609",
+"title": "Clinics in Perioperative Nursing Care",
+"issn": "2950-3884",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "a6c0d4d4-ec65-440f-8b46-7e762873c986",
+"title": "Mader-e-Milat International Journal of Nursing and Allied Sciences",
+"issn": "2960-2181",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "26d438b8-db9c-41fe-ae04-cdd6995212d7",
+"title": "Basic and Applied Nursing Research Journal",
+"issn": "2722-8274",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "8b8ce9ef-f7ca-4f92-be25-5c2a6d38f8a7",
+"title": "Practical and Professional Nursing",
+"issn": "2639-5681",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "5c2eb245-da29-43be-95eb-a60439c2f562",
+"title": "Australian Journal of Child and Family Health Nursing",
+"issn": "1839-8782",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+],
+"publisher": "Maternal Child and Family Health Nurses Australia"
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "3b7cc4a9-5f44-4e38-a2fb-d9b233f24f3c",
+"title": "Journal of Nursing and Health Studies",
+"issn": "2574-2825",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "d68a0d74-863d-4803-bad5-2c548ed9ba87",
+"title": "Open Access Journal of Nursing",
+"issn": "2639-1783",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "c7441182-498a-4639-9747-9ee8524193ab",
+"title": "Journal of Integrative Healthcare and Nursing",
+"issn": "3080-9770",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "58ed1902-672a-47a9-8474-6c710279fdc1",
+"title": "International Diabetes Nursing",
+"issn": "2057-3316",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "7fc2bc2e-d6d8-4f77-bf03-73d036e90681",
+"title": "International Journal of Practical Nursing",
+"issn": "2347-7083",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "1c9accbe-e936-466c-b2cb-83f93cdf62fb",
+"title": "Nursing and Health",
+"issn": "2332-2217",
+"newTier": "A",
+"signals": [
+"NLM",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "5715fc02-c159-4ecd-b3d6-5c02a2d0486c",
+"title": "Journal of Management Nursing",
+"issn": "2807-1905",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "3538e2c1-3814-42b1-8a48-b813f0b962ed",
+"title": "Indian Journal of Nursing Studies",
+"issn": "2229-3280",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "47ffecb7-e5c8-4040-8819-8c289462363c",
+"title": "ANJI: Applied Nursing Journal of Indonesia",
+"issn": "3026-3301",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "d93d6218-0ccc-4d7e-b82b-af406afd285e",
+"title": "Nursing and Health Care Perspectives",
+"issn": "1094-2831",
+"newTier": "A",
+"signals": [
+"NLM",
+"OA",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+],
+"publisher": "National League for Nursing, Inc."
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "e56c1f3a-4686-4748-9bb7-18e9de1a9d05",
+"title": "Clinical Journal of Nursing Care and Practice",
+"issn": "2639-9911",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "69b15e0d-d2ab-4331-b3cc-7cfc063a346a",
+"title": "JoIN Journal of Intan Nursing",
+"issn": "3031-3260",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "58e76fef-c715-4378-932d-4388ddcdf3ae",
+"title": "Journal of Health and Cardiovascular Nursing",
+"issn": "2797-1880",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "d003a423-7a2b-4a32-87bb-72d1fa5f11b2",
+"title": "European Journal for Nursing History and Ethics",
+"issn": "2628-4375",
+"newTier": "A",
+"signals": [
+"NLM",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+],
+"publisher": "European Association for the History of Nursing"
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "86112a31-60e1-4fea-9459-795935466276",
+"title": "MNJ (Mahakam Nursing Journal)",
+"issn": "2548-625X",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "23b99fcd-a8a0-481a-a94f-f190ee76a773",
+"title": "The Australian Journal of Cancer Nursing",
+"issn": "1441-2551",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses",
+"Oncology Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "7932682d-6f33-423a-8362-fb77cca65375",
+"title": "International Journal of Research in Nursing",
+"issn": "1949-0194",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "ace35780-dc5c-4e06-a733-94433d32b60a",
+"title": "International Journal of Addiction Nursing",
+"issn": "3068-9589",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "5033f73c-840b-4616-9799-ced97766fbda",
+"title": "Journal of Nursing Science Christian University of Thailand",
+"issn": "2408-0934",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "09a0eb7c-7d1c-4055-aca2-5bd52ec1b6ca",
+"title": "Nightingale: Journal of Nursing",
+"issn": "2964-0180",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "d5673a4b-4308-4e06-8c34-fb78dc7593aa",
+"title": "International Journal of Nursing and Medical Investigation",
+"issn": "2456-4656",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "eea75816-830b-4344-8d98-29944e591093",
+"title": "An Idea Nursing Journal",
+"issn": "2961-8592",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "438cfbbd-5e57-4246-a8c7-5f495827bdcc",
+"title": "British Journal of Nursing Studies",
+"issn": "2755-080X",
+"newTier": "A",
+"signals": [
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+]
+},
+{
+"id": "dfa79045-1ce9-4dc2-9a74-38db78d65cb3",
+"title": "International Journal of Biomedical Nursing Review",
+"issn": "2963-1556",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "8baaebc7-ebe6-4743-9a7d-caeaad4ade3d",
+"title": "Nursing Case Insight Journal",
+"issn": "3046-5915",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "f8c2b8b5-e6d8-41d0-ae09-c37d4d868843",
+"title": "Journal of Nursing Education of Nepal",
+"issn": "2091-0894",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "95678876-ca18-4fd2-8eb4-dd50d28522ae",
+"title": "International Journal of Nursing and Midwifery Research",
+"issn": "2985-783X",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "f856e866-93bd-4a20-8854-402be84e695b",
+"title": "Optimal Midwife & Nursing Journal",
+"issn": "3062-6765",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "27776a2e-d9b3-4702-bf79-5d320186f0f5",
+"title": "Global Ten Public Health and Nursing Journal",
+"issn": "3025-6283",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "e9b8dac5-517e-43eb-acf1-98137ac8d136",
+"title": "IFR Journal of Nursing and Health Care Prevention",
+"issn": "3105-3831",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "c500cb9f-a3e3-467f-944d-e556cb73d9b6",
+"title": "Nursing Journal of Khon Kean Hospital",
+"issn": "2822-082X",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "59ed2239-1845-45f7-af7b-656f5e90745e",
+"title": "American Research Journal of Nursing",
+"issn": "2379-2922",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "68daea29-0995-4057-95ce-871085937b79",
+"title": "Asian Community Health Nursing Research",
+"issn": "2654-2900",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "1c3d77f8-35fe-4499-90fa-9c368d74f810",
+"title": "International Journal of Nursing Science Practice and Research",
+"issn": "2455-6351",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "4103a9ce-599e-4998-88d4-0fd04570fadb",
+"title": "Practical Implementation of Nursing Science",
+"issn": "2832-2037",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "e89be5b8-40aa-4863-be8d-9ea399f6fbbd",
+"title": "Celebes Nursing Journal",
+"issn": "3063-9247",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "110d7e6c-7842-4986-a5ee-c3c6e8ab82b5",
+"title": "Journal of Nursing and Health Science",
+"issn": "2808-2370",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "0e7e8b6f-3928-45b5-9bae-b1fcc889f796",
+"title": "Advances in Nursing and Health",
+"issn": "2675-1798",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "cd449de2-c822-43e6-865c-bf7b4ed489f9",
+"title": "Lentora Nursing Journal",
+"issn": "2776-1371",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "96da3642-f19f-4e6b-8014-20788cc508d8",
+"title": "Nursing and Health Care",
+"issn": "2692-8469",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "9b7d2ac0-2834-4e60-8238-39c888988e78",
+"title": "Damanhour Scientific Nursing Journal",
+"issn": "2974-329X",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "379d9b6d-7e1e-47f4-9e39-976c6c553ad9",
+"title": "American Journal of Nursing and Health Sciences",
+"issn": "2994-7227",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "438f7203-88ec-47c3-8c6c-ef0169197bae",
+"title": "International Journal of Neonatal Care and Pediatric Nursing",
+"issn": "2583-469X",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "f57126ca-17a5-4066-b79d-b09e26d8434c",
+"title": "International Journal of Research in Medical Surgical Nursing",
+"issn": "2583-3243",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "7e51bfab-03ce-4dc8-af50-6e705fa96b85",
+"title": "Alauddin Scientific Journal of Nursing",
+"issn": "2774-5333",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "4a1f48d1-81dd-4e40-869b-8a9243436b46",
+"title": "PENA NURSING",
+"issn": "2963-9549",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "51a8d966-9e29-4822-8d09-0abc239a6425",
+"title": "Journal of Birgunj Nursing Campus",
+"issn": "3021-968X",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "ba11b7d7-9525-4102-aaf0-7642c1a9e615",
+"title": "International Academic Journal of Advanced Practices in Nursing",
+"issn": "2709-3263",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "8c7954a9-cd66-4990-8585-607bf1bd1fa6",
+"title": "Journal of Paediatrics and Child Health Nursing",
+"issn": "3081-0582",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "343a9d60-205f-498c-a8c3-0dc241d43edd",
+"title": "Journal of Research in Nursing and Midwifery",
+"issn": "2315-568X",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "9eb632ff-a6f6-410f-8663-b80b00294713",
+"title": "Journal of Nursing and Women s Health",
+"issn": "2577-1450",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "d0fde65d-99c9-492b-8e4a-55217892a8f4",
+"title": "SOJ Nursing & Health Care",
+"issn": "2471-6529",
+"newTier": "A",
+"signals": [
+"NLM",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "4ac95cb8-a4a5-445f-9a8e-a9ff9f098958",
+"title": "Journal of Nursing and Socioenvironmental Health",
+"issn": "2358-9884",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "292534e7-8afd-4e03-a9c2-29b86aaffebd",
+"title": "Carolus Journal of Nursing",
+"issn": "2654-6191",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "55422ba1-6bb3-409e-8619-7d54097dff0d",
+"title": "Annals of Nursing",
+"issn": "2956-0179",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "1b15235b-7a66-4015-8b75-aba4373e8be8",
+"title": "Journal of Nursing Care Research",
+"issn": "3023-7270",
+"newTier": "A",
+"signals": [
+"CINAHL",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+]
+},
+{
+"id": "8a187bcb-8a6d-46e0-a45f-a96c66a67f2b",
+"title": "Holistic Nursing Plus",
+"issn": "2987-2081",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "aac72f56-085a-4e64-b3f7-c38ccd09c948",
+"title": "Journal of Cancer Nursing",
+"issn": "1364-9825",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Oncology Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "0764d797-f87c-4442-982b-ef17c37ac4a5",
+"title": "Journal of Nursing Science Practice Research and Advancements",
+"issn": "3139-3098",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "432ba11d-addf-4a70-95d8-86f0681cbc9e",
+"title": "Nursing and Health Care",
+"issn": "2573-3877",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "d55ad6a6-633d-4404-9f60-8d81273c087f",
+"title": "Journal of Nursing Practices and Research",
+"issn": "2582-9602",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "1e9ebfb2-4f1e-41f2-8c47-9229bf2f0313",
+"title": "Kelimutu Nursing Journal",
+"issn": "2964-0245",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "03975b09-d44a-41a1-91cd-e8a8dae7f2f1",
+"title": "Green Health International Journal of Health Sciences Nursing and Nutrition",
+"issn": "3063-7309",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "e9a02362-f275-4043-b9d0-a509a00f1728",
+"title": "Journal of Mental Health Nursing",
+"issn": "3081-0566",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "bf57d97b-ff5f-4f8f-820b-f0abeb47b3e7",
+"title": "Trends in Nursing Administration & Education",
+"issn": "2348-2141",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "b6d94f7a-7172-4d40-aa83-9f2d7660b0f2",
+"title": "TMR Integrative Nursing",
+"issn": "2522-6371",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "e9cb1dd2-0532-404c-877c-d0a31c82260c",
+"title": "Indonesian Journal of Nursing Scientific",
+"issn": "2964-0059",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "fe264f80-7083-448b-b552-cbe6d8e44b01",
+"title": "Indonesian Nursing Journal",
+"issn": "2988-7577",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "72e3b788-b31d-451b-ad86-be32d9cab841",
+"title": "The Journal of RURAL NURSING",
+"issn": "2320-6748",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "ad57844f-6296-4051-8fd3-e1b3bee7423a",
+"title": "Innovational Journal of Nursing and Healthcare",
+"issn": "2454-4906",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "0e441d40-0882-4cbc-98f8-8d2924d44f4e",
+"title": "Pediatrics and Neonatal Nursing - Open Journal",
+"issn": "2377-1569",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Neonatal Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "cbeabb4b-19aa-4b2f-95e9-9db65bb00195",
+"title": "Sri Lankan Journal of Nursing",
+"issn": "2827-7295",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "a3699494-01f8-4cc2-bc21-50651b9db0fa",
+"title": "THE JOURNAL OF Nursing Management Issues",
+"issn": "2963-3826",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "854ac551-7c2d-4509-b73c-b8eef57c699b",
+"title": "Himalayan Journal of Nursing and Midwifery",
+"issn": "2790-6442",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "492cd654-f51e-4be0-bef0-3491f05d7bb8",
+"title": "Journal of Nursing and Health Sciences Nakhon Phanom University",
+"issn": "2985-0908",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "63ec8660-d36d-41fd-af44-6faaa5327b55",
+"title": "RqR Quantitative and Qualitative Community Nursing Research",
+"issn": "2952-1807",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "79d91075-ecae-41a2-bc58-348af3739dcc",
+"title": "Nursing & Innovation",
+"issn": "2983-4422",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "9329ee54-13ea-46b1-aff6-bc438f142aaa",
+"title": "Asia Pacific Journal of Nursing Research",
+"issn": "3078-3836",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "96711c60-7027-479d-83ca-bf34cf640016",
+"title": "Whitireia Journal of Nursing Health & Social Services",
+"issn": "2744-4589",
+"newTier": "A",
+"signals": [
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Whitireia Nursing Journal"
+},
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+]
+},
+{
+"id": "1a5323ef-c80f-4c99-950e-39def70522df",
+"title": "Community and Public Health Nursing",
+"issn": "2455-8621",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "1bface40-50ad-47fc-9ccd-6247df0334dc",
+"title": "SESTRINSKI ŽURNAL",
+"issn": "2303-6222",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "a5d28d2c-3a7c-43ea-aa54-d2447df4b891",
+"title": "Tanjungpura Journal of Nursing Practice and Education",
+"issn": "2745-858X",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "9d9710d6-fcd6-4b9a-8c5f-cbb702f9d40a",
+"title": "IJRDO - Journal of Health Sciences and Nursing",
+"issn": "2456-298X",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "e64166af-b43d-40f1-b70c-f3b9cd6aab97",
+"title": "Journal of Indonesian Anesthesiology Nursing",
+"issn": "3089-7114",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "e39e7e1e-af83-4250-aa40-bc71e22bca36",
+"title": "Lupine Online Journal of Nursing & Health care",
+"issn": "2637-6695",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "e143ea1b-7b7e-4e51-b68f-530d5a7b44b8",
+"title": "Journal of Nursing",
+"issn": "3090-3327",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "4cf551dc-ff8e-45ae-ae0a-c9ea0a10fc09",
+"title": "Journal of Nursing Education",
+"issn": "2322-4428",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "0d88b3bd-0fb8-4bcc-a337-4aa2b3ade507",
+"title": "Damietta Journal of Nursing Research and Health Sciences",
+"issn": "3009-7231",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "fc5078db-c6cf-4450-a0a9-853496600b3e",
+"title": "Journal of Patient Care and Nursing Practice",
+"issn": "3078-9087",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "a9817238-fa5a-4d4b-8238-e7762c2e2527",
+"title": "Journal of Hygiene and Community Health Nursing",
+"issn": "3078-9109",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "b033a860-6bd0-4585-8c63-db98d6a2ae71",
+"title": "Global Nursing Insights",
+"issn": "3108-3935",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "3717c5e2-4d8e-4315-81d0-d96ef6223a3e",
+"title": "Indonesian Journal of Nursing and Health Care",
+"issn": "3047-2849",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "2bd3fb59-633a-4a3b-9f70-3037408429f6",
+"title": "Middle East Research Journal of Nursing",
+"issn": "2789-8679",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "18323d11-a20e-41d4-8e3c-ea181f34492e",
+"title": "EUROPEAN JOURNAL OF OCCUPATIONAL HEALTH NURSING",
+"issn": "2444-7226",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "a57aeee3-d316-44a9-a7d1-48633c7f6115",
+"title": "Trends of Nursing Sciences (TeNS)",
+"issn": "2745-939X",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "9c8b749e-c79d-4c78-b8cb-dd359c56b579",
+"title": "Journal of Nursing Science and Professional Practice",
+"issn": "3050-5100",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "a71a4cd0-fc03-4f41-8d52-fa983df26243",
+"title": "Omni Nursing Journal",
+"issn": "3047-6054",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "8a681b4f-728a-433d-aaaa-60c0bab31d27",
+"title": "Watson Journal Of Nursing",
+"issn": "2829-3126",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "ca4e7dd1-dc13-40e6-b7e7-f6af7ffa3186",
+"title": "Trends in Nursing",
+"issn": "2313-8467",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "71326060-e909-4aba-8e53-2aae87703fd2",
+"title": "Ghana Journal of Nursing and Midwifery",
+"issn": "3057-3602",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "8613fbb4-8728-439e-bd3f-7ba62c4da1c9",
+"title": "Journal of Nursing Periodic",
+"issn": "3032-6761",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "2153a787-5996-48e2-8139-8cef68ddeef0",
+"title": "Nursing Care Journal",
+"issn": "2830-7135",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "e284087a-5033-4a34-9b3f-b6dc283cc0bc",
+"title": "International Journal of Public Health and Nursing",
+"issn": "3070-202X",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "8927ecee-0a79-4017-813d-80def0bc63e1",
+"title": "POJ Nursing Practice & Research",
+"issn": "2577-9516",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "26901b33-4cca-41e6-8a9c-942b939b83ab",
+"title": "Madridge Journal of Nursing",
+"issn": "2638-1605",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "14523469-16b9-4012-91ee-28705caf7ee0",
+"title": "Asy-Syifa Journal of Science and Technology Nursing",
+"issn": "2986-8599",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "ec2cfdf8-f176-427c-9de7-341d1bbf687d",
+"title": "International Journal of Nursing Research and Practice (IJNRP)",
+"issn": "2350-1324",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "fdd25860-41b1-44eb-b9c1-21cd54c29adc",
+"title": "Indian Journal of Surgical Nursing",
+"issn": "2277-467X",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "bf9d7ff0-e26b-46f5-b4dc-33f2a5d5cafd",
+"title": "Journal of Complementary Nursing",
+"issn": "2777-0656",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "9c5cd953-6f56-442a-86f6-41590181886b",
+"title": "Canadian Journal of Critical Care Nursing",
+"issn": "2368-8653",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Canadian Association of Critical Care Nurses",
+"nlmHeadings": [
+"Nursing",
+"Nurses",
+"Critical Care Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "c415ed8b-5eb8-40d6-bb04-78a3c2f9f74e",
+"title": "Journal of Ambulatory Care Nursing",
+"issn": "3065-9752",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "8236d042-2105-49c5-8252-e458187e32b8",
+"title": "Journal of Applied Holistic Nursing Science",
+"issn": "3090-1316",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "440e058d-725e-4085-9c5b-4449aa3ff954",
+"title": "Interdisciplinary Journal of Nursing and Health",
+"issn": "3103-537X",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+]
+},
+{
+"id": "ee9ad6da-f1b3-4ed8-be2f-2c7994095ab0",
+"title": "International Journal of Nursing and Health Research",
+"issn": "2664-6420",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "ced490df-0f68-4780-91a8-b3027d630871",
+"title": "Journal of Nursing Nusantara Jaya",
+"issn": "2407-9219",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "07e3f138-dca9-41fd-8be2-8d75736fc7c4",
+"title": "CHMK NURSING SCIENTIFIC JOURNAL",
+"issn": "2621-4091",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "e28c7ad6-22e2-456f-9637-91d0e04c44b0",
+"title": "Blambangan Journal of Nursing and Health Sciences (BJNHS)",
+"issn": "3026-2356",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "8a3bb233-2ced-4fd2-b13a-f043ad01f1a3",
+"title": "Nursing and Health Research",
+"issn": "2996-1432",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "21761e38-ef56-487b-b5f0-e00a5e0daef1",
+"title": "Journal of Evidence-based Nursing and Public Health",
+"issn": "3048-2615",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "f4bedb2c-f01f-43b7-91a6-5ed6160f89d7",
+"title": "Korean Journal of Health & Nursing",
+"issn": "3058-4744",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "e7cd8327-621d-451b-ab49-7dcbab262fe5",
+"title": "Journal of Community Engagement in Health and Nursing",
+"issn": "2964-609X",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "eef51dc0-8530-4f60-9735-ca3ed2cde1a7",
+"title": "Journal of Medicine and Surgical Nursing",
+"issn": "3079-0506",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "6aac99cb-ae1e-4a3c-a537-b8c40f5b3df9",
+"title": "Scientific Journal of Nursing and Health",
+"issn": "3031-2345",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "3af8c30b-f3f5-4b8a-b100-3ce5f3a81323",
+"title": "Journal of Nursing and Health Sciences Nepal",
+"issn": "2961-1679",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "09f170e2-df9d-46bb-af31-6cb81f1b0cf5",
+"title": "Journal of Health Medicine and Nursing",
+"issn": "3063-4210",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "cf7cc1ef-18d5-4327-8dc9-ee197a6c2140",
+"title": "Curatio Journal of Advanced and Specialized Nursing and Care Planning",
+"issn": "3064-4089",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "356cc4b6-016c-4a2b-8b86-2b7daee947a1",
+"title": "Journal of Nursing Midwifery and Allied Health Sciences",
+"issn": "3141-4729",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "0ce6e3e2-e600-4d5d-84db-0000a8f4da77",
+"title": "Tasikmalaya Nursing Journal",
+"issn": "3026-5614",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "d2965cd1-1b94-4b07-9fc3-ab9c74660541",
+"title": "Al-Turath Journal of Nursing",
+"issn": "3080-5759",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "a64dfb86-ae7c-4a8a-b5ca-baf9e127c5a5",
+"title": "老年护理（Geriatric Nursing）",
+"issn": "3105-658X",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "ff7b6849-d290-4c51-a6a1-a56922d9b1a3",
+"title": "Computers in Nursing",
+"issn": "0736-8593",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "9ce62b0b-1795-48ca-844f-763f198b205f",
+"title": "Austin Journal of Nursing & Health Care",
+"issn": "2375-2483",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "b07bfb45-b5a1-4dc7-9dcc-6ada47a8af16",
+"title": "World Journal of Nursing Research",
+"issn": "2833-9746",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "083437fc-159b-4595-925e-4a7da8ce96f1",
+"title": "The Korean Society for Health and Nursing Convergence",
+"issn": "3022-7070",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "a311a0f3-7c18-4228-8436-35b2d759a597",
+"title": "IJENS INDONESIAN JOURNAL OF EMPIRICAL NURSING SCIENCES",
+"issn": "3062-9195",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "b4a6add4-3fdc-426a-b071-0d53b94ab7ac",
+"title": "Journal Of Nursing Science Research",
+"issn": "3062-8865",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "7e44b871-6e5f-40e0-a13f-df4318de47c6",
+"title": "Nursing Practice Journal",
+"issn": "3123-2094",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "b784e903-7119-4b5c-98a0-29f9a479eb77",
+"title": "实用全科护理学（Journal of Practical Comprehensive Nursing）",
+"issn": "3080-7638",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "8c5f53ac-4357-47be-be11-86c5f50f6834",
+"title": "Adult Health Nursing Journal",
+"issn": "3063-8089",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "45feb2e5-7663-4f01-8466-a884404ff4db",
+"title": "Preventive Care In Nursing and Midwifery Journal",
+"issn": "0868-4820",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "1238f634-8f78-445d-920a-ce224127dab9",
+"title": "Advances in Nursing",
+"issn": "2356-6795",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "3bcd1bcf-cc21-4d74-895a-0bf79d2f0c5e",
+"title": "Indonesian Journal of Nursing Sciences and Practice",
+"issn": "2622-0997",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "8ca0944f-a04f-47c1-a9a9-4abedb90c53d",
+"title": "Journal of Nursing Culture and Technology",
+"issn": "3048-1066",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "c7cbf249-6e55-4dfe-8dac-07667ac0a12d",
+"title": "Nursing Depths Series",
+"issn": "3072-8118",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "acbc5e6b-f737-4671-88e9-2d68a0920da3",
+"title": "Journal of Nursing",
+"issn": "3031-0040",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "020117d9-df0f-444b-8cbd-c180ca1f9666",
+"title": "Academic Journal of Nursing and Public health",
+"issn": "3088-1846",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "43328f9a-5aff-41b8-9504-0655be9b9f20",
+"title": "Trends in Nursing and Health Science Journal",
+"issn": "3088-1943",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "6c6fe820-c7d0-4c7f-bec2-9622e146f16d",
+"title": "SM Journal of Nursing",
+"issn": "2573-3249",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "6e48cd52-9f55-4503-8063-66f33c4633a2",
+"title": "Emergency and Nursing Management",
+"issn": "2836-2179",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "ed40c2dc-6ab3-4f15-8ef5-69ae2c07d87b",
+"title": "Journal of Nursing Care & Reports",
+"issn": "3065-7636",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "3458b6a0-e8bd-4bef-967b-a129b50c91ad",
+"title": "Journal of The Health Science and Nursing",
+"issn": "2961-9777",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "10ad5bd4-dc69-43f6-8e3b-a089efac8b06",
+"title": "Nursing Information",
+"issn": "2707-4382",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "9707157f-62bc-4a18-8b28-e1a49ab6b0ea",
+"title": "Unified Nursing Research Midwifery & Women’s Health Journal",
+"issn": "2754-0944",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "a643740c-895e-4c13-bc29-200854204683",
+"title": "Annals of Nursing Research & Practice",
+"issn": "2572-9403",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "417855d6-29c8-4195-a7f4-3b3931a48f90",
+"title": "Journal of Nursing Health Sciences and Education",
+"issn": "3088-1293",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "ade2f052-bf93-4786-8431-73b79b905204",
+"title": "Global Journal of Nursing",
+"issn": "2637-4994",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "d4b3aaa1-d7cd-4245-8cb2-16a4432ebdd2",
+"title": "Pediatrics and Neonatal Nursing Open Access",
+"issn": "2470-0983",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "f4830bcd-fc04-4702-aeff-8eaeef3ff49d",
+"title": "AACENDIKIA Journal of Nursing",
+"issn": "2963-6434",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "70d398c8-a560-4647-b47e-f8be37edc254",
+"title": "Knowledge of Nursing Journal",
+"issn": "2981-152X",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "7b5f91d5-962f-4a6e-9fcc-9a9a8c242df1",
+"title": "Journal of Biratnagar Nursing Campus",
+"issn": "3021-9469",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "de42042c-96bc-4e31-a25f-2caae5f387a7",
+"title": "Journal of Nursing Management Innovations",
+"issn": "3109-8002",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "3f11b047-0f51-43c4-85d1-d69477295ee0",
+"title": "Global Insights in Medicine and Nursing",
+"issn": "3106-0137",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "30a87485-c655-42b5-b5f5-ba39c15c6d82",
+"title": "Preventive Care In Nursing and Midwifery Journal",
+"issn": "1814-9308",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "6130ced4-c1a3-4eaf-92d2-6754a98b1a31",
+"title": "Global Journal of Nursing & Forensic Studies",
+"issn": "2572-0899",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "17846f0a-36a3-4e8a-888e-bcc96259ab8a",
+"title": "Geriatric Nursing Asia",
+"issn": "3051-3146",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "95b9360b-08df-482c-895c-dcadcf291ab9",
+"title": "International Journal of Clinical Nursing Research Society",
+"issn": "3107-7773",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "90504c63-7f95-4c67-9796-54d7816cfb0b",
+"title": "Journal of Community and Social Health Nursing",
+"issn": "3049-2564",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "187dc836-c877-49c7-864e-e510a7a2dcb2",
+"title": "Journal of Nursing and Health",
+"issn": "2549-9629",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "afad8dfc-2464-4ebc-890c-7272d1a31010",
+"title": "Cardiovascular Perfusion and Nursing",
+"issn": "2822-3691",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "4328de5b-6b4d-434a-8937-3e91df86a397",
+"title": "Archives of Nursing and Healthcare",
+"issn": "2769-7835",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "9d8d0441-1e5d-4990-b5a0-59f5a6da5e37",
+"title": "Journal of Clinical Nursing Studies Practice",
+"issn": "3124-7466",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "8bd4a4ed-c07a-497d-be17-f4eb9f6a1d98",
+"title": "Riau Nursing Journal",
+"issn": "2962-1046",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "bfd39bc5-ab95-4b88-bf4a-954d1311c3b5",
+"title": "Journal of Nursing Innovation",
+"issn": "2962-8946",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "87fdf66c-23b6-4aed-bc8d-1e2b106ca2dc",
+"title": "Nurse Point Journal of Nursing",
+"issn": "3109-2640",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "1fa8a833-e120-4a87-a09a-168da47c2cf1",
+"title": "Research & Review Journal of Geriatric Nursing and Health Sciences",
+"issn": "2582-5704",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "4b5661a0-00b0-46c7-be4f-e96671984258",
+"title": "Journal of Mental Health and Addiction Nursing",
+"issn": "2561-309X",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "4d636518-e090-45d5-98ca-e9becaa15b3e",
+"title": "Jurnal Keperawatan Hang Tuah (Hang Tuah Nursing Journal)",
+"issn": "2776-6306",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "5c679402-3fe9-4319-99eb-e9478c63e029",
+"title": "International Journal Of Health Care And Nursing",
+"issn": "2583-6463",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "9817a4f2-8d16-4071-8090-e93ba0a039e8",
+"title": "East African Journal of Nursing",
+"issn": "3079-4013",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "1355dd4d-2233-4742-b4ff-c8a466bd6bb0",
+"title": "Journal of Nursing Research Education and Management",
+"issn": "2582-001X",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "04fcf0cb-5734-43e7-b56e-dde456b02dc3",
+"title": "International Journal of Clinical Nursing and Population Health Sciences (INCLINPHS)",
+"issn": "3116-3874",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "39b2168e-b832-4840-ae05-954229ad7ee5",
+"title": "前沿护理学（Frontiers in Nursing）",
+"issn": "3105-7993",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "f286c91a-5033-457a-a613-062b3b8951d8",
+"title": "Journal of Medical Surgical Nursing Practice and Research",
+"issn": "2582-1512",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "6d86f6be-c7e3-4e32-ae8a-c8f14f0cf001",
+"title": "Holistic Journal of Nursing Studies",
+"issn": "3090-4048",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "7d87e56f-541f-40db-8c9d-ba7146a1cf58",
+"title": "Nursing and Midwifery Journal",
+"issn": "2312-3648",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "92bc30c3-5a28-4d74-95d0-ab2c191fdc23",
+"title": "Journal of Public Health and Nursing",
+"issn": "3110-0031",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "367b8960-17d0-477b-8078-d1960c774182",
+"title": "Nursing evidence and care",
+"issn": "3102-3762",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "270e52f6-f66c-4425-993b-60e9f00bbd2d",
+"title": "Online Journal of Nursing Workforce",
+"issn": "3067-2635",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "22cee6e9-0861-4762-a1c3-1ee087c7796e",
+"title": "Journal of Midwifery Women Health And Gynaecological Nursing",
+"issn": "2582-3094",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "f7687d15-f311-40b3-858b-0f56bd77e958",
+"title": "Jombang Nursing and Midwifery Journal",
+"issn": "2963-8224",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "a482f058-b140-4528-9db3-e8bf3b3c18b7",
+"title": "Journal of Nursing",
+"issn": "3123-3562",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "3aed1def-4bba-46ab-9b18-8f0099e76c4a",
+"title": "Interdisciplinary Journal of Ethnopsychiatric Nursing",
+"issn": "3110-2174",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "ba0ead07-6774-4005-9bd2-95f3298ec7f1",
+"title": "Journal of Perinatal Pediatric and Neonatal Nursing",
+"issn": "3139-7611",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "0db14818-aba4-49b9-a90f-3b7449dc1ef0",
+"title": "Journal of Nursing",
+"issn": "2056-9157",
+"newTier": "A",
+"signals": [
+"NLM",
+"OA",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "a27943eb-904e-4da5-a731-159be0f37a86",
+"title": "Journal of Health Nursing and Society",
+"issn": "2807-3517",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "4e64af2c-37a1-4530-b41d-c21585e50ab2",
+"title": "International Journal of Nursing & Healthcare",
+"issn": "3069-0641",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "d08b6f23-3c0e-4369-a7d4-0136f292aded",
+"title": "Ninevah Journal of Public Health & Nursing",
+"issn": "3136-9626",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "38e7a489-d947-41ae-a256-6b7d8e1f95ef",
+"title": "NursingPlus Open",
+"issn": "2352-9008",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "d3ced4ef-193e-4c6e-82fb-dbc4e7b739b5",
+"title": "Nursing and Palliative care International Journal",
+"issn": "2631-066X",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "f418b1aa-40de-418b-8141-6c0cbae89376",
+"title": "Padjadjaran Acute Care Nursing Journal",
+"issn": "2715-6060",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "fbae43e2-ce66-4a3d-bc3a-ed515e6ac10c",
+"title": "Journal of Nursing and Patient Safety",
+"issn": "2766-9653",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "0f8d668f-9daa-455d-ad48-3068749623dd",
+"title": "Sciences in Nursing and Health",
+"issn": "3078-7408",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "491e92a6-ad60-48f7-8bb0-bd7dac3b4386",
+"title": "Journal of Nursing and Healthcare Management",
+"issn": "2639-7293",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "4eba7ec4-2c2b-4219-9f61-756f5297b342",
+"title": "Integrative Medicine and Nursing Advances",
+"issn": "3093-7892",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "41ff0a91-e49d-4392-8c1d-3072f9a45261",
+"title": "Knowledge of Nursing Journal",
+"issn": "1687-1154",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "4d501527-aac7-4687-814f-1d12213cb33e",
+"title": "Journal of Nursing Education in Psychiatric and Mental Wellbeing",
+"issn": "3139-3144",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "001714d1-2e31-466f-9857-e49246063089",
+"title": "Optimal Nursing Journal",
+"issn": "3062-9748",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "ca68e8de-64e3-4568-99bc-c950212287bf",
+"title": "International Journal of Nursing Science",
+"issn": "2167-7441",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "c204f6a8-ba43-422b-ac28-13abc14e53cf",
+"title": "International Journal of Nursing Science",
+"issn": "2167-745X",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "0a5f0262-34b3-4736-a2b6-967c9f6d869a",
+"title": "Elevate The International Journal of Nursing Education Practice and Research",
+"issn": "2622-5794",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "c18fddf8-8ced-441c-9fa2-bbbffb4dfda3",
+"title": "Jurnal Keperawatan Indonesia Timur (East Indonesian Nursing Journal)",
+"issn": "2809-6630",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "6acf2560-1c76-4f3f-9e34-237c7aada1d1",
+"title": "International Journal of Education and Professional Development in Nursing Science",
+"issn": "3107-9709",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "2fc91fd1-15a9-4416-b220-83c4670a9149",
+"title": "Journal of Nursing Management and Practice",
+"issn": "3123-3376",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "6c65ccf8-6cd6-4996-94ca-d7dad1a00d3b",
+"title": "Knowledge of Nursing Journal",
+"issn": "1023-7976",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "112900d0-0502-489b-bfdf-90658e4aaf3e",
+"title": "Genius Journal of Medical Surgical Nursing",
+"issn": "3125-0122",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "21afb3cd-fa28-4127-967e-9b221ee73c5b",
+"title": "Journal of Excellence in Nursing and Health Sciences",
+"issn": "3138-6032",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "9bc152ad-8d0a-412f-8597-2cb65cd32fbf",
+"title": "College of Nursing and Midwifery",
+"issn": "3082-4044",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "16e11235-a8fe-45d2-8e97-45b7f5c1fe19",
+"title": "Nursing and Health Care",
+"issn": "2693-8510",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "cdf5f225-f1b2-4359-80ad-c338b4f8fa43",
+"title": "Journal of Excellence in Nursing and Healthcare Practice",
+"issn": "2692-4064",
+"newTier": "A",
+"signals": [
+"CINAHL",
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+]
+},
+{
+"id": "09822569-2a48-46b0-96d0-f1d1d4dd2a7b",
+"title": "Edith Cowan Journal of Medicine Nursing and Public health",
+"issn": "2790-1300",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "abfd1b44-3e9f-4903-bc5c-3c4ce57d84d3",
+"title": "European Journal of Infusion Nursing",
+"issn": "3072-0001",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "c7999246-6a10-4305-851a-27cdae68806a",
+"title": "International Journal of Immunology and Nursing Dynamics",
+"issn": "3107-9512",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "a9f20b7e-a76c-4b33-8805-a72f8d30b3de",
+"title": "International Journal of Interdisciplinary Nursing Science",
+"issn": "3107-9717",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "39d734d7-d525-4c72-a396-26b265b4c804",
+"title": "Journal of Research Development in Nursing and Midwifery",
+"issn": "1012-5604",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "804f13bb-2b76-4895-a660-ea34c806d7cd",
+"title": "精准护理医学（Precision Nursing Medicine）",
+"issn": "3105-6601",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "7ebcf78b-d850-4a0e-a9da-e158b5b7a7d2",
+"title": "智慧护理（Smart Nursing）",
+"issn": "3105-6822",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "d3b1657c-e066-4243-9272-3837f5578f4d",
+"title": "Journal of Health Science and Nursing Studies",
+"issn": "2962-9292",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "b05cb025-d292-4cd4-abfb-733bb84e2de6",
+"title": "Clinical Nursing Perspectives",
+"issn": "3066-0963",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "e70dec67-128c-4e03-8eac-efe943b23a08",
+"title": "Universal Library of Clinical Nursing",
+"issn": "3066-3717",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "ee1f4185-ec9f-43e9-9f75-292b0b6a2575",
+"title": "GPH-International Journal of Health Sciences and Nursing",
+"issn": "3050-9629",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "8639bffe-1a0a-403a-85a6-a1e58f44a0ac",
+"title": "Journal of Nursing and Patient Health Care",
+"issn": "2767-9292",
+"newTier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+]
+},
+{
+"id": "e436eb2e-f0c9-4bc8-a105-f6af1e61cea6",
+"title": "Journal of Nursing Explorations",
+"issn": "2717-3003",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "7dd7688c-5e33-4abc-baf0-ef0ed2663182",
+"title": "International Journal of Advanced Nursing Science and Practice",
+"issn": "2320-0278",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "9e3540d6-9adf-42aa-a4ef-ac0255bbd664",
+"title": "The Journal of Korean Nursing Research",
+"issn": "2586-2057",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "f405e239-5d64-408f-9641-0f9b9fc1ab23",
+"title": "International Journal of Nursing Management",
+"issn": "3143-4460",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "c448fad2-a70a-452d-8a23-ad595cc9f27a",
+"title": "Nursing and Family Health Care",
+"issn": "2631-9942",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "c5cfa2e7-7501-4e54-bad1-89b17a22169f",
+"title": "International Journal of Nursing and Healthcare Research",
+"issn": "2581-8015",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "38b1a07b-807a-43ba-bc06-125e99ba7999",
+"title": "Community Health Nursing Journal",
+"issn": "2988-1269",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "c51eb6c6-39a2-405e-9369-591e15c9e8e7",
+"title": "Precision Nursing",
+"issn": "2957-5532",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "15ff0070-3176-49c5-a7dd-cb2ee0260433",
+"title": "Widely Nursing Journal",
+"issn": "3082-3420",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "24f26585-7c79-4da7-8c3e-59f712deb277",
+"title": "Journal of Community Health Nursing and Public",
+"issn": "3124-7431",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "157d492b-6918-4ae2-99e8-a26aec29eb86",
+"title": "Nursing Science and Clinical Practice",
+"issn": "3141-1029",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "b2a3c1f2-e942-4c2a-9edf-cdf85eeed90d",
+"title": "Journal of Research in Midwifery Obstetrics and Gynaecological Nursing",
+"issn": "3139-3322",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "1a5c4f7a-01eb-40b8-bb62-83aa918eedbc",
+"title": "International Journal of Nursing Research in Midwifery Obstetrics and Gynecology",
+"issn": "3139-4760",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "c25e9647-0c02-4db0-952f-0329f0eed4e9",
+"title": "Indian Journal of Nursing Education and Research Studies",
+"issn": "3139-6461",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "bcd33428-4fd4-4b9e-b183-e147a5418d5a",
+"title": "Integrative Journal of Nursing and Health",
+"issn": "2641-3248",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "5948f7e5-a547-4c3d-84f4-fd8603e9c4a3",
+"title": "儿科护理（Pediatric Nursing）",
+"issn": "3105-6563",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "7e221b51-37a7-4f88-9be8-0c2eb88f5e39",
+"title": "Proceeding of the International Conference on Health Sciences and Nursing",
+"issn": "3089-8102",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "7abeb2b8-dfed-4f22-8c56-3dfd8ff961a1",
+"title": "Journal of Neonatal Infant and Child Health Nursing",
+"issn": "3139-3756",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "95a11143-5cc6-42df-afb5-f52b87baeac2",
+"title": "SJ Nursing and Midwifery Africa",
+"issn": "3006-905X",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "8d859f64-f6d4-499b-b6b8-1aefe6817053",
+"title": "International Journal of Interprofessional Nursing Science and Research",
+"issn": "3139-3780",
+"newTier": "C",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "37d51300-2f51-4191-80e7-e4e08bbab78e",
+"title": "Journal of Clinical and Practical Nursing",
+"issn": "3070-5835",
+"newTier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "95a17653-8975-4e19-bc0b-3f32f043bb0e",
+"title": "International Journal of Pathology and Genetics of Disease and Nursing Management",
+"issn": "3139-4809",
+"newTier": "B",
+"signals": [
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"OpenAlex"
+]
+},
+{
+"id": "082d9348-4fda-4e00-a29e-0c3c4552d1d3",
+"title": "African Journal of Nursing Social Work and Traditional Healing Systems",
+"issn": "3050-2349",
+"newTier": "A",
+"signals": [
+"CINAHL",
+"TITLE"
+],
+"evidence": {},
+"listedBy": [
+"CINAHL"
+]
+},
+{
+"id": "14751cff-9b3b-465f-a0e0-daee1b82a22f",
+"title": "Canadian Journal of Cardiovascular Nursing",
+"issn": "0843-6096",
+"newTier": "A",
+"signals": [
+"NLM",
+"SOCIETY",
+"TITLE"
+],
+"evidence": {
+"publisher": "Canadian Council of Cardiovascular Nurses (CCCN)",
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog"
+]
+},
+{
+"id": "2b377e05-05a4-42f2-87ac-b3bcdba71489",
+"title": "European Journal of Cardiovascular Nursing",
+"issn": "1474-5151",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog"
+]
+},
+{
+"id": "edf905b7-1355-4039-9f29-b195995ea14c",
+"title": "The Journal of Cardiovascular Nursing",
+"issn": "0889-4655",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog"
+]
+},
+{
+"id": "e42d8d74-3745-465a-8623-28ac7c164173",
+"title": "Journal of Nursing and Healthcare of Chronic Illness",
+"issn": "1752-9816",
+"newTier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care"
+]
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog"
+]
+}
+]
+}

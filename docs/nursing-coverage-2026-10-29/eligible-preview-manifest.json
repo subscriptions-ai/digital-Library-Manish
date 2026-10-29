@@ -1,0 +1,4650 @@
+{
+"note": "PREVIEW of the eligible net-new set. Not frozen: freezing happens in stage5 immediately before any write.",
+"eligible": 54,
+"rows": [
+{
+"key": "1033-3355",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Australian critical care : official journal of the Confederation of Australian Critical Care Nurses",
+"alternateTitles": [
+"AUST CRIT CARE",
+"Australian Critical Care",
+"Australian critical care",
+"Australian critical care : official journal of the Confederation of Australian Critical Care Nurses",
+"CNSA journal",
+"CONFED AUST CRIT CARE NURSES J",
+"Confederation of Australian Critical Care Nurses Journal",
+"Confederation of Australian Critical Care Nurses journal",
+"PULSE (Australian Society of Critical Care Nurses"
+],
+"issn": "1033-3355",
+"eissn": "1036-7314",
+"allIssns": [
+"1033-3355",
+"1036-7314",
+"1878-1721"
+],
+"sourceIdentifiers": {
+"OpenAlex": "S149987840",
+"CINAHL": "",
+"NLM Catalog": "9011101"
+},
+"publisher": "Elsevier BV",
+"homepage": "https://www.journals.elsevier.com/australian-critical-care",
+"scope": {
+"tier": "A",
+"signals": [
+"NLM",
+"SOCIETY",
+"TITLE"
+],
+"oaTopicShare": 0.09,
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+],
+"publisher": "Confederation of Australian Critical Care Nurses"
+},
+"aimsExcerpt": null,
+"aimsUrl": null,
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"673 works in 2024-26 (OpenAlex (nursing-field fetch))",
+"673 recent work(s) + NLM currently indexed, CINAHL indexing current"
+],
+"works2024to2026": {
+"OpenAlex (nursing-field fetch)": 673
+},
+"currentStatements": [
+"NLM currently indexed",
+"CINAHL indexing current"
+],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026",
+"url": "https://api.openalex.org/sources/S149987840",
+"basis": "OpenAlex last year with works"
+}
+},
+"lineage": {
+"nlmRelations": [
+{
+"type": "",
+"title": "Confederation of Australian Critical Care Nurses journal",
+"issns": []
+}
+],
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "publication_pc",
+"scopeTier": "A",
+"publicationClass": "P-C"
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+],
+"sourceUrls": [
+"https://api.openalex.org/sources/S149987840"
+],
+"retrievedBySource": {
+"CINAHL": "2026-10-29T04:12:35Z",
+"NLM Catalog": "2026-10-29T04:16:31Z",
+"OpenAlex": "2026-10-29T04:16:01Z"
+}
+},
+{
+"key": "1747-9800",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Independent nurse : every week for primary care and community nurses",
+"alternateTitles": [
+"Indep. nurse",
+"Independent Nurse",
+"Independent nurse",
+"Independent nurse : every week for primary care and community nurses",
+"Independentnurse"
+],
+"issn": "1747-9800",
+"eissn": "2052-2843",
+"allIssns": [
+"1747-9800",
+"2052-2843"
+],
+"sourceIdentifiers": {
+"OpenAlex": "S2764418606",
+"NLM Catalog": "101669380"
+},
+"publisher": "Mark Allen Group",
+"homepage": "http://www.independentnurse.co.uk",
+"scope": {
+"tier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"oaTopicShare": 0.47,
+"evidence": {
+"nlmHeadings": [
+"Nurses"
+]
+},
+"aimsExcerpt": null,
+"aimsUrl": null,
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"431 works in 2024-26 (OpenAlex (nursing-field fetch))"
+],
+"works2024to2026": {
+"OpenAlex (nursing-field fetch)": 431
+},
+"currentStatements": [],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026",
+"url": "https://api.openalex.org/sources/S2764418606",
+"basis": "OpenAlex last year with works"
+}
+},
+"lineage": {
+"nlmRelations": [],
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": null,
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+],
+"sourceUrls": [
+"https://api.openalex.org/sources/S2764418606"
+],
+"retrievedBySource": {
+"NLM Catalog": "2026-10-29T04:16:31Z",
+"OpenAlex": "2026-10-29T04:16:01Z"
+}
+},
+{
+"key": "1753-1586",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "British Journal of Healthcare Assistants",
+"alternateTitles": [
+"British Journal of Healthcare Assistants",
+"Healthcare assistants",
+"Internurse British journal of healthcare assistants"
+],
+"issn": "1753-1586",
+"eissn": "2052-4420",
+"allIssns": [
+"1753-1586",
+"2052-4420"
+],
+"sourceIdentifiers": {
+"OpenAlex": "S2764797225",
+"CINAHL": ""
+},
+"publisher": "Mark Allen Group",
+"homepage": "https://www.magonlinelibrary.com/journal/bjha",
+"scope": {
+"tier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"oaTopicShare": 0.52,
+"evidence": {},
+"aimsExcerpt": null,
+"aimsUrl": null,
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"216 works in 2024-26 (OpenAlex (nursing-field fetch))"
+],
+"works2024to2026": {
+"OpenAlex (nursing-field fetch)": 216
+},
+"currentStatements": [],
+"endedStatements": [
+"CINAHL indexing stopped"
+],
+"latestConfirmed": {
+"date": "2026",
+"url": "https://api.openalex.org/sources/S2764797225",
+"basis": "OpenAlex last year with works"
+}
+},
+"lineage": {
+"nlmRelations": null,
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "scope_needs_official_aims",
+"scopeTier": "B",
+"publicationClass": "P-A"
+},
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+],
+"sourceUrls": [
+"https://api.openalex.org/sources/S2764797225"
+],
+"retrievedBySource": {
+"CINAHL": "2026-10-29T04:12:35Z",
+"OpenAlex": "2026-10-29T04:16:01Z"
+}
+},
+{
+"key": "0945-1129",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Pflege Zeitschrift",
+"alternateTitles": [
+"Deutsche Krankenpflegezeitschrift",
+"Fachzeitschrift für stationäre und ambulante Pflege",
+"Pflege Dossier",
+"Pflege Zeitschrift",
+"Pflege-Dokumentation",
+"Pflege-Zeitschrift",
+"Pflegezeitschrift",
+"Wissen & Management"
+],
+"issn": "0945-1129",
+"eissn": "2520-1816",
+"allIssns": [
+"0945-1129",
+"2520-1816"
+],
+"sourceIdentifiers": {
+"OpenAlex": "S2754073898",
+"NLM Catalog": "9430463"
+},
+"publisher": "Springer Nature",
+"homepage": "https://www.springer.com/journal/41906",
+"scope": {
+"tier": "A",
+"signals": [
+"NLM",
+"OA",
+"TITLE"
+],
+"oaTopicShare": 0.63,
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care"
+]
+},
+"aimsExcerpt": "Home | Pflegezeitschrift | Springer Nature Link Skip to main content Log in Pflegezeitschrift Pflegezeitschrift Fachzeitschrift",
+"aimsUrl": "https://link.springer.com/journal/41906?error=cookies_not_supported&code=aebd36ea-69b3-4b8e-a059-a4d2c6cfb0bc",
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"609 works in 2024-26 (OpenAlex (nursing-field fetch))"
+],
+"works2024to2026": {
+"OpenAlex (nursing-field fetch)": 609
+},
+"currentStatements": [],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026",
+"url": "https://api.openalex.org/sources/S2754073898",
+"basis": "OpenAlex last year with works"
+}
+},
+"lineage": {
+"nlmRelations": [
+{
+"type": "",
+"title": "Deutsche Krankenpflegezeitschrift",
+"issns": []
+}
+],
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "identity_unconfirmed",
+"scopeTier": "A",
+"publicationClass": "P-I"
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+],
+"sourceUrls": [
+"https://api.openalex.org/sources/S2754073898"
+],
+"retrievedBySource": {
+"NLM Catalog": "2026-10-29T04:16:31Z",
+"OpenAlex": "2026-10-29T04:16:01Z"
+}
+},
+{
+"key": "0949-7323",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "PRO CARE",
+"alternateTitles": [
+"PRO CARE",
+"Pro Care (Wien. Internet)",
+"Pro Care (Wien. Print)",
+"ProCare",
+"ProCare (Wien. Print)"
+],
+"issn": "0949-7323",
+"eissn": "1613-7574",
+"allIssns": [
+"0949-7323",
+"1613-7574"
+],
+"sourceIdentifiers": {
+"OpenAlex": "S4210230862",
+"CINAHL": ""
+},
+"publisher": "Springer Science+Business Media",
+"homepage": "https://link.springer.com/journal/735",
+"scope": {
+"tier": "A",
+"signals": [
+"CINAHL",
+"OA"
+],
+"oaTopicShare": 0.55,
+"evidence": {},
+"aimsExcerpt": null,
+"aimsUrl": null,
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"261 works in 2024-26 (OpenAlex (nursing-field fetch))",
+"261 recent work(s) + CINAHL indexing current"
+],
+"works2024to2026": {
+"OpenAlex (nursing-field fetch)": 261
+},
+"currentStatements": [
+"CINAHL indexing current"
+],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026",
+"url": "https://api.openalex.org/sources/S4210230862",
+"basis": "OpenAlex last year with works"
+}
+},
+"lineage": {
+"nlmRelations": null,
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "scope_needs_official_aims",
+"scopeTier": "B",
+"publicationClass": "P-A"
+},
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+],
+"sourceUrls": [
+"https://api.openalex.org/sources/S4210230862"
+],
+"retrievedBySource": {
+"CINAHL": "2026-10-29T04:12:35Z",
+"OpenAlex": "2026-10-29T04:16:01Z"
+}
+},
+{
+"key": "0303-6456",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "TVZ : het vakblad voor de verpleging",
+"alternateTitles": [
+"Collega's AVVV-magazin",
+"TVZ",
+"TVZ - Verpleegkunde in praktijk en wetenschap",
+"TVZ : het vakblad voor de verpleging",
+"TVZ Tijdschrift voor verpleegkundig experts",
+"Tijdschrift voor verpleegkundigen",
+"Tijdschrift voor ziekenverpleging",
+"TvZ vakblad voor verpleegkundigen",
+"V en V"
+],
+"issn": "0303-6456",
+"eissn": "1380-3425",
+"allIssns": [
+"0303-6456",
+"1380-3425",
+"2468-1342"
+],
+"sourceIdentifiers": {
+"OpenAlex": "S4210173351",
+"NLM Catalog": "8915593"
+},
+"publisher": "Bohn Stafleu van Loghum",
+"homepage": "https://www.springer.com/journal/41184",
+"scope": {
+"tier": "A",
+"signals": [
+"NLM",
+"OA",
+"TITLE"
+],
+"oaTopicShare": 0.7,
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+]
+},
+"aimsExcerpt": null,
+"aimsUrl": "https://link.springer.com/journal/41184?error=cookies_not_supported&code=ade6eef9-41a3-4398-a927-97dcc77d8e61",
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"409 works in 2024-26 (OpenAlex (nursing-field fetch))"
+],
+"works2024to2026": {
+"OpenAlex (nursing-field fetch)": 409
+},
+"currentStatements": [],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026",
+"url": "https://api.openalex.org/sources/S4210173351",
+"basis": "OpenAlex last year with works"
+}
+},
+"lineage": {
+"nlmRelations": [
+{
+"type": "",
+"title": "V en V",
+"issns": []
+},
+{
+"type": "",
+"title": "Collega's AVVV-magazin",
+"issns": []
+},
+{
+"type": "",
+"title": "Tijdschrift voor ziekenverpleging",
+"issns": []
+}
+],
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "scope_needs_official_aims",
+"scopeTier": "B",
+"publicationClass": "P-I"
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+],
+"sourceUrls": [
+"https://api.openalex.org/sources/S4210173351"
+],
+"retrievedBySource": {
+"NLM Catalog": "2026-10-29T04:16:31Z",
+"OpenAlex": "2026-10-29T04:16:01Z"
+}
+},
+{
+"key": "1054-2353",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Nurse author & editor",
+"alternateTitles": [
+"NURSE AUTHOR ED",
+"Nurse Author & Editor (Wiley-Blackwell)",
+"Nurse author & editor",
+"Nurse author and editor"
+],
+"issn": "1054-2353",
+"eissn": "1750-4910",
+"allIssns": [
+"1054-2353",
+"1750-4910"
+],
+"sourceIdentifiers": {
+"OpenAlex": "S4210177451",
+"CINAHL": "",
+"NLM Catalog": "9312545"
+},
+"publisher": "Wiley",
+"homepage": null,
+"scope": {
+"tier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"TITLE"
+],
+"oaTopicShare": 0.02,
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+]
+},
+"aimsExcerpt": null,
+"aimsUrl": null,
+"aimsRetrieved": null
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"19 works in 2024-26 (OpenAlex (nursing-field fetch))",
+"19 recent work(s) + CINAHL indexing current"
+],
+"works2024to2026": {
+"OpenAlex (nursing-field fetch)": 19
+},
+"currentStatements": [
+"CINAHL indexing current"
+],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2025",
+"url": "https://api.openalex.org/sources/S4210177451",
+"basis": "OpenAlex last year with works"
+}
+},
+"lineage": {
+"nlmRelations": [],
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "rename/hand hold",
+"primary": "newsletter-type quarterly of nursing editors, not a research journal",
+"scopeTier": null,
+"publicationClass": null
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+],
+"sourceUrls": [
+"https://api.openalex.org/sources/S4210177451"
+],
+"retrievedBySource": {
+"CINAHL": "2026-10-29T04:12:35Z",
+"NLM Catalog": "2026-10-29T04:16:31Z",
+"OpenAlex": "2026-10-29T04:16:01Z"
+}
+},
+{
+"key": "1105-6843",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Nosēleutikē",
+"alternateTitles": [
+"Hellenis adelphe",
+"NOSELEUTIKE",
+"Noseleytike",
+"Nosēleutikē",
+"Nosileftiki",
+"Nosīleutikī"
+],
+"issn": "1105-6843",
+"eissn": null,
+"allIssns": [
+"1105-6843"
+],
+"sourceIdentifiers": {
+"OpenAlex": "S4393917073",
+"CINAHL": "",
+"NLM Catalog": "8912007"
+},
+"publisher": "Hellenic Nurses' Association",
+"homepage": "https://hjn.gr/hjn",
+"scope": {
+"tier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"SOCIETY"
+],
+"oaTopicShare": 0.49,
+"evidence": {
+"publisher": "Hellenic Nurses' Association",
+"nlmHeadings": [
+"Nursing",
+"Education, Nursing",
+"Public Health Nursing"
+]
+},
+"aimsExcerpt": null,
+"aimsUrl": "https://hjn.gr/hjn",
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"755 works in 2024-26 (OpenAlex (nursing-field fetch))",
+"755 recent work(s) + CINAHL indexing current"
+],
+"works2024to2026": {
+"OpenAlex (nursing-field fetch)": 755
+},
+"currentStatements": [
+"CINAHL indexing current"
+],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026",
+"url": "https://api.openalex.org/sources/S4393917073",
+"basis": "OpenAlex last year with works"
+}
+},
+"lineage": {
+"nlmRelations": [
+{
+"type": "",
+"title": "Hellenis adelphe",
+"issns": []
+}
+],
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "identity_unconfirmed",
+"scopeTier": "A",
+"publicationClass": "P-I"
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex"
+],
+"sourceUrls": [
+"https://api.openalex.org/sources/S4393917073"
+],
+"retrievedBySource": {
+"CINAHL": "2026-10-29T04:12:35Z",
+"NLM Catalog": "2026-10-29T04:16:31Z",
+"OpenAlex": "2026-10-29T04:16:01Z"
+}
+},
+{
+"key": "1676-3793",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Rev. Soc. Bras. Enferm. Ped",
+"alternateTitles": [
+"Brazilian Society Journal of Pediatric Nurses",
+"Brazilian Society Journal of Pediatric Nurses / Revista da Sociedade Brasileira de Enfermeiros Pediatras",
+"Rev. Soc. Bras. Enferm. Ped",
+"Revista da Sociedade Brasileira de Enfermeiros Pediatras"
+],
+"issn": "1676-3793",
+"eissn": "2238-202X",
+"allIssns": [
+"1676-3793",
+"2238-202X"
+],
+"sourceIdentifiers": {
+"OpenAlex": "S4306528103",
+"CINAHL": ""
+},
+"publisher": "Sociedade Brasileira de Enfermeiros Pediatras",
+"homepage": "https://journal.sobep.org.br/submission/index.php/sobep",
+"scope": {
+"tier": "A",
+"signals": [
+"CINAHL",
+"TITLE"
+],
+"oaTopicShare": 0.09,
+"evidence": {},
+"aimsExcerpt": "l v. 24 (2024) Publicado: 2025-09-07 Editorial Infâncias plurais e o cuidado de enfermagem Climene Laura de Camargo PDF PDF (English) XML Artigo Original Fatores de risco para práticas parentais que p",
+"aimsUrl": "https://journal.sobep.org.br/submission/index.php/sobep",
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"84 works in 2024-26 (OpenAlex (nursing-field fetch))",
+"84 recent work(s) + CINAHL indexing current"
+],
+"works2024to2026": {
+"OpenAlex (nursing-field fetch)": 84
+},
+"currentStatements": [
+"CINAHL indexing current"
+],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026",
+"url": "https://api.openalex.org/sources/S4306528103",
+"basis": "OpenAlex last year with works"
+}
+},
+"lineage": {
+"nlmRelations": null,
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "scope_insufficient",
+"scopeTier": "C",
+"publicationClass": "n/a"
+},
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+],
+"sourceUrls": [
+"https://api.openalex.org/sources/S4306528103"
+],
+"retrievedBySource": {
+"CINAHL": "2026-10-29T04:12:35Z",
+"OpenAlex": "2026-10-29T04:16:01Z"
+}
+},
+{
+"key": "1699-6011",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Temperamentvm",
+"alternateTitles": [
+"Temperamentvm",
+"Temperamentvm: Revista internacional de historia y pensamiento enfermero"
+],
+"issn": "1699-6011",
+"eissn": null,
+"allIssns": [
+"1699-6011"
+],
+"sourceIdentifiers": {
+"OpenAlex": "S4306531803",
+"SciELO": "https://articlemeta.scielo.org/api/v1/journal/?collection=esp&issn=1699-6011"
+},
+"publisher": "Fundación Index",
+"homepage": "http://ciberindex.com/index.php/t/index",
+"scope": {
+"tier": "A",
+"signals": [
+"SCIELO",
+"TITLE"
+],
+"oaTopicShare": 0.25,
+"evidence": {
+"scieloWos": [
+"Nursing"
+]
+},
+"aimsExcerpt": null,
+"aimsUrl": null,
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"41 works in 2024-26 (OpenAlex (nursing-field fetch))",
+"SciELO status current"
+],
+"works2024to2026": {
+"OpenAlex (nursing-field fetch)": 41
+},
+"currentStatements": [],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026",
+"url": "https://api.openalex.org/sources/S4306531803",
+"basis": "OpenAlex last year with works"
+}
+},
+"lineage": {
+"nlmRelations": null,
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": null,
+"listedBy": [
+"OpenAlex",
+"SciELO"
+],
+"sourceUrls": [
+"https://articlemeta.scielo.org/api/v1/journal/?collection=esp&issn=1699-6011",
+"https://api.openalex.org/sources/S4306531803"
+],
+"retrievedBySource": {
+"OpenAlex": "2026-10-29T04:16:01Z",
+"SciELO": "2026-10-29T04:22:12Z"
+}
+},
+{
+"key": "2656-1166",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Jurnal Keperawatan Bunda Delima",
+"alternateTitles": [
+"Jurnal Keperawatan Bunda Delima"
+],
+"issn": "2656-1166",
+"eissn": "2829-131X",
+"allIssns": [
+"2656-1166",
+"2829-131X"
+],
+"sourceIdentifiers": {
+"OpenAlex": "S4387288037"
+},
+"publisher": "Akademi Keperawatan Bunda Delima",
+"homepage": "https://journal.bundadelima.ac.id/index.php/jkbd",
+"scope": {
+"tier": "A",
+"signals": [
+"SOCIETY",
+"TITLE"
+],
+"oaTopicShare": 0.13,
+"evidence": {
+"publisher": "Akademi Keperawatan Bunda Delima"
+},
+"aimsExcerpt": "dedicated to publishing original research in nursing, healthcare, and related health sciences. The journal provides an academic platform for researchers, scholars, and healthcare professionals to diss",
+"aimsUrl": "https://journal.bundadelima.ac.id/index.php/jkbd",
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"284 works in 2024-26 (OpenAlex (nursing-field fetch), OpenAlex by ISSN, Crossref)"
+],
+"works2024to2026": {
+"OpenAlex (nursing-field fetch)": 284,
+"OpenAlex by ISSN": 284,
+"Crossref": 263
+},
+"currentStatements": [],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026",
+"url": "https://api.openalex.org/sources/issn:2656-1166",
+"basis": "OpenAlex last year with works"
+}
+},
+"lineage": {
+"nlmRelations": null,
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": null,
+"listedBy": [
+"OpenAlex"
+],
+"sourceUrls": [
+"https://api.openalex.org/sources/issn:2656-1166"
+],
+"retrievedBySource": {
+"OpenAlex": "2026-10-29T04:16:01Z"
+}
+},
+{
+"key": "1909-1621",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Revista Colombiana de Enfermería",
+"alternateTitles": [
+"Revista Colombiana de Enfermeria",
+"Revista Colombiana de Enfermería"
+],
+"issn": "1909-1621",
+"eissn": "2346-2000",
+"allIssns": [
+"1909-1621",
+"2346-2000"
+],
+"sourceIdentifiers": {
+"OpenAlex": "S4210231471",
+"CINAHL": ""
+},
+"publisher": "El Bosque University",
+"homepage": "http://revistacolombianadeenfermeria.unbosque.edu.co",
+"scope": {
+"tier": "A",
+"signals": [
+"CINAHL",
+"TITLE"
+],
+"oaTopicShare": 0.42,
+"evidence": {},
+"aimsExcerpt": null,
+"aimsUrl": null,
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"23 works in 2024-26 (OpenAlex (nursing-field fetch))",
+"23 recent work(s) + CINAHL indexing current"
+],
+"works2024to2026": {
+"OpenAlex (nursing-field fetch)": 23
+},
+"currentStatements": [
+"CINAHL indexing current"
+],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2025",
+"url": "https://api.openalex.org/sources/S4210231471",
+"basis": "OpenAlex last year with works"
+}
+},
+"lineage": {
+"nlmRelations": null,
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "scope_needs_official_aims",
+"scopeTier": "B",
+"publicationClass": "P-A"
+},
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+],
+"sourceUrls": [
+"https://api.openalex.org/sources/S4210231471"
+],
+"retrievedBySource": {
+"CINAHL": "2026-10-29T04:12:35Z",
+"OpenAlex": "2026-10-29T04:16:01Z"
+}
+},
+{
+"key": "2317-3092",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Revista Renome",
+"alternateTitles": [
+"Revista Norte Mineira de Enfermagem",
+"Revista Renome"
+],
+"issn": "2317-3092",
+"eissn": null,
+"allIssns": [
+"2317-3092"
+],
+"sourceIdentifiers": {
+"OpenAlex": "S4210226614"
+},
+"publisher": "Montes Claros State University",
+"homepage": "https://www.periodicos.unimontes.br/index.php/renome",
+"scope": {
+"tier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"oaTopicShare": 0.53,
+"evidence": {},
+"aimsExcerpt": "sobre Edição Atual v. 15 n. Especial 1 (2026): ANAIS DA XX MOSTRA CIENTÍFICA DE ENFERMAGEM DA UNIVERSIDADE ESTADUAL DE MONTES CLAROS – UNIMONTES ANAIS DA XX MOSTRA CIENTÍFICA DE ENFERMAGEM DA UNIVERSI",
+"aimsUrl": "https://www.periodicos.unimontes.br/index.php/renome",
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"19 works in 2024-26 (OpenAlex (nursing-field fetch), OpenAlex by ISSN, Crossref)"
+],
+"works2024to2026": {
+"OpenAlex (nursing-field fetch)": 19,
+"OpenAlex by ISSN": 19,
+"Crossref": 15
+},
+"currentStatements": [],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026",
+"url": "https://api.openalex.org/sources/issn:2317-3092",
+"basis": "OpenAlex last year with works"
+}
+},
+"lineage": {
+"nlmRelations": null,
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "scope_needs_official_aims",
+"scopeTier": "B",
+"publicationClass": "P-A"
+},
+"listedBy": [
+"OpenAlex"
+],
+"sourceUrls": [
+"https://api.openalex.org/sources/issn:2317-3092"
+],
+"retrievedBySource": {
+"OpenAlex": "2026-10-29T04:16:01Z"
+}
+},
+{
+"key": "2442-501X",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Jurnal Akademi Keperawatan Husada Karya Jaya.",
+"alternateTitles": [
+"Jurnal Akademi Keperawatan Husada Karya Jaya",
+"Jurnal Akademi Keperawatan Husada Karya Jaya."
+],
+"issn": "2442-501X",
+"eissn": "2541-2892",
+"allIssns": [
+"2442-501X",
+"2541-2892"
+],
+"sourceIdentifiers": {
+"OpenAlex": "S4404675243"
+},
+"publisher": "Akademi Keperawatan Husada Karya Jaya",
+"homepage": "https://ejurnal.husadakaryajaya.ac.id/index.php/JAKHKJ",
+"scope": {
+"tier": "A",
+"signals": [
+"SOCIETY",
+"TITLE"
+],
+"oaTopicShare": 0.12,
+"evidence": {
+"publisher": "Akademi Keperawatan Husada Karya Jaya"
+},
+"aimsExcerpt": null,
+"aimsUrl": "https://ejurnal.husadakaryajaya.ac.id/index.php/JAKHKJ",
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"70 works in 2024-26 (OpenAlex (nursing-field fetch), OpenAlex by ISSN, Crossref)"
+],
+"works2024to2026": {
+"OpenAlex (nursing-field fetch)": 70,
+"OpenAlex by ISSN": 70,
+"Crossref": 69
+},
+"currentStatements": [],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026",
+"url": "https://api.openalex.org/sources/issn:2442-501X",
+"basis": "OpenAlex last year with works"
+}
+},
+"lineage": {
+"nlmRelations": null,
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": null,
+"listedBy": [
+"OpenAlex"
+],
+"sourceUrls": [
+"https://api.openalex.org/sources/issn:2442-501X"
+],
+"retrievedBySource": {
+"OpenAlex": "2026-10-29T04:16:01Z"
+}
+},
+{
+"key": "2088-2734",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Jurnal KEPERAWATAN GSH",
+"alternateTitles": [
+"Jurnal KEPERAWATAN GSH"
+],
+"issn": "2088-2734",
+"eissn": "2964-156X",
+"allIssns": [
+"2088-2734",
+"2964-156X"
+],
+"sourceIdentifiers": {
+"OpenAlex": "S4306516855"
+},
+"publisher": "Akademi Keperawatan Giri Satria Husada",
+"homepage": "https://jurnal.akpergshwng.ac.id/index.php/kep",
+"scope": {
+"tier": "A",
+"signals": [
+"SOCIETY",
+"TITLE"
+],
+"oaTopicShare": 0.08,
+"evidence": {
+"publisher": "Akademi Keperawatan Giri Satria Husada"
+},
+"aimsExcerpt": null,
+"aimsUrl": "https://jurnal.akpergshwng.ac.id/index.php/kep",
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"51 works in 2024-26 (OpenAlex (nursing-field fetch), OpenAlex by ISSN)"
+],
+"works2024to2026": {
+"OpenAlex (nursing-field fetch)": 51,
+"OpenAlex by ISSN": 51
+},
+"currentStatements": [],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026",
+"url": "https://api.openalex.org/sources/issn:2088-2734",
+"basis": "OpenAlex last year with works"
+}
+},
+"lineage": {
+"nlmRelations": null,
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": null,
+"listedBy": [
+"OpenAlex"
+],
+"sourceUrls": [
+"https://api.openalex.org/sources/issn:2088-2734"
+],
+"retrievedBySource": {
+"OpenAlex": "2026-10-29T04:16:01Z"
+}
+},
+{
+"key": "0100-8889",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Revista paulista de enfermagem",
+"alternateTitles": [
+"REV PAUL ENFERM",
+"Rev. paul. enferm",
+"Revista Paulista de Enfermagem",
+"Revista paulista de Enfermagem",
+"Revista paulista de enfermagem"
+],
+"issn": "0100-8889",
+"eissn": "2595-9484",
+"allIssns": [
+"0100-8889",
+"2595-9484"
+],
+"sourceIdentifiers": {
+"OpenAlex": "S4393918875",
+"CINAHL": "",
+"NLM Catalog": "8215976",
+"SciELO": "https://articlemeta.scielo.org/api/v1/journal/?collection=rve&issn=0100-8889"
+},
+"publisher": "Associacao Brasileira de Enfermagem Secao SP",
+"homepage": "https://repen.com.br/repen",
+"scope": {
+"tier": "A",
+"signals": [
+"NLM",
+"OA",
+"SOCIETY",
+"TITLE"
+],
+"oaTopicShare": 0.54,
+"evidence": {
+"publisher": "Associacao Brasileira de Enfermagem Secao SP",
+"nlmHeadings": [
+"Nursing"
+]
+},
+"aimsExcerpt": "Revista Paulista de Enfermagem Open Menu Revista Paulista de Enfermagem Anúncios Volume 37 no ar 22-07-2026 Saiba mais Saiba mais sobre Volu",
+"aimsUrl": "https://repen.com.br/repen",
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"23 works in 2024-26 (OpenAlex (nursing-field fetch))",
+"SciELO status current"
+],
+"works2024to2026": {
+"OpenAlex (nursing-field fetch)": 23
+},
+"currentStatements": [],
+"endedStatements": [
+"CINAHL indexing stopped"
+],
+"latestConfirmed": {
+"date": "2026",
+"url": "https://api.openalex.org/sources/S4393918875",
+"basis": "OpenAlex last year with works"
+}
+},
+"lineage": {
+"nlmRelations": [],
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "publication_pc",
+"scopeTier": "A",
+"publicationClass": "P-C"
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog",
+"OpenAlex",
+"SciELO"
+],
+"sourceUrls": [
+"https://articlemeta.scielo.org/api/v1/journal/?collection=rve&issn=0100-8889",
+"https://api.openalex.org/sources/S4393918875"
+],
+"retrievedBySource": {
+"CINAHL": "2026-10-29T04:12:35Z",
+"NLM Catalog": "2026-10-29T04:16:31Z",
+"OpenAlex": "2026-10-29T04:16:01Z",
+"SciELO": "2026-10-29T04:22:12Z"
+}
+},
+{
+"key": "2477-1414",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Jurnal Keperawatan Karya Bhakti",
+"alternateTitles": [
+"Jurnal Keperawatan Karya Bhakti"
+],
+"issn": "2477-1414",
+"eissn": "2716-0785",
+"allIssns": [
+"2477-1414",
+"2716-0785"
+],
+"sourceIdentifiers": {
+"OpenAlex": "S4387282530"
+},
+"publisher": "Akademi Keperawatan Karya Bhakti Nusantara",
+"homepage": "https://journal.akperkbn.com/index.php/jkkb",
+"scope": {
+"tier": "A",
+"signals": [
+"SOCIETY",
+"TITLE"
+],
+"oaTopicShare": 0.1,
+"evidence": {
+"publisher": "Akademi Keperawatan Karya Bhakti Nusantara"
+},
+"aimsExcerpt": null,
+"aimsUrl": "https://journal.akperkbn.com/index.php/jkkb",
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"72 works in 2024-26 (OpenAlex (nursing-field fetch), OpenAlex by ISSN, Crossref)"
+],
+"works2024to2026": {
+"OpenAlex (nursing-field fetch)": 72,
+"OpenAlex by ISSN": 72,
+"Crossref": 29
+},
+"currentStatements": [],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026",
+"url": "https://api.openalex.org/sources/issn:2477-1414",
+"basis": "OpenAlex last year with works"
+}
+},
+"lineage": {
+"nlmRelations": null,
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": null,
+"listedBy": [
+"OpenAlex"
+],
+"sourceUrls": [
+"https://api.openalex.org/sources/issn:2477-1414"
+],
+"retrievedBySource": {
+"OpenAlex": "2026-10-29T04:16:01Z"
+}
+},
+{
+"key": "2149-0333",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Etkili Hemşirelik Dergisi",
+"alternateTitles": [
+"Dokuz Eylül Üniversitesi Hemsirelik Fakültesi Elektronik Dergisi",
+"Dokuz Eylül Üniversitesi Hemşirelik Fakültesi Elektronik Dergisi",
+"Dokuz Eylül Üniversitesi Hemşirelik Yüksekokulu Elektronik Dergisi",
+"Etkili Hemşirelik Dergisi"
+],
+"issn": "2149-0333",
+"eissn": null,
+"allIssns": [
+"2149-0333"
+],
+"sourceIdentifiers": {
+"OpenAlex": "S4210211019",
+"CINAHL": ""
+},
+"publisher": "Association of Food Technology, Turkey",
+"homepage": "https://dergipark.org.tr/en/pub/deuhfed",
+"scope": {
+"tier": "A",
+"signals": [
+"CINAHL",
+"TITLE"
+],
+"oaTopicShare": 0.41,
+"evidence": {},
+"aimsExcerpt": "Supportive Developmental Care Approaches and Innovative Approaches of Neonatal Nurses Merve Koyun * , Nagihan Erişti , Hatice Uzşen , Esra Tural Büyük 15 Ekim 2026 Sayfa 616-629 PDF Görüntüle Araştır",
+"aimsUrl": "https://dergipark.org.tr/tr/pub/jnef",
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"12 works in 2024-26 (OpenAlex (nursing-field fetch))"
+],
+"works2024to2026": {
+"OpenAlex (nursing-field fetch)": 12
+},
+"currentStatements": [],
+"endedStatements": [
+"CINAHL indexing stopped"
+],
+"latestConfirmed": {
+"date": "2024",
+"url": "https://api.openalex.org/sources/S4210211019",
+"basis": "OpenAlex last year with works"
+}
+},
+"lineage": {
+"nlmRelations": null,
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": null,
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+],
+"sourceUrls": [
+"https://api.openalex.org/sources/S4210211019"
+],
+"retrievedBySource": {
+"CINAHL": "2026-10-29T04:12:35Z",
+"OpenAlex": "2026-10-29T04:16:01Z"
+}
+},
+{
+"key": "2980-3527",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Etkili Hemşirelik Dergisi",
+"alternateTitles": [
+"Etkili Hemşirelik Dergisi",
+"Journal of Nursing Effect / Etkili Hemşirelik Dergisi"
+],
+"issn": "2980-3527",
+"eissn": null,
+"allIssns": [
+"2980-3527"
+],
+"sourceIdentifiers": {
+"OpenAlex": "S4387292560",
+"CINAHL": ""
+},
+"publisher": "Dokuz Eylul Universitesi Hemsirelik Fakultesi Elektronik Dergisi",
+"homepage": null,
+"scope": {
+"tier": "A",
+"signals": [
+"CINAHL",
+"TITLE"
+],
+"oaTopicShare": 0.48,
+"evidence": {},
+"aimsExcerpt": null,
+"aimsUrl": null,
+"aimsRetrieved": null
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"133 works in 2024-26 (OpenAlex (nursing-field fetch))",
+"133 recent work(s) + CINAHL indexing current"
+],
+"works2024to2026": {
+"OpenAlex (nursing-field fetch)": 133
+},
+"currentStatements": [
+"CINAHL indexing current"
+],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026",
+"url": "https://api.openalex.org/sources/S4387292560",
+"basis": "OpenAlex last year with works"
+}
+},
+"lineage": {
+"nlmRelations": null,
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "scope_needs_official_aims",
+"scopeTier": "B",
+"publicationClass": "P-A"
+},
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+],
+"sourceUrls": [
+"https://api.openalex.org/sources/S4387292560"
+],
+"retrievedBySource": {
+"CINAHL": "2026-10-29T04:12:35Z",
+"OpenAlex": "2026-10-29T04:16:01Z"
+}
+},
+{
+"key": "2570-785X",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Ošetřovatelské perspektivy",
+"alternateTitles": [
+"Nursing Perspectives / Ošetřovatelské Perspektivy",
+"Ošetřovatelské perspektivy"
+],
+"issn": "2570-785X",
+"eissn": "2571-0702",
+"allIssns": [
+"2570-785X",
+"2571-0702"
+],
+"sourceIdentifiers": {
+"OpenAlex": "S4210207405",
+"CINAHL": ""
+},
+"publisher": "Silesian University in Opava",
+"homepage": "https://osp.slu.cz",
+"scope": {
+"tier": "A",
+"signals": [
+"CINAHL",
+"TITLE"
+],
+"oaTopicShare": 0.43,
+"evidence": {},
+"aimsExcerpt": null,
+"aimsUrl": "https://osp.slu.cz",
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"39 works in 2024-26 (OpenAlex (nursing-field fetch))",
+"39 recent work(s) + CINAHL indexing current"
+],
+"works2024to2026": {
+"OpenAlex (nursing-field fetch)": 39
+},
+"currentStatements": [
+"CINAHL indexing current"
+],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026",
+"url": "https://api.openalex.org/sources/S4210207405",
+"basis": "OpenAlex last year with works"
+}
+},
+"lineage": {
+"nlmRelations": null,
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "scope_needs_official_aims",
+"scopeTier": "B",
+"publicationClass": "P-A"
+},
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+],
+"sourceUrls": [
+"https://api.openalex.org/sources/S4210207405"
+],
+"retrievedBySource": {
+"CINAHL": "2026-10-29T04:12:35Z",
+"OpenAlex": "2026-10-29T04:16:01Z"
+}
+},
+{
+"key": "2808-3253",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "JURNAL PENGABDIAN KESEHATAN MASYARAKAT AKADEMI KEPERAWATAN HUSADA KARYA JAYA",
+"alternateTitles": [
+"JURNAL PENGABDIAN KESEHATAN MASYARAKAT AKADEMI KEPERAWATAN HUSADA KARYA JAYA"
+],
+"issn": "2808-3253",
+"eissn": null,
+"allIssns": [
+"2808-3253"
+],
+"sourceIdentifiers": {
+"OpenAlex": "S5407033092"
+},
+"publisher": "Akademi Keperawatan Husada Karya Jaya",
+"homepage": "https://ejurnal.husadakaryajaya.ac.id/index.php/JPMAHKJ",
+"scope": {
+"tier": "A",
+"signals": [
+"SOCIETY",
+"TITLE"
+],
+"oaTopicShare": 0.18,
+"evidence": {
+"publisher": "Akademi Keperawatan Husada Karya Jaya"
+},
+"aimsExcerpt": null,
+"aimsUrl": "https://ejurnal.husadakaryajaya.ac.id/index.php/JPMAHKJ",
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"44 works in 2024-26 (OpenAlex (nursing-field fetch), OpenAlex by ISSN, Crossref)"
+],
+"works2024to2026": {
+"OpenAlex (nursing-field fetch)": 44,
+"OpenAlex by ISSN": 44,
+"Crossref": 44
+},
+"currentStatements": [],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026",
+"url": "https://api.openalex.org/sources/issn:2808-3253",
+"basis": "OpenAlex last year with works"
+}
+},
+"lineage": {
+"nlmRelations": null,
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": null,
+"listedBy": [
+"OpenAlex"
+],
+"sourceUrls": [
+"https://api.openalex.org/sources/issn:2808-3253"
+],
+"retrievedBySource": {
+"OpenAlex": "2026-10-29T04:16:01Z"
+}
+},
+{
+"key": "2709-0019",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Revista científica CURAE",
+"alternateTitles": [
+"Revista científica CURAE",
+"Revista científica Curae",
+"Revista científica de enfermería Curae"
+],
+"issn": "2709-0019",
+"eissn": null,
+"allIssns": [
+"2709-0019"
+],
+"sourceIdentifiers": {
+"OpenAlex": "S4210180306"
+},
+"publisher": "Universidad Senor de Sipan SAC",
+"homepage": null,
+"scope": {
+"tier": "A",
+"signals": [
+"OA",
+"TITLE"
+],
+"oaTopicShare": 0.54,
+"evidence": {},
+"aimsExcerpt": null,
+"aimsUrl": null,
+"aimsRetrieved": null
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"6 works in 2024-26 (OpenAlex (nursing-field fetch), OpenAlex by ISSN, Crossref)"
+],
+"works2024to2026": {
+"OpenAlex (nursing-field fetch)": 6,
+"OpenAlex by ISSN": 6,
+"Crossref": 6
+},
+"currentStatements": [],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2024",
+"url": "https://api.openalex.org/sources/issn:2709-0019",
+"basis": "OpenAlex last year with works"
+}
+},
+"lineage": {
+"nlmRelations": null,
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "scope_needs_official_aims",
+"scopeTier": "B",
+"publicationClass": "P-A"
+},
+"listedBy": [
+"OpenAlex"
+],
+"sourceUrls": [
+"https://api.openalex.org/sources/issn:2709-0019"
+],
+"retrievedBySource": {
+"OpenAlex": "2026-10-29T04:16:01Z"
+}
+},
+{
+"key": "2523-0352",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Revista de Técnicas de Enfermería y Salud",
+"alternateTitles": [
+"Journal of Nursing Techniques & Health / Revista de Técnicas de la Enfermería y Salud",
+"Revista de Técnicas de Enfermería y Salud"
+],
+"issn": "2523-0352",
+"eissn": null,
+"allIssns": [
+"2523-0352"
+],
+"sourceIdentifiers": {
+"OpenAlex": "S4210214517",
+"CINAHL": ""
+},
+"publisher": "ECORFAN",
+"homepage": null,
+"scope": {
+"tier": "A",
+"signals": [
+"CINAHL",
+"TITLE"
+],
+"oaTopicShare": 0.09,
+"evidence": {},
+"aimsExcerpt": null,
+"aimsUrl": null,
+"aimsRetrieved": null
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"9 works in 2024-26 (OpenAlex (nursing-field fetch))",
+"9 recent work(s) + CINAHL indexing current"
+],
+"works2024to2026": {
+"OpenAlex (nursing-field fetch)": 9
+},
+"currentStatements": [
+"CINAHL indexing current"
+],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2025",
+"url": "https://api.openalex.org/sources/S4210214517",
+"basis": "OpenAlex last year with works"
+}
+},
+"lineage": {
+"nlmRelations": null,
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "scope_insufficient",
+"scopeTier": "C",
+"publicationClass": "n/a"
+},
+"listedBy": [
+"CINAHL",
+"OpenAlex"
+],
+"sourceUrls": [
+"https://api.openalex.org/sources/S4210214517"
+],
+"retrievedBySource": {
+"CINAHL": "2026-10-29T04:12:35Z",
+"OpenAlex": "2026-10-29T04:16:01Z"
+}
+},
+{
+"key": "1422-8629",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "www.PrInterNet.info : die wissenschaftliche Fachzeitschrift für die Pflege",
+"alternateTitles": [
+"Pflegewissenschaft",
+"Zeitschrift für Pflegewissenschaft",
+"www.Pr-InterNet.com (Print)",
+"www.PrInterNet.info : die wissenschaftliche Fachzeitschrift für die Pflege"
+],
+"issn": "1422-8629",
+"eissn": null,
+"allIssns": [
+"1422-8629"
+],
+"sourceIdentifiers": {
+"OpenAlex": "S7407058138",
+"NLM Catalog": "101246121"
+},
+"publisher": "hpsmedia",
+"homepage": null,
+"scope": {
+"tier": "A",
+"signals": [
+"NLM",
+"OA",
+"TITLE"
+],
+"oaTopicShare": 0.74,
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care",
+"Education, Nursing"
+]
+},
+"aimsExcerpt": null,
+"aimsUrl": null,
+"aimsRetrieved": null
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"24 works in 2024-26 (OpenAlex (nursing-field fetch))"
+],
+"works2024to2026": {
+"OpenAlex (nursing-field fetch)": 24
+},
+"currentStatements": [],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026",
+"url": "https://api.openalex.org/sources/S7407058138",
+"basis": "OpenAlex last year with works"
+}
+},
+"lineage": {
+"nlmRelations": [
+{
+"type": "",
+"title": "www.Pr-InterNet.com (Print)",
+"issns": [
+"1422-8629"
+]
+},
+{
+"type": "",
+"title": "Pflegewissenschaft",
+"issns": []
+}
+],
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "identity_unconfirmed",
+"scopeTier": "A",
+"publicationClass": "P-I"
+},
+"listedBy": [
+"NLM Catalog",
+"OpenAlex"
+],
+"sourceUrls": [
+"https://api.openalex.org/sources/S7407058138"
+],
+"retrievedBySource": {
+"NLM Catalog": "2026-10-29T04:16:31Z",
+"OpenAlex": "2026-10-29T04:16:01Z"
+}
+},
+{
+"key": "3051-7583",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Doente Crítico - Revista Científica da Sociedade Portuguesa de Enfermagem em Doente Crítico",
+"alternateTitles": [
+"Doente Crítico - Revista Científica da Sociedade Portuguesa de Enfermagem em Doente Crítico"
+],
+"issn": "3051-7583",
+"eissn": null,
+"allIssns": [
+"3051-7583"
+],
+"sourceIdentifiers": {
+"OpenAlex": "S5407053029"
+},
+"publisher": "Sociedade Portuguesa de Enfermagem em Doente Crítico",
+"homepage": "https://revistadoentecritico.spedc.pt/index.php/doentecritico/pt",
+"scope": {
+"tier": "A",
+"signals": [
+"SOCIETY",
+"TITLE"
+],
+"oaTopicShare": 0.06,
+"evidence": {
+"publisher": "Sociedade Portuguesa de Enfermagem em Doente Crítico"
+},
+"aimsExcerpt": null,
+"aimsUrl": null,
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"16 works in 2024-26 (OpenAlex (nursing-field fetch), OpenAlex by ISSN, Crossref)"
+],
+"works2024to2026": {
+"OpenAlex (nursing-field fetch)": 16,
+"OpenAlex by ISSN": 16,
+"Crossref": 14
+},
+"currentStatements": [],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026",
+"url": "https://api.openalex.org/sources/issn:3051-7583",
+"basis": "OpenAlex last year with works"
+}
+},
+"lineage": {
+"nlmRelations": null,
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": null,
+"listedBy": [
+"OpenAlex"
+],
+"sourceUrls": [
+"https://api.openalex.org/sources/issn:3051-7583"
+],
+"retrievedBySource": {
+"OpenAlex": "2026-10-29T04:16:01Z"
+}
+},
+{
+"key": "1469-0446",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "The British journal of infection control",
+"alternateTitles": [
+"British Journal of Infection Control",
+"Journal of Infection Prevention",
+"Journal of infection prevention",
+"The British journal of infection control"
+],
+"issn": "1469-0446",
+"eissn": "1754-7156",
+"allIssns": [
+"1469-0446",
+"1754-7156",
+"1757-1774"
+],
+"sourceIdentifiers": {
+"CINAHL": "",
+"NLM Catalog": "101133069"
+},
+"publisher": "Sage Publications",
+"homepage": "http://bji.sagepub.com/",
+"scope": {
+"tier": "A",
+"signals": [
+"NLM",
+"SOCIETY"
+],
+"oaTopicShare": 0,
+"evidence": {
+"nlmHeadings": [
+"Nurses"
+],
+"publisher": "Infection Control Nurses Association"
+},
+"aimsExcerpt": null,
+"aimsUrl": null,
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"121 works in 2024-26 (OpenAlex by ISSN)",
+"121 recent work(s) + CINAHL indexing current"
+],
+"works2024to2026": {
+"OpenAlex by ISSN": 121,
+"Crossref": 0
+},
+"currentStatements": [
+"CINAHL indexing current"
+],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026",
+"url": "https://api.openalex.org/sources/issn:1469-0446",
+"basis": "OpenAlex last year with works"
+}
+},
+"lineage": {
+"nlmRelations": [
+{
+"type": "",
+"title": "Journal of infection prevention",
+"issns": [
+"1757-1774"
+]
+}
+],
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": null,
+"listedBy": [
+"CINAHL",
+"NLM Catalog"
+],
+"sourceUrls": [
+"https://api.openalex.org/sources/issn:1469-0446"
+],
+"retrievedBySource": {
+"CINAHL": "2026-10-29T04:12:35Z",
+"NLM Catalog": "2026-10-29T04:16:31Z"
+}
+},
+{
+"key": "1540-4153",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Hispanic health care international : the official journal of the National Association of Hispanic Nurses",
+"alternateTitles": [
+"Hispanic Health Care International (Sage Publications Inc.)",
+"Hispanic health care international : the official journal of the National Association of Hispanic Nurses"
+],
+"issn": "1540-4153",
+"eissn": "1938-8993",
+"allIssns": [
+"1540-4153",
+"1938-8993"
+],
+"sourceIdentifiers": {
+"CINAHL": "",
+"NLM Catalog": "101150304"
+},
+"publisher": "Sage Publications",
+"homepage": "https://us.sagepub.com/en-us/nam/hispanic-health-care-international/journal202551",
+"scope": {
+"tier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"oaTopicShare": 0,
+"evidence": {
+"nlmHeadings": [
+"Nurses"
+]
+},
+"aimsExcerpt": null,
+"aimsUrl": null,
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"93 works in 2024-26 (OpenAlex by ISSN, Crossref)",
+"93 recent work(s) + NLM currently indexed, CINAHL indexing current"
+],
+"works2024to2026": {
+"OpenAlex by ISSN": 93,
+"Crossref": 91
+},
+"currentStatements": [
+"NLM currently indexed",
+"CINAHL indexing current"
+],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026",
+"url": "https://api.openalex.org/sources/issn:1540-4153",
+"basis": "OpenAlex last year with works"
+}
+},
+"lineage": {
+"nlmRelations": [],
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": null,
+"listedBy": [
+"CINAHL",
+"NLM Catalog"
+],
+"sourceUrls": [
+"https://api.openalex.org/sources/issn:1540-4153"
+],
+"retrievedBySource": {
+"CINAHL": "2026-10-29T04:12:35Z",
+"NLM Catalog": "2026-10-29T04:16:31Z"
+}
+},
+{
+"key": "2187-7122",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Japanese Journal of Public Health Nursing",
+"alternateTitles": [
+"Japanese Journal of Public Health Nursing",
+"Japanese Journal of Public Health Nursing / Nihon Koshu Eisei Kango Gakkaishi"
+],
+"issn": "2187-7122",
+"eissn": "2189-7018",
+"allIssns": [
+"2187-7122",
+"2189-7018"
+],
+"sourceIdentifiers": {
+"CINAHL": "",
+"J-STAGE": "jjphn"
+},
+"publisher": "Japan Academy of Public Health Nursing",
+"homepage": "https://japhn.jp/en",
+"scope": {
+"tier": "A",
+"signals": [
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"oaTopicShare": 0,
+"evidence": {
+"publisher": "Japan Academy of Public Health Nursing",
+"jstageOrganization": "Japan Academy of Public Health Nursing"
+},
+"aimsExcerpt": "aims of advancing the academic development of public health nursing and enhancing and promoting research, education, and practice, and thereby contributing to the improvement of public health and soci",
+"aimsUrl": "https://japhn.jp/en",
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"J-STAGE latest publication date 2026-10-28"
+],
+"works2024to2026": {},
+"currentStatements": [
+"CINAHL indexing current"
+],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026-10-28",
+"url": "https://www.jstage.jst.go.jp/browse/jjphn",
+"basis": "J-STAGE current pubdate"
+}
+},
+"lineage": {
+"nlmRelations": null,
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "publication_pb",
+"scopeTier": "A",
+"publicationClass": "P-B"
+},
+"listedBy": [
+"CINAHL",
+"J-STAGE"
+],
+"sourceUrls": [
+"https://www.jstage.jst.go.jp/browse/jjphn"
+],
+"retrievedBySource": {
+"CINAHL": "2026-10-29T04:12:35Z",
+"J-STAGE": "2026-10-29T04:20:45Z"
+}
+},
+{
+"key": "1341-8351",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Japanese Journal of Research in Family Nursing",
+"alternateTitles": [
+"Japanese Journal of Research in Family Nursing"
+],
+"issn": "1341-8351",
+"eissn": "2758-8424",
+"allIssns": [
+"1341-8351",
+"2758-8424"
+],
+"sourceIdentifiers": {
+"CINAHL": "",
+"J-STAGE": "jarfn"
+},
+"publisher": "Japanese Association for Research in Family Nursing",
+"homepage": "https://www.jstage.jst.go.jp/browse/jarfn",
+"scope": {
+"tier": "A",
+"signals": [
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"oaTopicShare": 0,
+"evidence": {
+"publisher": "Japanese Association for Research in Family Nursing",
+"jstageOrganization": "Japanese Association for Research in Family Nursing"
+},
+"aimsExcerpt": "Focus on Decision-making Support for Families Regarding Discharge Released on J-STAGE: October 30, 2025 | Volume 20 Pages 93-105 Yoko Kageyama, Midori Asano 2 A Scoping Review of “Interaction” in Nurs",
+"aimsUrl": "https://www.jstage.jst.go.jp/browse/jarfn",
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"J-STAGE latest publication date 2026-06-16"
+],
+"works2024to2026": {},
+"currentStatements": [
+"CINAHL indexing current"
+],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026-06-16",
+"url": "https://www.jstage.jst.go.jp/browse/jarfn",
+"basis": "J-STAGE current pubdate"
+}
+},
+"lineage": {
+"nlmRelations": null,
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "publication_pb",
+"scopeTier": "A",
+"publicationClass": "P-B"
+},
+"listedBy": [
+"CINAHL",
+"J-STAGE"
+],
+"sourceUrls": [
+"https://www.jstage.jst.go.jp/browse/jarfn"
+],
+"retrievedBySource": {
+"CINAHL": "2026-10-29T04:12:35Z",
+"J-STAGE": "2026-10-29T04:20:45Z"
+}
+},
+{
+"key": "1349-7472",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Japanese Journal of Study in Addiction Nursing",
+"alternateTitles": [
+"Japanese Journal of Study in Addiction Nursing"
+],
+"issn": "1349-7472",
+"eissn": "2760-5035",
+"allIssns": [
+"1349-7472",
+"2760-5035"
+],
+"sourceIdentifiers": {
+"CINAHL": "",
+"J-STAGE": "jadn"
+},
+"publisher": "Japanese Society for Study in Addiction Nursing",
+"homepage": "https://www.jstage.jst.go.jp/browse/jadn",
+"scope": {
+"tier": "A",
+"signals": [
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"oaTopicShare": 0,
+"evidence": {
+"publisher": "Japanese Society for Study in Addiction Nursing",
+"jstageOrganization": "Japanese Society for Study in Addiction Nursing"
+},
+"aimsExcerpt": "Japanese Journal of Study in Addiction Nursing Japanese Journal of Study in Addiction Nursing Published by Japanese Society for Study in Addiction Nursing 209",
+"aimsUrl": "https://www.jstage.jst.go.jp/browse/jadn",
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"J-STAGE latest publication date 2026-05-01"
+],
+"works2024to2026": {},
+"currentStatements": [
+"CINAHL indexing current"
+],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026-05-01",
+"url": "https://www.jstage.jst.go.jp/browse/jadn",
+"basis": "J-STAGE current pubdate"
+}
+},
+"lineage": {
+"nlmRelations": null,
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "publication_pb",
+"scopeTier": "A",
+"publicationClass": "P-B"
+},
+"listedBy": [
+"CINAHL",
+"J-STAGE"
+],
+"sourceUrls": [
+"https://www.jstage.jst.go.jp/browse/jadn"
+],
+"retrievedBySource": {
+"CINAHL": "2026-10-29T04:12:35Z",
+"J-STAGE": "2026-10-29T04:20:45Z"
+}
+},
+{
+"key": "2409-2290",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Journal of Asian midwives",
+"alternateTitles": [
+"JAM",
+"Journal of Asian Midwives",
+"Journal of Asian midwives"
+],
+"issn": "2409-2290",
+"eissn": null,
+"allIssns": [
+"2409-2290"
+],
+"sourceIdentifiers": {
+"CINAHL": "",
+"NLM Catalog": "101677815"
+},
+"publisher": "Midwives Alliance of Asia",
+"homepage": null,
+"scope": {
+"tier": "A",
+"signals": [
+"NLM",
+"SOCIETY"
+],
+"oaTopicShare": 0,
+"evidence": {
+"publisher": "Midwives Alliance of Asia",
+"nlmHeadings": [
+"Midwifery"
+]
+},
+"aimsExcerpt": null,
+"aimsUrl": null,
+"aimsRetrieved": null
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"42 works in 2024-26 (OpenAlex by ISSN, Crossref)",
+"42 recent work(s) + CINAHL indexing current"
+],
+"works2024to2026": {
+"OpenAlex by ISSN": 42,
+"Crossref": 35
+},
+"currentStatements": [
+"CINAHL indexing current"
+],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026",
+"url": "https://api.openalex.org/sources/issn:2409-2290",
+"basis": "OpenAlex last year with works"
+}
+},
+"lineage": {
+"nlmRelations": [],
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": null,
+"listedBy": [
+"CINAHL",
+"NLM Catalog"
+],
+"sourceUrls": [
+"https://api.openalex.org/sources/issn:2409-2290"
+],
+"retrievedBySource": {
+"CINAHL": "2026-10-29T04:12:35Z",
+"NLM Catalog": "2026-10-29T04:16:31Z"
+}
+},
+{
+"key": "2654-8283",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Journal of Community Empowerment for Health",
+"alternateTitles": [
+"Journal of Community Empowerment for Health"
+],
+"issn": "2654-8283",
+"eissn": null,
+"allIssns": [
+"2654-8283"
+],
+"sourceIdentifiers": {
+"CINAHL": ""
+},
+"publisher": "Universitas Gadjah Mada, Faculty of Medicine, Public Health & Nursing",
+"homepage": "https://jurnal.ugm.ac.id/jcoemph",
+"scope": {
+"tier": "A",
+"signals": [
+"CINAHL",
+"SOCIETY"
+],
+"oaTopicShare": 0,
+"evidence": {
+"publisher": "Universitas Gadjah Mada, Faculty of Medicine, Public Health & Nursing"
+},
+"aimsExcerpt": "peer-reviewed journal published by the Faculty of Medicine, Public Health, and Nursing, Universitas Gadjah Mada. Focusing on the science and practice of community health from Indonesian and global pe",
+"aimsUrl": "https://journal.ugm.ac.id/jcoemph",
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"82 works in 2024-26 (OpenAlex by ISSN, Crossref)",
+"82 recent work(s) + CINAHL indexing current"
+],
+"works2024to2026": {
+"OpenAlex by ISSN": 82,
+"Crossref": 82
+},
+"currentStatements": [
+"CINAHL indexing current"
+],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026",
+"url": "https://api.openalex.org/sources/issn:2654-8283",
+"basis": "OpenAlex last year with works"
+}
+},
+"lineage": {
+"nlmRelations": null,
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "scope_needs_official_aims",
+"scopeTier": "B",
+"publicationClass": "P-A"
+},
+"listedBy": [
+"CINAHL"
+],
+"sourceUrls": [
+"https://api.openalex.org/sources/issn:2654-8283"
+],
+"retrievedBySource": {
+"CINAHL": "2026-10-29T04:12:35Z"
+}
+},
+{
+"key": "1881-5979",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Journal of Japan Academy of Transplantation and Regeneration Nursing",
+"alternateTitles": [
+"Journal of Japan Academy of Transplantation & Regeneration Nursing",
+"Journal of Japan Academy of Transplantation and Regeneration Nursing"
+],
+"issn": "1881-5979",
+"eissn": "2435-4317",
+"allIssns": [
+"1881-5979",
+"2435-4317"
+],
+"sourceIdentifiers": {
+"CINAHL": "",
+"J-STAGE": "jatrn"
+},
+"publisher": "Japan Academy of Transplantation & Regeneration Nursing",
+"homepage": "https://www.jstage.jst.go.jp/browse/jatrn",
+"scope": {
+"tier": "A",
+"signals": [
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"oaTopicShare": 0,
+"evidence": {
+"publisher": "Japan Academy of Transplantation & Regeneration Nursing",
+"jstageOrganization": "Japan Academy of Transplantation and Regeneration Nursing"
+},
+"aimsExcerpt": "aimed to review the literature on scales useful for nurses to evaluate the state of transition from parental management to self-management in pediatric liver transplant recipients. Methods: The keywor",
+"aimsUrl": "https://www.jstage.jst.go.jp/browse/jatrn",
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"J-STAGE latest publication date 2026-04-17"
+],
+"works2024to2026": {},
+"currentStatements": [
+"CINAHL indexing current"
+],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026-04-17",
+"url": "https://www.jstage.jst.go.jp/browse/jatrn",
+"basis": "J-STAGE current pubdate"
+}
+},
+"lineage": {
+"nlmRelations": null,
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "publication_pb",
+"scopeTier": "A",
+"publicationClass": "P-B"
+},
+"listedBy": [
+"CINAHL",
+"J-STAGE"
+],
+"sourceUrls": [
+"https://www.jstage.jst.go.jp/browse/jatrn"
+],
+"retrievedBySource": {
+"CINAHL": "2026-10-29T04:12:35Z",
+"J-STAGE": "2026-10-29T04:20:45Z"
+}
+},
+{
+"key": "1345-773X",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Journal of Japan Society of Maternity Nursing",
+"alternateTitles": [
+"Journal of Japan Society of Maternity Nursing"
+],
+"issn": "1345-773X",
+"eissn": "2434-6187",
+"allIssns": [
+"1345-773X",
+"2434-6187"
+],
+"sourceIdentifiers": {
+"CINAHL": "",
+"J-STAGE": "jjsmn"
+},
+"publisher": "Japan Society of Maternity Nursing",
+"homepage": "http://bosei.org/",
+"scope": {
+"tier": "A",
+"signals": [
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"oaTopicShare": 0,
+"evidence": {
+"publisher": "Japan Society of Maternity Nursing",
+"jstageOrganization": "Japan Society of Maternity Nursing"
+},
+"aimsExcerpt": "日本母性看護学会 一般社団法人 Japan Society of Maternity Nursing 日本母性看護学会 ▷ 日本母性看護学会のシンボルマークについて 事務局 日本母性看護学会 事務局 〒170-0013 東京都豊島区東池袋2-39-",
+"aimsUrl": "https://bosei.org/",
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"J-STAGE latest publication date 2026-09-30"
+],
+"works2024to2026": {},
+"currentStatements": [
+"CINAHL indexing current"
+],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026-09-30",
+"url": "https://www.jstage.jst.go.jp/browse/jjsmn",
+"basis": "J-STAGE current pubdate"
+}
+},
+"lineage": {
+"nlmRelations": null,
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "publication_pb",
+"scopeTier": "A",
+"publicationClass": "P-B"
+},
+"listedBy": [
+"CINAHL",
+"J-STAGE"
+],
+"sourceUrls": [
+"https://www.jstage.jst.go.jp/browse/jjsmn"
+],
+"retrievedBySource": {
+"CINAHL": "2026-10-29T04:12:35Z",
+"J-STAGE": "2026-10-29T04:20:45Z"
+}
+},
+{
+"key": "1345-2606",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Journal of Japan Society of Nursing and Health Care",
+"alternateTitles": [
+"Journal of Japan Society of Nursing & Health Care",
+"Journal of Japan Society of Nursing and Health Care"
+],
+"issn": "1345-2606",
+"eissn": "2760-2079",
+"allIssns": [
+"1345-2606",
+"2760-2079"
+],
+"sourceIdentifiers": {
+"CINAHL": "",
+"J-STAGE": "jsnhc"
+},
+"publisher": "Japan Society of Nursing & Health Care",
+"homepage": "https://jsnhc.jp/index.html",
+"scope": {
+"tier": "A",
+"signals": [
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"oaTopicShare": 0,
+"evidence": {
+"publisher": "Japan Society of Nursing & Health Care",
+"jstageOrganization": "Japan Society of Nursing and Health Care"
+},
+"aimsExcerpt": "日本看護医療学会 --> JSNHC Japan Society of Nursing and Health Care --> 日本看護医療学会 日本看護医療学会はJANA(日本看護系学会協議会）の会員学会です。 ▶ トップページ ▶ リンク",
+"aimsUrl": "https://jsnhc.jp/index.html",
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"J-STAGE latest publication date 2026-09-13"
+],
+"works2024to2026": {},
+"currentStatements": [
+"CINAHL indexing current"
+],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026-09-13",
+"url": "https://www.jstage.jst.go.jp/browse/jsnhc",
+"basis": "J-STAGE current pubdate"
+}
+},
+"lineage": {
+"nlmRelations": null,
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "publication_pb",
+"scopeTier": "A",
+"publicationClass": "P-B"
+},
+"listedBy": [
+"CINAHL",
+"J-STAGE"
+],
+"sourceUrls": [
+"https://www.jstage.jst.go.jp/browse/jsnhc"
+],
+"retrievedBySource": {
+"CINAHL": "2026-10-29T04:12:35Z",
+"J-STAGE": "2026-10-29T04:20:45Z"
+}
+},
+{
+"key": "1348-0928",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Journal of Japanese Association for Emergency Nursing",
+"alternateTitles": [
+"Journal of Japanese Association for Emergency Nursing",
+"Journal of Japanese Association for Emergency Nursing / Nihon Kyukyu Kango Gakkai Zasshi"
+],
+"issn": "1348-0928",
+"eissn": "2189-6771",
+"allIssns": [
+"1348-0928",
+"2189-6771"
+],
+"sourceIdentifiers": {
+"CINAHL": "",
+"J-STAGE": "jaen"
+},
+"publisher": "Japanese Association for Emergency Nursing",
+"homepage": "http://jaen.umin.ac.jp/",
+"scope": {
+"tier": "A",
+"signals": [
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"oaTopicShare": 0,
+"evidence": {
+"publisher": "Japanese Association for Emergency Nursing",
+"jstageOrganization": "Japanese Association for Emergency Nursing"
+},
+"aimsExcerpt": null,
+"aimsUrl": "http://jaen.umin.ac.jp/",
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"J-STAGE latest publication date 2026-09-12"
+],
+"works2024to2026": {},
+"currentStatements": [
+"CINAHL indexing current"
+],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026-09-12",
+"url": "https://www.jstage.jst.go.jp/browse/jaen",
+"basis": "J-STAGE current pubdate"
+}
+},
+"lineage": {
+"nlmRelations": null,
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "publication_pb",
+"scopeTier": "A",
+"publicationClass": "P-B"
+},
+"listedBy": [
+"CINAHL",
+"J-STAGE"
+],
+"sourceUrls": [
+"https://www.jstage.jst.go.jp/browse/jaen"
+],
+"retrievedBySource": {
+"CINAHL": "2026-10-29T04:12:35Z",
+"J-STAGE": "2026-10-29T04:20:45Z"
+}
+},
+{
+"key": "2760-179X",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Journal of Japanese Association of Advanced Practice Nursing",
+"alternateTitles": [
+"Journal of Japanese Association of Advanced Practice Nursing"
+],
+"issn": "2760-179X",
+"eissn": null,
+"allIssns": [
+"2760-179X"
+],
+"sourceIdentifiers": {
+"CINAHL": "",
+"J-STAGE": "jaapn"
+},
+"publisher": "Japanese Association of Advanced Practice Nursing",
+"homepage": "https://jaapn.org/",
+"scope": {
+"tier": "A",
+"signals": [
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"oaTopicShare": 0,
+"evidence": {
+"publisher": "Japanese Association of Advanced Practice Nursing",
+"jstageOrganization": "Japanese Association of Advanced Practice Nursing"
+},
+"aimsExcerpt": "一般社団法人 日本高度実践看護学会 JAAPN；Japanese Association of Advanced Practice Nursing --> 会員ログイン --> 2026/10/22 お知らせ CNS（専門看護師）キャリアラダー掲載のお知らせ CNS",
+"aimsUrl": "https://jaapn.org/",
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"J-STAGE latest publication date 2026-07-06"
+],
+"works2024to2026": {},
+"currentStatements": [
+"CINAHL indexing current"
+],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026-07-06",
+"url": "https://www.jstage.jst.go.jp/browse/jaapn",
+"basis": "J-STAGE current pubdate"
+}
+},
+"lineage": {
+"nlmRelations": null,
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "publication_pb",
+"scopeTier": "A",
+"publicationClass": "P-B"
+},
+"listedBy": [
+"CINAHL",
+"J-STAGE"
+],
+"sourceUrls": [
+"https://www.jstage.jst.go.jp/browse/jaapn"
+],
+"retrievedBySource": {
+"CINAHL": "2026-10-29T04:12:35Z",
+"J-STAGE": "2026-10-29T04:20:45Z"
+}
+},
+{
+"key": "2189-5090",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Journal of Japanese Association of Certified Nurse Specialist",
+"alternateTitles": [
+"Journal of Japanese Association of Certified Nurse Specialist"
+],
+"issn": "2189-5090",
+"eissn": "2434-4079",
+"allIssns": [
+"2189-5090",
+"2434-4079"
+],
+"sourceIdentifiers": {
+"CINAHL": "",
+"J-STAGE": "jpncns"
+},
+"publisher": "Japanese Association of Advanced Practice Nursing",
+"homepage": "https://jaapn.org/",
+"scope": {
+"tier": "A",
+"signals": [
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"oaTopicShare": 0,
+"evidence": {
+"publisher": "Japanese Association of Advanced Practice Nursing",
+"jstageOrganization": "Japanese Association of Advanced Practice Nursing"
+},
+"aimsExcerpt": "一般社団法人 日本高度実践看護学会 JAAPN；Japanese Association of Advanced Practice Nursing --> 会員ログイン --> 2026/10/22 お知らせ CNS（専門看護師）キャリアラダー掲載のお知らせ CNS",
+"aimsUrl": "https://jaapn.org/",
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"J-STAGE latest publication date 2025-05-29"
+],
+"works2024to2026": {},
+"currentStatements": [],
+"endedStatements": [
+"CINAHL indexing stopped"
+],
+"latestConfirmed": {
+"date": "2025-05-29",
+"url": "https://www.jstage.jst.go.jp/browse/jpncns",
+"basis": "J-STAGE current pubdate"
+}
+},
+"lineage": {
+"nlmRelations": null,
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "publication_pc",
+"scopeTier": "A",
+"publicationClass": "P-C"
+},
+"listedBy": [
+"CINAHL",
+"J-STAGE"
+],
+"sourceUrls": [
+"https://www.jstage.jst.go.jp/browse/jpncns"
+],
+"retrievedBySource": {
+"CINAHL": "2026-10-29T04:12:35Z",
+"J-STAGE": "2026-10-29T04:20:45Z"
+}
+},
+{
+"key": "1882-2061",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Journal of Japanese Society for Chronic Illness and Conditions Nursing",
+"alternateTitles": [
+"Journal of Japanese Society for Chronic Illness & Conditions Nursing",
+"Journal of Japanese Society for Chronic Illness and Conditions Nursing"
+],
+"issn": "1882-2061",
+"eissn": "2435-7782",
+"allIssns": [
+"1882-2061",
+"2435-7782"
+],
+"sourceIdentifiers": {
+"CINAHL": "",
+"J-STAGE": "jscicn"
+},
+"publisher": "Japanese Society for Chronic Illness & Conditions Nursing",
+"homepage": "http://jscicn.com",
+"scope": {
+"tier": "A",
+"signals": [
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"oaTopicShare": 0,
+"evidence": {
+"publisher": "Japanese Society for Chronic Illness & Conditions Nursing",
+"jstageOrganization": "Japanese Society for Chronic Illness and Conditions Nursing"
+},
+"aimsExcerpt": "日本慢性看護学会 - Japanese Society for Chronic Illness and Conditions Nursing Japanese Society for Chronic Illness and Conditions N",
+"aimsUrl": "https://jscicn.com/",
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"J-STAGE latest publication date 2026-07-29"
+],
+"works2024to2026": {},
+"currentStatements": [
+"CINAHL indexing current"
+],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026-07-29",
+"url": "https://www.jstage.jst.go.jp/browse/jscicn",
+"basis": "J-STAGE current pubdate"
+}
+},
+"lineage": {
+"nlmRelations": null,
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "publication_pb",
+"scopeTier": "A",
+"publicationClass": "P-B"
+},
+"listedBy": [
+"CINAHL",
+"J-STAGE"
+],
+"sourceUrls": [
+"https://www.jstage.jst.go.jp/browse/jscicn"
+],
+"retrievedBySource": {
+"CINAHL": "2026-10-29T04:12:35Z",
+"J-STAGE": "2026-10-29T04:20:45Z"
+}
+},
+{
+"key": "1344-9923",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Journal of Japanese Society of Child Health Nursing",
+"alternateTitles": [
+"Journal of Japanese Society of Child Health Nursing"
+],
+"issn": "1344-9923",
+"eissn": "2423-8457",
+"allIssns": [
+"1344-9923",
+"2423-8457"
+],
+"sourceIdentifiers": {
+"CINAHL": "",
+"J-STAGE": "jschn"
+},
+"publisher": "Japanese Society of Child Health Nursing",
+"homepage": "https://jschn.or.jp/",
+"scope": {
+"tier": "A",
+"signals": [
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"oaTopicShare": 0,
+"evidence": {
+"publisher": "Japanese Society of Child Health Nursing",
+"jstageOrganization": "Japanese Society of Child Health Nursing"
+},
+"aimsExcerpt": "一般社団法人日本小児看護学会 | Japanese Society of Child Health Nursing お問い合せ マイページ E-learning en English 本学会について 日本小児看護学会とは 理事長挨拶 沿革 学会組織・委員会活動",
+"aimsUrl": "https://jschn.or.jp/",
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"J-STAGE latest publication date 2026-07-31"
+],
+"works2024to2026": {},
+"currentStatements": [
+"CINAHL indexing current"
+],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026-07-31",
+"url": "https://www.jstage.jst.go.jp/browse/jschn",
+"basis": "J-STAGE current pubdate"
+}
+},
+"lineage": {
+"nlmRelations": null,
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "publication_pb",
+"scopeTier": "A",
+"publicationClass": "P-B"
+},
+"listedBy": [
+"CINAHL",
+"J-STAGE"
+],
+"sourceUrls": [
+"https://www.jstage.jst.go.jp/browse/jschn"
+],
+"retrievedBySource": {
+"CINAHL": "2026-10-29T04:12:35Z",
+"J-STAGE": "2026-10-29T04:20:45Z"
+}
+},
+{
+"key": "1346-1346",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Journal of the Japanese Red Cross Society of Nursing Science",
+"alternateTitles": [
+"Journal of the Japanese Red Cross Society of Nursing Science"
+],
+"issn": "1346-1346",
+"eissn": "2433-3425",
+"allIssns": [
+"1346-1346",
+"2433-3425"
+],
+"sourceIdentifiers": {
+"CINAHL": "",
+"J-STAGE": "jjrcsns"
+},
+"publisher": "Japanese Red Cross Society of Nursing Science",
+"homepage": "https://www.jstage.jst.go.jp/browse/jjrcsns",
+"scope": {
+"tier": "A",
+"signals": [
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"oaTopicShare": 0,
+"evidence": {
+"publisher": "Japanese Red Cross Society of Nursing Science",
+"jstageOrganization": "Japanese Red Cross Society of Nursing Science"
+},
+"aimsExcerpt": "About the journal J-STAGE home / Journal of the Japanese Red Cr ... / Journal home 2026 Volume 27 Issue 1 Pain Communication in the Interaction Between Patients with Chronic Pain and Nurses: From Inte",
+"aimsUrl": "https://www.jstage.jst.go.jp/browse/jjrcsns",
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"J-STAGE latest publication date 2026-10-25"
+],
+"works2024to2026": {},
+"currentStatements": [
+"CINAHL indexing current"
+],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026-10-25",
+"url": "https://www.jstage.jst.go.jp/browse/jjrcsns",
+"basis": "J-STAGE current pubdate"
+}
+},
+"lineage": {
+"nlmRelations": null,
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "publication_pb",
+"scopeTier": "A",
+"publicationClass": "P-B"
+},
+"listedBy": [
+"CINAHL",
+"J-STAGE"
+],
+"sourceUrls": [
+"https://www.jstage.jst.go.jp/browse/jjrcsns"
+],
+"retrievedBySource": {
+"CINAHL": "2026-10-29T04:12:35Z",
+"J-STAGE": "2026-10-29T04:20:45Z"
+}
+},
+{
+"key": "2746-4202",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Jurnal Pengabdian Masyarakat Dalam Keperawatan",
+"alternateTitles": [
+"Jurnal Pengabdian Masyarakat Dalam Keperawatan"
+],
+"issn": "2746-4202",
+"eissn": null,
+"allIssns": [
+"2746-4202"
+],
+"sourceIdentifiers": {
+"CINAHL": ""
+},
+"publisher": "Universitas Airlangga",
+"homepage": "http://e-journal.unair.ac.id/JPMK",
+"scope": {
+"tier": "A",
+"signals": [
+"CINAHL",
+"TITLE"
+],
+"oaTopicShare": 0,
+"evidence": {},
+"aimsExcerpt": "scope for JPMK includes: Human resource development in nursing and health Community empowerment in nursing and health Rural health development Health promotion Technology application in nursing and he",
+"aimsUrl": "https://e-journal.unair.ac.id/JPMK",
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"43 works in 2024-26 (OpenAlex by ISSN, Crossref)",
+"43 recent work(s) + CINAHL indexing current"
+],
+"works2024to2026": {
+"OpenAlex by ISSN": 43,
+"Crossref": 43
+},
+"currentStatements": [
+"CINAHL indexing current"
+],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026",
+"url": "https://api.openalex.org/sources/issn:2746-4202",
+"basis": "OpenAlex last year with works"
+}
+},
+"lineage": {
+"nlmRelations": null,
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "scope_insufficient",
+"scopeTier": "C",
+"publicationClass": "n/a"
+},
+"listedBy": [
+"CINAHL"
+],
+"sourceUrls": [
+"https://api.openalex.org/sources/issn:2746-4202"
+],
+"retrievedBySource": {
+"CINAHL": "2026-10-29T04:12:35Z"
+}
+},
+{
+"key": "0030-1787",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "The Oklahoma nurse",
+"alternateTitles": [
+"OKLA NURSE",
+"Oklahoma Nurse",
+"The Oklahoma nurse"
+],
+"issn": "0030-1787",
+"eissn": null,
+"allIssns": [
+"0030-1787"
+],
+"sourceIdentifiers": {
+"CINAHL": "",
+"NLM Catalog": "413179"
+},
+"publisher": "HealthCom Media",
+"homepage": null,
+"scope": {
+"tier": "A",
+"signals": [
+"NLM",
+"CINAHL",
+"SOCIETY",
+"TITLE"
+],
+"oaTopicShare": 0,
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+],
+"publisher": "Oklahoma State Nurses Assn."
+},
+"aimsExcerpt": null,
+"aimsUrl": null,
+"aimsRetrieved": null
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"1 recent work(s) + CINAHL indexing current"
+],
+"works2024to2026": {
+"OpenAlex by ISSN": 1
+},
+"currentStatements": [
+"CINAHL indexing current"
+],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2025",
+"url": "https://api.openalex.org/sources/issn:0030-1787",
+"basis": "OpenAlex last year with works"
+}
+},
+"lineage": {
+"nlmRelations": [],
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "publication_pb",
+"scopeTier": "A",
+"publicationClass": "P-B"
+},
+"listedBy": [
+"CINAHL",
+"NLM Catalog"
+],
+"sourceUrls": [
+"https://api.openalex.org/sources/issn:0030-1787"
+],
+"retrievedBySource": {
+"CINAHL": "2026-10-29T04:12:35Z",
+"NLM Catalog": "2026-10-29T04:16:31Z"
+}
+},
+{
+"key": "2433-3107",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Nihon Shikino Kango Gakkaishi",
+"alternateTitles": [
+"Nihon Shikino Kango Gakkaishi",
+"Nihon Shikinō Kango Gakkai shi"
+],
+"issn": "2433-3107",
+"eissn": "2433-4049",
+"allIssns": [
+"2433-3107",
+"2433-4049"
+],
+"sourceIdentifiers": {
+"NLM Catalog": "131488",
+"J-STAGE": "jaon"
+},
+"publisher": "Nihon Shikinō Kango Gakkai",
+"homepage": "https://www.jstage.jst.go.jp/browse/jaon",
+"scope": {
+"tier": "A",
+"signals": [
+"NLM",
+"SOCIETY",
+"TITLE"
+],
+"oaTopicShare": 0,
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+],
+"publisher": "Nihon Shikinō Kango Gakkai",
+"jstageOrganization": "Japan Academy of Ophthalmic Nursing"
+},
+"aimsExcerpt": "About the journal J-STAGE home / Nihon Shikino Kango Gakkaishi / Journal home [English version not available] [title in Japanese] [in Japanese], [in Japanese], [in Japanese], [in Japanese], [in Japane",
+"aimsUrl": "https://www.jstage.jst.go.jp/browse/jaon",
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"J-STAGE latest publication date 2025-12-25"
+],
+"works2024to2026": {},
+"currentStatements": [],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2025-12-25",
+"url": "https://www.jstage.jst.go.jp/browse/jaon",
+"basis": "J-STAGE current pubdate"
+}
+},
+"lineage": {
+"nlmRelations": [],
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "publication_pc",
+"scopeTier": "A",
+"publicationClass": "P-C"
+},
+"listedBy": [
+"J-STAGE",
+"NLM Catalog"
+],
+"sourceUrls": [
+"https://www.jstage.jst.go.jp/browse/jaon"
+],
+"retrievedBySource": {
+"J-STAGE": "2026-10-29T04:20:45Z",
+"NLM Catalog": "2026-10-29T04:16:31Z"
+}
+},
+{
+"key": "1348-3722",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Journal of Nursing Investigation",
+"alternateTitles": [
+"JNI",
+"Journal of Nursing Investigation",
+"The journal of nursing investigation : JNI"
+],
+"issn": "1348-3722",
+"eissn": "2434-2238",
+"allIssns": [
+"1348-3722",
+"2434-2238"
+],
+"sourceIdentifiers": {
+"NLM Catalog": "101238920",
+"J-STAGE": "jni"
+},
+"publisher": "Tokushima Daigaku Igakubu",
+"homepage": "https://www.tokushima-u.ac.jp/med/research/achievement/jni.html",
+"scope": {
+"tier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"oaTopicShare": 0,
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Care"
+]
+},
+"aimsExcerpt": "About the Journal Journal of Nursing Investigation (JNI) is a peer-reviewed open-access journal providing a platform for nursing scholarship focused on Japan and Asia perspectives from the region. JNI",
+"aimsUrl": "https://www.tokushima-u.ac.jp/med/research/achievement/jni.html",
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"J-STAGE latest publication date 2025-10-03"
+],
+"works2024to2026": {},
+"currentStatements": [],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2025-10-03",
+"url": "https://www.jstage.jst.go.jp/browse/jni",
+"basis": "J-STAGE current pubdate"
+}
+},
+"lineage": {
+"nlmRelations": [],
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "publication_pc",
+"scopeTier": "A",
+"publicationClass": "P-C"
+},
+"listedBy": [
+"J-STAGE",
+"NLM Catalog"
+],
+"sourceUrls": [
+"https://www.jstage.jst.go.jp/browse/jni"
+],
+"retrievedBySource": {
+"J-STAGE": "2026-10-29T04:20:45Z",
+"NLM Catalog": "2026-10-29T04:16:31Z"
+}
+},
+{
+"key": "1346-9657",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Journal of Japan Academy of Community Health Nursing",
+"alternateTitles": [
+"Journal of Japan Academy of Community Health Nursing",
+"Nihon Chiiki Kango Gakkai shi = Journal of Japan Academy of Community Health Nursing"
+],
+"issn": "1346-9657",
+"eissn": "2432-0803",
+"allIssns": [
+"1346-9657",
+"2432-0803"
+],
+"sourceIdentifiers": {
+"NLM Catalog": "100964137",
+"J-STAGE": "jachn"
+},
+"publisher": "Nihon Chiiki Kango Gakkai",
+"homepage": "https://www.jachn.net/",
+"scope": {
+"tier": "A",
+"signals": [
+"NLM",
+"SOCIETY",
+"TITLE"
+],
+"oaTopicShare": 0,
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Community Health Nursing"
+],
+"publisher": "Nihon Chiiki Kango Gakkai",
+"jstageOrganization": "Japan Academy of Community Health Nursing"
+},
+"aimsExcerpt": "﻿ 一般社団法人日本地域看護学会|公式ホームページ --> --> 次世代育成推進委員会 ライブ配信のお知らせ(終了しました) 2022.10.07 次世代育成推進委員会では,オープンに会員の皆様とオープンに交流できる場,そして,堅苦しくない場を開きたいと思い,Y",
+"aimsUrl": "https://www.jachn.net/",
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"J-STAGE latest publication date 2026-09-16"
+],
+"works2024to2026": {},
+"currentStatements": [],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026-09-16",
+"url": "https://www.jstage.jst.go.jp/browse/jachn",
+"basis": "J-STAGE current pubdate"
+}
+},
+"lineage": {
+"nlmRelations": [],
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "publication_pc",
+"scopeTier": "A",
+"publicationClass": "P-C"
+},
+"listedBy": [
+"J-STAGE",
+"NLM Catalog"
+],
+"sourceUrls": [
+"https://www.jstage.jst.go.jp/browse/jachn"
+],
+"retrievedBySource": {
+"J-STAGE": "2026-10-29T04:20:45Z",
+"NLM Catalog": "2026-10-29T04:16:31Z"
+}
+},
+{
+"key": "1342-8497",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "The Journal of Japan Academy of Diabetes Education and Nursing",
+"alternateTitles": [
+"Journal of Japan Academy of Diabetes Education and Nursing",
+"Nihon Tōnyōbyō Kyōiku Kango Gakkai shi = The journal of Japan Academy of Diabetes Education and Nursing",
+"The Journal of Japan Academy of Diabetes Education and Nursing"
+],
+"issn": "1342-8497",
+"eissn": "2432-3713",
+"allIssns": [
+"1342-8497",
+"2432-3713"
+],
+"sourceIdentifiers": {
+"NLM Catalog": "9810940",
+"J-STAGE": "jaden"
+},
+"publisher": "Dō Gakkai",
+"homepage": "https://www.jstage.jst.go.jp/browse/jaden",
+"scope": {
+"tier": "A",
+"signals": [
+"NLM",
+"SOCIETY",
+"TITLE"
+],
+"oaTopicShare": 0,
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+],
+"jstageOrganization": "Japan Academy of Diabetes Education and Nursing"
+},
+"aimsExcerpt": "The Journal of Japan Academy of Diabetes Education and Nursing The Journal of Japan Academy of Diabetes Education and Nursing Published by Japan Academy of Diabetes Education",
+"aimsUrl": "https://www.jstage.jst.go.jp/browse/jaden",
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"J-STAGE latest publication date 2026-09-17"
+],
+"works2024to2026": {},
+"currentStatements": [],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026-09-17",
+"url": "https://www.jstage.jst.go.jp/browse/jaden",
+"basis": "J-STAGE current pubdate"
+}
+},
+"lineage": {
+"nlmRelations": [],
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "publication_pc",
+"scopeTier": "A",
+"publicationClass": "P-C"
+},
+"listedBy": [
+"J-STAGE",
+"NLM Catalog"
+],
+"sourceUrls": [
+"https://www.jstage.jst.go.jp/browse/jaden"
+],
+"retrievedBySource": {
+"J-STAGE": "2026-10-29T04:20:45Z",
+"NLM Catalog": "2026-10-29T04:16:31Z"
+}
+},
+{
+"key": "1340-3753",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Nursing and information : journal of the Japan Nursing Library Association",
+"alternateTitles": [
+"Kango to jōhō : Kango Toshokan Kyōgikai kaishi",
+"Nursing and information",
+"Nursing and information : journal of the Japan Nursing Library Association"
+],
+"issn": "1340-3753",
+"eissn": "2424-2535",
+"allIssns": [
+"1340-3753",
+"2424-2535"
+],
+"sourceIdentifiers": {
+"NLM Catalog": "9605717",
+"J-STAGE": "jjnla"
+},
+"publisher": "Kango Toshokan Kyogi Kai",
+"homepage": "http://jnla.umin.jp/index.html",
+"scope": {
+"tier": "A",
+"signals": [
+"NLM",
+"SOCIETY",
+"TITLE"
+],
+"oaTopicShare": 0,
+"evidence": {
+"nlmHeadings": [
+"Nursing"
+],
+"publisher": "Kango Toshokan Kyogi Kai",
+"jstageOrganization": "The Japan Nursing Library Association"
+},
+"aimsExcerpt": null,
+"aimsUrl": null,
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"J-STAGE latest publication date 2026-09-09"
+],
+"works2024to2026": {},
+"currentStatements": [],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026-09-09",
+"url": "https://www.jstage.jst.go.jp/browse/jjnla",
+"basis": "J-STAGE current pubdate"
+}
+},
+"lineage": {
+"nlmRelations": [],
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "publication_pc",
+"scopeTier": "A",
+"publicationClass": "P-C"
+},
+"listedBy": [
+"J-STAGE",
+"NLM Catalog"
+],
+"sourceUrls": [
+"https://www.jstage.jst.go.jp/browse/jjnla"
+],
+"retrievedBySource": {
+"J-STAGE": "2026-10-29T04:20:45Z",
+"NLM Catalog": "2026-10-29T04:16:31Z"
+}
+},
+{
+"key": "0918-0621",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Journal of Japan Academy of Psychiatric and Mental Health Nursing",
+"alternateTitles": [
+"Journal of Japan Academy of Psychiatric and Mental Health Nursing",
+"Nihon Seishin Hoken Kango Gakkai shi = Journal of Japan Academy of Psychiatric and Mental Health Nursing"
+],
+"issn": "0918-0621",
+"eissn": "2432-101X",
+"allIssns": [
+"0918-0621",
+"2432-101X"
+],
+"sourceIdentifiers": {
+"NLM Catalog": "100900243",
+"J-STAGE": "japmhn"
+},
+"publisher": "Dō Gakkai",
+"homepage": "https://www.jstage.jst.go.jp/browse/japmhn",
+"scope": {
+"tier": "A",
+"signals": [
+"NLM",
+"SOCIETY",
+"TITLE"
+],
+"oaTopicShare": 0,
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Psychiatric Nursing"
+],
+"jstageOrganization": "The Japan Academy of Psychiatric and Mental Health Nursing"
+},
+"aimsExcerpt": "About the journal J-STAGE home / Journal of Japan Academy of Ps ... / Journal home 2026 Volume 35 Issue 1 A Narrative Review of Caring Experiences in Psychiatric Nursing Ryota Nishiumi Experiences of",
+"aimsUrl": "https://www.jstage.jst.go.jp/browse/japmhn",
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"J-STAGE latest publication date 2026-06-30"
+],
+"works2024to2026": {},
+"currentStatements": [],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026-06-30",
+"url": "https://www.jstage.jst.go.jp/browse/japmhn",
+"basis": "J-STAGE current pubdate"
+}
+},
+"lineage": {
+"nlmRelations": [],
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "publication_pb",
+"scopeTier": "A",
+"publicationClass": "P-B"
+},
+"listedBy": [
+"J-STAGE",
+"NLM Catalog"
+],
+"sourceUrls": [
+"https://www.jstage.jst.go.jp/browse/japmhn"
+],
+"retrievedBySource": {
+"J-STAGE": "2026-10-29T04:20:45Z",
+"NLM Catalog": "2026-10-29T04:16:31Z"
+}
+},
+{
+"key": "0916-7536",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Journal of Japan Academy of Nursing Education",
+"alternateTitles": [
+"Journal of Japan Academy of Nursing Education",
+"Nihon Kangogaku Kyōiku Gakkai shi",
+"Zenkoku Kango Kyōiku Kenkyūkaishi"
+],
+"issn": "0916-7536",
+"eissn": "2436-6595",
+"allIssns": [
+"0916-7536",
+"2436-6595"
+],
+"sourceIdentifiers": {
+"NLM Catalog": "101501919",
+"J-STAGE": "jane"
+},
+"publisher": "Nihon Kangogaku Kyōiku Gakkai",
+"homepage": "https://jane-ns.or.jp/",
+"scope": {
+"tier": "A",
+"signals": [
+"NLM",
+"SOCIETY",
+"TITLE"
+],
+"oaTopicShare": 0,
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Education, Nursing"
+],
+"publisher": "Nihon Kangogaku Kyōiku Gakkai",
+"jstageOrganization": "Japan Academy of Nursing Education"
+},
+"aimsExcerpt": null,
+"aimsUrl": null,
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"J-STAGE latest publication date 2026-08-31"
+],
+"works2024to2026": {},
+"currentStatements": [],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026-08-31",
+"url": "https://www.jstage.jst.go.jp/browse/jane",
+"basis": "J-STAGE current pubdate"
+}
+},
+"lineage": {
+"nlmRelations": [
+{
+"type": "",
+"title": "Zenkoku Kango Kyōiku Kenkyūkaishi",
+"issns": [
+"0286-3960"
+]
+}
+],
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "publication_pc",
+"scopeTier": "A",
+"publicationClass": "P-C"
+},
+"listedBy": [
+"J-STAGE",
+"NLM Catalog"
+],
+"sourceUrls": [
+"https://www.jstage.jst.go.jp/browse/jane"
+],
+"retrievedBySource": {
+"J-STAGE": "2026-10-29T04:20:45Z",
+"NLM Catalog": "2026-10-29T04:16:31Z"
+}
+},
+{
+"key": "0914-6423",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Journal of Japanese Society of Cancer Nursing",
+"alternateTitles": [
+"Journal of Japanese Society of Cancer Nursing",
+"Nihon Gan Kango Gakkai shi"
+],
+"issn": "0914-6423",
+"eissn": "2189-7565",
+"allIssns": [
+"0914-6423",
+"2189-7565"
+],
+"sourceIdentifiers": {
+"NLM Catalog": "101501696",
+"J-STAGE": "jjscn"
+},
+"publisher": "Nihon Gan Kango Gakkai",
+"homepage": "http://jscn.or.jp/",
+"scope": {
+"tier": "A",
+"signals": [
+"NLM",
+"SOCIETY",
+"TITLE"
+],
+"oaTopicShare": 0,
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Oncology Nursing"
+],
+"publisher": "Nihon Gan Kango Gakkai",
+"jstageOrganization": "Japanese Society of Cancer Nursing"
+},
+"aimsExcerpt": "一般社団法人 日本がん看護学会｜がん看護に関する実践、教育、研究の発展のために MENU 会員専用ページ HOME 学会概要 入会方法 学会誌 転載許可・機関リポジトリ SIG 日本がん看護学会特別関心活動グループ 学術集会のお知らせ 教育関連セミナー・研修 地",
+"aimsUrl": "https://jscn.or.jp/",
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"J-STAGE latest publication date 2026-10-07"
+],
+"works2024to2026": {},
+"currentStatements": [],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2026-10-07",
+"url": "https://www.jstage.jst.go.jp/browse/jjscn",
+"basis": "J-STAGE current pubdate"
+}
+},
+"lineage": {
+"nlmRelations": [],
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "publication_pc",
+"scopeTier": "A",
+"publicationClass": "P-C"
+},
+"listedBy": [
+"J-STAGE",
+"NLM Catalog"
+],
+"sourceUrls": [
+"https://www.jstage.jst.go.jp/browse/jjscn"
+],
+"retrievedBySource": {
+"J-STAGE": "2026-10-29T04:20:45Z",
+"NLM Catalog": "2026-10-29T04:16:31Z"
+}
+},
+{
+"key": "0737-6065",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Wiley series on developments in nursing research",
+"alternateTitles": [
+"A Wiley medical publication",
+"Developments in nursing research",
+"Wiley series on developments in nursing research"
+],
+"issn": "0737-6065",
+"eissn": null,
+"allIssns": [
+"0737-6065"
+],
+"sourceIdentifiers": {
+"NLM Catalog": "8216193"
+},
+"publisher": "Wiley",
+"homepage": null,
+"scope": {
+"tier": "A",
+"signals": [
+"NLM",
+"TITLE"
+],
+"oaTopicShare": 0,
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nursing Research"
+]
+},
+"aimsExcerpt": null,
+"aimsUrl": null,
+"aimsRetrieved": null
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"7 works in 2024-26 (PubMed)"
+],
+"works2024to2026": {
+"PubMed": 7
+},
+"currentStatements": [],
+"endedStatements": [
+"NLM publication dates are closed"
+],
+"latestConfirmed": null
+},
+"lineage": {
+"nlmRelations": [
+{
+"type": "",
+"title": "A Wiley medical publication",
+"issns": []
+}
+],
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "net-new",
+"primary": "publication_pc",
+"scopeTier": "A",
+"publicationClass": "P-C"
+},
+"listedBy": [
+"NLM Catalog"
+],
+"sourceUrls": [],
+"retrievedBySource": {
+"NLM Catalog": "2026-10-29T04:16:31Z"
+}
+},
+{
+"key": "0038-9986",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "Stat",
+"alternateTitles": [
+"STAT",
+"Stat",
+"Wisconsin State Nurses' Association. Bulletin"
+],
+"issn": "0038-9986",
+"eissn": null,
+"allIssns": [
+"0038-9986"
+],
+"sourceIdentifiers": {
+"NLM Catalog": "9875635"
+},
+"publisher": "Wisconsin Nurses Association.",
+"homepage": null,
+"scope": {
+"tier": "A",
+"signals": [
+"NLM",
+"SOCIETY",
+"TITLE"
+],
+"oaTopicShare": 0,
+"evidence": {
+"nlmHeadings": [
+"Nursing",
+"Nurses"
+],
+"publisher": "Wisconsin Nurses Association."
+},
+"aimsExcerpt": null,
+"aimsUrl": null,
+"aimsRetrieved": null
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"5 works in 2024-26 (PubMed)"
+],
+"works2024to2026": {
+"OpenAlex by ISSN": 0,
+"PubMed": 5
+},
+"currentStatements": [],
+"endedStatements": [],
+"latestConfirmed": null
+},
+"lineage": {
+"nlmRelations": [
+{
+"type": "",
+"title": "Wisconsin State Nurses' Association. Bulletin",
+"issns": []
+}
+],
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": {
+"set": "rename/hand hold",
+"primary": "newsletter-type serial of a state nurses association (publication type not a journal with confidence)",
+"scopeTier": null,
+"publicationClass": null
+},
+"listedBy": [
+"NLM Catalog"
+],
+"sourceUrls": [],
+"retrievedBySource": {
+"NLM Catalog": "2026-10-29T04:16:31Z"
+}
+},
+{
+"key": "2435-2403",
+"final": "eligible",
+"primaryReason": null,
+"secondaryReasons": [],
+"reasonDetail": [],
+"title": "The Journal of Japanese Nursing Society of PAS Based Self-Care Therapy",
+"alternateTitles": [
+"The Journal of Japanese Nursing Society of PAS Based Self-Care Therapy"
+],
+"issn": "2435-2403",
+"eissn": "2758-1705",
+"allIssns": [
+"2435-2403",
+"2758-1705"
+],
+"sourceIdentifiers": {
+"J-STAGE": "passct"
+},
+"publisher": "Japanese Nursing Society of PAS Based Self₋Care Therapy",
+"homepage": "https://www.jstage.jst.go.jp/browse/passct",
+"scope": {
+"tier": "A",
+"signals": [
+"SOCIETY",
+"TITLE"
+],
+"oaTopicShare": 0,
+"evidence": {
+"jstageOrganization": "Japanese Nursing Society of PAS Based Self₋Care Therapy"
+},
+"aimsExcerpt": "About the journal J-STAGE home / The Journal of Japanese Nursin ... / Journal home [English version not available] [title in Japanese] [in Japanese] [title in Japanese] [in Japanese] [title in Japanes",
+"aimsUrl": "https://www.jstage.jst.go.jp/browse/passct",
+"aimsRetrieved": "2026-10-29"
+},
+"publication": {
+"status": "current",
+"class": "P-A",
+"why": [
+"J-STAGE latest publication date 2025-10-22"
+],
+"works2024to2026": {
+"PubMed": 1
+},
+"currentStatements": [],
+"endedStatements": [],
+"latestConfirmed": {
+"date": "2025-10-22",
+"url": "https://www.jstage.jst.go.jp/browse/passct",
+"basis": "J-STAGE current pubdate"
+}
+},
+"lineage": {
+"nlmRelations": null,
+"koreamedFormerTitle": null,
+"nearCatalogueTitles": []
+},
+"licenceOA": {
+"doajLicence": null,
+"basis": "unknown (no explicit licence/OA statement in any source read)"
+},
+"dedupe": "net_new",
+"conflict": null,
+"previously": null,
+"listedBy": [
+"J-STAGE"
+],
+"sourceUrls": [
+"https://www.jstage.jst.go.jp/browse/passct"
+],
+"retrievedBySource": {
+"J-STAGE": "2026-10-29T04:20:45Z"
+}
+}
+]
+}
