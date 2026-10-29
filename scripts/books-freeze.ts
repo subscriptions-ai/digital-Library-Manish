@@ -65,6 +65,8 @@ const normPublisher = (e?: string | null) => String(e || '').toLowerCase().repla
 
 // ── What the harvest produced (rows that carry harvest metadata; the primed production copies do not) ────────────────────────
 const harvested: any[] = await db.$queryRawUnsafe(`select * from "Book" where metadata ? 'harvest' and source in ('DOAB','OAPEN') order by source, "createdAt"`);
+// Serial issues, working-paper series and conference proceedings are collections, not whole books; DOAB lists some as books, so they wait for a person.
+const SERIAL = /\b(journal of|research journal|working papers?|proceedings of|proceedings\b|conference on|annual report|investment report|financial report|yearbook|annual review|newsletter|bulletin)\b/i;
 const CHAPTER = /^\s*(chapter|ch\.|section|appendix)\s*[\dIVXLivxl]+\b|^\s*part\s+[\dIVXLivxl]+\b[\s:.\-–—]/i;
 
 type Why = string;
@@ -94,7 +96,8 @@ for (const r of harvested) {
   //     (production already holds DOAB books in German, French, Italian and Spanish; this import does not add to them).
   if (!/^(eng|en|english)$/i.test(String(r.language || '').trim())) reasons.push(`language_not_english:${r.language || 'none'}`); else checks.push('language:english');
   // 5. whole books only
-  if (CHAPTER.test(r.title || '')) reasons.push('not_a_whole_book:chapter_or_part'); else checks.push('whole_book');
+  if (CHAPTER.test(r.title || '')) reasons.push('not_a_whole_book:chapter_or_part');
+  else if (SERIAL.test(r.title || '')) reasons.push('not_a_whole_book:serial_or_proceedings'); else checks.push('whole_book');
   // 6. already held in production (independent of the harvest)
   const heldBy: string[] = [];
   if (isbn && (prod.isbn.has(isbn.isbn13) || (isbn.isbn10 && prod.isbn.has(isbn.isbn10)))) heldBy.push('isbn');
