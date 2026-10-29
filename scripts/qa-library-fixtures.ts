@@ -22,6 +22,8 @@ if ((await db.$queryRawUnsafe<any[]>('select current_database() d'))[0].d !== 's
 const TAG = '@qa-library.invalid';
 const SECRET = envVal('JWT_SECRET') || 'your-fallback-secret-for-dev-only';
 const YEAR = new Date(Date.now() + 365 * 864e5);
+// QA_EXTRA_DEPT=Management gives the institution plan and the solo accounts one department that has an archived (legacy) shelf in this copy, so both collections can be compared like for like.
+const EXTRA = process.env.QA_EXTRA_DEPT ? [process.env.QA_EXTRA_DEPT] : [];
 
 async function remove() {
   const users = await db.user.findMany({ where: { email: { endsWith: TAG } }, select: { id: true } });
@@ -44,19 +46,19 @@ await remove();
 
 const inst = await db.institution.create({ data: { name: 'QA Library University' } });
 const other = await db.institution.create({ data: { name: 'QA Library Other College' } });
-await db.subscription.create({ data: { planName: 'QA Department Plan', status: 'Active', institutionId: inst.id, endDate: YEAR, domains: ['Applied Sciences', 'Agriculture', 'Computer / IT'], contentTypes: [], domainName: 'Applied Sciences' } as any });
+await db.subscription.create({ data: { planName: 'QA Department Plan', status: 'Active', institutionId: inst.id, endDate: YEAR, domains: ['Applied Sciences', 'Agriculture', 'Computer / IT', ...EXTRA], contentTypes: [], domainName: 'Applied Sciences' } as any });
 await db.subscription.create({ data: { planName: 'QA Other Plan', status: 'Active', institutionId: other.id, endDate: YEAR, domains: ['Law'], contentTypes: [], domainName: 'Law' } as any });
 
 const accounts: Record<string, any> = {
-  librarian:  { role: 'Institution', institutionId: inst.id, memberRole: 'Librarian', interestedDomains: ['Applied Sciences'] },
+  librarian:  { role: 'Institution', institutionId: inst.id, memberRole: 'Librarian', interestedDomains: ['Applied Sciences', ...EXTRA] },
   faculty:    { role: 'Student', institutionId: inst.id, memberRole: 'Faculty' },
   student:    { role: 'Student', institutionId: inst.id, memberRole: 'Student' },
   researcher: { role: 'Student', institutionId: inst.id, memberRole: 'Researcher' },
   college:    { role: 'College', institutionId: inst.id },
   corporate:  { role: 'Corporate', institutionId: inst.id },
   other:      { role: 'Institution', institutionId: other.id, memberRole: 'Librarian', interestedDomains: ['Law'] },
-  pro:        { role: 'Subscriber', interestedDomains: ['Applied Sciences'] },
-  free:       { role: 'Subscriber', interestedDomains: ['Applied Sciences'] },
+  pro:        { role: 'Subscriber', interestedDomains: ['Applied Sciences', ...EXTRA] },
+  free:       { role: 'Subscriber', interestedDomains: ['Applied Sciences', ...EXTRA] },
   nodepts:    { role: 'Subscriber', interestedDomains: [] },
 };
 const tokens: Record<string, any> = {};
