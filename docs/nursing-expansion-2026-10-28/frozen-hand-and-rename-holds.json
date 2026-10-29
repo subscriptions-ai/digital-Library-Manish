@@ -1,0 +1,50 @@
+[
+ {
+  "title": "Emergency Nurse",
+  "issns": [
+   "1354-5752",
+   "2047-8984"
+  ],
+  "reason": "rename/continuation: NLM relation to a catalogue journal",
+  "detail": {
+   "via": "",
+   "relatedTitle": "Nursing standard (Royal College of Nursing (Great Britain) : 1987)",
+   "issn": "0029-6570",
+   "catalogueTitle": "Nursing Standard",
+   "status": "NeedsReview",
+   "domain": "Nursing"
+  }
+ },
+ {
+  "title": "Nurse Author & Editor (Wiley-Blackwell)",
+  "issns": [
+   "1054-2353",
+   "1750-4910"
+  ],
+  "reason": "newsletter-type quarterly of nursing editors, not a research journal"
+ },
+ {
+  "title": "Primary Health Care",
+  "issns": [
+   "0264-5033",
+   "2047-900X"
+  ],
+  "reason": "near-identical title already in the catalogue (possible rename, edition or same-title conflict)",
+  "detail": [
+   {
+    "title": "Journal of Primary Health Care",
+    "status": "MetadataOnly",
+    "domain": "Medical Sciences",
+    "jaccard": 1.0,
+    "samePublisher": false
+   }
+  ]
+ },
+ {
+  "title": "Stat",
+  "issns": [
+   "0038-9986"
+  ],
+  "reason": "newsletter-type serial of a state nurses association (publication type not a journal with confidence)"
+ }
+]

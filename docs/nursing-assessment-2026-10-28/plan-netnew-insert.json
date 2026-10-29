@@ -1,0 +1,4154 @@
+{
+ "runId": "nursing-netnew-2026-10-28",
+ "source": "Multiple (per row basisSource)",
+ "rows": [
+  {
+   "title": "AACN Advanced Critical Care",
+   "issn": "1559-7768",
+   "eissn": "1559-7776",
+   "publisherName": "American Association of Critical-Care Nurses",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "http://www.aacnclinicalissues.com/",
+   "basisSource": "NLM Catalog",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|NLM Catalog:nlm:101269322",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "AACN Advanced Critical Care"
+     },
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:101269322",
+      "title": "AACN advanced critical care"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": true,
+     "SCIELO": false,
+     "OA": false,
+     "oaShare": 0.22,
+     "PUB": true,
+     "TITLE": false,
+     "subjectSignals": 3,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "154 works 2024-26 (crossref,openalex)",
+      "154 recent work(s) + NLM currently indexed, CINAHL indexing current"
+     ],
+     "recentMax": 154
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://api.crossref.org/journals/1559-7768",
+     "https://api.openalex.org/sources/issn:1559-7768"
+    ]
+   }
+  },
+  {
+   "title": "AANA Journal",
+   "issn": "0002-7448",
+   "eissn": "0094-6354",
+   "publisherName": "American Association of Nurse Anesthetists",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": null,
+   "basisSource": "NLM Catalog",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|NLM Catalog:nlm:431420|NLM Catalog:nlm:431453",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "AANA Journal"
+     },
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Journal of the American Association of Nurse Anesthetists"
+     },
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:431420",
+      "title": "AANA journal"
+     },
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:431453",
+      "title": "The Journal of the American Association of Nurse Anesthetists"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": true,
+     "SCIELO": false,
+     "OA": false,
+     "oaShare": 0.27,
+     "PUB": true,
+     "TITLE": false,
+     "subjectSignals": 3,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "113 works 2024-26 (openalex)",
+      "113 recent work(s) + NLM currently indexed, CINAHL indexing current"
+     ],
+     "recentMax": 113
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://api.crossref.org/journals/0094-6354",
+     "https://api.openalex.org/sources/issn:0002-7448"
+    ]
+   }
+  },
+  {
+   "title": "American Journal of Critical Care",
+   "issn": "1062-3264",
+   "eissn": "1937-710X",
+   "publisherName": "American Association of Critical-Care Nurses",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "http://ajcc.aacnjournals.org",
+   "basisSource": "NLM Catalog",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|NLM Catalog:nlm:9211547",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "American Journal of Critical Care"
+     },
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:9211547",
+      "title": "American journal of critical care : an official publication, American Association of Critical-Care Nurses"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": false,
+     "oaShare": 0.09,
+     "PUB": true,
+     "TITLE": false,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "247 works 2024-26 (crossref,openalex)",
+      "247 recent work(s) + NLM currently indexed, CINAHL indexing current"
+     ],
+     "recentMax": 247
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://api.crossref.org/journals/1062-3264",
+     "https://api.openalex.org/sources/issn:1062-3264"
+    ]
+   }
+  },
+  {
+   "title": "AORN Journal",
+   "issn": "0001-2092",
+   "eissn": "1878-0369",
+   "publisherName": "Wiley-Blackwell",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "https://aornjournal.onlinelibrary.wiley.com/",
+   "basisSource": "NLM Catalog",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|NLM Catalog:nlm:372403",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "AORN Journal"
+     },
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:372403",
+      "title": "AORN journal"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": true,
+     "SCIELO": false,
+     "OA": false,
+     "oaShare": 0.46,
+     "PUB": false,
+     "TITLE": false,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "588 works 2024-26 (crossref,openalex)",
+      "588 recent work(s) + NLM currently indexed, CINAHL indexing current"
+     ],
+     "recentMax": 588
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://api.crossref.org/journals/0001-2092",
+     "https://api.openalex.org/sources/issn:0001-2092"
+    ]
+   }
+  },
+  {
+   "title": "Bulletin Infirmier du Cancer",
+   "issn": "1628-2205",
+   "eissn": null,
+   "publisherName": "JLE",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": null,
+   "basisSource": "NLM Catalog",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|NLM Catalog:nlm:101238020",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Bulletin Infirmier du Cancer"
+     },
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:101238020",
+      "title": "Bulletin infirmier du cancer"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": false,
+     "oaShare": 0.29,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 1,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "83 works 2024-26 (crossref,openalex)",
+      "83 recent work(s) + CINAHL indexing current"
+     ],
+     "recentMax": 83
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://api.crossref.org/journals/1628-2205",
+     "https://api.openalex.org/sources/issn:1628-2205"
+    ]
+   }
+  },
+  {
+   "title": "CANNT Journal",
+   "issn": "1498-5136",
+   "eissn": null,
+   "publisherName": "Canadian Association of Nephrology Nurses & Technologists",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": null,
+   "basisSource": "NLM Catalog",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|NLM Catalog:nlm:100959352",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "CANNT Journal"
+     },
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:100959352",
+      "title": "CANNT journal = Journal ACITN"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": true,
+     "SCIELO": false,
+     "OA": false,
+     "oaShare": 0.0,
+     "PUB": true,
+     "TITLE": false,
+     "subjectSignals": 3,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "1 recent work(s) + CINAHL indexing current"
+     ],
+     "recentMax": 1
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://api.crossref.org/journals/1498-5136",
+     "https://api.openalex.org/sources/issn:1498-5136"
+    ]
+   }
+  },
+  {
+   "title": "CES Enfermería",
+   "issn": "2745-049X",
+   "eissn": null,
+   "publisherName": "Universidad CES",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": null,
+   "basisSource": "CINAHL",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|OpenAlex:https://openalex.org/S4210193092",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "CES Enfermería"
+     },
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S4210193092",
+      "title": "CES Enfermería"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.71,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 1,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "20 works 2024-26 (crossref,openalex)",
+      "20 recent work(s) + CINAHL indexing current"
+     ],
+     "recentMax": 20
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://openalex.org/S4210193092",
+     "https://api.crossref.org/journals/2745-049X",
+     "https://api.openalex.org/sources/issn:2745-049X"
+    ]
+   }
+  },
+  {
+   "title": "Clinical Nurse Specialist: The Journal for Advanced Nursing Practice",
+   "issn": "0887-6274",
+   "eissn": "1538-9782",
+   "publisherName": "Lippincott Williams & Wilkins",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "http://journals.lww.com/cns-journal/pages/default.aspx",
+   "basisSource": "NLM Catalog",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|NLM Catalog:nlm:8709115|OpenAlex:https://openalex.org/S96988850",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Clinical Nurse Specialist: The Journal for Advanced Nursing Practice"
+     },
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:8709115",
+      "title": "Clinical nurse specialist CNS"
+     },
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S96988850",
+      "title": "Clinical Nurse Specialist"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.77,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "190 works 2024-26 (crossref,openalex)",
+      "190 recent work(s) + NLM currently indexed, CINAHL indexing current"
+     ],
+     "recentMax": 190
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://openalex.org/S96988850",
+     "https://api.crossref.org/journals/0887-6274",
+     "https://api.openalex.org/sources/issn:0887-6274"
+    ]
+   }
+  },
+  {
+   "title": "Conocimiento Enfermero",
+   "issn": "2605-3152",
+   "eissn": null,
+   "publisherName": "Colegio Oficial de Enfermeria de Madrid",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "https://www.conocimientoenfermero.es/index.php/ce",
+   "basisSource": "CINAHL",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|OpenAlex:https://openalex.org/S4387291446",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Conocimiento Enfermero"
+     },
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S4387291446",
+      "title": "Conocimiento Enfermero"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.59,
+     "PUB": true,
+     "TITLE": true,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "55 works 2024-26 (crossref,openalex)",
+      "55 recent work(s) + CINAHL indexing current"
+     ],
+     "recentMax": 55
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://openalex.org/S4387291446",
+     "https://api.crossref.org/journals/2605-3152",
+     "https://api.openalex.org/sources/issn:2605-3152"
+    ]
+   }
+  },
+  {
+   "title": "Contemporary Nurse: A Journal for the Australian Nursing Profession",
+   "issn": "1037-6178",
+   "eissn": "1839-3535",
+   "publisherName": "Taylor & Francis Ltd",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "https://www.tandfonline.com/toc/rcnj20/current",
+   "basisSource": "NLM Catalog",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|NLM Catalog:nlm:9211867|OpenAlex:https://openalex.org/S20848814",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Contemporary Nurse: A Journal for the Australian Nursing Profession"
+     },
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:9211867",
+      "title": "Contemporary nurse"
+     },
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S20848814",
+      "title": "Contemporary Nurse"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.69,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "178 works 2024-26 (crossref,openalex)",
+      "178 recent work(s) + NLM currently indexed, CINAHL indexing current"
+     ],
+     "recentMax": 178
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://openalex.org/S20848814",
+     "https://api.crossref.org/journals/1037-6178",
+     "https://api.openalex.org/sources/issn:1037-6178"
+    ]
+   }
+  },
+  {
+   "title": "Critical Care Nurse",
+   "issn": "0279-5442",
+   "eissn": "1940-8250",
+   "publisherName": "American Association of Critical-Care Nurses",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "http://galenet.galegroup.com/servlet/HWRC?locIC=locml_main",
+   "basisSource": "NLM Catalog",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|NLM Catalog:nlm:8207799",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Critical Care Nurse"
+     },
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:8207799",
+      "title": "Critical care nurse"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": true,
+     "SCIELO": false,
+     "OA": false,
+     "oaShare": 0.24,
+     "PUB": true,
+     "TITLE": true,
+     "subjectSignals": 3,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "252 works 2024-26 (crossref,openalex)",
+      "252 recent work(s) + NLM currently indexed, CINAHL indexing current"
+     ],
+     "recentMax": 252
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://api.crossref.org/journals/0279-5442",
+     "https://api.openalex.org/sources/issn:0279-5442"
+    ]
+   }
+  },
+  {
+   "title": "Emergency Nurse",
+   "issn": "1354-5752",
+   "eissn": "2047-8984",
+   "publisherName": "Royal College of Nursing of the United Kingdom (The)",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "http://journals.rcni.com/journal/en",
+   "basisSource": "NLM Catalog",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|NLM Catalog:nlm:9208913",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Emergency Nurse"
+     },
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:9208913",
+      "title": "Emergency nurse : the journal of the RCN Accident and Emergency Nursing Association"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": false,
+     "oaShare": 0.3,
+     "PUB": true,
+     "TITLE": true,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "165 works 2024-26 (crossref,openalex)",
+      "165 recent work(s) + NLM currently indexed, CINAHL indexing current"
+     ],
+     "recentMax": 165
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://api.crossref.org/journals/1354-5752",
+     "https://api.openalex.org/sources/issn:1354-5752"
+    ]
+   }
+  },
+  {
+   "title": "Enfermagem Atual in Derme",
+   "issn": "2447-2034",
+   "eissn": null,
+   "publisherName": "Enfermagem Atual in Derme",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "https://revistaenfermagematual.com/index.php/revista/home",
+   "basisSource": "CINAHL",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Enfermagem Atual in Derme"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": true,
+     "SCIELO": false,
+     "OA": false,
+     "oaShare": 0.45,
+     "PUB": true,
+     "TITLE": true,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "435 works 2024-26 (crossref,openalex)",
+      "435 recent work(s) + CINAHL indexing current"
+     ],
+     "recentMax": 435
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://api.crossref.org/journals/2447-2034",
+     "https://api.openalex.org/sources/issn:2447-2034"
+    ]
+   }
+  },
+  {
+   "title": "Enfermagem Brasil",
+   "issn": "1678-2410",
+   "eissn": "2526-9720",
+   "publisherName": "Atlantica Editora",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "http://portalatlanticaeditora.com.br/index.php/enfermagembrasil/index",
+   "basisSource": "NLM Catalog",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|NLM Catalog:nlm:101187838|OpenAlex:https://openalex.org/S4210171759",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Enfermagem Brasil"
+     },
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:101187838",
+      "title": "Enfermagem Brasil"
+     },
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S4210171759",
+      "title": "Enfermagem Brasil"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": true,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.51,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 3,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "208 works 2024-26 (crossref,openalex)",
+      "208 recent work(s) + CINAHL indexing current"
+     ],
+     "recentMax": 208
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://openalex.org/S4210171759",
+     "https://api.crossref.org/journals/1678-2410",
+     "https://api.openalex.org/sources/issn:1678-2410"
+    ]
+   }
+  },
+  {
+   "title": "Enfermeir@s",
+   "issn": "1888-4830",
+   "eissn": "3045-5812",
+   "publisherName": "Colegio Oficial de Enfermeria de Lugo",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "https://www.enfermerialugo.org/revista/index.php/enfermeiraos",
+   "basisSource": "CINAHL",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|OpenAlex:https://openalex.org/S7407075272",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Enfermeir@s"
+     },
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S7407075272",
+      "title": "Revista Enfermeir@s"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.81,
+     "PUB": true,
+     "TITLE": false,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "956 works 2024-26 (openalex)",
+      "956 recent work(s) + CINAHL indexing current"
+     ],
+     "recentMax": 956
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://openalex.org/S7407075272",
+     "https://api.openalex.org/sources/issn:1888-4830"
+    ]
+   }
+  },
+  {
+   "title": "Enfermería en Cardiologia",
+   "issn": "1575-4146",
+   "eissn": null,
+   "publisherName": "Asociacion Espanola de Enfermeria en Cardiologia",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "https://revista.enfermeriaencardiologia.com/index.php/aeec",
+   "basisSource": "CINAHL",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Enfermería en Cardiologia"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": true,
+     "SCIELO": false,
+     "OA": false,
+     "oaShare": 0.27,
+     "PUB": true,
+     "TITLE": true,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "36 works 2024-26 (crossref,openalex)",
+      "36 recent work(s) + CINAHL indexing current"
+     ],
+     "recentMax": 36
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://api.crossref.org/journals/1575-4146",
+     "https://api.openalex.org/sources/issn:1575-4146"
+    ]
+   }
+  },
+  {
+   "title": "Enfermería Investiga: Investigaciin, Vinculación, Docencia y Gestiin",
+   "issn": "2477-9172",
+   "eissn": null,
+   "publisherName": "Revista Enfermeria Investiga",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "https://revistas.uta.edu.ec/erevista/index.php/enfi",
+   "basisSource": "CINAHL",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Enfermería Investiga: Investigaciin, Vinculación, Docencia y Gestiin"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": true,
+     "SCIELO": false,
+     "OA": false,
+     "oaShare": 0.34,
+     "PUB": true,
+     "TITLE": true,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "113 works 2024-26 (crossref,openalex)",
+      "113 recent work(s) + CINAHL indexing current"
+     ],
+     "recentMax": 113
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://api.crossref.org/journals/2477-9172",
+     "https://api.openalex.org/sources/issn:2477-9172"
+    ]
+   }
+  },
+  {
+   "title": "Hoitotiede",
+   "issn": "0786-5686",
+   "eissn": null,
+   "publisherName": "Hoitotieteiden Tutkimusseura HTTS r.y.",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "https://journal.fi/hoitotiede",
+   "basisSource": "NLM Catalog",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|NLM Catalog:nlm:9104138|OpenAlex:https://openalex.org/S4306512277",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Hoitotiede"
+     },
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:9104138",
+      "title": "Hoitotiede"
+     },
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S4306512277",
+      "title": "Hoitotiede"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": true,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.57,
+     "PUB": false,
+     "TITLE": false,
+     "subjectSignals": 3,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "99 works 2024-26 (openalex)",
+      "99 recent work(s) + CINAHL indexing current"
+     ],
+     "recentMax": 99
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://openalex.org/S4306512277",
+     "https://api.openalex.org/sources/issn:0786-5686"
+    ]
+   }
+  },
+  {
+   "title": "Index de Enfermería",
+   "issn": "1132-1296",
+   "eissn": "1699-5988",
+   "publisherName": "Fundacion Index",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "http://scielo.isciii.es/scielo.php/script_sci_serial/lng_en/pid_1132-1296/nrm_iso",
+   "basisSource": "CINAHL",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|OpenAlex:https://openalex.org/S2738008052",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Index de Enfermería"
+     },
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S2738008052",
+      "title": "Index de Enfermería"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.7,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 1,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "206 works 2024-26 (openalex)",
+      "206 recent work(s) + CINAHL indexing current"
+     ],
+     "recentMax": 206
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://openalex.org/S2738008052",
+     "https://api.crossref.org/journals/1132-1296",
+     "https://api.openalex.org/sources/issn:1132-1296"
+    ]
+   }
+  },
+  {
+   "title": "JANAC: Journal of the Association of Nurses in AIDS Care",
+   "issn": "1055-3290",
+   "eissn": "1552-6917",
+   "publisherName": "Lippincott Williams & Wilkins",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "http://www.nursesinaidscarejournal.org/",
+   "basisSource": "NLM Catalog",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|NLM Catalog:nlm:9111870",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "JANAC: Journal of the Association of Nurses in AIDS Care"
+     },
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:9111870",
+      "title": "The Journal of the Association of Nurses in AIDS Care : JANAC"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": false,
+     "oaShare": 0.06,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 1,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "261 works 2024-26 (crossref,openalex)",
+      "261 recent work(s) + NLM currently indexed, CINAHL indexing current"
+     ],
+     "recentMax": 261
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://api.crossref.org/journals/1055-3290",
+     "https://api.openalex.org/sources/issn:1055-3290"
+    ]
+   }
+  },
+  {
+   "title": "Journal for Nurse Practitioners",
+   "issn": "1555-4155",
+   "eissn": "1878-058X",
+   "publisherName": "Elsevier B.V.",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "https://www.sciencedirect.com/journal/the-journal-for-nurse-practitioners",
+   "basisSource": "CINAHL",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|OpenAlex:https://openalex.org/S13663286",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Journal for Nurse Practitioners"
+     },
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S13663286",
+      "title": "The Journal for Nurse Practitioners"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": true,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.66,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "923 works 2024-26 (crossref,openalex)",
+      "923 recent work(s) + CINAHL indexing current"
+     ],
+     "recentMax": 923
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://openalex.org/S13663286",
+     "https://api.crossref.org/journals/1555-4155",
+     "https://api.openalex.org/sources/issn:1555-4155"
+    ]
+   }
+  },
+  {
+   "title": "Journal of Kochi Women's University Academy of Nursing",
+   "issn": "1345-0433",
+   "eissn": null,
+   "publisherName": "Kochi Women's University Academy of Nursing",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": null,
+   "basisSource": "CINAHL",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Journal of Kochi Women's University Academy of Nursing"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": false,
+     "oaShare": null,
+     "PUB": true,
+     "TITLE": true,
+     "subjectSignals": 1,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "3 works 2024-26 (pubmed)"
+     ],
+     "recentMax": 3
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://pubmed.ncbi.nlm.nih.gov/?term=1345-0433%5BISSN%5D&filter=years.2024-2026"
+    ]
+   }
+  },
+  {
+   "title": "Journal of Oncology Navigation & Survivorship",
+   "issn": "2166-0980",
+   "eissn": "2166-0999",
+   "publisherName": "Amplity Health",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": null,
+   "basisSource": "NLM Catalog",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|NLM Catalog:nlm:101600746",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Journal of Oncology Navigation & Survivorship"
+     },
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:101600746",
+      "title": "Journal of oncology navigation & survivorship"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": true,
+     "SCIELO": false,
+     "OA": false,
+     "oaShare": 0.0,
+     "PUB": false,
+     "TITLE": false,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "1 recent work(s) + CINAHL indexing current"
+     ],
+     "recentMax": 1
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://api.openalex.org/sources/issn:2166-0980",
+     "https://pubmed.ncbi.nlm.nih.gov/?term=2166-0980%5BISSN%5D&filter=years.2024-2026"
+    ]
+   }
+  },
+  {
+   "title": "Journal of the American Association of Nurse Practitioners",
+   "issn": "2327-6886",
+   "eissn": "2327-6924",
+   "publisherName": "Lippincott Williams & Wilkins",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "https://journals.lww.com/jaanp/Pages/default.aspx",
+   "basisSource": "NLM Catalog",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|NLM Catalog:nlm:101600770|OpenAlex:https://openalex.org/S125263180",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Journal of the American Association of Nurse Practitioners"
+     },
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:101600770",
+      "title": "Journal of the American Association of Nurse Practitioners"
+     },
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S125263180",
+      "title": "Journal of the American Association of Nurse Practitioners"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.66,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "393 works 2024-26 (crossref,openalex)",
+      "393 recent work(s) + NLM currently indexed, CINAHL indexing current"
+     ],
+     "recentMax": 393
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://openalex.org/S125263180",
+     "https://api.crossref.org/journals/2327-6886",
+     "https://api.openalex.org/sources/issn:2327-6886"
+    ]
+   }
+  },
+  {
+   "title": "Journal of the American Nurses Association - New York (JANANY)",
+   "issn": "2694-4502",
+   "eissn": "2694-4510",
+   "publisherName": "American Nurses Association - New York",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": null,
+   "basisSource": "CINAHL",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|OpenAlex:https://openalex.org/S4210207991",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Journal of the American Nurses Association - New York (JANANY)"
+     },
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S4210207991",
+      "title": "Journal of the American Nurses Association - New York"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.51,
+     "PUB": true,
+     "TITLE": true,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "10 works 2024-26 (crossref,openalex)",
+      "10 recent work(s) + CINAHL indexing current"
+     ],
+     "recentMax": 10
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://openalex.org/S4210207991",
+     "https://api.crossref.org/journals/2694-4502",
+     "https://api.openalex.org/sources/issn:2694-4502"
+    ]
+   }
+  },
+  {
+   "title": "Journal of the Dermatology Nurses' Association",
+   "issn": "1945-760X",
+   "eissn": "1945-7618",
+   "publisherName": "Lippincott Williams & Wilkins",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "https://journals.lww.com/jdnaonline/pages/default.aspx",
+   "basisSource": "NLM Catalog",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|NLM Catalog:nlm:101519494",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Journal of the Dermatology Nurses' Association"
+     },
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:101519494",
+      "title": "Journal of the Dermatology Nurses' Association"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": false,
+     "oaShare": 0.13,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 1,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "125 works 2024-26 (crossref,openalex)",
+      "125 recent work(s) + CINAHL indexing current"
+     ],
+     "recentMax": 125
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://api.crossref.org/journals/1945-760X",
+     "https://api.openalex.org/sources/issn:1945-760X"
+    ]
+   }
+  },
+  {
+   "title": "Learning Disability Practice",
+   "issn": "1465-8712",
+   "eissn": "2047-8968",
+   "publisherName": "Royal College of Nursing of the United Kingdom (The)",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "http://journals.rcni.com/journal/ldp",
+   "basisSource": "NLM Catalog",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|NLM Catalog:nlm:101134383",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Learning Disability Practice"
+     },
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:101134383",
+      "title": "Learning disability practice"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": false,
+     "oaShare": 0.12,
+     "PUB": true,
+     "TITLE": false,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "161 works 2024-26 (crossref,openalex)",
+      "161 recent work(s) + CINAHL indexing current"
+     ],
+     "recentMax": 161
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://api.crossref.org/journals/1465-8712",
+     "https://api.openalex.org/sources/issn:1465-8712"
+    ]
+   }
+  },
+  {
+   "title": "Mental Health Practice",
+   "issn": "1465-8720",
+   "eissn": "2047-895X",
+   "publisherName": "Royal College of Nursing of the United Kingdom (The)",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "http://journals.rcni.com/journal/mhp",
+   "basisSource": "NLM Catalog",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|NLM Catalog:nlm:101088546",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Mental Health Practice"
+     },
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:101088546",
+      "title": "Mental health practice"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": false,
+     "oaShare": 0.14,
+     "PUB": true,
+     "TITLE": false,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "201 works 2024-26 (crossref,openalex)",
+      "201 recent work(s) + CINAHL indexing current"
+     ],
+     "recentMax": 201
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://api.crossref.org/journals/1465-8720",
+     "https://api.openalex.org/sources/issn:1465-8720"
+    ]
+   }
+  },
+  {
+   "title": "Metas de Enfermería",
+   "issn": "1138-7262",
+   "eissn": "2660-986X",
+   "publisherName": "Grupo Paradigma DAE S.L.",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "https://www.enfermeria21.com/revistas/metas/portada",
+   "basisSource": "CINAHL",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|OpenAlex:https://openalex.org/S4306519812",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Metas de Enfermería"
+     },
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S4306519812",
+      "title": "Metas de Enfermería"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": true,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.74,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "10 works 2024-26 (crossref,openalex)",
+      "10 recent work(s) + CINAHL indexing current"
+     ],
+     "recentMax": 10
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://openalex.org/S4306519812",
+     "https://api.crossref.org/journals/1138-7262",
+     "https://api.openalex.org/sources/issn:1138-7262"
+    ]
+   }
+  },
+  {
+   "title": "Modern Care Journal: Scientific Quarterly of Birjand Nursing & Midwifery Faculty",
+   "issn": "2228-6918",
+   "eissn": "2423-7876",
+   "publisherName": "Birjand University of Medical Sciences",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": null,
+   "basisSource": "CINAHL",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|OpenAlex:https://openalex.org/S4210203708",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Modern Care Journal: Scientific Quarterly of Birjand Nursing & Midwifery Faculty"
+     },
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S4210203708",
+      "title": "Modern Care Journal"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.5,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 1,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "52 works 2024-26 (crossref,openalex)",
+      "52 recent work(s) + CINAHL indexing current"
+     ],
+     "recentMax": 52
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://openalex.org/S4210203708",
+     "https://api.crossref.org/journals/2228-6918",
+     "https://api.openalex.org/sources/issn:2228-6918"
+    ]
+   }
+  },
+  {
+   "title": "NASN School Nurse",
+   "issn": "1942-602X",
+   "eissn": "1942-6038",
+   "publisherName": "Sage Publications",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "http://www.sagepub.com/journals/Journal201908/title",
+   "basisSource": "NLM Catalog",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|NLM Catalog:nlm:101528330|OpenAlex:https://openalex.org/S83254143",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "NASN School Nurse"
+     },
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:101528330",
+      "title": "NASN school nurse"
+     },
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S83254143",
+      "title": "NASN School Nurse"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.87,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "139 works 2024-26 (crossref,openalex)",
+      "139 recent work(s) + NLM currently indexed, CINAHL indexing current"
+     ],
+     "recentMax": 139
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://openalex.org/S83254143",
+     "https://api.crossref.org/journals/1942-602X",
+     "https://api.openalex.org/sources/issn:1942-602X"
+    ]
+   }
+  },
+  {
+   "title": "Nurse Author & Editor (Wiley-Blackwell)",
+   "issn": "1054-2353",
+   "eissn": "1750-4910",
+   "publisherName": "Wiley-Blackwell",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": null,
+   "basisSource": "NLM Catalog",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|NLM Catalog:nlm:9312545",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Nurse Author & Editor (Wiley-Blackwell)"
+     },
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:9312545",
+      "title": "Nurse author & editor"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": true,
+     "SCIELO": false,
+     "OA": false,
+     "oaShare": 0.02,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "19 works 2024-26 (crossref,openalex)",
+      "19 recent work(s) + CINAHL indexing current"
+     ],
+     "recentMax": 19
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://api.crossref.org/journals/1750-4910",
+     "https://api.openalex.org/sources/issn:1054-2353"
+    ]
+   }
+  },
+  {
+   "title": "Nurse Educator",
+   "issn": "0363-3624",
+   "eissn": "1538-9855",
+   "publisherName": "Lippincott Williams & Wilkins",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "http://www.nurseeducatoronline.com",
+   "basisSource": "NLM Catalog",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|NLM Catalog:nlm:7701902",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Nurse Educator"
+     },
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:7701902",
+      "title": "Nurse educator"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": false,
+     "oaShare": 0.46,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 1,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "791 works 2024-26 (crossref,openalex)",
+      "791 recent work(s) + NLM currently indexed, CINAHL indexing current"
+     ],
+     "recentMax": 791
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://api.crossref.org/journals/0363-3624",
+     "https://api.openalex.org/sources/issn:0363-3624"
+    ]
+   }
+  },
+  {
+   "title": "Nurse Practitioner",
+   "issn": "0361-1817",
+   "eissn": "1538-8662",
+   "publisherName": "Lippincott Williams & Wilkins",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "http://journals.lww.com/tnpj/pages/default.aspx",
+   "basisSource": "NLM Catalog",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|NLM Catalog:nlm:7603663|OpenAlex:https://openalex.org/S4210206853",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Nurse Practitioner"
+     },
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:7603663",
+      "title": "The Nurse practitioner"
+     },
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S4210206853",
+      "title": "The Nurse Practitioner"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": true,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.56,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 3,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "341 works 2024-26 (crossref,openalex)",
+      "341 recent work(s) + NLM currently indexed, CINAHL indexing current"
+     ],
+     "recentMax": 341
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://openalex.org/S4210206853",
+     "https://api.crossref.org/journals/0361-1817",
+     "https://api.openalex.org/sources/issn:0361-1817"
+    ]
+   }
+  },
+  {
+   "title": "Nurse Researcher",
+   "issn": "1351-5578",
+   "eissn": "2047-8992",
+   "publisherName": "Royal College of Nursing of the United Kingdom (The)",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "http://journals.rcni.com/journal/nr",
+   "basisSource": "NLM Catalog",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|NLM Catalog:nlm:9435953",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Nurse Researcher"
+     },
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:9435953",
+      "title": "Nurse researcher"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": false,
+     "oaShare": 0.11,
+     "PUB": true,
+     "TITLE": true,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "81 works 2024-26 (crossref,openalex)",
+      "81 recent work(s) + NLM currently indexed, CINAHL indexing current"
+     ],
+     "recentMax": 81
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://api.crossref.org/journals/1351-5578",
+     "https://api.openalex.org/sources/issn:1351-5578"
+    ]
+   }
+  },
+  {
+   "title": "Nursing at the Vanguard / Revista Enfermería a la Vanguardia (REVAN)",
+   "issn": "2308-1791",
+   "eissn": "2308-7838",
+   "publisherName": "Revista Enfermeria a la Vanguardia",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "http://alavanguardia.unica.edu.pe/index.php/rev01/index",
+   "basisSource": "CINAHL",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|OpenAlex:https://openalex.org/S4210240360",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Nursing at the Vanguard / Revista Enfermería a la Vanguardia (REVAN)"
+     },
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S4210240360",
+      "title": "Revista Enfermeria la Vanguardia"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.51,
+     "PUB": true,
+     "TITLE": true,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "27 works 2024-26 (crossref,openalex)",
+      "27 recent work(s) + CINAHL indexing current"
+     ],
+     "recentMax": 27
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://openalex.org/S4210240360",
+     "https://api.crossref.org/journals/2308-1791",
+     "https://api.openalex.org/sources/issn:2308-1791"
+    ]
+   }
+  },
+  {
+   "title": "Nursing Care & Research / Nosileia kai Ereuna",
+   "issn": "1791-1567",
+   "eissn": "2241-3960",
+   "publisherName": "Greek Nursing Studies Association",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": null,
+   "basisSource": "NLM Catalog",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|NLM Catalog:nlm:101671920",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Nursing Care & Research / Nosileia kai Ereuna"
+     },
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:101671920",
+      "title": "Nosīleia kai Ereuna"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": true,
+     "SCIELO": false,
+     "OA": false,
+     "oaShare": null,
+     "PUB": true,
+     "TITLE": true,
+     "subjectSignals": 3,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "1 recent work(s) + CINAHL indexing current"
+     ],
+     "recentMax": 1
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://pubmed.ncbi.nlm.nih.gov/?term=2241-3960%5BISSN%5D&filter=years.2024-2026"
+    ]
+   }
+  },
+  {
+   "title": "Nursing Notes. Notas de Enfermería",
+   "issn": "1668-8821",
+   "eissn": "2618-3692",
+   "publisherName": "Sanatorio Allende",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "https://revistas.unc.edu.ar/index.php/notasenf",
+   "basisSource": "CINAHL",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|OpenAlex:https://openalex.org/S4387290373",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Nursing Notes. Notas de Enfermería"
+     },
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S4387290373",
+      "title": "Notas de Enfermería"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": true,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.58,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "60 works 2024-26 (crossref,openalex)",
+      "60 recent work(s) + CINAHL indexing current"
+     ],
+     "recentMax": 60
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://openalex.org/S4387290373",
+     "https://api.crossref.org/journals/1668-8821",
+     "https://api.openalex.org/sources/issn:1668-8821"
+    ]
+   }
+  },
+  {
+   "title": "ORL-Head & Neck Nursing",
+   "issn": "1064-3842",
+   "eissn": null,
+   "publisherName": "Society of Otorhinolaryngology & Head-Neck Nurses",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": null,
+   "basisSource": "NLM Catalog",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|NLM Catalog:nlm:9206573",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "ORL-Head & Neck Nursing"
+     },
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:9206573",
+      "title": "ORL-head and neck nursing : official journal of the Society of Otorhinolaryngology and Head-Neck Nurses"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": false,
+     "oaShare": 0.0,
+     "PUB": true,
+     "TITLE": true,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "12 works 2024-26 (pubmed)",
+      "12 recent work(s) + CINAHL indexing current"
+     ],
+     "recentMax": 12
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://api.openalex.org/sources/issn:1064-3842",
+     "https://pubmed.ncbi.nlm.nih.gov/?term=1064-3842%5BISSN%5D&filter=years.2024-2026"
+    ]
+   }
+  },
+  {
+   "title": "Pflege & Gesellschaft",
+   "issn": "1430-9653",
+   "eissn": null,
+   "publisherName": "Beltz Verlagsgruppe GmbH & Co. KG",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": null,
+   "basisSource": "NLM Catalog",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|NLM Catalog:nlm:101470465|OpenAlex:https://openalex.org/S4404677241",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Pflege & Gesellschaft"
+     },
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:101470465",
+      "title": "Pflege & Gesellschaft"
+     },
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S4404677241",
+      "title": "Pflege & Gesellschaft."
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.63,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "113 works 2024-26 (crossref,openalex)",
+      "113 recent work(s) + CINAHL indexing current"
+     ],
+     "recentMax": 113
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://openalex.org/S4404677241",
+     "https://api.crossref.org/journals/1430-9653",
+     "https://api.openalex.org/sources/issn:1430-9653"
+    ]
+   }
+  },
+  {
+   "title": "Primary Health Care",
+   "issn": "0264-5033",
+   "eissn": "2047-900X",
+   "publisherName": "Royal College of Nursing of the United Kingdom (The)",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "http://journals.rcni.com/journal/phc",
+   "basisSource": "CINAHL",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|OpenAlex:https://openalex.org/S115248486",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Primary Health Care"
+     },
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S115248486",
+      "title": "Primary Health Care"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.51,
+     "PUB": true,
+     "TITLE": false,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "205 works 2024-26 (crossref,openalex)",
+      "205 recent work(s) + CINAHL indexing current"
+     ],
+     "recentMax": 205
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://openalex.org/S115248486",
+     "https://api.crossref.org/journals/0264-5033",
+     "https://api.openalex.org/sources/issn:0264-5033"
+    ]
+   }
+  },
+  {
+   "title": "Recherche en Soins Infirmiers",
+   "issn": "0297-2964",
+   "eissn": "2271-8362",
+   "publisherName": "ARSI",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": null,
+   "basisSource": "NLM Catalog",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|NLM Catalog:nlm:9715370|OpenAlex:https://openalex.org/S2754062926",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Recherche en Soins Infirmiers"
+     },
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:9715370",
+      "title": "Recherche en soins infirmiers"
+     },
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S2754062926",
+      "title": "Recherche en soins infirmiers"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.68,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "84 works 2024-26 (crossref,openalex)",
+      "84 recent work(s) + NLM currently indexed, CINAHL indexing current"
+     ],
+     "recentMax": 84
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://openalex.org/S2754062926",
+     "https://api.crossref.org/journals/0297-2964",
+     "https://api.openalex.org/sources/issn:0297-2964"
+    ]
+   }
+  },
+  {
+   "title": "Revista de Enfermería Neurológica",
+   "issn": "1870-6592",
+   "eissn": "2954-3428",
+   "publisherName": "Publicidad Permanyer SLU",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": null,
+   "basisSource": "CINAHL",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|OpenAlex:https://openalex.org/S4210200367",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Revista de Enfermería Neurológica"
+     },
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S4210200367",
+      "title": "Revista de Enfermería Neurológica"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.75,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 1,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "58 works 2024-26 (crossref,openalex)",
+      "58 recent work(s) + CINAHL indexing current"
+     ],
+     "recentMax": 58
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://openalex.org/S4210200367",
+     "https://api.crossref.org/journals/1870-6592",
+     "https://api.openalex.org/sources/issn:1870-6592"
+    ]
+   }
+  },
+  {
+   "title": "Revista Iberoamericana de Enfermería Comunitaria (RIdEC)",
+   "issn": "1988-5474",
+   "eissn": null,
+   "publisherName": "Revista Iberoamericana de Enfermeria Comunitaria de la Asociacion de Enfermeria Comunitaria",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": null,
+   "basisSource": "CINAHL",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|OpenAlex:https://openalex.org/S4306527482",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Revista Iberoamericana de Enfermería Comunitaria (RIdEC)"
+     },
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S4306527482",
+      "title": "Revista Iberoamericana de Enfermería Comunitaria: RIdEC"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.74,
+     "PUB": true,
+     "TITLE": true,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "8 works 2024-26 (crossref,openalex)",
+      "8 recent work(s) + CINAHL indexing current"
+     ],
+     "recentMax": 8
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://openalex.org/S4306527482",
+     "https://api.crossref.org/journals/1988-5474",
+     "https://api.openalex.org/sources/issn:1988-5474"
+    ]
+   }
+  },
+  {
+   "title": "Verpleegkunde - Nederlands Vlaams Tijdschrift voor Verpleegkundigen",
+   "issn": "0920-3273",
+   "eissn": "2468-2225",
+   "publisherName": "BPM Medica",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "https://tijdschriftverpleegkunde.nl",
+   "basisSource": "NLM Catalog",
+   "sourceId": "CINAHL:https://about.ebsco.com/title-lists (CINAHL Complete coverage list)|NLM Catalog:nlm:9419243|OpenAlex:https://openalex.org/S4210213143",
+   "evidence": {
+    "sources": [
+     {
+      "source": "CINAHL",
+      "ref": "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+      "title": "Verpleegkunde - Nederlands Vlaams Tijdschrift voor Verpleegkundigen"
+     },
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:9419243",
+      "title": "Verpleegkunde"
+     },
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S4210213143",
+      "title": "Verpleegkunde"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.79,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "44 works 2024-26 (crossref,openalex)",
+      "44 recent work(s) + CINAHL indexing current"
+     ],
+     "recentMax": 44
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://about.ebsco.com/title-lists (CINAHL Complete coverage list)",
+     "https://openalex.org/S4210213143",
+     "https://api.crossref.org/journals/2468-2225",
+     "https://api.openalex.org/sources/issn:0920-3273"
+    ]
+   }
+  },
+  {
+   "title": "Revista Cubana de Enfermería",
+   "issn": "0864-0319",
+   "eissn": "1561-2961",
+   "publisherName": "Editorial Ciencias Médicas",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "https://revenfermeria.sld.cu/index.php/enf/index",
+   "basisSource": "SciELO",
+   "sourceId": "SciELO:http://articlemeta.scielo.org/api/v1/journal/?collection=cub&issn=0864-0319|NLM Catalog:nlm:9301327|OpenAlex:https://openalex.org/S4306526441",
+   "evidence": {
+    "sources": [
+     {
+      "source": "SciELO",
+      "ref": "http://articlemeta.scielo.org/api/v1/journal/?collection=cub&issn=0864-0319",
+      "title": "Revista Cubana de Enfermería"
+     },
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:9301327",
+      "title": "Revista cubana de enfermería"
+     },
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S4306526441",
+      "title": "Revista Cubana de Enfermería"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": false,
+     "SCIELO": true,
+     "OA": true,
+     "oaShare": 0.77,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 3,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "SciELO status current"
+     ],
+     "recentMax": 0
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "http://articlemeta.scielo.org/api/v1/journal/?collection=cub&issn=0864-0319",
+     "https://openalex.org/S4306526441",
+     "https://api.openalex.org/sources/issn:0864-0319",
+     "https://pubmed.ncbi.nlm.nih.gov/?term=1561-2961%5BISSN%5D&filter=years.2024-2026"
+    ]
+   }
+  },
+  {
+   "title": "HeilberufeSCIENCE",
+   "issn": "2190-2100",
+   "eissn": null,
+   "publisherName": "Springer",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "http://www.springerlink.com/content/121237",
+   "basisSource": "NLM Catalog",
+   "sourceId": "NLM Catalog:nlm:101553221|OpenAlex:https://openalex.org/S207549788",
+   "evidence": {
+    "sources": [
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:101553221",
+      "title": "HeilberufeSCIENCE"
+     },
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S207549788",
+      "title": "HeilberufeScience"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.74,
+     "PUB": false,
+     "TITLE": false,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "67 works 2024-26 (crossref,openalex)",
+      "67 recent work(s) + CINAHL indexing current"
+     ],
+     "recentMax": 67
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://openalex.org/S207549788",
+     "https://api.crossref.org/journals/2190-2100",
+     "https://api.openalex.org/sources/issn:2190-2100"
+    ]
+   }
+  },
+  {
+   "title": "Revista científica de la Sociedad Española de Enfermería Neurológica",
+   "issn": "2013-5246",
+   "eissn": "2173-9153",
+   "publisherName": "Elsevier Doyma",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "https://www.journals.elsevier.com/revista-cientifica-de-la-sociedad-espanola-de-enfermeria-neurologica",
+   "basisSource": "NLM Catalog",
+   "sourceId": "NLM Catalog:nlm:101573208",
+   "evidence": {
+    "sources": [
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:101573208",
+      "title": "Revista científica de la Sociedad Española de Enfermería Neurológica"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": false,
+     "oaShare": 0.45,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 1,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "54 works 2024-26 (crossref,openalex)"
+     ],
+     "recentMax": 54
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://api.crossref.org/journals/2013-5246",
+     "https://api.openalex.org/sources/issn:2013-5246"
+    ]
+   }
+  },
+  {
+   "title": "Ciência, cuidado e saúde",
+   "issn": "1677-3861",
+   "eissn": "1984-7513",
+   "publisherName": "Universidade Estadual de Maringá, Departamento de Enfermagem",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": null,
+   "basisSource": "NLM Catalog",
+   "sourceId": "NLM Catalog:nlm:101501134|OpenAlex:https://openalex.org/S4210172327",
+   "evidence": {
+    "sources": [
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:101501134",
+      "title": "Ciência, cuidado e saúde"
+     },
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S4210172327",
+      "title": "Ciência Cuidado e Saúde"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.59,
+     "PUB": true,
+     "TITLE": false,
+     "subjectSignals": 3,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "93 works 2024-26 (crossref,openalex)",
+      "93 recent work(s) + CINAHL indexing current"
+     ],
+     "recentMax": 93
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://openalex.org/S4210172327",
+     "https://api.crossref.org/journals/1677-3861",
+     "https://api.openalex.org/sources/issn:1677-3861"
+    ]
+   }
+  },
+  {
+   "title": "Acta medica martiniana = Journal for biomedical sciences, clinical medicine, and nursing",
+   "issn": "1335-8421",
+   "eissn": "1338-4139",
+   "publisherName": "Jessenius Faculty of Medicine",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "https://sciendo.com/journal/ACM",
+   "basisSource": "NLM Catalog",
+   "sourceId": "NLM Catalog:nlm:101222341",
+   "evidence": {
+    "sources": [
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:101222341",
+      "title": "Acta medica martiniana = Journal for biomedical sciences, clinical medicine, and nursing"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": false,
+     "oaShare": 0.0,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 1,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "19 works 2024-26 (openalex)"
+     ],
+     "recentMax": 19
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://api.crossref.org/journals/1335-8421",
+     "https://api.openalex.org/sources/issn:1335-8421"
+    ]
+   }
+  },
+  {
+   "title": "Advances in neonatal care : official journal of the National Association of Neonatal Nurses",
+   "issn": "1536-0903",
+   "eissn": "1536-0911",
+   "publisherName": "Wolters Kluwer Health/Lippincott Williams & Wilkins",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "http://journals.lww.com/advancesinneonatalcare/pages/default.aspx",
+   "basisSource": "NLM Catalog",
+   "sourceId": "NLM Catalog:nlm:101125644",
+   "evidence": {
+    "sources": [
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:101125644",
+      "title": "Advances in neonatal care : official journal of the National Association of Neonatal Nurses"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": false,
+     "oaShare": 0.04,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 1,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "276 works 2024-26 (crossref,openalex)",
+      "276 recent work(s) + NLM currently indexed, CINAHL indexing current"
+     ],
+     "recentMax": 276
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://api.crossref.org/journals/1536-0903",
+     "https://api.openalex.org/sources/issn:1536-0903"
+    ]
+   }
+  },
+  {
+   "title": "Assistenza infermieristica e ricerca : AIR",
+   "issn": "1592-5986",
+   "eissn": "2038-1778",
+   "publisherName": "Il Pensiero Scientifico Editore",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": null,
+   "basisSource": "NLM Catalog",
+   "sourceId": "NLM Catalog:nlm:100901776|OpenAlex:https://openalex.org/S61073132",
+   "evidence": {
+    "sources": [
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:100901776",
+      "title": "Assistenza infermieristica e ricerca : AIR"
+     },
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S61073132",
+      "title": "Assistenza infermieristica e ricerca"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.64,
+     "PUB": false,
+     "TITLE": false,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "83 works 2024-26 (pubmed)",
+      "83 recent work(s) + NLM currently indexed"
+     ],
+     "recentMax": 83
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://openalex.org/S61073132",
+     "https://api.openalex.org/sources/issn:1592-5986",
+     "https://pubmed.ncbi.nlm.nih.gov/?term=1592-5986%5BISSN%5D&filter=years.2024-2026"
+    ]
+   }
+  },
+  {
+   "title": "The practising midwife",
+   "issn": "1461-3123",
+   "eissn": "2634-7407",
+   "publisherName": "Medical Education Solutions Limited",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "https://www.all4maternity.com/the-practising-midwife",
+   "basisSource": "NLM Catalog",
+   "sourceId": "NLM Catalog:nlm:9814758",
+   "evidence": {
+    "sources": [
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:9814758",
+      "title": "The practising midwife"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": false,
+     "oaShare": 0.09,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 1,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "177 works 2024-26 (crossref,openalex)"
+     ],
+     "recentMax": 177
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://api.crossref.org/journals/1461-3123",
+     "https://api.openalex.org/sources/issn:1461-3123"
+    ]
+   }
+  },
+  {
+   "title": "Revista de enfermería del Instituto Mexicano del Seguro Social",
+   "issn": "0188-431X",
+   "eissn": "2448-8062",
+   "publisherName": "IMSS",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": null,
+   "basisSource": "NLM Catalog",
+   "sourceId": "NLM Catalog:nlm:100941929|OpenAlex:https://openalex.org/S4210222804",
+   "evidence": {
+    "sources": [
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:100941929",
+      "title": "Revista de enfermería del Instituto Mexicano del Seguro Social"
+     },
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S4210222804",
+      "title": "Revista de Enfermer�a del Instituto Mexicano del Seguro Social"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.7,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "24 works 2024-26 (openalex)"
+     ],
+     "recentMax": 24
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://openalex.org/S4210222804",
+     "https://api.crossref.org/journals/0188-431X",
+     "https://api.openalex.org/sources/issn:0188-431X"
+    ]
+   }
+  },
+  {
+   "title": "The Journal of stomal therapy Australia : publication of Australian Association of Stomal Therapy Nurses",
+   "issn": "1030-5823",
+   "eissn": null,
+   "publisherName": "Cambridge Publishing",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "http://www.stomaltherapy.com/aastn_journal.php",
+   "basisSource": "NLM Catalog",
+   "sourceId": "NLM Catalog:nlm:9426427",
+   "evidence": {
+    "sources": [
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:9426427",
+      "title": "The Journal of stomal therapy Australia : publication of Australian Association of Stomal Therapy Nurses"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": false,
+     "oaShare": 0.18,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 1,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "70 works 2024-26 (crossref,openalex)",
+      "70 recent work(s) + CINAHL indexing current"
+     ],
+     "recentMax": 70
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://api.crossref.org/journals/1030-5823",
+     "https://api.openalex.org/sources/issn:1030-5823"
+    ]
+   }
+  },
+  {
+   "title": "Klinisk sygepleje",
+   "issn": "0902-2767",
+   "eissn": "1903-2285",
+   "publisherName": "Munksgaard International Publishers",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "https://www.idunn.no/klinisk_sygepleje",
+   "basisSource": "NLM Catalog",
+   "sourceId": "NLM Catalog:nlm:9425346|OpenAlex:https://openalex.org/S4210170929",
+   "evidence": {
+    "sources": [
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:9425346",
+      "title": "Klinisk sygepleje"
+     },
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S4210170929",
+      "title": "Klinisk Sygepleje"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.58,
+     "PUB": false,
+     "TITLE": false,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "89 works 2024-26 (crossref,openalex)",
+      "89 recent work(s) + CINAHL indexing current"
+     ],
+     "recentMax": 89
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://openalex.org/S4210170929",
+     "https://api.crossref.org/journals/0902-2767",
+     "https://api.openalex.org/sources/issn:0902-2767"
+    ]
+   }
+  },
+  {
+   "title": "Mental health nursing : journal of the Psychiatric Nurses Association",
+   "issn": "0957-0780",
+   "eissn": null,
+   "publisherName": "Psychiatric Nurses Association",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": null,
+   "basisSource": "NLM Catalog",
+   "sourceId": "NLM Catalog:nlm:8804998",
+   "evidence": {
+    "sources": [
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:8804998",
+      "title": "Mental health nursing : journal of the Psychiatric Nurses Association"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": false,
+     "oaShare": 0.11,
+     "PUB": true,
+     "TITLE": true,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "3 works 2024-26 (openalex)"
+     ],
+     "recentMax": 3
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://api.openalex.org/sources/issn:0957-0780"
+    ]
+   }
+  },
+  {
+   "title": "Irish Nursing Forum And Health Services",
+   "issn": "0790-7257",
+   "eissn": null,
+   "publisherName": "Irish Nursing Forum And Health Services",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": null,
+   "basisSource": "NLM Catalog",
+   "sourceId": "NLM Catalog:nlm:9886487",
+   "evidence": {
+    "sources": [
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:9886487",
+      "title": "Irish Nursing Forum And Health Services"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": false,
+     "oaShare": null,
+     "PUB": true,
+     "TITLE": true,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "4 works 2024-26 (pubmed)"
+     ],
+     "recentMax": 4
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://pubmed.ncbi.nlm.nih.gov/?term=0790-7257%5BISSN%5D&filter=years.2024-2026"
+    ]
+   }
+  },
+  {
+   "title": "The Australasian journal of neuroscience : journal of the Australasian Neuroscience Nurses' Association",
+   "issn": "1032-335X",
+   "eissn": "2208-6781",
+   "publisherName": "Australasian Neuroscience Nurses Association",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "https://www.exeley.com/journal/australasian_journal_of_neuroscience",
+   "basisSource": "NLM Catalog",
+   "sourceId": "NLM Catalog:nlm:9433363|OpenAlex:https://openalex.org/S2914570833",
+   "evidence": {
+    "sources": [
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:9433363",
+      "title": "The Australasian journal of neuroscience : journal of the Australasian Neuroscience Nurses' Association"
+     },
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S2914570833",
+      "title": "Australasian Journal of Neuroscience"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.51,
+     "PUB": true,
+     "TITLE": true,
+     "subjectSignals": 3,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "50 works 2024-26 (crossref,openalex)"
+     ],
+     "recentMax": 50
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://openalex.org/S2914570833",
+     "https://api.crossref.org/journals/1032-335X",
+     "https://api.openalex.org/sources/issn:1032-335X"
+    ]
+   }
+  },
+  {
+   "title": "Perspectives in psychiatric care",
+   "issn": "0031-5990",
+   "eissn": "1744-6163",
+   "publisherName": "Nursing Publications]",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "https://onlinelibrary.wiley.com/journal/17446163",
+   "basisSource": "NLM Catalog",
+   "sourceId": "NLM Catalog:nlm:401133",
+   "evidence": {
+    "sources": [
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:401133",
+      "title": "Perspectives in psychiatric care"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": false,
+     "oaShare": 0.16,
+     "PUB": true,
+     "TITLE": false,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "121 works 2024-26 (crossref,openalex)",
+      "121 recent work(s) + CINAHL indexing current"
+     ],
+     "recentMax": 121
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://api.crossref.org/journals/0031-5990",
+     "https://api.openalex.org/sources/issn:0031-5990"
+    ]
+   }
+  },
+  {
+   "title": "Hu li za zhi The journal of nursing",
+   "issn": "0047-262X",
+   "eissn": "3105-1049",
+   "publisherName": "Taiwan hu li xue hui",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": null,
+   "basisSource": "NLM Catalog",
+   "sourceId": "NLM Catalog:nlm:73267",
+   "evidence": {
+    "sources": [
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:73267",
+      "title": "Hu li za zhi The journal of nursing"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": true,
+     "SCIELO": false,
+     "OA": false,
+     "oaShare": null,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "217 works 2024-26 (pubmed)",
+      "217 recent work(s) + NLM currently indexed, CINAHL indexing current"
+     ],
+     "recentMax": 217
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://pubmed.ncbi.nlm.nih.gov/?term=0047-262X%5BISSN%5D&filter=years.2024-2026"
+    ]
+   }
+  },
+  {
+   "title": "Medit︠s︡inskai︠a︡ sestra",
+   "issn": "0025-8342",
+   "eissn": "2587-9979",
+   "publisherName": "Ministerstvo Zdravookhraneniia Rsfsr",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "http://medsestra.rusvrach.ru/ru/about",
+   "basisSource": "NLM Catalog",
+   "sourceId": "NLM Catalog:nlm:410042|OpenAlex:https://openalex.org/S2753057437",
+   "evidence": {
+    "sources": [
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:410042",
+      "title": "Medit︠s︡inskai︠a︡ sestra"
+     },
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S2753057437",
+      "title": "Meditsinskaya sestra"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.54,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "220 works 2024-26 (crossref,openalex)"
+     ],
+     "recentMax": 220
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://openalex.org/S2753057437",
+     "https://api.crossref.org/journals/0025-8342",
+     "https://api.openalex.org/sources/issn:0025-8342"
+    ]
+   }
+  },
+  {
+   "title": "Stat",
+   "issn": "0038-9986",
+   "eissn": null,
+   "publisherName": "Wisconsin Nurses Association.",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": null,
+   "basisSource": "NLM Catalog",
+   "sourceId": "NLM Catalog:nlm:9875635",
+   "evidence": {
+    "sources": [
+     {
+      "source": "NLM Catalog",
+      "ref": "nlm:9875635",
+      "title": "Stat"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": true,
+     "SCIELO": false,
+     "OA": false,
+     "oaShare": 0.0,
+     "PUB": true,
+     "TITLE": false,
+     "subjectSignals": 3,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "5 works 2024-26 (pubmed)"
+     ],
+     "recentMax": 5
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://api.openalex.org/sources/issn:0038-9986",
+     "https://pubmed.ncbi.nlm.nih.gov/?term=0038-9986%5BISSN%5D&filter=years.2024-2026"
+    ]
+   }
+  },
+  {
+   "title": "Horizonte de enfermeria",
+   "issn": "0716-8861",
+   "eissn": "0719-6946",
+   "publisherName": "Pontificia Universidad Catolica de Chile",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "http://revistahorizonte.uc.cl",
+   "basisSource": "OpenAlex",
+   "sourceId": "OpenAlex:https://openalex.org/S4210167916",
+   "evidence": {
+    "sources": [
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S4210167916",
+      "title": "Horizonte de enfermeria"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.71,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 1,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "259 works 2024-26 (crossref,openalex)"
+     ],
+     "recentMax": 259
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://openalex.org/S4210167916",
+     "https://api.crossref.org/journals/0716-8861",
+     "https://api.openalex.org/sources/issn:0716-8861"
+    ]
+   }
+  },
+  {
+   "title": "Revista de Enfermagem do Centro-Oeste Mineiro",
+   "issn": "2236-6091",
+   "eissn": null,
+   "publisherName": "Federal University of São João del-Rei",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "http://www.ufsj.edu.br/recom",
+   "basisSource": "OpenAlex",
+   "sourceId": "OpenAlex:https://openalex.org/S4210227881",
+   "evidence": {
+    "sources": [
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S4210227881",
+      "title": "Revista de Enfermagem do Centro-Oeste Mineiro"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.51,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 1,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "84 works 2024-26 (crossref,openalex)"
+     ],
+     "recentMax": 84
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://openalex.org/S4210227881",
+     "https://api.crossref.org/journals/2236-6091",
+     "https://api.openalex.org/sources/issn:2236-6091"
+    ]
+   }
+  },
+  {
+   "title": "Revista Enfermería Herediana",
+   "issn": "1998-5487",
+   "eissn": "2075-4000",
+   "publisherName": "Cayetano Heredia University",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "https://revistas.upch.edu.pe/index.php/RENH",
+   "basisSource": "OpenAlex",
+   "sourceId": "OpenAlex:https://openalex.org/S4210168176",
+   "evidence": {
+    "sources": [
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S4210168176",
+      "title": "Revista Enfermería Herediana"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.55,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 1,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "69 works 2024-26 (crossref,openalex)"
+     ],
+     "recentMax": 69
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://openalex.org/S4210168176",
+     "https://api.crossref.org/journals/1998-5487",
+     "https://api.openalex.org/sources/issn:1998-5487"
+    ]
+   }
+  },
+  {
+   "title": "JIKO (Jurnal Ilmiah Keperawatan Orthopedi)",
+   "issn": "2580-1112",
+   "eissn": "2655-6669",
+   "publisherName": "Sekolah Tinggi Ilmu Kesehatan (STIKes) Fatmawati",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "https://ejournal.akperfatmawati.ac.id/index.php/JIKO",
+   "basisSource": "OpenAlex",
+   "sourceId": "OpenAlex:https://openalex.org/S4210189802",
+   "evidence": {
+    "sources": [
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S4210189802",
+      "title": "JIKO (Jurnal Ilmiah Keperawatan Orthopedi)"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.55,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 1,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "26 works 2024-26 (openalex)"
+     ],
+     "recentMax": 26
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://openalex.org/S4210189802",
+     "https://api.crossref.org/journals/2580-1112",
+     "https://api.openalex.org/sources/issn:2580-1112"
+    ]
+   }
+  },
+  {
+   "title": "Recherche et Avancées en Sciences Infirmières",
+   "issn": "3076-1328",
+   "eissn": null,
+   "publisherName": "University of Limoges",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": null,
+   "basisSource": "OpenAlex",
+   "sourceId": "OpenAlex:https://openalex.org/S5407049102",
+   "evidence": {
+    "sources": [
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S5407049102",
+      "title": "Recherche et Avancées en Sciences Infirmières"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.61,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 1,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "79 works 2024-26 (crossref,openalex)"
+     ],
+     "recentMax": 79
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://openalex.org/S5407049102",
+     "https://api.crossref.org/journals/3076-1328",
+     "https://api.openalex.org/sources/issn:3076-1328"
+    ]
+   }
+  },
+  {
+   "title": "Cuidado de Enfermería y Educación en Salud",
+   "issn": "0719-4331",
+   "eissn": null,
+   "publisherName": "University of La Serena",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "http://revistas.userena.cl/index.php/cuidenf",
+   "basisSource": "OpenAlex",
+   "sourceId": "OpenAlex:https://openalex.org/S4210189544",
+   "evidence": {
+    "sources": [
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S4210189544",
+      "title": "Cuidado de Enfermería y Educación en Salud"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.71,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 1,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "67 works 2024-26 (crossref,openalex)"
+     ],
+     "recentMax": 67
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://openalex.org/S4210189544",
+     "https://api.crossref.org/journals/0719-4331",
+     "https://api.openalex.org/sources/issn:0719-4331"
+    ]
+   }
+  },
+  {
+   "title": "Enfermería Clínica",
+   "issn": "1130-8621",
+   "eissn": "1579-2013",
+   "publisherName": "Elsevier BV",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "https://www.journals.elsevier.com/enfermeria-clinica",
+   "basisSource": "OpenAlex",
+   "sourceId": "OpenAlex:https://openalex.org/S2898377691",
+   "evidence": {
+    "sources": [
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S2898377691",
+      "title": "Enfermería Clínica"
+     }
+    ],
+    "scope": {
+     "NLM": true,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.66,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 2,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "244 works 2024-26 (crossref,openalex)",
+      "244 recent work(s) + CINAHL indexing current"
+     ],
+     "recentMax": 244
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://openalex.org/S2898377691",
+     "https://api.crossref.org/journals/1130-8621",
+     "https://api.openalex.org/sources/issn:1130-8621"
+    ]
+   }
+  },
+  {
+   "title": "CNE Pflegemanagement",
+   "issn": "2196-9310",
+   "eissn": "2626-6229",
+   "publisherName": "Georg Thieme Verlag",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "https://www.thieme-connect.de/products/ejournals/issue/10.1055/s-008-41950",
+   "basisSource": "OpenAlex",
+   "sourceId": "OpenAlex:https://openalex.org/S4210178913",
+   "evidence": {
+    "sources": [
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S4210178913",
+      "title": "CNE Pflegemanagement"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.66,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 1,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "209 works 2024-26 (crossref,openalex)"
+     ],
+     "recentMax": 209
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://openalex.org/S4210178913",
+     "https://api.crossref.org/journals/2196-9310",
+     "https://api.openalex.org/sources/issn:2196-9310"
+    ]
+   }
+  },
+  {
+   "title": "Medsestra (Nurse)",
+   "issn": "2074-8043",
+   "eissn": null,
+   "publisherName": "PANORAMA Publishing House",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": null,
+   "basisSource": "OpenAlex",
+   "sourceId": "OpenAlex:https://openalex.org/S4210192715",
+   "evidence": {
+    "sources": [
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S4210192715",
+      "title": "Medsestra (Nurse)"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.56,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 1,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "266 works 2024-26 (crossref,openalex)"
+     ],
+     "recentMax": 266
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://openalex.org/S4210192715",
+     "https://api.crossref.org/journals/2074-8043",
+     "https://api.openalex.org/sources/issn:2074-8043"
+    ]
+   }
+  },
+  {
+   "title": "Ordu Üniversitesi Hemşirelik Çalışmaları Dergisi",
+   "issn": "2667-6052",
+   "eissn": null,
+   "publisherName": "Süleyman Demirel University",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "http://dergipark.gov.tr/ouhcd",
+   "basisSource": "OpenAlex",
+   "sourceId": "OpenAlex:https://openalex.org/S4210238002",
+   "evidence": {
+    "sources": [
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S4210238002",
+      "title": "Ordu Üniversitesi Hemşirelik Çalışmaları Dergisi"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.55,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 1,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "228 works 2024-26 (crossref,openalex)"
+     ],
+     "recentMax": 228
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://openalex.org/S4210238002",
+     "https://api.crossref.org/journals/2667-6052",
+     "https://api.openalex.org/sources/issn:2667-6052"
+    ]
+   }
+  },
+  {
+   "title": "Revue Francophone Internationale de Recherche Infirmière",
+   "issn": "2352-8028",
+   "eissn": null,
+   "publisherName": "Elsevier BV",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "https://www.journals.elsevier.com/revue-francophone-internationale-de-recherche-infirmiere",
+   "basisSource": "OpenAlex",
+   "sourceId": "OpenAlex:https://openalex.org/S2898183315",
+   "evidence": {
+    "sources": [
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S2898183315",
+      "title": "Revue Francophone Internationale de Recherche Infirmière"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.65,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 1,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "104 works 2024-26 (crossref,openalex)"
+     ],
+     "recentMax": 104
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://openalex.org/S2898183315",
+     "https://api.crossref.org/journals/2352-8028",
+     "https://api.openalex.org/sources/issn:2352-8028"
+    ]
+   }
+  },
+  {
+   "title": "Hemşirelik Bilimi Dergisi",
+   "issn": "2636-8439",
+   "eissn": null,
+   "publisherName": "Hemsirelik Bilimi Dergisi",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": null,
+   "basisSource": "OpenAlex",
+   "sourceId": "OpenAlex:https://openalex.org/S4210182203",
+   "evidence": {
+    "sources": [
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S4210182203",
+      "title": "Hemşirelik Bilimi Dergisi"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.65,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 1,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "105 works 2024-26 (crossref,openalex)"
+     ],
+     "recentMax": 105
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://openalex.org/S4210182203",
+     "https://api.crossref.org/journals/2636-8439",
+     "https://api.openalex.org/sources/issn:2636-8439"
+    ]
+   }
+  },
+  {
+   "title": "Yaşam Boyu Hemşirelik Dergisi",
+   "issn": "2757-6272",
+   "eissn": null,
+   "publisherName": "ASOS Yayinevi",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": null,
+   "basisSource": "OpenAlex",
+   "sourceId": "OpenAlex:https://openalex.org/S4210232250",
+   "evidence": {
+    "sources": [
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S4210232250",
+      "title": "Yaşam Boyu Hemşirelik Dergisi"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.54,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 1,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "92 works 2024-26 (crossref,openalex)"
+     ],
+     "recentMax": 92
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://openalex.org/S4210232250",
+     "https://api.crossref.org/journals/2757-6272",
+     "https://api.openalex.org/sources/issn:2757-6272"
+    ]
+   }
+  },
+  {
+   "title": "Revista Científica de la Sociedad de Enfermería Neurológica (English ed )",
+   "issn": "2530-299X",
+   "eissn": null,
+   "publisherName": "Elsevier BV",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "https://www.journals.elsevier.com/revista-cientifica-de-la-sociedad-espanola-de-enfermeria-neurologica-english-edition",
+   "basisSource": "OpenAlex",
+   "sourceId": "OpenAlex:https://openalex.org/S4210236300",
+   "evidence": {
+    "sources": [
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S4210236300",
+      "title": "Revista Científica de la Sociedad de Enfermería Neurológica (English ed )"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.52,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 1,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "50 works 2024-26 (crossref,openalex)"
+     ],
+     "recentMax": 50
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://openalex.org/S4210236300",
+     "https://api.crossref.org/journals/2530-299X",
+     "https://api.openalex.org/sources/issn:2530-299X"
+    ]
+   }
+  },
+  {
+   "title": "Revista Iberoamericana de Educación e Investigación en Enfermería",
+   "issn": "2174-6915",
+   "eissn": "2254-4100",
+   "publisherName": "Asociacion Latinoamericana de Escuelas y Facultades de Enfermeria",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": null,
+   "basisSource": "OpenAlex",
+   "sourceId": "OpenAlex:https://openalex.org/S4387283750",
+   "evidence": {
+    "sources": [
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S4387283750",
+      "title": "Revista Iberoamericana de Educación e Investigación en Enfermería"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.63,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 1,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "49 works 2024-26 (crossref,openalex)"
+     ],
+     "recentMax": 49
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://openalex.org/S4387283750",
+     "https://api.crossref.org/journals/2174-6915",
+     "https://api.openalex.org/sources/issn:2174-6915"
+    ]
+   }
+  },
+  {
+   "title": "Canadian Nurse Practitioner Journal",
+   "issn": "2819-2710",
+   "eissn": null,
+   "publisherName": "Laurentian University",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "https://cnpj.ca/index.php/cnpj",
+   "basisSource": "OpenAlex",
+   "sourceId": "OpenAlex:https://openalex.org/S5407053680",
+   "evidence": {
+    "sources": [
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S5407053680",
+      "title": "Canadian Nurse Practitioner Journal"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.55,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 1,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "30 works 2024-26 (crossref,openalex)"
+     ],
+     "recentMax": 30
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://openalex.org/S5407053680",
+     "https://api.crossref.org/journals/2819-2710",
+     "https://api.openalex.org/sources/issn:2819-2710"
+    ]
+   }
+  },
+  {
+   "title": "Akdeniz Hemşirelik Dergisi",
+   "issn": "2822-5988",
+   "eissn": null,
+   "publisherName": "Faculty of Nursing, Akdeniz University",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": null,
+   "basisSource": "OpenAlex",
+   "sourceId": "OpenAlex:https://openalex.org/S4387288888",
+   "evidence": {
+    "sources": [
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S4387288888",
+      "title": "Akdeniz Hemşirelik Dergisi"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.6,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 1,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "49 works 2024-26 (crossref,openalex)"
+     ],
+     "recentMax": 49
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://openalex.org/S4387288888",
+     "https://api.crossref.org/journals/2822-5988",
+     "https://api.openalex.org/sources/issn:2822-5988"
+    ]
+   }
+  },
+  {
+   "title": "Revista Mexicana de Enfermería",
+   "issn": "2696-8584",
+   "eissn": null,
+   "publisherName": "Publicidad Permanyer, SLU",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": null,
+   "basisSource": "OpenAlex",
+   "sourceId": "OpenAlex:https://openalex.org/S5407022110",
+   "evidence": {
+    "sources": [
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S5407022110",
+      "title": "Revista Mexicana de Enfermería"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.7,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 1,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "54 works 2024-26 (crossref,openalex)"
+     ],
+     "recentMax": 54
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://openalex.org/S5407022110",
+     "https://api.crossref.org/journals/2696-8584",
+     "https://api.openalex.org/sources/issn:2696-8584"
+    ]
+   }
+  },
+  {
+   "title": "ENFERMERÍA EN COSTA RICA",
+   "issn": "1409-1992",
+   "eissn": "2215-6593",
+   "publisherName": "Colegio de Enfermeras de Costa Rica",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": null,
+   "basisSource": "OpenAlex",
+   "sourceId": "OpenAlex:https://openalex.org/S4387288803",
+   "evidence": {
+    "sources": [
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S4387288803",
+      "title": "ENFERMERÍA EN COSTA RICA"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.57,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 1,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "6 works 2024-26 (crossref,openalex)"
+     ],
+     "recentMax": 6
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://openalex.org/S4387288803",
+     "https://api.crossref.org/journals/1409-1992",
+     "https://api.openalex.org/sources/issn:1409-1992"
+    ]
+   }
+  },
+  {
+   "title": "Tiempos de Enfermería y Salud",
+   "issn": "2530-4453",
+   "eissn": null,
+   "publisherName": "Asociacion Española de Enfermería y Salud",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": null,
+   "basisSource": "OpenAlex",
+   "sourceId": "OpenAlex:https://openalex.org/S7407056533",
+   "evidence": {
+    "sources": [
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S7407056533",
+      "title": "Tiempos de Enfermería y Salud"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.5,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 1,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "13 works 2024-26 (crossref,openalex)"
+     ],
+     "recentMax": 13
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://openalex.org/S7407056533",
+     "https://api.crossref.org/journals/2530-4453",
+     "https://api.openalex.org/sources/issn:2530-4453"
+    ]
+   }
+  },
+  {
+   "title": "Nurse Practitioners",
+   "issn": "3035-5184",
+   "eissn": null,
+   "publisherName": "NP'S Nurse Practitioner Self-Employment APS",
+   "subjects": [],
+   "domain": "Nursing",
+   "country": null,
+   "homepage": "https://www.npsnurse.it/pubblicazioni/index.php/presentazione",
+   "basisSource": "OpenAlex",
+   "sourceId": "OpenAlex:https://openalex.org/S5407046042",
+   "evidence": {
+    "sources": [
+     {
+      "source": "OpenAlex",
+      "ref": "https://openalex.org/S5407046042",
+      "title": "Nurse Practitioners"
+     }
+    ],
+    "scope": {
+     "NLM": false,
+     "CINAHL": false,
+     "SCIELO": false,
+     "OA": true,
+     "oaShare": 0.59,
+     "PUB": false,
+     "TITLE": true,
+     "subjectSignals": 1,
+     "tier": "A"
+    },
+    "publication": {
+     "class": "P-A",
+     "why": [
+      "10 works 2024-26 (crossref,openalex)"
+     ],
+     "recentMax": 10
+    },
+    "verified": "2026-10-28",
+    "urls": [
+     "https://openalex.org/S5407046042",
+     "https://api.crossref.org/journals/3035-5184",
+     "https://api.openalex.org/sources/issn:3035-5184"
+    ]
+   }
+  }
+ ]
+}

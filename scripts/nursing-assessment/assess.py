@@ -83,6 +83,7 @@ def pubFrom(e):
     if cr and cr.get('publisher') and cr['titleOverlap']>=0.5: return ('Crossref',cr['publisher'])
     if oa and oa.get('host') and oa['titleOverlap']>=0.5: return ('OpenAlex',oa['host'])
     return None
+NONJ=re.compile(r"\b(news ?letter|newsletter|news|directory|directories|proceedings|anais|actas|conference|congress|congreso|abstracts?|yearbook|handbook|guide|catalog(ue)?|annual report|manual|careers?|retirement)\b",re.I)  # deliberately NOT 'report(s)' or 'nursing home': 'Nursing Reports' and 'Journal of Nursing Home Research Sciences' are journals
 def recent(e):
     out=[]
     if not e: return out
@@ -139,6 +140,7 @@ for r in sc['needsReview']:
     if tconf_pub: reasons.append(('title_conflict_public','same/base title as public '+tconf_pub[0]['title'][:40]))
     if nrTwin: reasons.append(('pair_in_review','print/electronic twin also in NeedsReview'))
     if tconf_nr: reasons.append(('title_conflict_review','same/base title as another NeedsReview record'))
+    if NONJ.search(r['title'] or ''): reasons.append(('non_journal_risk','the title reads as a newsletter, conference, directory or similar serial'))
     if s['tier'] in ('C','X'): reasons.append(('scope_insufficient','scope tier '+s['tier']+': no independent nursing evidence'))
     elif s['tier']=='B': reasons.append(('scope_needs_official_aims','scope tier B: needs the journal\'s aims-and-scope'))
     if P=='P-I': reasons.append(('identity_unconfirmed',why[0]))
@@ -166,6 +168,7 @@ for m in sc['netNew']:
     if not (m['publisher'] or '').strip():
         pf=pubFrom(e)
         if not pf: reasons.append(('no_publisher','no publisher recorded and none in Crossref/OpenAlex under a matching title'))
+    if NONJ.search(m['title'] or ''): reasons.append(('non_journal_risk','the title reads as a newsletter, conference, directory or similar serial'))
     if s['tier'] in ('C','X'): reasons.append(('scope_insufficient','scope tier '+s['tier']))
     elif s['tier']=='B': reasons.append(('scope_needs_official_aims','scope tier B: needs the journal\'s aims-and-scope'))
     if P=='P-I': reasons.append(('identity_unconfirmed',why[0]))
