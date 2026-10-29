@@ -1,0 +1,28 @@
+{
+ "Wiley KBART (round 7 retry, once)": {
+  "status": "blocked",
+  "retrieved": "2026-10-29T08:45:37Z",
+  "query": "https://onlinelibrary.wiley.com/library-info/resources/discovery/kbart2019 via the crawler and the general fetch tool",
+  "fetched": 0,
+  "notes": "HTTP 403 both times; not bypassed. Manual steps in manual-exports.md.",
+  "rawFiles": {}
+ },
+ "Official-URL resolution for 39 shortlisted candidates (ISSN match only)": {
+  "status": "complete",
+  "retrieved": "2026-10-29T08:45:37Z",
+  "query": "DOAJ API /api/search/journals/issn:<issn>; OpenAlex /sources?filter=issn:<issn>; Wikidata SPARQL P236->P856",
+  "fetched": 39,
+  "pagination": "14 URLs found, all Wikidata (community-curated); DOAJ and OpenAlex gave none; 25 unresolved",
+  "notes": "Provenance and a direct/aggregator flag are kept per URL.",
+  "rawFiles": {}
+ },
+ "Official pages of shortlisted candidates (automated reader)": {
+  "status": "partial",
+  "retrieved": "2026-10-29T08:45:37Z",
+  "query": "aims_scope.one + standard about pages for the 14 newly resolved URLs only; earlier reads not repeated",
+  "fetched": 14,
+  "pagination": "9 read without a department statement, 3 did not answer, 1 scope supported, 1 robots-disallowed",
+  "notes": "No person reviewed anything.",
+  "rawFiles": {}
+ }
+}

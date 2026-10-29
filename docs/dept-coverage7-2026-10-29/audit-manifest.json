@@ -1,0 +1,10 @@
+{
+ "runId": "dept-coverage7-2026-10-29-18eacf38",
+ "inserted": 0,
+ "reason": "no candidate satisfied every established rule on admissible evidence; the best candidate (Mikrotalasna revija) is held on a publisher-of-record conflict",
+ "cumulativeVerified": 95,
+ "remainingAllowance": 1905,
+ "productionAt": "2026-10-29T08:44Z total 54,902",
+ "flagged": 3,
+ "redactionLog": "docs/dept-coverage6-2026-10-29/redaction-log.json"
+}

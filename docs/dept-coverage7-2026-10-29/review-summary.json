@@ -1,0 +1,19 @@
+{
+ "candidates": 105,
+ "outcomes": {
+  "A scope supported by official pages, held at the gates (publisher conflict)": 1,
+  "B official pages read, scope not confirmed": 47,
+  "C ambiguous Electrical vs Electronics": 3,
+  "D official site did not answer": 25,
+  "E robots.txt disallows automated reading": 4,
+  "F official URL unresolved": 25
+ },
+ "urlResolution": {
+  "withoutUrlBefore": 39,
+  "resolvedByIssnMatch": 14,
+  "source": "Wikidata (community-curated) only; DOAJ and OpenAlex gave none",
+  "stillUnresolved": 25
+ },
+ "manuallyVerified": 0,
+ "reviewer": "automated reader only; no person reviewed any evidence"
+}

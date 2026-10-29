@@ -1,0 +1,16 @@
+# Proposal: one Bio Technology boundary for Books and Journals (no change applied)
+
+**Problem.** Bio Technology is defined in three places that disagree: the Books classifier keyword rule (`books/classifier.ts`: *biotechnology, genetic engineering, bioprocess, bioinformatics, synthetic biology, CRISPR, bioengineering*), the Journals rules (DOAJ title rule and mapping audit: *biotechnolog\** only), and the department-evidence rules used in this work (title terms, scope phrases and topic lexicon: bioprocess, fermentation, metabolic engineering, synthetic biology, biocatalysis, bioreactor, bioengineering, tissue engineering, biorefinery ...). The 54 held bioinformatics titles are the visible symptom.
+
+**What production actually does today (read-only counts, 2026-10-29).** Books with *bioinformatic* in the title: 91 in Life Sciences, 37 with no department, 14 Nursing, 12 Medical Sciences, 9 Pharmacy, 7 Computer / IT, **5 Bio Technology**, 2 Energy (of 970 Bio Technology books overall). Journals with it in the title: 12 Life Sciences, 9 Bio Technology (2 Accepted, 2 MetadataOnly, 5 NeedsReview), 4 Computer / IT, 1 Medical Sciences, 2 Chemistry. So existing practice already files bioinformatics mainly under **Life Sciences**; the Books keyword rule is not what decides it.
+
+## Proposal
+
+1. **One definition table** (department, core terms, peripheral terms, excluded neighbours), read by the Books classifier, the journal title rules and the evidence modules, instead of three lists. A new term enters it with sampled matches and false-positive tests, as the multilingual vocabulary was reviewed.
+2. **Bio Technology, core terms** (a core term plus one other kind of evidence is enough): biotechnology, bioprocess/bioprocessing, fermentation, synthetic biology, genetic and metabolic engineering, CRISPR/genome engineering, biocatalysis/enzyme technology, bioreactor, bioengineering, tissue engineering.
+3. **Peripheral terms** (never sufficient with a title alone; need the journal's own scope statement naming biotechnology): biorefinery, biofuels, biomaterials, biosensors.
+4. **Bioinformatics and biostatistics: Life Sciences by default**, matching what production already does; Bio Technology only when the scope statement is explicitly biotechnological (for example industrial genomics for bioproduction). Remove *bioinformatics* from the Bio Technology keyword rule of the Books classifier (or demote it to peripheral).
+5. **Excluded neighbours** (as in the current rules): food science, agriculture, general biology and microbiology, medicine, environmental and waste engineering.
+6. **No retroactive reclassification.** Existing journals and books keep their department; the table applies to new candidates only. Existing exceptions (5 Bio Technology books and 9 journals with bioinformatics in the title) are listed for review, not changed.
+
+**Effect on this work:** the 54 held journals stay held; under the proposal they would go to Life Sciences (outside this scope) rather than Bio Technology. **Decision needed:** adopt the table (and the Life Sciences default), keep the status quo, or choose Bio Technology for bioinformatics. Implementation would be a small shared module, a test per department, and no data migration.
