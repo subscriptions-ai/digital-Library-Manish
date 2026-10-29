@@ -99,6 +99,15 @@ check('same title/author/year as a held manifestation is skipped (twin); a 2nd e
 check('a book held as a Draft, and one held in the legacy collection, are not inserted again', !gotTitles.has(`${T2} Draft Held Elsewhere||K. Nolan`) && !gotTitles.has(`${T2} Legacy Held Title||N. Okafor`));
 check('the same title with a different author is a different book and is inserted', gotTitles.has(`${T2} Legacy Held Title||Someone, Else`));
 check('an ISBN-10 is recognised as the held ISBN-13 (hyphens or not)', tw.skipped.isbn === 1 && !gotTitles.has(`${T2} ISBN ten||`) && !(await db.book.count({ where: { title: `${T2} ISBN ten` } })));
+// The 2026-10-29 import let ~155 twins in because "Nico Cloete, Peter Maassen" and "Cloete, Nico" were compared as different authors.
+await db.book.create({ data: { title: `${T2} Author Order Twin`, authors: 'Cloete, Nico', year: 2018, status: 'Published', domain: 'Arts' } });
+await db.content.create({ data: { title: `${T2} Author Order Legacy`, authors: 'Maassen, Peter; Cloete, Nico', contentType: 'Books', status: 'Published' } });
+const order = run({ runId: `test5-${T2}`, rows: [
+  mk(300, { title: `${T2} Author Order Twin`, authors: 'Nico Cloete, Peter Maassen', year: 2018 }),    // same book, names written given-name-first
+  mk(301, { title: `${T2} Author Order Legacy`, authors: 'Nico Cloete, Peter Maassen' }),               // legacy twin, other order
+  mk(302, { title: `${T2} Author Order Twin`, authors: 'Jane Different', year: 2018 }),                // same title, no shared name: a different book
+] });
+check('authors written "First Last, First Last" and "Last, First" are the same author (twin skipped, in both collections); a different author is kept', order.skipped.title === 2 && order.inserted === 1 && (await db.book.count({ where: { title: `${T2} Author Order Twin`, authors: 'Jane Different' } })) === 1, JSON.stringify({ sk: order.skipped, ins: order.inserted }));
 check('a dry run still writes nothing and says what it would do', run({ runId: `test4-${T2}`, rows: [mk(200)] }, '--dry').inserted === 1 && (await db.book.count({ where: { title: `${T2} Unique Title 200` } })) === 0);
 const verify = (pl: any, runId: string) => { const text = `var __PLAN__ = ${JSON.stringify(pl)};\nvar __RUN__ = ${JSON.stringify(runId)};\n` + readFileSync(new URL('./book-import-verify.cjs', import.meta.url), 'utf8'); const r = spawnSync('node', ['-'], { input: text, env: { ...process.env, DATABASE_URL: TEST_URL }, encoding: 'utf8', cwd: new URL('..', import.meta.url).pathname, maxBuffer: 64 * 1024 * 1024 }); try { return JSON.parse(r.stdout); } catch { return { ok: false, error: r.stderr.slice(0, 300) }; } };
 const vOk = verify(small, small.runId);

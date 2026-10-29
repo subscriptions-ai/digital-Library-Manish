@@ -26,7 +26,10 @@ const EXPECT_DB = arg('expect-db', '');
 const doiKey = (d) => d ? String(d).trim().toLowerCase().replace(/^https?:\/\/(dx\.)?doi\.org\//, '') : null;
 const squash = (s) => String(s || '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 const titleKey = (t) => squash(t).replace(/^(the|a|an) /, '').slice(0, 180);
-const authorKey = (a) => { const first = String(a || '').split(/;|\band\b|\n/)[0].trim(); if (!first) return ''; const c = first.indexOf(','); return squash(c > 0 ? first.slice(0, c) : first.split(/\s+/).pop() || ''); };
+// Two author lists agree when they share a name token, in either order ("Nico Cloete, Peter Maassen" = "Cloete, Nico"); a missing author on either side agrees,
+// so a title match with nothing to contradict it is treated as a twin. (The earlier key compared "First Last" with "Last, First" as different and let ~155 twins in.)
+const authorTokens = (a) => new Set(squash(a).split(' ').filter((t) => t.length > 1));
+const authorsAgree = (a, b) => { const x = authorTokens(a), y = authorTokens(b); if (!x.size || !y.size) return true; for (const t of x) if (y.has(t)) return true; return false; };
 const normEdition = (e) => squash(e);
 // ISBN-10 and -13 are one identifier; only a valid check digit counts.
 const isbnForms = (raw) => {
@@ -92,9 +95,9 @@ const idFor = (runId, r) => {
       if (forms.length && forms.some(f => heldIsbn.has(f))) { skip('isbn'); continue; }
       if (r.sourceRecordId && heldPid.has(`${r.source}|${r.sourceRecordId}`)) { skip('providerId'); continue; }
       if (r.fingerprint && heldFp.has(r.fingerprint)) { skip('fingerprint'); continue; }
-      const tk = titleKey(r.row.title), ak = authorKey(r.row.authors), ed = normEdition(r.row.edition);
+      const tk = titleKey(r.row.title), ed = normEdition(r.row.edition);
       const twin = (byTitle.get(tk) || []).find(c => {
-        const ca = authorKey(c.authors); if (ak && ca && ak !== ca) return false;
+        if (!authorsAgree(r.row.authors, c.authors)) return false;
         if (c.k === 'legacy') return true;
         const sameYear = c.year == null || r.row.year == null || c.year === r.row.year, sameEd = !ed || !normEdition(c.edition) || ed === normEdition(c.edition);
         return sameYear && sameEd;

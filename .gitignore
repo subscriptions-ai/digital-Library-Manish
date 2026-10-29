@@ -51,3 +51,7 @@ docs/library-data-quality-2026-10-29/*.json
 # Department coverage run 5: raw/work files (never committed)
 data/dept-coverage5/raw/
 data/dept-coverage5/work/
+
+# Book fill and department-assignment runs (2026-10-29): raw exports of production, harvests, frozen manifests and logs. Kept on disk for audit and rollback, never committed.
+data/book-*/
+data/unassigned-*/
