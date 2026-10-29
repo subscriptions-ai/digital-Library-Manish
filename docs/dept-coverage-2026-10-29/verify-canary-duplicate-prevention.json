@@ -1,0 +1,1 @@
+{"database":"postgres","runId":"dept-coverage-2026-10-29-caca7d79","source":"Multiple (per row basisSource)","dry":true,"startedAt":"2026-10-29T05:13:28.966Z","requested":25,"inserted":0,"skippedIdentifierHeld":25,"skippedTitleHeld":0,"skippedRace":0,"failed":0,"firstError":null,"batches":1,"insertedIds":[],"finishedAt":"2026-10-29T05:13:29.098Z"}

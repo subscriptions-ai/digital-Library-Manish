@@ -1,0 +1,1021 @@
+{
+ "CINAHL Database coverage list": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:12:14Z",
+  "query": "about.ebsco.com/m/ee/Marketing/titleLists/cin-coverage.htm (downloaded)",
+  "fetched": 6697,
+  "pagination": "single file",
+  "notes": "Intended-coverage list published by EBSCO; only bibliographic fields kept. Source types: {\"Academic Journal\": 5096, \"Book / Monograph\": 50, \"Conference Proceedings Collection\": 4, \"Database\": 2, \"Dissertation\": 1, \"Government Document\": 3, \"Industry Report\": 1, \"Leaflet\": 1, \"Magazine\": 1329, \"Medical Guideline\": 1, \"Newspaper\": 7, \"Report\": 63, \"Trade Publication\": 138, \"Working Paper\": 1}",
+  "rawFiles": {
+   "cinahl/cin-coverage.htm": {
+    "sha256": "b38cc42f00d82ee9a34f5b4234f69dc1c8dcf397a37767ea3c7fba33de2a4a96",
+    "bytes": 3048001
+   },
+   "cinahl/cin-coverage.json": {
+    "sha256": "0c39890782326169a2c9cb7de4588d505383472ad90f05c59a1b4e2678c53932",
+    "bytes": 1940571
+   }
+  }
+ },
+ "CINAHL Database subject list": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:12:16Z",
+  "query": ".../cin-subject.htm (downloaded)",
+  "fetched": 78,
+  "pagination": "single file",
+  "notes": "Full-text subject list: 56 rows (distinct ISSNs 42) under discipline Nursing. It covers the full-text subset only, so the coverage list is pooled too.",
+  "rawFiles": {
+   "cinahl/cin-subject.htm": {
+    "sha256": "c75190522782456a4032c66680a7cb687b7873cd375ef0dd545e8291b004f818",
+    "bytes": 41391
+   },
+   "cinahl/cin-subject.json": {
+    "sha256": "90ff30c58250a0b722774a2fc9ada7305c9b88f593920ac1e6639550d1a9965e",
+    "bytes": 24570
+   }
+  }
+ },
+ "CINAHL with Full Text coverage list": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:12:21Z",
+  "query": "about.ebsco.com/m/ee/Marketing/titleLists/c8h-coverage.htm (downloaded)",
+  "fetched": 6697,
+  "pagination": "single file",
+  "notes": "Intended-coverage list published by EBSCO; only bibliographic fields kept. Source types: {\"Academic Journal\": 5096, \"Book / Monograph\": 50, \"Conference Proceedings Collection\": 4, \"Database\": 2, \"Dissertation\": 1, \"Government Document\": 3, \"Industry Report\": 1, \"Leaflet\": 1, \"Magazine\": 1329, \"Medical Guideline\": 1, \"Newspaper\": 7, \"Report\": 63, \"Trade Publication\": 138, \"Working Paper\": 1}",
+  "rawFiles": {
+   "cinahl/c8h-coverage.htm": {
+    "sha256": "10ed03ff7a04867162aae3eb115ece501e058a4f82337b69e5af1c8a363d4efd",
+    "bytes": 3056651
+   },
+   "cinahl/c8h-coverage.json": {
+    "sha256": "146f213d77e467b34e6f30ba6875009470849c3a3fa5f874ba82a90a4a94d051",
+    "bytes": 1980691
+   }
+  }
+ },
+ "CINAHL with Full Text subject list": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:12:24Z",
+  "query": ".../c8h-subject.htm (downloaded)",
+  "fetched": 1285,
+  "pagination": "single file",
+  "notes": "Full-text subject list: 233 rows (distinct ISSNs 209) under discipline Nursing. It covers the full-text subset only, so the coverage list is pooled too.",
+  "rawFiles": {
+   "cinahl/c8h-subject.htm": {
+    "sha256": "31fe9c6238cfebfda4bf5fc8f140d73756eaa078af6b64e481983540081c6021",
+    "bytes": 656708
+   },
+   "cinahl/c8h-subject.json": {
+    "sha256": "886e3618a5710f1d03a09850fdfbb507230017905a7d9df59e5b5cec6817d4cc",
+    "bytes": 433717
+   }
+  }
+ },
+ "CINAHL Plus with Full Text coverage list": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:12:28Z",
+  "query": "about.ebsco.com/m/ee/Marketing/titleLists/rzh-coverage.htm (downloaded)",
+  "fetched": 6697,
+  "pagination": "single file",
+  "notes": "Intended-coverage list published by EBSCO; only bibliographic fields kept. Source types: {\"Academic Journal\": 5096, \"Book / Monograph\": 50, \"Conference Proceedings Collection\": 4, \"Database\": 2, \"Dissertation\": 1, \"Government Document\": 3, \"Industry Report\": 1, \"Leaflet\": 1, \"Magazine\": 1329, \"Medical Guideline\": 1, \"Newspaper\": 7, \"Report\": 63, \"Trade Publication\": 138, \"Working Paper\": 1}",
+  "rawFiles": {
+   "cinahl/rzh-coverage.htm": {
+    "sha256": "94e9953a0dd057a924a147ba0c4f65a5b391c3a10ccbd5a8904ac6b22efb8ac8",
+    "bytes": 3058709
+   },
+   "cinahl/rzh-coverage.json": {
+    "sha256": "768f087289b9e79e37994e17e2a942343ea9a0f7b1dbceb6ce7a4c925aab08a5",
+    "bytes": 2014168
+   }
+  }
+ },
+ "CINAHL Plus with Full Text subject list": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:12:32Z",
+  "query": ".../rzh-subject.htm (downloaded)",
+  "fetched": 1659,
+  "pagination": "single file",
+  "notes": "Full-text subject list: 243 rows (distinct ISSNs 217) under discipline Nursing. It covers the full-text subset only, so the coverage list is pooled too.",
+  "rawFiles": {
+   "cinahl/rzh-subject.htm": {
+    "sha256": "8ec609b5891a5a42dd17e7664c00b5cabf47bca65519f4077b5d7517a89c085a",
+    "bytes": 848197
+   },
+   "cinahl/rzh-subject.json": {
+    "sha256": "5f83a4c99e3fd2c53869f5c4fbcbac7e28b1c1e1186e38f83383b0ec70dc39f6",
+    "bytes": 569017
+   }
+  }
+ },
+ "CINAHL Complete coverage list": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:12:35Z",
+  "query": "about.ebsco.com/m/ee/Marketing/titleLists/ccm-coverage.htm (downloaded)",
+  "fetched": 6697,
+  "pagination": "single file",
+  "notes": "Intended-coverage list published by EBSCO; only bibliographic fields kept. Source types: {\"Academic Journal\": 5096, \"Book / Monograph\": 50, \"Conference Proceedings Collection\": 4, \"Database\": 2, \"Dissertation\": 1, \"Government Document\": 3, \"Industry Report\": 1, \"Leaflet\": 1, \"Magazine\": 1329, \"Medical Guideline\": 1, \"Newspaper\": 7, \"Report\": 63, \"Trade Publication\": 138, \"Working Paper\": 1}",
+  "rawFiles": {
+   "cinahl/ccm-coverage.htm": {
+    "sha256": "e0a8e9cb074c6b5195aaa580ccc8b7554482ebad470a4ada9a76aeae9987272d",
+    "bytes": 3069450
+   },
+   "cinahl/ccm-coverage.json": {
+    "sha256": "3bfd229baa9820c9b8c7abeff587a39cf7dd20df941c9ab7977a473562b20595",
+    "bytes": 1940497
+   }
+  }
+ },
+ "CINAHL Complete subject list": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:12:38Z",
+  "query": ".../ccm-subject.htm (downloaded)",
+  "fetched": 3068,
+  "pagination": "single file",
+  "notes": "Full-text subject list: 368 rows (distinct ISSNs 328) under discipline Nursing. It covers the full-text subset only, so the coverage list is pooled too.",
+  "rawFiles": {
+   "cinahl/ccm-subject.htm": {
+    "sha256": "d16c44ea0c3408689c67c348515c42920a7992d5126ff0d6dd442daf1136b1fd",
+    "bytes": 1571673
+   },
+   "cinahl/ccm-subject.json": {
+    "sha256": "88866a05008ea5c4c98fbd8139354e652ffe2748a0d371371346f5df131566b9",
+    "bytes": 1024952
+   }
+  }
+ },
+ "CINAHL Ultimate coverage list": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:12:42Z",
+  "query": "about.ebsco.com/m/ee/Marketing/titleLists/cul-coverage.htm (downloaded)",
+  "fetched": 6697,
+  "pagination": "single file",
+  "notes": "Intended-coverage list published by EBSCO; only bibliographic fields kept. Source types: {\"Academic Journal\": 5096, \"Book / Monograph\": 50, \"Conference Proceedings Collection\": 4, \"Database\": 2, \"Dissertation\": 1, \"Government Document\": 3, \"Industry Report\": 1, \"Leaflet\": 1, \"Magazine\": 1329, \"Medical Guideline\": 1, \"Newspaper\": 7, \"Report\": 63, \"Trade Publication\": 138, \"Working Paper\": 1}",
+  "rawFiles": {
+   "cinahl/cul-coverage.htm": {
+    "sha256": "5525960348391632ee0d95ad9bf65f686e78137e2e9e99d09fb2fd9a13482a4d",
+    "bytes": 3087468
+   },
+   "cinahl/cul-coverage.json": {
+    "sha256": "92a9204d0915e56bfa1991468593dd4ad4634b75e7f9a06f3a09b3a925adf3cb",
+    "bytes": 1940493
+   }
+  }
+ },
+ "CINAHL Ultimate subject list": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:12:45Z",
+  "query": ".../cul-subject.htm (downloaded)",
+  "fetched": 6262,
+  "pagination": "single file",
+  "notes": "Full-text subject list: 655 rows (distinct ISSNs 593) under discipline Nursing. It covers the full-text subset only, so the coverage list is pooled too.",
+  "rawFiles": {
+   "cinahl/cul-subject.htm": {
+    "sha256": "eb68341014347f72948d76c66d6fbb232ed6ef438a4921d3aae5b0945001eebb",
+    "bytes": 3185591
+   },
+   "cinahl/cul-subject.json": {
+    "sha256": "04cb266339a8b040e66c712efdacc620162e33ca967eff21fb2d9605b3824be4",
+    "bytes": 2084260
+   }
+  }
+ },
+ "NLM Catalog: Nursing": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:14:38Z",
+  "query": "\"Nursing\"[Subject] AND serial[Type]",
+  "fetched": 3090,
+  "pagination": "esearch count 3090 = ids fetched (retmax 10000, retstart paging)",
+  "notes": "Nursing-specific NLM subject heading",
+  "rawFiles": {}
+ },
+ "NLM Catalog: Nursing Care": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:14:43Z",
+  "query": "\"Nursing Care\"[Subject] AND serial[Type]",
+  "fetched": 303,
+  "pagination": "esearch count 303 = ids fetched (retmax 10000, retstart paging)",
+  "notes": "Nursing-specific NLM subject heading",
+  "rawFiles": {}
+ },
+ "NLM Catalog: Nursing Research": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:14:46Z",
+  "query": "\"Nursing Research\"[Subject] AND serial[Type]",
+  "fetched": 116,
+  "pagination": "esearch count 116 = ids fetched (retmax 10000, retstart paging)",
+  "notes": "Nursing-specific NLM subject heading",
+  "rawFiles": {}
+ },
+ "NLM Catalog: Midwifery": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:14:50Z",
+  "query": "\"Midwifery\"[Subject] AND serial[Type]",
+  "fetched": 199,
+  "pagination": "esearch count 199 = ids fetched (retmax 10000, retstart paging)",
+  "notes": "Nursing-specific NLM subject heading",
+  "rawFiles": {}
+ },
+ "SciELO collection arg": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:14:51Z",
+  "query": "GET /api/v1/journal/?collection=arg",
+  "fetched": 197,
+  "reportedJournalCount": null,
+  "pagination": "single response per collection",
+  "notes": "Argentina",
+  "rawFiles": {}
+ },
+ "NLM Catalog: Nurse Midwives": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:14:53Z",
+  "query": "\"Nurse Midwives\"[Subject] AND serial[Type]",
+  "fetched": 18,
+  "pagination": "esearch count 18 = ids fetched (retmax 10000, retstart paging)",
+  "notes": "Nursing-specific NLM subject heading",
+  "rawFiles": {}
+ },
+ "INANE Directory of Nursing Journals": {
+  "status": "blocked",
+  "retrieved": "2026-10-29T04:15:01Z",
+  "query": "https://nursingeditors.com/journals-directory/ (page) -> https://airtable.com/shrjqveaKHtS9xku8/tblNXTxmTr18CC1If (the directory itself)",
+  "fetched": 0,
+  "pagination": "n/a",
+  "failures": "The 275-journal directory is an Airtable shared view. airtable.com/robots.txt disallows /shr* and /embed/*; the INANE page itself has no entries and offers no export link. Not read.",
+  "accessTerms": "INANE web content is CC BY-NC-SA 4.0 (permissions beyond it via nursingeditors.com/feedback). Airtable robots.txt disallows crawling the shared-view path. Each directory entry holds: journal name, editor name and contact details, description, cover image, society-journal flag, link to the journal website. It does NOT hold ISSNs.",
+  "manualExportRequirement": {
+   "who": "a person with the right to export it (INANE directory maintainers, contact via the INANE site \"Request a Journals Directory Listing\" / feedback form, or a viewer using the shared view's own Download CSV if INANE enabled it), under INANE's permission because CC BY-NC-SA is non-commercial",
+   "columns_needed": [
+    "journal name",
+    "journal website URL",
+    "society-journal flag (Y/N)"
+   ],
+   "columns_not_wanted": [
+    "editor names and contact details (personal data)",
+    "descriptions and cover images (copyright)"
+   ],
+   "then": "each journal is resolved to its ISSN by exact title/URL through Crossref or the journal site, and passes the same dedupe, scope and publication-evidence checks as every other candidate; the directory is evidence of vetting, never of rights or of current publication"
+  },
+  "notes": "Coverage gap: up to 275 vetted nursing journals not collected.",
+  "rawFiles": {}
+ },
+ "NLM Catalog: Nurses": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:15:11Z",
+  "query": "\"Nurses\"[Subject] AND serial[Type]",
+  "fetched": 1102,
+  "pagination": "esearch count 1102 = ids fetched (retmax 10000, retstart paging)",
+  "notes": "Nursing-specific NLM subject heading",
+  "rawFiles": {}
+ },
+ "SciELO collection chl": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:15:14Z",
+  "query": "GET /api/v1/journal/?collection=chl",
+  "fetched": 166,
+  "reportedJournalCount": 163,
+  "pagination": "single response per collection",
+  "notes": "Chile",
+  "rawFiles": {}
+ },
+ "NLM Catalog: Nurse Practitioners": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:15:14Z",
+  "query": "\"Nurse Practitioners\"[Subject] AND serial[Type]",
+  "fetched": 34,
+  "pagination": "esearch count 34 = ids fetched (retmax 10000, retstart paging)",
+  "notes": "Nursing-specific NLM subject heading",
+  "rawFiles": {}
+ },
+ "NLM Catalog: Education, Nursing": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:15:20Z",
+  "query": "\"Education, Nursing\"[Subject] AND serial[Type]",
+  "fetched": 207,
+  "pagination": "esearch count 207 = ids fetched (retmax 10000, retstart paging)",
+  "notes": "Nursing-specific NLM subject heading",
+  "rawFiles": {}
+ },
+ "NLM Catalog: Pediatric Nursing": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:15:25Z",
+  "query": "\"Pediatric Nursing\"[Subject] AND serial[Type]",
+  "fetched": 44,
+  "pagination": "esearch count 44 = ids fetched (retmax 10000, retstart paging)",
+  "notes": "Nursing-specific NLM subject heading",
+  "rawFiles": {}
+ },
+ "NLM Catalog: Psychiatric Nursing": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:15:28Z",
+  "query": "\"Psychiatric Nursing\"[Subject] AND serial[Type]",
+  "fetched": 52,
+  "pagination": "esearch count 52 = ids fetched (retmax 10000, retstart paging)",
+  "notes": "Nursing-specific NLM subject heading",
+  "rawFiles": {}
+ },
+ "NLM Catalog: Critical Care Nursing": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:15:31Z",
+  "query": "\"Critical Care Nursing\"[Subject] AND serial[Type]",
+  "fetched": 17,
+  "pagination": "esearch count 17 = ids fetched (retmax 10000, retstart paging)",
+  "notes": "Nursing-specific NLM subject heading",
+  "rawFiles": {}
+ },
+ "NLM Catalog: Emergency Nursing": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:15:33Z",
+  "query": "\"Emergency Nursing\"[Subject] AND serial[Type]",
+  "fetched": 23,
+  "pagination": "esearch count 23 = ids fetched (retmax 10000, retstart paging)",
+  "notes": "Nursing-specific NLM subject heading",
+  "rawFiles": {}
+ },
+ "SciELO collection col": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:15:34Z",
+  "query": "GET /api/v1/journal/?collection=col",
+  "fetched": 255,
+  "reportedJournalCount": null,
+  "pagination": "single response per collection",
+  "notes": "Colombia",
+  "rawFiles": {}
+ },
+ "NLM Catalog: Oncology Nursing": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:15:37Z",
+  "query": "\"Oncology Nursing\"[Subject] AND serial[Type]",
+  "fetched": 43,
+  "pagination": "esearch count 43 = ids fetched (retmax 10000, retstart paging)",
+  "notes": "Nursing-specific NLM subject heading",
+  "rawFiles": {}
+ },
+ "NLM Catalog: Obstetric Nursing": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:15:41Z",
+  "query": "\"Obstetric Nursing\"[Subject] AND serial[Type]",
+  "fetched": 15,
+  "pagination": "esearch count 15 = ids fetched (retmax 10000, retstart paging)",
+  "notes": "Nursing-specific NLM subject heading",
+  "rawFiles": {}
+ },
+ "NLM Catalog: Community Health Nursing": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:15:44Z",
+  "query": "\"Community Health Nursing\"[Subject] AND serial[Type]",
+  "fetched": 53,
+  "pagination": "esearch count 53 = ids fetched (retmax 10000, retstart paging)",
+  "notes": "Nursing-specific NLM subject heading",
+  "rawFiles": {}
+ },
+ "NLM Catalog: Geriatric Nursing": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:15:47Z",
+  "query": "\"Geriatric Nursing\"[Subject] AND serial[Type]",
+  "fetched": 26,
+  "pagination": "esearch count 26 = ids fetched (retmax 10000, retstart paging)",
+  "notes": "Nursing-specific NLM subject heading",
+  "rawFiles": {}
+ },
+ "NLM Catalog: Perioperative Nursing": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:15:51Z",
+  "query": "\"Perioperative Nursing\"[Subject] AND serial[Type]",
+  "fetched": 30,
+  "pagination": "esearch count 30 = ids fetched (retmax 10000, retstart paging)",
+  "notes": "Nursing-specific NLM subject heading",
+  "rawFiles": {}
+ },
+ "NLM Catalog: Public Health Nursing": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:15:54Z",
+  "query": "\"Public Health Nursing\"[Subject] AND serial[Type]",
+  "fetched": 70,
+  "pagination": "esearch count 70 = ids fetched (retmax 10000, retstart paging)",
+  "notes": "Nursing-specific NLM subject heading",
+  "rawFiles": {}
+ },
+ "NLM Catalog: Nursing Informatics": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:15:56Z",
+  "query": "\"Nursing Informatics\"[Subject] AND serial[Type]",
+  "fetched": 3,
+  "pagination": "esearch count 3 = ids fetched (retmax 10000, retstart paging)",
+  "notes": "Nursing-specific NLM subject heading",
+  "rawFiles": {}
+ },
+ "NLM Catalog: Neonatal Nursing": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:16:00Z",
+  "query": "\"Neonatal Nursing\"[Subject] AND serial[Type]",
+  "fetched": 21,
+  "pagination": "esearch count 21 = ids fetched (retmax 10000, retstart paging)",
+  "notes": "Nursing-specific NLM subject heading",
+  "rawFiles": {}
+ },
+ "OpenAlex (topics.field.id:29, type:journal)": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:16:01Z",
+  "query": "GET /sources?filter=type:journal,topics.field.id:29&select=...&per-page=200 (cursor paging)",
+  "fetched": 15947,
+  "reportedTotal": 15947,
+  "pagination": "80 pages, cursor exhausted: True",
+  "failures": 0,
+  "notes": "Documented source filter. The Nursing field also contains Nutrition and Dietetics, so membership alone is not nursing scope; topic weights are scored later. counts_by_year gives works per year for the recent-publication evidence.",
+  "rawFiles": {
+   "openalex-nursing.ndjson": {
+    "sha256": "1540b6eea725e1d0243677b025b6e9f04ccbdb8fdc7c272b6ba926e54f50c31f",
+    "bytes": 44990993
+   }
+  }
+ },
+ "NLM Catalog: Rehabilitation Nursing": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:16:05Z",
+  "query": "\"Rehabilitation Nursing\"[Subject] AND serial[Type]",
+  "fetched": 6,
+  "pagination": "esearch count 6 = ids fetched (retmax 10000, retstart paging)",
+  "notes": "Nursing-specific NLM subject heading",
+  "rawFiles": {}
+ },
+ "NLM Catalog: Nursing Administration Research": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:16:07Z",
+  "query": "\"Nursing Administration Research\"[Subject] AND serial[Type]",
+  "fetched": 0,
+  "pagination": "esearch count 0 = ids fetched (retmax 10000, retstart paging)",
+  "notes": "Nursing-specific NLM subject heading",
+  "rawFiles": {}
+ },
+ "NLM Catalog: Nursing Assessment": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:16:10Z",
+  "query": "\"Nursing Assessment\"[Subject] AND serial[Type]",
+  "fetched": 4,
+  "pagination": "esearch count 4 = ids fetched (retmax 10000, retstart paging)",
+  "notes": "Nursing-specific NLM subject heading",
+  "rawFiles": {}
+ },
+ "NLM Catalog: Nursing Diagnosis": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:16:13Z",
+  "query": "\"Nursing Diagnosis\"[Subject] AND serial[Type]",
+  "fetched": 8,
+  "pagination": "esearch count 8 = ids fetched (retmax 10000, retstart paging)",
+  "notes": "Nursing-specific NLM subject heading",
+  "rawFiles": {}
+ },
+ "NLM Catalog: School Nursing": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:16:15Z",
+  "query": "\"School Nursing\"[Subject] AND serial[Type]",
+  "fetched": 7,
+  "pagination": "esearch count 7 = ids fetched (retmax 10000, retstart paging)",
+  "notes": "Nursing-specific NLM subject heading",
+  "rawFiles": {}
+ },
+ "NLM Catalog: Occupational Health Nursing": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:16:18Z",
+  "query": "\"Occupational Health Nursing\"[Subject] AND serial[Type]",
+  "fetched": 20,
+  "pagination": "esearch count 20 = ids fetched (retmax 10000, retstart paging)",
+  "notes": "Nursing-specific NLM subject heading",
+  "rawFiles": {}
+ },
+ "NLM Catalog: Nursing, Practical": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:16:20Z",
+  "query": "\"Nursing, Practical\"[Subject] AND serial[Type]",
+  "fetched": 27,
+  "pagination": "esearch count 27 = ids fetched (retmax 10000, retstart paging)",
+  "notes": "Nursing-specific NLM subject heading",
+  "rawFiles": {}
+ },
+ "NLM Catalog: Nurse Clinicians": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:16:22Z",
+  "query": "\"Nurse Clinicians\"[Subject] AND serial[Type]",
+  "fetched": 8,
+  "pagination": "esearch count 8 = ids fetched (retmax 10000, retstart paging)",
+  "notes": "Nursing-specific NLM subject heading",
+  "rawFiles": {}
+ },
+ "NLM Catalog: Nurse Anesthetists": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:16:25Z",
+  "query": "\"Nurse Anesthetists\"[Subject] AND serial[Type]",
+  "fetched": 16,
+  "pagination": "esearch count 16 = ids fetched (retmax 10000, retstart paging)",
+  "notes": "Nursing-specific NLM subject heading",
+  "rawFiles": {}
+ },
+ "NLM Catalog: Forensic Nursing": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:16:27Z",
+  "query": "\"Forensic Nursing\"[Subject] AND serial[Type]",
+  "fetched": 1,
+  "pagination": "esearch count 1 = ids fetched (retmax 10000, retstart paging)",
+  "notes": "Nursing-specific NLM subject heading",
+  "rawFiles": {}
+ },
+ "NLM Catalog: Palliative Care": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:16:30Z",
+  "query": "\"Palliative Care\"[Subject] AND serial[Type]",
+  "fetched": 95,
+  "pagination": "esearch count 95 = ids fetched (retmax 10000, retstart paging)",
+  "notes": "Nursing-specific NLM subject heading",
+  "rawFiles": {}
+ },
+ "NLM Catalog (merged)": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:16:31Z",
+  "query": "31 Nursing-specific headings, serial[Type]",
+  "fetched": 3614,
+  "pagination": "all headings paged to completion",
+  "notes": "unique serials across headings; broad medical headings deliberately not used. NLM dates (open-ended or closed) are kept as facts but are never the final verdict.",
+  "rawFiles": {
+   "nlm-nursing-serials.json": {
+    "sha256": "d503e4e952efad5877b54284ca407bb79787f1f043a65d2b2a7e21a0a08192b0",
+    "bytes": 1265975
+   }
+  }
+ },
+ "SciELO collection cub": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:16:42Z",
+  "query": "GET /api/v1/journal/?collection=cub",
+  "fetched": 101,
+  "reportedJournalCount": 97,
+  "pagination": "single response per collection",
+  "notes": "Cuba",
+  "rawFiles": {}
+ },
+ "SciELO collection esp": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:16:49Z",
+  "query": "GET /api/v1/journal/?collection=esp",
+  "fetched": 77,
+  "reportedJournalCount": 74,
+  "pagination": "single response per collection",
+  "notes": "Spain",
+  "rawFiles": {}
+ },
+ "SciELO collection mex": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:17:56Z",
+  "query": "GET /api/v1/journal/?collection=mex",
+  "fetched": 281,
+  "reportedJournalCount": 276,
+  "pagination": "single response per collection",
+  "notes": "Mexico",
+  "rawFiles": {}
+ },
+ "SciELO collection prt": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:18:27Z",
+  "query": "GET /api/v1/journal/?collection=prt",
+  "fetched": 102,
+  "reportedJournalCount": 101,
+  "pagination": "single response per collection",
+  "notes": "Portugal",
+  "rawFiles": {}
+ },
+ "SciELO collection books": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:18:29Z",
+  "query": "GET /api/v1/journal/?collection=books",
+  "fetched": 0,
+  "reportedJournalCount": null,
+  "pagination": "single response per collection",
+  "notes": "SciELO Books",
+  "rawFiles": {}
+ },
+ "SciELO collection scl": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:18:41Z",
+  "query": "GET /api/v1/journal/?collection=scl",
+  "fetched": 427,
+  "reportedJournalCount": 413,
+  "pagination": "single response per collection",
+  "notes": "Brazil",
+  "rawFiles": {}
+ },
+ "SciELO collection spa": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:18:45Z",
+  "query": "GET /api/v1/journal/?collection=spa",
+  "fetched": 20,
+  "reportedJournalCount": 20,
+  "pagination": "single response per collection",
+  "notes": "Public Health",
+  "rawFiles": {}
+ },
+ "SciELO collection sss": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:18:49Z",
+  "query": "GET /api/v1/journal/?collection=sss",
+  "fetched": 33,
+  "reportedJournalCount": 33,
+  "pagination": "single response per collection",
+  "notes": "Social Sciences",
+  "rawFiles": {}
+ },
+ "SciELO collection sza": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:18:56Z",
+  "query": "GET /api/v1/journal/?collection=sza",
+  "fetched": 121,
+  "reportedJournalCount": 117,
+  "pagination": "single response per collection",
+  "notes": "South Africa",
+  "rawFiles": {}
+ },
+ "DOAJ (journal CSV)": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:19:03Z",
+  "query": "https://doaj.org/csv, filter: Subjects ~ Nursing|Midwifery, or multilingual nursing term in title/alt title/keywords",
+  "fetched": 23554,
+  "pagination": "single CSV file",
+  "selected": 389,
+  "selectedBreakdown": {
+   "doajSubject": 230,
+   "titleTermOnly": 15,
+   "keywordOnly": 144
+  },
+  "notes": "DOAJ licence fields are kept as facts for the Accepted test only; a DOAJ listing is not used as scope evidence for keyword-only hits.",
+  "rawFiles": {
+   "doaj.csv": {
+    "sha256": "d33c0556f7f205f80c2e3fc94a1fc96634eadde1d537b1d7c50abda8dd603eba",
+    "bytes": 25907814
+   },
+   "doaj-nursing.json": {
+    "sha256": "82eaafdea93279a8b34ee952a35c95e49fde9ed8c384188c9c7a8d3c6f5a20ff",
+    "bytes": 201012
+   }
+  }
+ },
+ "SciELO collection ven": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:19:07Z",
+  "query": "GET /api/v1/journal/?collection=ven",
+  "fetched": 88,
+  "reportedJournalCount": 68,
+  "pagination": "single response per collection",
+  "notes": "Venezuela",
+  "rawFiles": {}
+ },
+ "SciELO collection bio": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:19:10Z",
+  "query": "GET /api/v1/journal/?collection=bio",
+  "fetched": 0,
+  "reportedJournalCount": null,
+  "pagination": "single response per collection",
+  "notes": "Biodiversity Heritage Library",
+  "rawFiles": {}
+ },
+ "SciELO collection bol": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:19:15Z",
+  "query": "GET /api/v1/journal/?collection=bol",
+  "fetched": 43,
+  "reportedJournalCount": null,
+  "pagination": "single response per collection",
+  "notes": "Bolivia",
+  "rawFiles": {}
+ },
+ "KoreaMed journal browser": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:19:17Z",
+  "query": "GET https://koreamed.org/JournalBrowserNew.php (robots.txt: Disallow empty = all allowed)",
+  "fetched": 501,
+  "pagination": "single page, alphabetical list",
+  "renameRelations": 210,
+  "notes": "title, abbreviation, ISSN, KoreaMed id and \"now published as\" relations. No subject per journal is published here, so Nursing scope comes from other signals.",
+  "rawFiles": {
+   "koreamed.json": {
+    "sha256": "ab2245418f94667b4b16755f0f6fd1f5c4c871c09191b29abf4ccb17ee9f87af",
+    "bytes": 139477
+   }
+  }
+ },
+ "SciELO collection cri": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:19:22Z",
+  "query": "GET /api/v1/journal/?collection=cri",
+  "fetched": 62,
+  "reportedJournalCount": 56,
+  "pagination": "single response per collection",
+  "notes": "Costa Rica",
+  "rawFiles": {}
+ },
+ "SciELO collection per": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:19:27Z",
+  "query": "GET /api/v1/journal/?collection=per",
+  "fetched": 63,
+  "reportedJournalCount": 57,
+  "pagination": "single response per collection",
+  "notes": "Peru",
+  "rawFiles": {}
+ },
+ "SciELO collection pro": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:19:30Z",
+  "query": "GET /api/v1/journal/?collection=pro",
+  "fetched": 0,
+  "reportedJournalCount": null,
+  "pagination": "single response per collection",
+  "notes": "Proceedings",
+  "rawFiles": {}
+ },
+ "KAMJE member journals": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:19:33Z",
+  "query": "GET https://www.kamje.or.kr/association/list_association",
+  "fetched": 297,
+  "pagination": "single page",
+  "nursingByOfficialSocietyOrTitle": 17,
+  "notes": "Society name containing 간호 (nursing) is used as scope evidence; the list has no ISSNs, journals are joined to KoreaMed by exact title.",
+  "rawFiles": {
+   "kamje-members.html": {
+    "sha256": "3e7f0fc9c7c4492e8a02a52253a4cbeeb18e060dcb8e38308ff5bb7d5762b4a0",
+    "bytes": 291887
+   },
+   "kamje-members.json": {
+    "sha256": "c766f7b7d5d33e19b1d8e555822019728478ba29d584ad812dd311b780f939b4",
+    "bytes": 92204
+   }
+  }
+ },
+ "SciELO collection pry": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:19:34Z",
+  "query": "GET /api/v1/journal/?collection=pry",
+  "fetched": 23,
+  "reportedJournalCount": 23,
+  "pagination": "single response per collection",
+  "notes": "Paraguay",
+  "rawFiles": {}
+ },
+ "SciELO collection ury": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:19:40Z",
+  "query": "GET /api/v1/journal/?collection=ury",
+  "fetched": 34,
+  "reportedJournalCount": 33,
+  "pagination": "single response per collection",
+  "notes": "Uruguay",
+  "rawFiles": {}
+ },
+ "SciELO collection wid": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:19:43Z",
+  "query": "GET /api/v1/journal/?collection=wid",
+  "fetched": 1,
+  "reportedJournalCount": 1,
+  "pagination": "single response per collection",
+  "notes": "West Indies",
+  "rawFiles": {}
+ },
+ "SciELO collection cci": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:19:46Z",
+  "query": "GET /api/v1/journal/?collection=cci",
+  "fetched": 0,
+  "reportedJournalCount": null,
+  "pagination": "single response per collection",
+  "notes": "ComCiência",
+  "rawFiles": {}
+ },
+ "SciELO collection cic": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:19:49Z",
+  "query": "GET /api/v1/journal/?collection=cic",
+  "fetched": 1,
+  "reportedJournalCount": 1,
+  "pagination": "single response per collection",
+  "notes": "Ciência e Cultura",
+  "rawFiles": {}
+ },
+ "SciELO collection inv": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:19:53Z",
+  "query": "GET /api/v1/journal/?collection=inv",
+  "fetched": 0,
+  "reportedJournalCount": null,
+  "pagination": "single response per collection",
+  "notes": "Conhecimento & Inovação",
+  "rawFiles": {}
+ },
+ "SciELO collection pef": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:19:58Z",
+  "query": "GET /api/v1/journal/?collection=pef",
+  "fetched": 0,
+  "reportedJournalCount": null,
+  "pagination": "single response per collection",
+  "notes": "Pesquisa FAPESP",
+  "rawFiles": {}
+ },
+ "SciELO collection edc": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:20:01Z",
+  "query": "GET /api/v1/journal/?collection=edc",
+  "fetched": 0,
+  "reportedJournalCount": null,
+  "pagination": "single response per collection",
+  "notes": "Educa",
+  "rawFiles": {}
+ },
+ "SciELO collection ppg": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:20:08Z",
+  "query": "GET /api/v1/journal/?collection=ppg",
+  "fetched": 0,
+  "reportedJournalCount": null,
+  "pagination": "single response per collection",
+  "notes": "Portal de Periódicos Eletrônicos em Geociências",
+  "rawFiles": {}
+ },
+ "J-STAGE official journal list": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:20:45Z",
+  "query": "https://www.jstage.jst.go.jp/pub/jnllist/journals_list_en.zip (J-STAGE \"Public data\"), UPDATE:2026/10/29 03:45:00",
+  "fetched": 4509,
+  "pagination": "single file",
+  "nursingByTitleOrOrganisation": 75,
+  "notes": "Official public-data export; CURRENT PUBDATE is J-STAGE's own latest-publication date. No subject area is published, so scope comes from title/organisation words and other sources. Per-ISSN WebAPI queries stay available for single journals. List pages were not scraped.",
+  "rawFiles": {
+   "jstage/journals_list_en.zip": {
+    "sha256": "5ec1f3dde08e0e23777246a1da42941356cd6325761804311298c235fb591e56",
+    "bytes": 482951
+   },
+   "jstage-journals.json": {
+    "sha256": "d1ab9a97e363261ba78186c28a2bf844fd44d45225d82de8de3f18e51fa568e7",
+    "bytes": 2243597
+   }
+  }
+ },
+ "SciELO collection psi": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:20:57Z",
+  "query": "GET /api/v1/journal/?collection=psi",
+  "fetched": 118,
+  "reportedJournalCount": 152,
+  "pagination": "single response per collection",
+  "notes": "Periódicos Eletrônicos em Psicologia",
+  "rawFiles": {}
+ },
+ "SciELO collection rve": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:21:01Z",
+  "query": "GET /api/v1/journal/?collection=rve",
+  "fetched": 19,
+  "reportedJournalCount": 19,
+  "pagination": "single response per collection",
+  "notes": "Revista de Enfermagem",
+  "rawFiles": {}
+ },
+ "SciELO collection rvo": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:21:06Z",
+  "query": "GET /api/v1/journal/?collection=rvo",
+  "fetched": 0,
+  "reportedJournalCount": null,
+  "pagination": "single response per collection",
+  "notes": "RevOdonto",
+  "rawFiles": {}
+ },
+ "SciELO collection ses": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:21:19Z",
+  "query": "GET /api/v1/journal/?collection=ses",
+  "fetched": 0,
+  "reportedJournalCount": null,
+  "pagination": "single response per collection",
+  "notes": "Portal de Revistas - SES",
+  "rawFiles": {}
+ },
+ "SciELO collection ecu": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:21:55Z",
+  "query": "GET /api/v1/journal/?collection=ecu",
+  "fetched": 40,
+  "reportedJournalCount": 37,
+  "pagination": "single response per collection",
+  "notes": "Ecuador",
+  "rawFiles": {}
+ },
+ "SciELO collection rvt": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:22:00Z",
+  "query": "GET /api/v1/journal/?collection=rvt",
+  "fetched": 1,
+  "reportedJournalCount": 1,
+  "pagination": "single response per collection",
+  "notes": "RevTur",
+  "rawFiles": {}
+ },
+ "SciELO collection preprints": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:22:03Z",
+  "query": "GET /api/v1/journal/?collection=preprints",
+  "fetched": 0,
+  "reportedJournalCount": null,
+  "pagination": "single response per collection",
+  "notes": "SciELO Preprints",
+  "rawFiles": {}
+ },
+ "SciELO collection data": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:22:06Z",
+  "query": "GET /api/v1/journal/?collection=data",
+  "fetched": 0,
+  "reportedJournalCount": null,
+  "pagination": "single response per collection",
+  "notes": "SciELO Data",
+  "rawFiles": {}
+ },
+ "SciELO collection dom": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:22:10Z",
+  "query": "GET /api/v1/journal/?collection=dom",
+  "fetched": 7,
+  "reportedJournalCount": null,
+  "pagination": "single response per collection",
+  "notes": "Dominican Republic",
+  "rawFiles": {}
+ },
+ "SciELO (merged)": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:22:12Z",
+  "query": "ArticleMeta /collection/identifiers then /journal/?collection=<code> for each",
+  "fetched": 2280,
+  "collections": 36,
+  "failedCollections": [],
+  "notes": "search.scielo.org (bot challenge) not used; no scraping of www.scielo.org pages.",
+  "rawFiles": {
+   "scielo-all.json": {
+    "sha256": "970c6ca43f61cd817941cce46e207aafdfc0228eed7022cc13f83ee8eb718163",
+    "bytes": 1182487
+   }
+  }
+ },
+ "REVENF / BVS Enfermería (and BVS journal portals)": {
+  "status": "blocked",
+  "retrieved": "2026-10-29T04:23:19Z",
+  "query": "revenf.bvs.br, bvsalud.org, portal.revistas.bvsalud.org, enfermeria.bvsalud.org probed 2026-10-29",
+  "fetched": 0,
+  "failures": "revenf.bvs.br 403; bvsalud.org 403; portal.revistas.bvsalud.org and enfermeria.bvsalud.org unreachable from this network; lilacs.bvsalud.org/en 404",
+  "notes": "No official list or export reachable. Latin-American nursing journals are covered through the SciELO ArticleMeta collections instead (see SciELO). Not bypassed.",
+  "rawFiles": {}
+ },
+ "Large publisher catalogues (Elsevier/ScienceDirect, Wolters Kluwer/LWW, Wiley, Taylor & Francis, Sage, Karger, Emerald, MDPI)": {
+  "status": "blocked",
+  "retrieved": "2026-10-29T04:23:19Z",
+  "query": "nursing subject listing pages probed 2026-10-28",
+  "fetched": 0,
+  "failures": "automated requests receive 403 (bot protection); not bypassed",
+  "notes": "A publisher KBART / title-list file or a manual export is the lawful route. Their nursing journals reach this pipeline through Crossref, OpenAlex, NLM and CINAHL.",
+  "rawFiles": {}
+ },
+ "Nursing society / publisher sites (Sigma, ONS, ICN, AORN, RCNi, Springer Publishing, JANS, ANA)": {
+  "status": "partial",
+  "retrieved": "2026-10-29T04:23:19Z",
+  "query": "home / publications pages probed 2026-10-29",
+  "fetched": 0,
+  "failures": "ANA (nursingworld.org) 403; Springer Publishing journal list is script-rendered and exposes no link list; Sigma, ONS, ICN, AORN, RCNi, JANS answer 200",
+  "notes": "Reachable sites publish no machine-readable journal list, and a per-site HTML parser would be fragile and unverifiable, so no candidates were taken from them directly. Their journals are covered by the registry sources, and official journal homepages are used for scope and recency evidence candidate by candidate (scope_excerpt step).",
+  "rawFiles": {}
+ },
+ "Japanese nursing societies (outside J-STAGE)": {
+  "status": "not-attempted",
+  "retrieved": "2026-10-29T04:23:19Z",
+  "query": "n/a",
+  "fetched": 0,
+  "notes": "Society-hosted journals not on J-STAGE would need each society's own site; J-STAGE's official list (4,509 journals, 75 with a nursing word in title/organisation) covers the societies that publish there.",
+  "rawFiles": {}
+ },
+ "ISSN recovery (Crossref journal records)": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:48:12Z",
+  "query": "GET https://api.crossref.org/journals?query=<title>&rows=8, accept only exact title + publisher + unique",
+  "fetched": 1871,
+  "attempted": {
+   "NLM Catalog": 1412,
+   "J-STAGE": 88,
+   "OpenAlex": 371
+  },
+  "recovered": {
+   "NLM Catalog": 2,
+   "J-STAGE": 0,
+   "OpenAlex": 0
+  },
+  "failures": 0,
+  "notes": "Records without an ISSN cannot be inserted; recovery is the only way they can become eligible. Unrecovered records stay without an ISSN.",
+  "rawFiles": {}
+ }
+}

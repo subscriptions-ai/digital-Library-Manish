@@ -58,5 +58,27 @@ for r in exp['nr']:
 pool=json.load(open(f'{W}/nu/pool.json'))
 for m in pool['netNew']:
     m['scope']=signals(m['title'],m['publisher'],m['issns']); res['netNew'].append(m)
+# Journals a catalogue says have ENDED are not sent for evidence calls (their reason is recorded and they stay held): NLM publication dates that are closed with no other live
+# signal, or CINAHL indexing that stopped before 2024 with no live NLM/undated record.
+def nlmstate(m):
+    n=m.get('nlm')
+    if not n: return None
+    t=(n.get('issued') or '').strip()
+    if not t: return 'undated'
+    if re.search(r'-\s*\]?\s*$',t): return 'open'
+    if re.search(r'-\s*\[?\s*c?\d{4}',t) or re.search(r'-\s*\[?\d{4}\]?\s*\.?$',t): return 'closed'
+    return 'undated'
+def cinstop(m):
+    c=m.get('cinahl')
+    if not c: return None
+    st=(c.get('idxStop') or '').strip()
+    if not st: return 'current'
+    y=int(st[-4:]) if re.search(r'\d{4}$',st) else 0
+    return 'stopped<2024' if y<2024 else 'stopped>=2024'
+for m in res['netNew']:
+    if m['scope']['tier'] in ('C','X'): continue
+    st,cs=nlmstate(m),cinstop(m)
+    if st=='closed' and cs in (None,'stopped<2024'): m['skipReason']='NLM publication dates are closed'
+    elif cs=='stopped<2024' and st in (None,'closed','undated'): m['skipReason']='CINAHL stopped indexing before 2024'
 json.dump(res,open(f'{W}/nu/scope-scored.json','w'),ensure_ascii=False)
 for k in res: print(k,len(res[k]),dict(collections.Counter(x['scope']['tier'] for x in res[k])))

@@ -1,0 +1,615 @@
+{
+ "runId": "nursing-coverage-2026-10-29-79a08766",
+ "state": "EXECUTED",
+ "authorization": "User authorization 2026-10-28/29: insertion of validated net-new Nursing journals only (canary <= 25, then batches <= 100); no relaxing of validation; existing journals, NeedsReview status changes, article/full-text ingestion, licence changes and migrations excluded.",
+ "executed": {
+  "canary": "2026-10-29T05:07:30.352Z (25 rows)",
+  "remainder": "2026-10-29T05:08:58.494Z (17 rows)"
+ },
+ "frozenManifest": {
+  "file": "manifest-frozen.json",
+  "sha256": "9f74b106f68dfa5a9958732e921621d7cfac89fb503d0243ca5219c9fccadae8",
+  "candidates": 42
+ },
+ "planChecksums": {
+  "plan-canary.json": "6b96c851f59e0b61e4c07c8434d8cbe094aabbf23b5b675a63aa629832307371",
+  "plan-rest.json": "91ec17f7a986baa51b878136bab4d22fad7bd92f282a6444209c2e7bebf45394",
+  "frozen-hand-holds.json": "9eb632734405baea07ee1698fc952f83c7fd6329de735e5455ae1934a0519f54",
+  "hand-holds.json": "d90678a2a0ce6504fa8e340dab4d5190a8d04a3888f71fd7f52ed08d086de8d3",
+  "frozen-code-hashes.json": "9f25e567a2f70be8eb799e6d5605f63743ef681044647f4cedc5ffa188a91e2f"
+ },
+ "code": {
+  "gitHeadAtFreeze": "45db9d9d05596874bfabe1b1603967810aaa37f9",
+  "fileSha256": {
+   "scripts/journal-source-apply.cjs": "24fb2d34fc5c8931725e053a6491abf7090cc291915aebff3c60dc77b32c1e78",
+   "scripts/nursing-assessment/assess.py": "7c2aacbc3f3caba0d5f4fa27dc711b938e6dc161d86e96227bd4f30c72954f62",
+   "scripts/nursing-assessment/build_manifests.py": "b4375bfa03324db1a77f8194809855a74b4f42f10405c2923d4b37b18c08d4d3",
+   "scripts/nursing-assessment/build_pool.py": "628e434e6c8e7ac6c19f8b336fb1b9343c7bb644d4973207315970a6f5cf21c8",
+   "scripts/nursing-assessment/fetch_koreamed.py": "c2fe4822e34e7b1109b2b4cb72442bbfa73d9f9b190ddf6a3471c075bd1c59a4",
+   "scripts/nursing-assessment/fetch_scielo.py": "6d2197e8671074ed54d5f5d5da12ee9998609e667a3614a7a5c002b8a643ff93",
+   "scripts/nursing-assessment/freeze_expansion.py": "b61b66c8f7bc6a0b5fcfd3ea1408f7cae4ac71f23e0ffb018783e89f57b4588f",
+   "scripts/nursing-assessment/jstage_evidence.py": "580ddc307cca5d4ff4e449a7a3a53b7646b2007d07159cbe2a7828310c348ac3",
+   "scripts/nursing-assessment/official_site_probe.py": "158bd5d28923084dc8e0e52a569ae63423119074159a2f298145b374dd5b32a9",
+   "scripts/nursing-assessment/parse_cinahl.py": "630b203336fdfd56097ac562d1ee136efd68859953a2ef4f723758abb3cd6806",
+   "scripts/nursing-assessment/publication_evidence.py": "f86e89bce01f8664d4914f1e8e0ace23bf150d85d5867ff1f9a224d66d74b26a",
+   "scripts/nursing-assessment/rename_check.py": "2e97ebba15b1fec09c3c696c8d84daac3a69c4d776fcecfd830649c75354d255",
+   "scripts/nursing-assessment/report_stats.py": "134b47ba7d0b49acee07e1ebd411bef89127dee989fc4dcd5008ec81366d83dc",
+   "scripts/nursing-assessment/score_scope.py": "863072a3c4ef55c2c4fa4ec6ec1a5d5fc512399150c29f9c159544d1a4574605",
+   "scripts/nursing-coverage/common.py": "2a3144f654b0c3190d68ed6cf274d4f6ffcd1237a44cd64fb70f8a7e5dfbc580",
+   "scripts/nursing-coverage/fetch_cinahl.py": "bf26e1ae2c10dd6d3194dfa36666ea1acaed72ebff01777a5dd94ac23b10344f",
+   "scripts/nursing-coverage/fetch_doaj.py": "864d9889f66fb8008480e722c05fcac488d24be27ca8b79e61f3e1240dda0e5d",
+   "scripts/nursing-coverage/fetch_jstage.py": "dd6863b397d2be98c96ec652768fe0590c1685b3a5b8b4f47fc001c2816efa9e",
+   "scripts/nursing-coverage/fetch_kamje.py": "ac27bdbdd7099d1c02bcc83eb623d869d857ce9889a54e97346750bf6b3bf1dd",
+   "scripts/nursing-coverage/fetch_nlm.py": "b08156727f49820b4f2b07ba89e0cbdecf019098b4ffd752356ad71de644613f",
+   "scripts/nursing-coverage/fetch_openalex.py": "3ed12af98408cb0c6dc9c38788b9c9c3ec5bfb06611147a45427e4ef8f23b126",
+   "scripts/nursing-coverage/fetch_scielo.py": "0ed2fe1409d6991c48cb7f60ff016fa251310b18046bcd5e5f38226f44e218ec",
+   "scripts/nursing-coverage/ledger.py": "ccaeea871c41290e3a36ce8427b0c7e9e06163982fd4b8b97d3896c063422feb",
+   "scripts/nursing-coverage/parsers.py": "9e639445b92568aed5420f51e9a1737e74f3ef2dc05eab53e39408ff3d0ff86b",
+   "scripts/nursing-coverage/recover_issn.py": "9b2547764fdf672ffedf75248d68e3074174c92b18fe50a408b4aae7def4560f",
+   "scripts/nursing-coverage/scope_excerpt.py": "6fe6e2214d9270821951ff112a96154556bd35ae9ee815469796827c8be44119",
+   "scripts/nursing-coverage/stage1_pool.py": "e1ac57ddf3055a9f14f43fb5ad3c4342c899c671f2c5705fd5128709060adf36",
+   "scripts/nursing-coverage/stage3_decide.py": "4dd1c4c6618e2ef2d9c7e4d96545cf76a94444ed58f704c88c7358d38a871a2c",
+   "scripts/nursing-coverage/stage4_finalize.py": "c15c65af238f7158d749fbe6d2287b0d6b35a9dc3edc60a19f9415ac4974feb1",
+   "scripts/nursing-coverage/stage5_freeze.py": "4d0192248d24a0e10b7c86810784b52050a358520a5a058406c549dcbbfd1254",
+   "scripts/nursing-coverage/test_coverage.py": "ad1e00c6ea3d49d13f54cfbc91d4eff256e4706ff40aa159f7108131cbd9259e"
+  },
+  "tests": {
+   "scripts/nursing-coverage/test_coverage.py": "22 passed",
+   "scripts/test-nursing-expansion-manifest.ts": "run after the write (see report)",
+   "scripts/test-journal-source-import.ts": "39 passed",
+   "scripts/test-journal-status-apply.ts": "16 passed"
+  }
+ },
+ "production": {
+  "before": {
+   "at": "2026-10-29 ~05:04Z",
+   "total": 54534,
+   "status": {
+    "Accepted": 12840,
+    "MetadataOnly": 16087,
+    "NeedsReview": 25607
+   },
+   "nursing": {
+    "Accepted": 183,
+    "MetadataOnly": 371,
+    "NeedsReview": 827
+   },
+   "nursingPublic": 554,
+   "existingRowsHash": "4a4a41ed286754a74397dabfe59c16c4"
+  },
+  "after": {
+   "at": "2026-10-29 ~05:10Z",
+   "total": 54576,
+   "status": {
+    "Accepted": 12840,
+    "MetadataOnly": 16129,
+    "NeedsReview": 25607
+   },
+   "nursing": {
+    "Accepted": 183,
+    "MetadataOnly": 413,
+    "NeedsReview": 827
+   },
+   "nursingPublic": 596,
+   "existingRowsHashExcludingRun": "4a4a41ed286754a74397dabfe59c16c4",
+   "existingRowsUnchanged": true
+  }
+ },
+ "canaryVerification": {
+  "rows": 25,
+  "fieldSummary": {
+   "MetadataOnly | oa=false | noLicence | ncNull | notVerified | Nursing | SciELO listing — OA unverified | publisher": 2,
+   "MetadataOnly | oa=false | noLicence | ncNull | notVerified | Nursing | J-STAGE listing — OA unverified | publisher": 6,
+   "MetadataOnly | oa=false | noLicence | ncNull | notVerified | Nursing | NLM Catalog listing — OA unverified | publisher": 6,
+   "MetadataOnly | oa=false | noLicence | ncNull | notVerified | Nursing | CINAHL listing — OA unverified | publisher": 6,
+   "MetadataOnly | oa=false | noLicence | ncNull | notVerified | Nursing | OpenAlex listing — OA unverified | publisher": 5
+  },
+  "duplicateIssn": 0,
+  "crossFieldCollisions": 0,
+  "sameTitleRows": 0,
+  "articlesAttached": 0,
+  "publicDetailPages": {
+   "checked": 25,
+   "ok": 25,
+   "bad": []
+  },
+  "auditIdsEqualRunIds": true,
+  "existingRowsHashUnchanged": true,
+  "departmentListing": "batches/batch-1-canary-visibility.json"
+ },
+ "finalVerification": {
+  "rows": 42,
+  "fieldSummary": {
+   "MetadataOnly | oa=false | noLicence | ncNull | notVerified | Nursing | SciELO listing — OA unverified | publisher": 2,
+   "MetadataOnly | oa=false | noLicence | ncNull | notVerified | Nursing | J-STAGE listing — OA unverified | publisher": 21,
+   "MetadataOnly | oa=false | noLicence | ncNull | notVerified | Nursing | NLM Catalog listing — OA unverified | publisher": 6,
+   "MetadataOnly | oa=false | noLicence | ncNull | notVerified | Nursing | CINAHL listing — OA unverified | publisher": 6,
+   "MetadataOnly | oa=false | noLicence | ncNull | notVerified | Nursing | OpenAlex listing — OA unverified | publisher": 7
+  },
+  "duplicateIssn": 0,
+  "crossFieldCollisions": 0,
+  "sameTitleRows": 0,
+  "articlesAttached": 0,
+  "publicDetailPages": {
+   "checked": 42,
+   "ok": 42,
+   "bad": []
+  },
+  "auditEntries": 2,
+  "auditIdsEqualRunIds": true,
+  "departmentListingSweep": {
+   "total": 596,
+   "pages": 3,
+   "collected": 596,
+   "missing": [],
+   "info": {
+    "cache": null,
+    "etag": true
+   }
+  },
+  "search": {
+   "sampled": 12,
+   "foundByIssn": 12,
+   "foundByTitle": 12
+  },
+  "publicEdgeJournalsLibraryCom": {
+   "nursingJournalTotal": 596
+  }
+ },
+ "auditLocation": "Production table \"IngestionAudit\", action JOURNAL_SOURCE_IMPORT, meta.runId = this run id: 2 batch entries (25 + 17), each listing inserted id, issn, sourceId and evidence. Per-batch results and IDs were persisted in batches/ immediately after each batch.",
+ "inserted": {
+  "count": 42,
+  "ids": [
+   "d19703a3-7d8c-481c-be2a-61206c1cbd79",
+   "5a2ffbe0-a36a-4908-a41d-2dcf20628946",
+   "90256950-0603-40e0-8f93-9593300cce63",
+   "f6feb96e-b431-43e9-9e11-32ea906dc1ab",
+   "2490ad65-1817-4ff5-92ea-b7ccb0e2b7be",
+   "6f70b8d8-1edd-4d0a-91ee-b117927e2fed",
+   "38ea924c-2bc0-4bd6-8b9c-e6fa4ae32e27",
+   "f733d818-365b-45a0-a34e-bac34e0184e6",
+   "789c9cbc-6931-4a98-afe5-76faf3f7742c",
+   "ae323ffa-db72-4712-a1e6-a8e30d6bf390",
+   "9567d13e-296c-4e2e-936d-5f3f26b482f1",
+   "b02c0e2b-c6b6-4bbc-afb7-a936031af3f0",
+   "75779509-713b-49a9-a93d-84b0b3b53523",
+   "dcd279b6-b974-4f95-a2cb-2a1135dca922",
+   "e79703fe-31b1-4ccd-816b-d00ba2db314f",
+   "14240e15-b255-485c-9e61-0a0bde1d1c8a",
+   "16f1335a-07b2-437d-b17f-84ce37f4e521",
+   "0cb4e9e0-197f-4a83-acf2-599e215662b4",
+   "d29d05a5-38e2-405c-b986-e2620a4dde4d",
+   "5743ac80-7373-4086-8441-1c76f4689a08",
+   "4a647f7d-7ea1-4989-9ca7-6c7326b69411",
+   "ed18ce1e-dd3c-487b-b6d5-67d1b5c24fbf",
+   "8c9a47d1-1432-4828-8255-f75d6c517f72",
+   "2ae2640c-dac6-451c-8bce-c34fc9bf4b80",
+   "bce31694-df16-484e-9769-9077f394ee94",
+   "3af962c3-b568-4c44-b85a-a47e16841ea1",
+   "e12dc6e9-a280-457b-aff6-66bedcfbcd8f",
+   "594b1ed4-1203-4d35-af00-d5117c1cd6fe",
+   "b5e8f0bb-464a-4b96-a4b1-532c41a2c69a",
+   "643dc9b3-76e6-43a5-8dfc-85a25db28f7e",
+   "f8cf9e8e-b860-4fb0-866a-1063b9bbfaab",
+   "5027a9c9-d337-4b0d-a789-d60d2cd6e722",
+   "620592b3-4d02-458f-bdac-71db5580f155",
+   "fe64cb6b-f5cd-4910-8ef3-40288634475b",
+   "e398399e-2821-45d5-8a0f-ae732919d097",
+   "0f4f3961-f69c-4dc7-9e17-97980195437a",
+   "9c8cb565-e60e-43bd-92cb-2f8c29980009",
+   "15abdb52-17d1-46d6-9bf8-6015c3a0763d",
+   "e65fc753-0345-4a27-b089-4cc634166729",
+   "ba236ff7-f460-4823-a783-a1ed76cb44fa",
+   "520e9198-f9c6-4f03-9bf9-50db6b0019a2",
+   "2cde2324-ee7b-499d-9c85-96594ddaca43"
+  ],
+  "canaryIds": [
+   "d19703a3-7d8c-481c-be2a-61206c1cbd79",
+   "5a2ffbe0-a36a-4908-a41d-2dcf20628946",
+   "90256950-0603-40e0-8f93-9593300cce63",
+   "f6feb96e-b431-43e9-9e11-32ea906dc1ab",
+   "2490ad65-1817-4ff5-92ea-b7ccb0e2b7be",
+   "6f70b8d8-1edd-4d0a-91ee-b117927e2fed",
+   "38ea924c-2bc0-4bd6-8b9c-e6fa4ae32e27",
+   "f733d818-365b-45a0-a34e-bac34e0184e6",
+   "789c9cbc-6931-4a98-afe5-76faf3f7742c",
+   "ae323ffa-db72-4712-a1e6-a8e30d6bf390",
+   "9567d13e-296c-4e2e-936d-5f3f26b482f1",
+   "b02c0e2b-c6b6-4bbc-afb7-a936031af3f0",
+   "75779509-713b-49a9-a93d-84b0b3b53523",
+   "dcd279b6-b974-4f95-a2cb-2a1135dca922",
+   "e79703fe-31b1-4ccd-816b-d00ba2db314f",
+   "14240e15-b255-485c-9e61-0a0bde1d1c8a",
+   "16f1335a-07b2-437d-b17f-84ce37f4e521",
+   "0cb4e9e0-197f-4a83-acf2-599e215662b4",
+   "d29d05a5-38e2-405c-b986-e2620a4dde4d",
+   "5743ac80-7373-4086-8441-1c76f4689a08",
+   "4a647f7d-7ea1-4989-9ca7-6c7326b69411",
+   "ed18ce1e-dd3c-487b-b6d5-67d1b5c24fbf",
+   "8c9a47d1-1432-4828-8255-f75d6c517f72",
+   "2ae2640c-dac6-451c-8bce-c34fc9bf4b80",
+   "bce31694-df16-484e-9769-9077f394ee94"
+  ],
+  "restIds": [
+   "3af962c3-b568-4c44-b85a-a47e16841ea1",
+   "e12dc6e9-a280-457b-aff6-66bedcfbcd8f",
+   "594b1ed4-1203-4d35-af00-d5117c1cd6fe",
+   "b5e8f0bb-464a-4b96-a4b1-532c41a2c69a",
+   "643dc9b3-76e6-43a5-8dfc-85a25db28f7e",
+   "f8cf9e8e-b860-4fb0-866a-1063b9bbfaab",
+   "5027a9c9-d337-4b0d-a789-d60d2cd6e722",
+   "620592b3-4d02-458f-bdac-71db5580f155",
+   "fe64cb6b-f5cd-4910-8ef3-40288634475b",
+   "e398399e-2821-45d5-8a0f-ae732919d097",
+   "0f4f3961-f69c-4dc7-9e17-97980195437a",
+   "9c8cb565-e60e-43bd-92cb-2f8c29980009",
+   "15abdb52-17d1-46d6-9bf8-6015c3a0763d",
+   "e65fc753-0345-4a27-b089-4cc634166729",
+   "ba236ff7-f460-4823-a783-a1ed76cb44fa",
+   "520e9198-f9c6-4f03-9bf9-50db6b0019a2",
+   "2cde2324-ee7b-499d-9c85-96594ddaca43"
+  ],
+  "idIssnTitle": [
+   {
+    "id": "d19703a3-7d8c-481c-be2a-61206c1cbd79",
+    "issn": "1699-6011",
+    "eissn": null,
+    "title": "Temperamentvm",
+    "source": "SciELO listing — OA unverified"
+   },
+   {
+    "id": "5a2ffbe0-a36a-4908-a41d-2dcf20628946",
+    "issn": "2187-7122",
+    "eissn": "2189-7018",
+    "title": "Japanese Journal of Public Health Nursing",
+    "source": "J-STAGE listing — OA unverified"
+   },
+   {
+    "id": "90256950-0603-40e0-8f93-9593300cce63",
+    "issn": "1033-3355",
+    "eissn": "1036-7314",
+    "title": "Australian critical care : official journal of the Confederation of Australian Critical Care Nurses",
+    "source": "NLM Catalog listing — OA unverified"
+   },
+   {
+    "id": "f6feb96e-b431-43e9-9e11-32ea906dc1ab",
+    "issn": "0949-7323",
+    "eissn": "1613-7574",
+    "title": "PRO CARE",
+    "source": "CINAHL listing — OA unverified"
+   },
+   {
+    "id": "2490ad65-1817-4ff5-92ea-b7ccb0e2b7be",
+    "issn": "2656-1166",
+    "eissn": "2829-131X",
+    "title": "Jurnal Keperawatan Bunda Delima",
+    "source": "OpenAlex listing — OA unverified"
+   },
+   {
+    "id": "6f70b8d8-1edd-4d0a-91ee-b117927e2fed",
+    "issn": "0100-8889",
+    "eissn": "2595-9484",
+    "title": "Revista paulista de enfermagem",
+    "source": "SciELO listing — OA unverified"
+   },
+   {
+    "id": "38ea924c-2bc0-4bd6-8b9c-e6fa4ae32e27",
+    "issn": "1341-8351",
+    "eissn": "2758-8424",
+    "title": "Japanese Journal of Research in Family Nursing",
+    "source": "J-STAGE listing — OA unverified"
+   },
+   {
+    "id": "f733d818-365b-45a0-a34e-bac34e0184e6",
+    "issn": "0945-1129",
+    "eissn": "2520-1816",
+    "title": "Pflege Zeitschrift",
+    "source": "NLM Catalog listing — OA unverified"
+   },
+   {
+    "id": "789c9cbc-6931-4a98-afe5-76faf3f7742c",
+    "issn": "1676-3793",
+    "eissn": "2238-202X",
+    "title": "Rev. Soc. Bras. Enferm. Ped",
+    "source": "CINAHL listing — OA unverified"
+   },
+   {
+    "id": "ae323ffa-db72-4712-a1e6-a8e30d6bf390",
+    "issn": "2317-3092",
+    "eissn": null,
+    "title": "Revista Renome",
+    "source": "OpenAlex listing — OA unverified"
+   },
+   {
+    "id": "9567d13e-296c-4e2e-936d-5f3f26b482f1",
+    "issn": "1349-7472",
+    "eissn": "2760-5035",
+    "title": "Japanese Journal of Study in Addiction Nursing",
+    "source": "J-STAGE listing — OA unverified"
+   },
+   {
+    "id": "b02c0e2b-c6b6-4bbc-afb7-a936031af3f0",
+    "issn": "1105-6843",
+    "eissn": null,
+    "title": "Nosēleutikē",
+    "source": "NLM Catalog listing — OA unverified"
+   },
+   {
+    "id": "75779509-713b-49a9-a93d-84b0b3b53523",
+    "issn": "1909-1621",
+    "eissn": "2346-2000",
+    "title": "Revista Colombiana de Enfermería",
+    "source": "CINAHL listing — OA unverified"
+   },
+   {
+    "id": "dcd279b6-b974-4f95-a2cb-2a1135dca922",
+    "issn": "2442-501X",
+    "eissn": "2541-2892",
+    "title": "Jurnal Akademi Keperawatan Husada Karya Jaya.",
+    "source": "OpenAlex listing — OA unverified"
+   },
+   {
+    "id": "e79703fe-31b1-4ccd-816b-d00ba2db314f",
+    "issn": "1881-5979",
+    "eissn": "2435-4317",
+    "title": "Journal of Japan Academy of Transplantation and Regeneration Nursing",
+    "source": "J-STAGE listing — OA unverified"
+   },
+   {
+    "id": "14240e15-b255-485c-9e61-0a0bde1d1c8a",
+    "issn": "1422-8629",
+    "eissn": null,
+    "title": "www.PrInterNet.info : die wissenschaftliche Fachzeitschrift für die Pflege",
+    "source": "NLM Catalog listing — OA unverified"
+   },
+   {
+    "id": "16f1335a-07b2-437d-b17f-84ce37f4e521",
+    "issn": "2570-785X",
+    "eissn": "2571-0702",
+    "title": "Ošetřovatelské perspektivy",
+    "source": "CINAHL listing — OA unverified"
+   },
+   {
+    "id": "0cb4e9e0-197f-4a83-acf2-599e215662b4",
+    "issn": "2088-2734",
+    "eissn": "2964-156X",
+    "title": "Jurnal KEPERAWATAN GSH",
+    "source": "OpenAlex listing — OA unverified"
+   },
+   {
+    "id": "d29d05a5-38e2-405c-b986-e2620a4dde4d",
+    "issn": "1345-773X",
+    "eissn": "2434-6187",
+    "title": "Journal of Japan Society of Maternity Nursing",
+    "source": "J-STAGE listing — OA unverified"
+   },
+   {
+    "id": "5743ac80-7373-4086-8441-1c76f4689a08",
+    "issn": "1540-4153",
+    "eissn": "1938-8993",
+    "title": "Hispanic health care international : the official journal of the National Association of Hispanic Nurses",
+    "source": "NLM Catalog listing — OA unverified"
+   },
+   {
+    "id": "4a647f7d-7ea1-4989-9ca7-6c7326b69411",
+    "issn": "2523-0352",
+    "eissn": null,
+    "title": "Revista de Técnicas de Enfermería y Salud",
+    "source": "CINAHL listing — OA unverified"
+   },
+   {
+    "id": "ed18ce1e-dd3c-487b-b6d5-67d1b5c24fbf",
+    "issn": "2477-1414",
+    "eissn": "2716-0785",
+    "title": "Jurnal Keperawatan Karya Bhakti",
+    "source": "OpenAlex listing — OA unverified"
+   },
+   {
+    "id": "8c9a47d1-1432-4828-8255-f75d6c517f72",
+    "issn": "1345-2606",
+    "eissn": "2760-2079",
+    "title": "Journal of Japan Society of Nursing and Health Care",
+    "source": "J-STAGE listing — OA unverified"
+   },
+   {
+    "id": "2ae2640c-dac6-451c-8bce-c34fc9bf4b80",
+    "issn": "2409-2290",
+    "eissn": null,
+    "title": "Journal of Asian midwives",
+    "source": "NLM Catalog listing — OA unverified"
+   },
+   {
+    "id": "bce31694-df16-484e-9769-9077f394ee94",
+    "issn": "2746-4202",
+    "eissn": null,
+    "title": "Jurnal Pengabdian Masyarakat Dalam Keperawatan",
+    "source": "CINAHL listing — OA unverified"
+   },
+   {
+    "id": "3af962c3-b568-4c44-b85a-a47e16841ea1",
+    "issn": "2709-0019",
+    "eissn": null,
+    "title": "Revista científica CURAE",
+    "source": "OpenAlex listing — OA unverified"
+   },
+   {
+    "id": "e12dc6e9-a280-457b-aff6-66bedcfbcd8f",
+    "issn": "1348-0928",
+    "eissn": "2189-6771",
+    "title": "Journal of Japanese Association for Emergency Nursing",
+    "source": "J-STAGE listing — OA unverified"
+   },
+   {
+    "id": "594b1ed4-1203-4d35-af00-d5117c1cd6fe",
+    "issn": "3051-7583",
+    "eissn": null,
+    "title": "Doente Crítico - Revista Científica da Sociedade Portuguesa de Enfermagem em Doente Crítico",
+    "source": "OpenAlex listing — OA unverified"
+   },
+   {
+    "id": "b5e8f0bb-464a-4b96-a4b1-532c41a2c69a",
+    "issn": "2760-179X",
+    "eissn": null,
+    "title": "Journal of Japanese Association of Advanced Practice Nursing",
+    "source": "J-STAGE listing — OA unverified"
+   },
+   {
+    "id": "643dc9b3-76e6-43a5-8dfc-85a25db28f7e",
+    "issn": "2189-5090",
+    "eissn": "2434-4079",
+    "title": "Journal of Japanese Association of Certified Nurse Specialist",
+    "source": "J-STAGE listing — OA unverified"
+   },
+   {
+    "id": "f8cf9e8e-b860-4fb0-866a-1063b9bbfaab",
+    "issn": "1882-2061",
+    "eissn": "2435-7782",
+    "title": "Journal of Japanese Society for Chronic Illness and Conditions Nursing",
+    "source": "J-STAGE listing — OA unverified"
+   },
+   {
+    "id": "5027a9c9-d337-4b0d-a789-d60d2cd6e722",
+    "issn": "1344-9923",
+    "eissn": "2423-8457",
+    "title": "Journal of Japanese Society of Child Health Nursing",
+    "source": "J-STAGE listing — OA unverified"
+   },
+   {
+    "id": "620592b3-4d02-458f-bdac-71db5580f155",
+    "issn": "1346-1346",
+    "eissn": "2433-3425",
+    "title": "Journal of the Japanese Red Cross Society of Nursing Science",
+    "source": "J-STAGE listing — OA unverified"
+   },
+   {
+    "id": "fe64cb6b-f5cd-4910-8ef3-40288634475b",
+    "issn": "2433-3107",
+    "eissn": "2433-4049",
+    "title": "Nihon Shikino Kango Gakkaishi",
+    "source": "J-STAGE listing — OA unverified"
+   },
+   {
+    "id": "e398399e-2821-45d5-8a0f-ae732919d097",
+    "issn": "1348-3722",
+    "eissn": "2434-2238",
+    "title": "Journal of Nursing Investigation",
+    "source": "J-STAGE listing — OA unverified"
+   },
+   {
+    "id": "0f4f3961-f69c-4dc7-9e17-97980195437a",
+    "issn": "1346-9657",
+    "eissn": "2432-0803",
+    "title": "Journal of Japan Academy of Community Health Nursing",
+    "source": "J-STAGE listing — OA unverified"
+   },
+   {
+    "id": "9c8cb565-e60e-43bd-92cb-2f8c29980009",
+    "issn": "1342-8497",
+    "eissn": "2432-3713",
+    "title": "The Journal of Japan Academy of Diabetes Education and Nursing",
+    "source": "J-STAGE listing — OA unverified"
+   },
+   {
+    "id": "15abdb52-17d1-46d6-9bf8-6015c3a0763d",
+    "issn": "1340-3753",
+    "eissn": "2424-2535",
+    "title": "Nursing and information : journal of the Japan Nursing Library Association",
+    "source": "J-STAGE listing — OA unverified"
+   },
+   {
+    "id": "e65fc753-0345-4a27-b089-4cc634166729",
+    "issn": "0918-0621",
+    "eissn": "2432-101X",
+    "title": "Journal of Japan Academy of Psychiatric and Mental Health Nursing",
+    "source": "J-STAGE listing — OA unverified"
+   },
+   {
+    "id": "ba236ff7-f460-4823-a783-a1ed76cb44fa",
+    "issn": "0916-7536",
+    "eissn": "2436-6595",
+    "title": "Journal of Japan Academy of Nursing Education",
+    "source": "J-STAGE listing — OA unverified"
+   },
+   {
+    "id": "520e9198-f9c6-4f03-9bf9-50db6b0019a2",
+    "issn": "0914-6423",
+    "eissn": "2189-7565",
+    "title": "Journal of Japanese Society of Cancer Nursing",
+    "source": "J-STAGE listing — OA unverified"
+   },
+   {
+    "id": "2cde2324-ee7b-499d-9c85-96594ddaca43",
+    "issn": "2435-2403",
+    "eissn": "2758-1705",
+    "title": "The Journal of Japanese Nursing Society of PAS Based Self-Care Therapy",
+    "source": "J-STAGE listing — OA unverified"
+   }
+  ]
+ },
+ "rollback": {
+  "executed": false,
+  "scope": "exactly the 42 ids above. The rightsBasis label alone is NOT a safe scope: OpenAlex label 6,270 rows, NLM 118, CINAHL 22 (shared with other imports).",
+  "review": {
+   "foreignKeysOntoJournal": [
+    {
+     "conname": "Article_journalId_fkey",
+     "tbl": "\"Article\"",
+     "col": "journalId",
+     "ondelete": "SET NULL"
+    }
+   ],
+   "referencesToTheRun": {
+    "articleByJournalId": 0,
+    "articleByIssn": 0,
+    "ingestionRun": 0,
+    "libraryEventById": 0,
+    "libraryEventByIssn": 0
+   },
+   "labelUse": [
+    {
+     "rb": "CINAHL listing — OA unverified",
+     "total": 22,
+     "in_run": 6
+    },
+    {
+     "rb": "J-STAGE listing — OA unverified",
+     "total": 21,
+     "in_run": 21
+    },
+    {
+     "rb": "NLM Catalog listing — OA unverified",
+     "total": 118,
+     "in_run": 6
+    },
+    {
+     "rb": "OpenAlex listing — OA unverified",
+     "total": 6270,
+     "in_run": 7
+    },
+    {
+     "rb": "SciELO listing — OA unverified",
+     "total": 3,
+     "in_run": 2
+    }
+   ],
+   "scopedDeleteMatches": 42,
+   "auditRows": [
+    {
+     "id": "23f75a8b-b83a-4d8f-9cef-6b047bbc70ef",
+     "adminId": null,
+     "batch": "1",
+     "n": 25
+    },
+    {
+     "id": "6e8eb7b3-1a1f-4356-9d0b-2830791e2112",
+     "adminId": null,
+     "batch": "1",
+     "n": 17
+    }
+   ],
+   "auditTableForeignKeys": 0
+  },
+  "meaning": "Article.journalId is ON DELETE SET NULL: a delete would not fail but would silently detach articles, so the NOT EXISTS guard is essential. References to the 42 are 0 today and must be re-counted immediately before any rollback. IngestionAudit has no FK to Journal and is never deleted.",
+  "sql": "BEGIN; DELETE FROM \"Journal\" j WHERE j.id = ANY (:ids) AND j.\"rightsBasis\" IN ('SciELO listing — OA unverified','J-STAGE listing — OA unverified','NLM Catalog listing — OA unverified','CINAHL listing — OA unverified','OpenAlex listing — OA unverified') AND NOT EXISTS (SELECT 1 FROM \"Article\" a WHERE a.\"journalId\" = j.id) RETURNING j.id; -- must return exactly 42 rows, otherwise ROLLBACK; then write a JOURNAL_SOURCE_ROLLBACK audit row; COMMIT;"
+ }
+}

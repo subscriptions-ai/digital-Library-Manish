@@ -70,12 +70,12 @@ check('rollback is audited and the original audit entry is kept', (await auditsO
 // The insert script labels each journal with the source that listed it (per row for merged plans), never claims open access.
 {
   const mkIssn = () => { const d = Array.from({ length: 7 }, () => Math.floor(Math.random() * 10)); const sum = d.reduce((a, x, i) => a + x * (8 - i), 0); const c = (11 - (sum % 11)) % 11; return `${d.slice(0, 4).join('')}-${d.slice(4).join('')}${c === 10 ? 'X' : c}`; };
-  const rowsI = ['SciELO', 'CINAHL', undefined].map((src, i) => ({ title: `${T} labelled ${i}`, issn: mkIssn(), eissn: null, publisherName: 'P', subjects: [], domain: 'Nursing', country: null, homepage: null, basisSource: src, sourceId: `x${i}` }));
+  const rowsI = ['SciELO', 'CINAHL', 'J-STAGE', 'KoreaMed', 'Some New Source', undefined].map((src, i) => ({ title: `${T} labelled ${i}`, issn: mkIssn(), eissn: null, publisherName: 'P', subjects: [], domain: 'Nursing', country: null, homepage: null, basisSource: src, sourceId: `x${i}` }));
   const text = `var __PLAN__ = ${JSON.stringify({ runId: `${T}-label`, source: 'OpenAlex Sources', rows: rowsI })};\n` + readFileSync(new URL('./journal-source-apply.cjs', import.meta.url), 'utf8');
   const r = spawnSync('node', ['-', '--batch=100'], { input: text, env: { ...process.env, DATABASE_URL: TEST_URL }, encoding: 'utf8', cwd: new URL('..', import.meta.url).pathname });
   const got = await db.journal.findMany({ where: { title: { startsWith: `${T} labelled` } }, orderBy: { title: 'asc' } });
-  check('inserted journals carry the label of the source that listed them', got.map((g: any) => g.rightsBasis).join('|') === 'SciELO listing — OA unverified|CINAHL listing — OA unverified|OpenAlex listing — OA unverified', got.map((g: any) => g.rightsBasis).join('|'));
-  check('and are MetadataOnly, open access not claimed, no licence', got.length === 3 && got.every((g: any) => g.status === 'MetadataOnly' && g.openAccess === false && g.licence === null), String(r.stderr).slice(0, 80));
+  check('inserted journals carry the label of the source that listed them', got.map((g: any) => g.rightsBasis).join('|') === 'SciELO listing — OA unverified|CINAHL listing — OA unverified|J-STAGE listing — OA unverified|KoreaMed listing — OA unverified|Some New Source listing — OA unverified|OpenAlex listing — OA unverified', got.map((g: any) => g.rightsBasis).join('|'));
+  check('and are MetadataOnly, open access not claimed, no licence', got.length === 6 && got.every((g: any) => g.status === 'MetadataOnly' && g.openAccess === false && g.licence === null), String(r.stderr).slice(0, 80));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`); await db.$disconnect(); process.exit(fail ? 1 : 0);

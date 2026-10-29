@@ -1,0 +1,904 @@
+{
+ "runId": "nursing-netnew-2026-10-28-8e430d72",
+ "source": "Nursing expansion: NLM Catalog, CINAHL title lists, OpenAlex, SciELO (KoreaMed/KAMJE, J-STAGE, DOAJ read; no new candidates from them)",
+ "authorization": "User authorization 2026-10-28/29: controlled production insertion of ELIGIBLE NEW Nursing journals only; no relaxing of validation to reach a target; existing journals, NeedsReview transitions and article ingestion excluded.",
+ "executed": {
+  "canary": "2026-10-28T12:17:45Z (25 rows, 1 batch)",
+  "remainder": "2026-10-29T03:52:38Z (55 rows, 1 batch)"
+ },
+ "frozenManifest": {
+  "file": "manifest-frozen.json",
+  "sha256": "ae58d8fbfe30a3461b038c73b5e6ccea268ebc9bc0e387ef11445e0b5251beb0",
+  "candidates": 80
+ },
+ "planChecksums": {
+  "plan-canary.json": "9ca44311bd1ab61f9a1105c66448b9c25b9202c262cc4087e7897de55daa234e",
+  "plan-rest.json": "8aeb6d3d1b82dfda7ca6659e09473d53231583363aefbd9b6a46ff012e4e3528",
+  "frozen-hand-and-rename-holds.json": "24e4a5fdeee2107ae0409dc59cb6ef6ab9177d8238ec61c09ecc50a08ab86bd6"
+ },
+ "code": {
+  "gitHeadAtExecution": "2d76c9fabc53a1e8189f6a097c771a55d329cb4b",
+  "fileSha256": {
+   "scripts/journal-source-apply.cjs": "414043b204418da62c8fbb54773a05de59f085eed8580fe57e6a96d03edc07f9",
+   "scripts/nursing-assessment/assess.py": "7c2aacbc3f3caba0d5f4fa27dc711b938e6dc161d86e96227bd4f30c72954f62",
+   "scripts/nursing-assessment/build_manifests.py": "b4375bfa03324db1a77f8194809855a74b4f42f10405c2923d4b37b18c08d4d3",
+   "scripts/nursing-assessment/build_pool.py": "628e434e6c8e7ac6c19f8b336fb1b9343c7bb644d4973207315970a6f5cf21c8",
+   "scripts/nursing-assessment/fetch_koreamed.py": "c2fe4822e34e7b1109b2b4cb72442bbfa73d9f9b190ddf6a3471c075bd1c59a4",
+   "scripts/nursing-assessment/fetch_scielo.py": "6d2197e8671074ed54d5f5d5da12ee9998609e667a3614a7a5c002b8a643ff93",
+   "scripts/nursing-assessment/freeze_expansion.py": "b61b66c8f7bc6a0b5fcfd3ea1408f7cae4ac71f23e0ffb018783e89f57b4588f",
+   "scripts/nursing-assessment/jstage_evidence.py": "580ddc307cca5d4ff4e449a7a3a53b7646b2007d07159cbe2a7828310c348ac3",
+   "scripts/nursing-assessment/official_site_probe.py": "158bd5d28923084dc8e0e52a569ae63423119074159a2f298145b374dd5b32a9",
+   "scripts/nursing-assessment/parse_cinahl.py": "630b203336fdfd56097ac562d1ee136efd68859953a2ef4f723758abb3cd6806",
+   "scripts/nursing-assessment/publication_evidence.py": "3599e94a8e1226dfa145ce6f7537fd084b80a45feb9db7193c1f35cf796c1561",
+   "scripts/nursing-assessment/rename_check.py": "2e97ebba15b1fec09c3c696c8d84daac3a69c4d776fcecfd830649c75354d255",
+   "scripts/nursing-assessment/report_stats.py": "134b47ba7d0b49acee07e1ebd411bef89127dee989fc4dcd5008ec81366d83dc",
+   "scripts/nursing-assessment/score_scope.py": "863072a3c4ef55c2c4fa4ec6ec1a5d5fc512399150c29f9c159544d1a4574605",
+   "scripts/nursing-assessment/journal-status-apply.cjs": "c39c9d543d152643a2c83af4e028aff4fd989216adb1d4ebca8b0f1cd0c7783a"
+  },
+  "changedSinceFreeze": [],
+  "tests": {
+   "scripts/test-journal-source-import.ts": "39/39",
+   "scripts/test-journal-status-apply.ts": "16/16",
+   "scripts/test-nlm-journals.ts": "15/15",
+   "scripts/test-nursing-expansion-manifest.ts": "16/16"
+  }
+ },
+ "sourceCounts": {
+  "CINAHL": {
+   "sourceRecords": 756,
+   "alreadyHeld": 394,
+   "titleConflict": 10,
+   "netNew": 352
+  },
+  "NLM Catalog": {
+   "sourceRecords": 1295,
+   "alreadyHeld": 34,
+   "titleConflict": 9,
+   "netNew": 1252
+  },
+  "OpenAlex": {
+   "sourceRecords": 450,
+   "alreadyHeld": 274,
+   "titleConflict": 4,
+   "netNew": 172
+  },
+  "SciELO": {
+   "sourceRecords": 44,
+   "alreadyHeld": 35,
+   "titleConflict": 0,
+   "netNew": 9
+  },
+  "KoreaMed/KAMJE": {
+   "sourceRecords": 32,
+   "alreadyHeld": 31,
+   "titleConflict": 0,
+   "netNew": 1,
+   "note": "501 journals read; 210 rename relations linked into the ISSN clusters; only nursing-relevant records were pooled"
+  },
+  "DOAJ (Nursing subject)": {
+   "sourceRecords": 230,
+   "alreadyHeld": 230,
+   "netNew": 0
+  },
+  "J-STAGE (per ISSN, official host)": {
+   "queried": 12,
+   "found": 0
+  },
+  "INANE directory": {
+   "status": "not collected: Airtable embed, no lawful programmatic access; needs a manual export"
+  },
+  "REVENF / Elsevier / Wolters Kluwer / Wiley / T&F / Sage / Karger / Emerald": {
+   "status": "403 or unreachable from automated access; not bypassed"
+  },
+  "mergedNetNewJournals": 1464,
+  "frozenAndInserted": 80,
+  "heldNetNew": 1384,
+  "insertedByFirstListingSource": {
+   "NLM Catalog": 42,
+   "OpenAlex": 21,
+   "CINAHL": 16,
+   "SciELO": 1
+  },
+  "insertedByAnyListingSource": {
+   "OpenAlex": 51,
+   "NLM Catalog": 43,
+   "CINAHL": 42,
+   "SciELO": 1
+  }
+ },
+ "heldNetNewReasons": {
+  "no recent publication evidence in any source (incl. 259 explicitly ceased per NLM/CINAHL)": 736,
+  "Nursing scope: one independent signal only, needs aims-and-scope": 337,
+  "reads as newsletter/conference/directory/trade serial": 133,
+  "some publication evidence but not enough (official-site check)": 112,
+  "Nursing scope insufficient": 34,
+  "no publisher": 20,
+  "identity unconfirmed (recent works only under another title)": 8,
+  "rename/continuation, near-identical catalogue title, or hand-held newsletter-type": 4,
+  "detail": "held records of the preview are in docs/nursing-assessment-2026-10-28/held.json; the 4 added by this run are in frozen-hand-and-rename-holds.json"
+ },
+ "validation": {
+  "mandatory": [
+   "valid ISSN check digits",
+   "identity: no ISSN/ISSN-L/print-electronic/KoreaMed-rename cluster and no normalised or base title already in any catalogue status; NLM relations and near-identical titles checked",
+   "scope tier A: two independent subject signals, or one plus a nursing word in the title (a nursing word is not required: 15 of the 80 have none)",
+   "current publication P-A: at least 3 works 2024-26 in Crossref/OpenAlex/PubMed, OR 1+ work with an independent currently-published statement, OR SciELO current (a minimum of 3 Crossref articles is not required: 4 of the 80 qualify otherwise)",
+   "a publisher",
+   "not a newsletter, proceedings, directory or trade serial"
+  ],
+  "sourceListingIsNotARightsClaim": "rows carry openAccess=false, no licence, no rights verification; rightsBasis names the listing source and \"OA unverified\""
+ },
+ "production": {
+  "before": {
+   "at": "2026-10-28T12:17:41Z",
+   "total": 54454,
+   "Accepted": 12840,
+   "MetadataOnly": 16007,
+   "NeedsReview": 25607,
+   "nursing": {
+    "Accepted": 183,
+    "MetadataOnly": 291,
+    "NeedsReview": 827,
+    "public": 474
+   },
+   "existingRowsHash": "af3773e0b57de825140ce7e214d45663"
+  },
+  "after": {
+   "at": "2026-10-29 (after the remainder)",
+   "total": 54534,
+   "Accepted": 12840,
+   "MetadataOnly": 16087,
+   "NeedsReview": 25607,
+   "nursing": {
+    "Accepted": 183,
+    "MetadataOnly": 371,
+    "NeedsReview": 827,
+    "public": 554
+   },
+   "existingRowsHashExcludingRun": "af3773e0b57de825140ce7e214d45663",
+   "existingRowsUnchanged": true
+  }
+ },
+ "canaryVerification": {
+  "rows": 25,
+  "fieldsAllMetadataOnly_OAFalse_NoLicence_NoRights_Nursing": true,
+  "duplicateIssn": 0,
+  "crossFieldCollisions": 0,
+  "sameTitleRows": 0,
+  "articlesAttached": 0,
+  "publicEndpoint": {
+   "checked": 25,
+   "ok": 25,
+   "bad": []
+  },
+  "auditIdsMatchPlan": true,
+  "existingRowsHashUnchanged": true
+ },
+ "finalVerification": {
+  "rows": 80,
+  "duplicateIssn": 0,
+  "crossFieldCollisions": 0,
+  "sameTitleRows": 0,
+  "articlesAttached": 0,
+  "publicEndpoint": {
+   "checked": 80,
+   "ok": 80,
+   "bad": []
+  },
+  "auditEntries": 2,
+  "auditIdsMatchPlan": true
+ },
+ "auditLocation": "Production table \"IngestionAudit\", action JOURNAL_SOURCE_IMPORT, meta.runId = this run id: 2 batch entries (25 + 55), each listing inserted id, issn, sourceId and evidence.",
+ "inserted": {
+  "count": 80,
+  "ids": [
+   "d71d39ad-149c-4df4-8a12-8e2da53423ed",
+   "f263eee8-b4fe-44ab-af13-0742cb892a0d",
+   "b5e7caa1-a68b-49f4-8271-498a48ec95ed",
+   "c2649d42-ea5c-4ee2-84c0-262a4d4e534b",
+   "86c1de76-64d7-41e3-8cc1-8579ee5c111b",
+   "5eff0632-f675-4332-a21e-7f83127155b1",
+   "6f64d40d-1268-45b9-aa6e-c78bce6bcdcc",
+   "d7fb7324-d388-41b4-a60a-00cc52652be6",
+   "5de89e1b-7a2b-4e06-851b-d70c777d2383",
+   "bf995a98-3d5f-45f2-b3bf-334ab06fda4e",
+   "3652b0d5-e6cb-47ef-bc37-07a132a23d0c",
+   "dddf2c8a-c0ab-444d-ad58-d0fa3c682cba",
+   "ae9b7a45-b4d3-44ec-b39e-4232b452e549",
+   "14471da0-90a1-44ee-b363-407431f5eeeb",
+   "98a84f75-7b47-46fd-81fc-bef6d960d202",
+   "5e520644-43ff-4538-8ef2-caea786987ff",
+   "50342fcf-f940-4a51-9e34-bb00206adae1",
+   "57462859-60b1-4251-9d83-c109227ea007",
+   "794f4075-5960-46d7-84e2-c042c777ebd2",
+   "aeed45b1-0240-48e4-8ade-6d3c2a8efe27",
+   "1b792ba6-0e28-47e3-a5bc-e981060805cc",
+   "53cc2297-a902-4a5d-a27c-77e3b59431b3",
+   "2b100e44-edbd-450f-a9c2-b7c2db6f24e3",
+   "767a9118-8bb6-4144-bd4a-ea44457e88f5",
+   "bd77b9f4-f248-4610-b8bd-ab995d6735ed",
+   "98376c24-d140-457d-b0ab-02d44cdc1329",
+   "c676fc1c-a475-4d16-abd0-eb1a040062d5",
+   "cf34e895-b4f1-4d3c-ba0e-74cead8993c7",
+   "eac7144f-6570-4f7e-a846-469fd19ee613",
+   "e6b0fc60-c01e-4f21-83be-e07ca0de73bd",
+   "119f2f84-c83b-44c3-a6ef-f24211df0ecb",
+   "e2ca9930-6c10-4eae-8ba4-f7639c0527e1",
+   "5f0bffb8-9b9b-468e-89c6-d9efd52fa244",
+   "8672fe8a-90e6-419b-8c9d-fe129a63c86e",
+   "63a5cf7b-0075-43d4-9a2d-f370ccd07ddc",
+   "4dc0503c-8aa6-4950-b777-4fedb342a4e5",
+   "a7757a61-555b-453b-ab5d-b177f6326af8",
+   "48a99bfc-a0d3-4a8b-8e4c-89de9ece0ef4",
+   "fb973770-cd84-46df-84be-efb073136cf9",
+   "b553a22e-899d-404f-8cb2-66cc51c045ff",
+   "93c48d4f-a114-41e1-b3ae-3184d91935fd",
+   "99f4172d-2321-4971-9094-29c86b1b5e2b",
+   "2dd6f9e0-7a71-4d2f-ac62-2e4d5b857f33",
+   "f25b27b2-7638-482f-9879-95217179e22c",
+   "a4ca6e1d-ca41-4013-9c6d-e33822c8d1b9",
+   "9d751b32-c3de-40a8-8ea9-33685a829b35",
+   "b3da1e60-db71-4ff2-8354-b2f95f233608",
+   "9f8053ea-e116-4d98-a4be-f6277d84748d",
+   "c57d8def-2422-4064-960d-1d1290020523",
+   "376ef91b-a92c-422c-a7bc-524125bbb667",
+   "ac6e61e2-1a74-4dfb-8475-7a7e5fa82a76",
+   "842ab064-4dd8-45bc-8c55-31fc1a63af56",
+   "1e33589b-e6cd-4183-8c57-ca12e8dd9f4a",
+   "688cb3b8-0809-4976-a2d8-f6f961ceaf9c",
+   "e758dd6f-bb8c-4b96-887b-753ebe1d1394",
+   "23276db8-83a7-4dc4-906b-0cbf63f5f4a7",
+   "d445830d-b4bd-44c5-aa00-9d847b6c0fe1",
+   "5484a670-70c0-489d-80f8-10b9a64e8157",
+   "d9bde1ee-dbcd-4e9c-b33b-a8cf995a54a9",
+   "9ebb4dfc-9e72-40d3-ba39-6743f8a89c1b",
+   "d3ce411c-c8a2-4a91-af13-6da0208e303e",
+   "fa352f5b-63fd-4757-bf4e-72f674c15554",
+   "08443000-aa0e-4ad0-97e3-443de4c0d63f",
+   "0a889e4f-dca0-4b8c-95d3-f805d7f7bd73",
+   "bb0d5a1a-1692-4831-a49b-6d9843300cff",
+   "def96c53-46cc-4d61-a5db-175830bb2da3",
+   "3db47f7d-5217-4849-90ef-5d1d84bfe246",
+   "3242748c-26e0-4a43-9b59-d8624d56123f",
+   "d203c2a2-4fa1-4cb5-a500-75c2def988ab",
+   "e02cbd16-baea-48be-b644-316881417aed",
+   "761a743f-9657-4a4c-86f9-572929efeb53",
+   "a8a6dca1-33e2-4668-b2e4-a5e04dd83a50",
+   "d70ad68f-87ca-4154-804a-352b265ae7c9",
+   "7d3c1fe0-dc87-4790-84b2-3a7659e5a692",
+   "6c893e02-1373-46b7-8df2-aee679776b62",
+   "f1854128-4323-4e5d-9a48-2d322390c475",
+   "93f36eb8-997f-410b-acd0-b733dc6a4661",
+   "91ec532c-4903-4918-8ff6-798481db5da2",
+   "c04521e5-6a82-48b0-ae79-907a0a4964e0",
+   "7c37ab6e-d225-4216-a355-4785a7651786"
+  ],
+  "canaryIds": [
+   "d71d39ad-149c-4df4-8a12-8e2da53423ed",
+   "f263eee8-b4fe-44ab-af13-0742cb892a0d",
+   "b5e7caa1-a68b-49f4-8271-498a48ec95ed",
+   "c2649d42-ea5c-4ee2-84c0-262a4d4e534b",
+   "86c1de76-64d7-41e3-8cc1-8579ee5c111b",
+   "5eff0632-f675-4332-a21e-7f83127155b1",
+   "6f64d40d-1268-45b9-aa6e-c78bce6bcdcc",
+   "d7fb7324-d388-41b4-a60a-00cc52652be6",
+   "5de89e1b-7a2b-4e06-851b-d70c777d2383",
+   "bf995a98-3d5f-45f2-b3bf-334ab06fda4e",
+   "3652b0d5-e6cb-47ef-bc37-07a132a23d0c",
+   "dddf2c8a-c0ab-444d-ad58-d0fa3c682cba",
+   "ae9b7a45-b4d3-44ec-b39e-4232b452e549",
+   "14471da0-90a1-44ee-b363-407431f5eeeb",
+   "98a84f75-7b47-46fd-81fc-bef6d960d202",
+   "5e520644-43ff-4538-8ef2-caea786987ff",
+   "50342fcf-f940-4a51-9e34-bb00206adae1",
+   "57462859-60b1-4251-9d83-c109227ea007",
+   "794f4075-5960-46d7-84e2-c042c777ebd2",
+   "aeed45b1-0240-48e4-8ade-6d3c2a8efe27",
+   "1b792ba6-0e28-47e3-a5bc-e981060805cc",
+   "53cc2297-a902-4a5d-a27c-77e3b59431b3",
+   "2b100e44-edbd-450f-a9c2-b7c2db6f24e3",
+   "767a9118-8bb6-4144-bd4a-ea44457e88f5",
+   "bd77b9f4-f248-4610-b8bd-ab995d6735ed"
+  ],
+  "restIds": [
+   "98376c24-d140-457d-b0ab-02d44cdc1329",
+   "c676fc1c-a475-4d16-abd0-eb1a040062d5",
+   "cf34e895-b4f1-4d3c-ba0e-74cead8993c7",
+   "eac7144f-6570-4f7e-a846-469fd19ee613",
+   "e6b0fc60-c01e-4f21-83be-e07ca0de73bd",
+   "119f2f84-c83b-44c3-a6ef-f24211df0ecb",
+   "e2ca9930-6c10-4eae-8ba4-f7639c0527e1",
+   "5f0bffb8-9b9b-468e-89c6-d9efd52fa244",
+   "8672fe8a-90e6-419b-8c9d-fe129a63c86e",
+   "63a5cf7b-0075-43d4-9a2d-f370ccd07ddc",
+   "4dc0503c-8aa6-4950-b777-4fedb342a4e5",
+   "a7757a61-555b-453b-ab5d-b177f6326af8",
+   "48a99bfc-a0d3-4a8b-8e4c-89de9ece0ef4",
+   "fb973770-cd84-46df-84be-efb073136cf9",
+   "b553a22e-899d-404f-8cb2-66cc51c045ff",
+   "93c48d4f-a114-41e1-b3ae-3184d91935fd",
+   "99f4172d-2321-4971-9094-29c86b1b5e2b",
+   "2dd6f9e0-7a71-4d2f-ac62-2e4d5b857f33",
+   "f25b27b2-7638-482f-9879-95217179e22c",
+   "a4ca6e1d-ca41-4013-9c6d-e33822c8d1b9",
+   "9d751b32-c3de-40a8-8ea9-33685a829b35",
+   "b3da1e60-db71-4ff2-8354-b2f95f233608",
+   "9f8053ea-e116-4d98-a4be-f6277d84748d",
+   "c57d8def-2422-4064-960d-1d1290020523",
+   "376ef91b-a92c-422c-a7bc-524125bbb667",
+   "ac6e61e2-1a74-4dfb-8475-7a7e5fa82a76",
+   "842ab064-4dd8-45bc-8c55-31fc1a63af56",
+   "1e33589b-e6cd-4183-8c57-ca12e8dd9f4a",
+   "688cb3b8-0809-4976-a2d8-f6f961ceaf9c",
+   "e758dd6f-bb8c-4b96-887b-753ebe1d1394",
+   "23276db8-83a7-4dc4-906b-0cbf63f5f4a7",
+   "d445830d-b4bd-44c5-aa00-9d847b6c0fe1",
+   "5484a670-70c0-489d-80f8-10b9a64e8157",
+   "d9bde1ee-dbcd-4e9c-b33b-a8cf995a54a9",
+   "9ebb4dfc-9e72-40d3-ba39-6743f8a89c1b",
+   "d3ce411c-c8a2-4a91-af13-6da0208e303e",
+   "fa352f5b-63fd-4757-bf4e-72f674c15554",
+   "08443000-aa0e-4ad0-97e3-443de4c0d63f",
+   "0a889e4f-dca0-4b8c-95d3-f805d7f7bd73",
+   "bb0d5a1a-1692-4831-a49b-6d9843300cff",
+   "def96c53-46cc-4d61-a5db-175830bb2da3",
+   "3db47f7d-5217-4849-90ef-5d1d84bfe246",
+   "3242748c-26e0-4a43-9b59-d8624d56123f",
+   "d203c2a2-4fa1-4cb5-a500-75c2def988ab",
+   "e02cbd16-baea-48be-b644-316881417aed",
+   "761a743f-9657-4a4c-86f9-572929efeb53",
+   "a8a6dca1-33e2-4668-b2e4-a5e04dd83a50",
+   "d70ad68f-87ca-4154-804a-352b265ae7c9",
+   "7d3c1fe0-dc87-4790-84b2-3a7659e5a692",
+   "6c893e02-1373-46b7-8df2-aee679776b62",
+   "f1854128-4323-4e5d-9a48-2d322390c475",
+   "93f36eb8-997f-410b-acd0-b733dc6a4661",
+   "91ec532c-4903-4918-8ff6-798481db5da2",
+   "c04521e5-6a82-48b0-ae79-907a0a4964e0",
+   "7c37ab6e-d225-4216-a355-4785a7651786"
+  ],
+  "idIssnTitle": [
+   {
+    "id": "d71d39ad-149c-4df4-8a12-8e2da53423ed",
+    "issn": "0864-0319",
+    "eissn": "1561-2961",
+    "title": "Revista Cubana de Enfermería"
+   },
+   {
+    "id": "f263eee8-b4fe-44ab-af13-0742cb892a0d",
+    "issn": "1559-7768",
+    "eissn": "1559-7776",
+    "title": "AACN Advanced Critical Care"
+   },
+   {
+    "id": "b5e7caa1-a68b-49f4-8271-498a48ec95ed",
+    "issn": "2745-049X",
+    "eissn": null,
+    "title": "CES Enfermería"
+   },
+   {
+    "id": "c2649d42-ea5c-4ee2-84c0-262a4d4e534b",
+    "issn": "0716-8861",
+    "eissn": "0719-6946",
+    "title": "Horizonte de enfermeria"
+   },
+   {
+    "id": "86c1de76-64d7-41e3-8cc1-8579ee5c111b",
+    "issn": "0002-7448",
+    "eissn": "0094-6354",
+    "title": "AANA Journal"
+   },
+   {
+    "id": "5eff0632-f675-4332-a21e-7f83127155b1",
+    "issn": "2605-3152",
+    "eissn": null,
+    "title": "Conocimiento Enfermero"
+   },
+   {
+    "id": "6f64d40d-1268-45b9-aa6e-c78bce6bcdcc",
+    "issn": "2236-6091",
+    "eissn": null,
+    "title": "Revista de Enfermagem do Centro-Oeste Mineiro"
+   },
+   {
+    "id": "d7fb7324-d388-41b4-a60a-00cc52652be6",
+    "issn": "1062-3264",
+    "eissn": "1937-710X",
+    "title": "American Journal of Critical Care"
+   },
+   {
+    "id": "5de89e1b-7a2b-4e06-851b-d70c777d2383",
+    "issn": "2447-2034",
+    "eissn": null,
+    "title": "Enfermagem Atual in Derme"
+   },
+   {
+    "id": "bf995a98-3d5f-45f2-b3bf-334ab06fda4e",
+    "issn": "1998-5487",
+    "eissn": "2075-4000",
+    "title": "Revista Enfermería Herediana"
+   },
+   {
+    "id": "3652b0d5-e6cb-47ef-bc37-07a132a23d0c",
+    "issn": "0001-2092",
+    "eissn": "1878-0369",
+    "title": "AORN Journal"
+   },
+   {
+    "id": "dddf2c8a-c0ab-444d-ad58-d0fa3c682cba",
+    "issn": "1888-4830",
+    "eissn": "3045-5812",
+    "title": "Enfermeir@s"
+   },
+   {
+    "id": "ae9b7a45-b4d3-44ec-b39e-4232b452e549",
+    "issn": "2580-1112",
+    "eissn": "2655-6669",
+    "title": "JIKO (Jurnal Ilmiah Keperawatan Orthopedi)"
+   },
+   {
+    "id": "14471da0-90a1-44ee-b363-407431f5eeeb",
+    "issn": "1628-2205",
+    "eissn": null,
+    "title": "Bulletin Infirmier du Cancer"
+   },
+   {
+    "id": "98a84f75-7b47-46fd-81fc-bef6d960d202",
+    "issn": "1575-4146",
+    "eissn": null,
+    "title": "Enfermería en Cardiologia"
+   },
+   {
+    "id": "5e520644-43ff-4538-8ef2-caea786987ff",
+    "issn": "3076-1328",
+    "eissn": null,
+    "title": "Recherche et Avancées en Sciences Infirmières"
+   },
+   {
+    "id": "50342fcf-f940-4a51-9e34-bb00206adae1",
+    "issn": "1498-5136",
+    "eissn": null,
+    "title": "CANNT Journal"
+   },
+   {
+    "id": "57462859-60b1-4251-9d83-c109227ea007",
+    "issn": "2477-9172",
+    "eissn": null,
+    "title": "Enfermería Investiga: Investigaciin, Vinculación, Docencia y Gestiin"
+   },
+   {
+    "id": "794f4075-5960-46d7-84e2-c042c777ebd2",
+    "issn": "0719-4331",
+    "eissn": null,
+    "title": "Cuidado de Enfermería y Educación en Salud"
+   },
+   {
+    "id": "aeed45b1-0240-48e4-8ade-6d3c2a8efe27",
+    "issn": "0887-6274",
+    "eissn": "1538-9782",
+    "title": "Clinical Nurse Specialist: The Journal for Advanced Nursing Practice"
+   },
+   {
+    "id": "1b792ba6-0e28-47e3-a5bc-e981060805cc",
+    "issn": "1132-1296",
+    "eissn": "1699-5988",
+    "title": "Index de Enfermería"
+   },
+   {
+    "id": "53cc2297-a902-4a5d-a27c-77e3b59431b3",
+    "issn": "1130-8621",
+    "eissn": "1579-2013",
+    "title": "Enfermería Clínica"
+   },
+   {
+    "id": "2b100e44-edbd-450f-a9c2-b7c2db6f24e3",
+    "issn": "1037-6178",
+    "eissn": "1839-3535",
+    "title": "Contemporary Nurse: A Journal for the Australian Nursing Profession"
+   },
+   {
+    "id": "767a9118-8bb6-4144-bd4a-ea44457e88f5",
+    "issn": "1555-4155",
+    "eissn": "1878-058X",
+    "title": "Journal for Nurse Practitioners"
+   },
+   {
+    "id": "bd77b9f4-f248-4610-b8bd-ab995d6735ed",
+    "issn": "2196-9310",
+    "eissn": "2626-6229",
+    "title": "CNE Pflegemanagement"
+   },
+   {
+    "id": "98376c24-d140-457d-b0ab-02d44cdc1329",
+    "issn": "0279-5442",
+    "eissn": "1940-8250",
+    "title": "Critical Care Nurse"
+   },
+   {
+    "id": "c676fc1c-a475-4d16-abd0-eb1a040062d5",
+    "issn": "1345-0433",
+    "eissn": null,
+    "title": "Journal of Kochi Women's University Academy of Nursing"
+   },
+   {
+    "id": "cf34e895-b4f1-4d3c-ba0e-74cead8993c7",
+    "issn": "2074-8043",
+    "eissn": null,
+    "title": "Medsestra (Nurse)"
+   },
+   {
+    "id": "eac7144f-6570-4f7e-a846-469fd19ee613",
+    "issn": "1678-2410",
+    "eissn": "2526-9720",
+    "title": "Enfermagem Brasil"
+   },
+   {
+    "id": "e6b0fc60-c01e-4f21-83be-e07ca0de73bd",
+    "issn": "2694-4502",
+    "eissn": "2694-4510",
+    "title": "Journal of the American Nurses Association - New York (JANANY)"
+   },
+   {
+    "id": "119f2f84-c83b-44c3-a6ef-f24211df0ecb",
+    "issn": "2667-6052",
+    "eissn": null,
+    "title": "Ordu Üniversitesi Hemşirelik Çalışmaları Dergisi"
+   },
+   {
+    "id": "e2ca9930-6c10-4eae-8ba4-f7639c0527e1",
+    "issn": "0786-5686",
+    "eissn": null,
+    "title": "Hoitotiede"
+   },
+   {
+    "id": "5f0bffb8-9b9b-468e-89c6-d9efd52fa244",
+    "issn": "1138-7262",
+    "eissn": "2660-986X",
+    "title": "Metas de Enfermería"
+   },
+   {
+    "id": "8672fe8a-90e6-419b-8c9d-fe129a63c86e",
+    "issn": "2352-8028",
+    "eissn": null,
+    "title": "Revue Francophone Internationale de Recherche Infirmière"
+   },
+   {
+    "id": "63a5cf7b-0075-43d4-9a2d-f370ccd07ddc",
+    "issn": "1055-3290",
+    "eissn": "1552-6917",
+    "title": "JANAC: Journal of the Association of Nurses in AIDS Care"
+   },
+   {
+    "id": "4dc0503c-8aa6-4950-b777-4fedb342a4e5",
+    "issn": "2228-6918",
+    "eissn": "2423-7876",
+    "title": "Modern Care Journal: Scientific Quarterly of Birjand Nursing & Midwifery Faculty"
+   },
+   {
+    "id": "a7757a61-555b-453b-ab5d-b177f6326af8",
+    "issn": "2636-8439",
+    "eissn": null,
+    "title": "Hemşirelik Bilimi Dergisi"
+   },
+   {
+    "id": "48a99bfc-a0d3-4a8b-8e4c-89de9ece0ef4",
+    "issn": "2166-0980",
+    "eissn": "2166-0999",
+    "title": "Journal of Oncology Navigation & Survivorship"
+   },
+   {
+    "id": "fb973770-cd84-46df-84be-efb073136cf9",
+    "issn": "2308-1791",
+    "eissn": "2308-7838",
+    "title": "Nursing at the Vanguard / Revista Enfermería a la Vanguardia (REVAN)"
+   },
+   {
+    "id": "b553a22e-899d-404f-8cb2-66cc51c045ff",
+    "issn": "2757-6272",
+    "eissn": null,
+    "title": "Yaşam Boyu Hemşirelik Dergisi"
+   },
+   {
+    "id": "93c48d4f-a114-41e1-b3ae-3184d91935fd",
+    "issn": "2327-6886",
+    "eissn": "2327-6924",
+    "title": "Journal of the American Association of Nurse Practitioners"
+   },
+   {
+    "id": "99f4172d-2321-4971-9094-29c86b1b5e2b",
+    "issn": "1668-8821",
+    "eissn": "2618-3692",
+    "title": "Nursing Notes. Notas de Enfermería"
+   },
+   {
+    "id": "2dd6f9e0-7a71-4d2f-ac62-2e4d5b857f33",
+    "issn": "2530-299X",
+    "eissn": null,
+    "title": "Revista Científica de la Sociedad de Enfermería Neurológica (English ed )"
+   },
+   {
+    "id": "f25b27b2-7638-482f-9879-95217179e22c",
+    "issn": "1945-760X",
+    "eissn": "1945-7618",
+    "title": "Journal of the Dermatology Nurses' Association"
+   },
+   {
+    "id": "a4ca6e1d-ca41-4013-9c6d-e33822c8d1b9",
+    "issn": "1870-6592",
+    "eissn": "2954-3428",
+    "title": "Revista de Enfermería Neurológica"
+   },
+   {
+    "id": "9d751b32-c3de-40a8-8ea9-33685a829b35",
+    "issn": "2174-6915",
+    "eissn": "2254-4100",
+    "title": "Revista Iberoamericana de Educación e Investigación en Enfermería"
+   },
+   {
+    "id": "b3da1e60-db71-4ff2-8354-b2f95f233608",
+    "issn": "1465-8712",
+    "eissn": "2047-8968",
+    "title": "Learning Disability Practice"
+   },
+   {
+    "id": "9f8053ea-e116-4d98-a4be-f6277d84748d",
+    "issn": "1988-5474",
+    "eissn": null,
+    "title": "Revista Iberoamericana de Enfermería Comunitaria (RIdEC)"
+   },
+   {
+    "id": "c57d8def-2422-4064-960d-1d1290020523",
+    "issn": "2819-2710",
+    "eissn": null,
+    "title": "Canadian Nurse Practitioner Journal"
+   },
+   {
+    "id": "376ef91b-a92c-422c-a7bc-524125bbb667",
+    "issn": "1465-8720",
+    "eissn": "2047-895X",
+    "title": "Mental Health Practice"
+   },
+   {
+    "id": "ac6e61e2-1a74-4dfb-8475-7a7e5fa82a76",
+    "issn": "2822-5988",
+    "eissn": null,
+    "title": "Akdeniz Hemşirelik Dergisi"
+   },
+   {
+    "id": "842ab064-4dd8-45bc-8c55-31fc1a63af56",
+    "issn": "1942-602X",
+    "eissn": "1942-6038",
+    "title": "NASN School Nurse"
+   },
+   {
+    "id": "1e33589b-e6cd-4183-8c57-ca12e8dd9f4a",
+    "issn": "2696-8584",
+    "eissn": null,
+    "title": "Revista Mexicana de Enfermería"
+   },
+   {
+    "id": "688cb3b8-0809-4976-a2d8-f6f961ceaf9c",
+    "issn": "0363-3624",
+    "eissn": "1538-9855",
+    "title": "Nurse Educator"
+   },
+   {
+    "id": "e758dd6f-bb8c-4b96-887b-753ebe1d1394",
+    "issn": "1409-1992",
+    "eissn": "2215-6593",
+    "title": "ENFERMERÍA EN COSTA RICA"
+   },
+   {
+    "id": "23276db8-83a7-4dc4-906b-0cbf63f5f4a7",
+    "issn": "0361-1817",
+    "eissn": "1538-8662",
+    "title": "Nurse Practitioner"
+   },
+   {
+    "id": "d445830d-b4bd-44c5-aa00-9d847b6c0fe1",
+    "issn": "2530-4453",
+    "eissn": null,
+    "title": "Tiempos de Enfermería y Salud"
+   },
+   {
+    "id": "5484a670-70c0-489d-80f8-10b9a64e8157",
+    "issn": "1351-5578",
+    "eissn": "2047-8992",
+    "title": "Nurse Researcher"
+   },
+   {
+    "id": "d9bde1ee-dbcd-4e9c-b33b-a8cf995a54a9",
+    "issn": "3035-5184",
+    "eissn": null,
+    "title": "Nurse Practitioners"
+   },
+   {
+    "id": "9ebb4dfc-9e72-40d3-ba39-6743f8a89c1b",
+    "issn": "1791-1567",
+    "eissn": "2241-3960",
+    "title": "Nursing Care & Research / Nosileia kai Ereuna"
+   },
+   {
+    "id": "d3ce411c-c8a2-4a91-af13-6da0208e303e",
+    "issn": "1064-3842",
+    "eissn": null,
+    "title": "ORL-Head & Neck Nursing"
+   },
+   {
+    "id": "fa352f5b-63fd-4757-bf4e-72f674c15554",
+    "issn": "1430-9653",
+    "eissn": null,
+    "title": "Pflege & Gesellschaft"
+   },
+   {
+    "id": "08443000-aa0e-4ad0-97e3-443de4c0d63f",
+    "issn": "0297-2964",
+    "eissn": "2271-8362",
+    "title": "Recherche en Soins Infirmiers"
+   },
+   {
+    "id": "0a889e4f-dca0-4b8c-95d3-f805d7f7bd73",
+    "issn": "0920-3273",
+    "eissn": "2468-2225",
+    "title": "Verpleegkunde - Nederlands Vlaams Tijdschrift voor Verpleegkundigen"
+   },
+   {
+    "id": "bb0d5a1a-1692-4831-a49b-6d9843300cff",
+    "issn": "2190-2100",
+    "eissn": null,
+    "title": "HeilberufeSCIENCE"
+   },
+   {
+    "id": "def96c53-46cc-4d61-a5db-175830bb2da3",
+    "issn": "2013-5246",
+    "eissn": "2173-9153",
+    "title": "Revista científica de la Sociedad Española de Enfermería Neurológica"
+   },
+   {
+    "id": "3db47f7d-5217-4849-90ef-5d1d84bfe246",
+    "issn": "1677-3861",
+    "eissn": "1984-7513",
+    "title": "Ciência, cuidado e saúde"
+   },
+   {
+    "id": "3242748c-26e0-4a43-9b59-d8624d56123f",
+    "issn": "1335-8421",
+    "eissn": "1338-4139",
+    "title": "Acta medica martiniana = Journal for biomedical sciences, clinical medicine, and nursing"
+   },
+   {
+    "id": "d203c2a2-4fa1-4cb5-a500-75c2def988ab",
+    "issn": "1536-0903",
+    "eissn": "1536-0911",
+    "title": "Advances in neonatal care : official journal of the National Association of Neonatal Nurses"
+   },
+   {
+    "id": "e02cbd16-baea-48be-b644-316881417aed",
+    "issn": "1592-5986",
+    "eissn": "2038-1778",
+    "title": "Assistenza infermieristica e ricerca : AIR"
+   },
+   {
+    "id": "761a743f-9657-4a4c-86f9-572929efeb53",
+    "issn": "1461-3123",
+    "eissn": "2634-7407",
+    "title": "The practising midwife"
+   },
+   {
+    "id": "a8a6dca1-33e2-4668-b2e4-a5e04dd83a50",
+    "issn": "0188-431X",
+    "eissn": "2448-8062",
+    "title": "Revista de enfermería del Instituto Mexicano del Seguro Social"
+   },
+   {
+    "id": "d70ad68f-87ca-4154-804a-352b265ae7c9",
+    "issn": "1030-5823",
+    "eissn": null,
+    "title": "The Journal of stomal therapy Australia : publication of Australian Association of Stomal Therapy Nurses"
+   },
+   {
+    "id": "7d3c1fe0-dc87-4790-84b2-3a7659e5a692",
+    "issn": "0902-2767",
+    "eissn": "1903-2285",
+    "title": "Klinisk sygepleje"
+   },
+   {
+    "id": "6c893e02-1373-46b7-8df2-aee679776b62",
+    "issn": "0957-0780",
+    "eissn": null,
+    "title": "Mental health nursing : journal of the Psychiatric Nurses Association"
+   },
+   {
+    "id": "f1854128-4323-4e5d-9a48-2d322390c475",
+    "issn": "0790-7257",
+    "eissn": null,
+    "title": "Irish Nursing Forum And Health Services"
+   },
+   {
+    "id": "93f36eb8-997f-410b-acd0-b733dc6a4661",
+    "issn": "1032-335X",
+    "eissn": "2208-6781",
+    "title": "The Australasian journal of neuroscience : journal of the Australasian Neuroscience Nurses' Association"
+   },
+   {
+    "id": "91ec532c-4903-4918-8ff6-798481db5da2",
+    "issn": "0031-5990",
+    "eissn": "1744-6163",
+    "title": "Perspectives in psychiatric care"
+   },
+   {
+    "id": "c04521e5-6a82-48b0-ae79-907a0a4964e0",
+    "issn": "0047-262X",
+    "eissn": "3105-1049",
+    "title": "Hu li za zhi The journal of nursing"
+   },
+   {
+    "id": "7c37ab6e-d225-4216-a355-4785a7651786",
+    "issn": "0025-8342",
+    "eissn": "2587-9979",
+    "title": "Medit︠s︡inskai︠a︡ sestra"
+   }
+  ]
+ },
+ "rollback": {
+  "executed": false,
+  "scope": "exactly the 80 ids above. The rightsBasis label alone is NOT a safe scope: it is shared with other imports (OpenAlex 6,263 rows, NLM 112).",
+  "review": {
+   "foreignKeys": [
+    {
+     "conname": "Article_journalId_fkey",
+     "tbl": "\"Article\"",
+     "col": "journalId",
+     "ondelete": "SET NULL"
+    }
+   ],
+   "referencesToThe80": {
+    "articleFk": 0,
+    "articleByIssn": 0,
+    "ingestionRun": 0,
+    "libraryEventId": 0,
+    "libraryEventIssn": 0
+   },
+   "labelCounts": [
+    {
+     "rb": "CINAHL listing — OA unverified",
+     "total": 16,
+     "in_run": 16
+    },
+    {
+     "rb": "NLM Catalog listing — OA unverified",
+     "total": 112,
+     "in_run": 42
+    },
+    {
+     "rb": "OpenAlex listing — OA unverified",
+     "total": 6263,
+     "in_run": 21
+    },
+    {
+     "rb": "SciELO listing — OA unverified",
+     "total": 1,
+     "in_run": 1
+    }
+   ],
+   "scopedDeleteMatches": 80,
+   "auditRows": [
+    {
+     "id": "e1390327-3558-4d1b-8b6c-04031b53c865",
+     "adminId": null,
+     "batch": "1",
+     "n": 25
+    },
+    {
+     "id": "1349473f-e827-4be1-95dd-4c2848f41926",
+     "adminId": null,
+     "batch": "1",
+     "n": 55
+    }
+   ],
+   "auditHasNoFk": true,
+   "meaning": "Article.journalId is ON DELETE SET NULL: a delete would not fail but would silently detach articles, so the NOT EXISTS guard is essential; every other reference is 0 today and must be re-counted immediately before any rollback; IngestionAudit has no FK to Journal and is never deleted"
+  },
+  "sql": "BEGIN; DELETE FROM \"Journal\" j WHERE j.id = ANY (:ids) AND j.\"rightsBasis\" IN ('NLM Catalog listing — OA unverified','OpenAlex listing — OA unverified','CINAHL listing — OA unverified','SciELO listing — OA unverified') AND NOT EXISTS (SELECT 1 FROM \"Article\" a WHERE a.\"journalId\" = j.id) RETURNING j.id; -- must return exactly 80 rows, otherwise ROLLBACK; then write a JOURNAL_SOURCE_ROLLBACK audit row; COMMIT;"
+ }
+}

@@ -3,7 +3,7 @@ Build the Nursing candidate pool from the accessible sources and de-duplicate it
 
   python3 build_pool.py <work-dir>
 
-Reads (all under <work-dir>): nu/export.json (catalogue snapshot), nu/cinahl-complete.json + nu/cinahl-nursing-subject.json (EBSCO title lists, facts only),
+Reads (all under <work-dir>; nu/koreamed.json is KoreaMed/KAMJE, whose rename relations are linked into the ISSN clusters): nu/export.json (catalogue snapshot), nu/cinahl-complete.json + nu/cinahl-nursing-subject.json (EBSCO title lists, facts only),
 nu/scielo-nursing.json, nlm/plan-nlm.json (NLM Nursing-subject serials the planner already found new), ji/oa-sources.ndjson + ji/oa-nonoa.ndjson (OpenAlex sources, with topics).
 Identity is never decided by title alone and print/electronic/renamed/translated records are never counted as new journals:
   1. ISSN-clusters: every ISSN/eISSN/ISSN-L that appears together on one record (catalogue row, OpenAlex source, SciELO record, NLM record) is one journal (union-find).
@@ -52,6 +52,11 @@ for fn in ['oa-sources.ndjson','oa-nonoa.ndjson']:
         if share>=0.5 and len(nt)>=3 and ids:
             oa_nursing.append({'source':'OpenAlex','title':s['display_name'],'issns':ids,'publisher':s.get('host_organization_name'),'homepage':s.get('homepage_url'),'ref':s['id'],'openalex':{'nursingShare':round(share,2),'nursingTopics':len(nt),'worksCount':s.get('works_count'),'isInDoaj':s.get('is_in_doaj')}})
 cands=[]
+# KoreaMed / KAMJE: old and new ISSN of a renamed journal are one journal
+try: km=json.load(open(f'{W}/nu/koreamed.json'))
+except Exception: km=[]
+for r in km:
+    link([r['issn']]+([r['nowPublishedAs']['issn']] if r.get('nowPublishedAs') else []))
 # CINAHL
 cc=json.load(open(f'{W}/nu/cinahl-complete.json')); sub={x['issn']:x for x in json.load(open(f'{W}/nu/cinahl-nursing-subject.json'))}
 NARROW=re.compile(r'nurs|midwif|enfermer|enfermag|infirm|kango|pflege|sykepleie|verpleeg|keperawatan|hemşire|pielęgn',re.I)
@@ -65,6 +70,17 @@ for r in cc:
 for x in json.load(open(f'{W}/nu/scielo-nursing.json')):
     ids=link([x['issn'],x['eissn']]+(x['issns'] or []))
     cands.append({'source':'SciELO','title':x['title'],'issns':ids,'publisher':x['publisher'],'homepage':x['homepage'],'ref':x['evidenceUrl'],'scielo':{'status':x['status'],'wos':x['wos'],'areas':x['areas'],'collection':x['collection'],'country':x['country'],'retrieved':x['retrieved']}})
+nlmNurs=set()
+for r in json.load(open(f'{W}/nlm/subject-serials.json')):
+    if 'Nursing' in r['subjects']:
+        for i,_ in r['issn']: nlmNurs.add(i)
+oaNurs={i for c in oa_nursing for i in c['issns']}
+for r in km:
+    ids=[r['issn']]+([r['nowPublishedAs']['issn']] if r.get('nowPublishedAs') else [])
+    if not (NARROW.search(r['title']) or (r.get('nowPublishedAs') and NARROW.search(r['nowPublishedAs']['title'])) or any(i in nlmNurs or i in sub or i in oaNurs for i in ids)): continue
+    ids=link(ids)
+    t=(r['nowPublishedAs'] or r)['title']
+    cands.append({'source':'KoreaMed','title':t,'issns':ids,'publisher':None,'homepage':None,'ref':r['evidenceUrl'],'koreamed':{'koreamedId':r['koreamedId'],'abbr':r['abbr'],'formerTitle':r['title'] if r.get('nowPublishedAs') else None,'retrieved':r['retrieved']}})
 plan=json.load(open(f'{W}/nlm/plan-nlm.json'))
 for r in plan['rows']:
     if r['domain']!='Nursing': continue
@@ -101,10 +117,10 @@ for c in cands:
     if c['dedupe']!='net_new': continue
     k=uf.f(c['issns'][0]) if c['issns'] else None
     if k is None: continue
-    m=merged.setdefault(k,{'title':c['title'],'issns':set(),'publisher':None,'homepage':None,'sources':[],'cinahl':None,'scielo':None,'nlm':None,'openalex':None})
+    m=merged.setdefault(k,{'title':c['title'],'issns':set(),'publisher':None,'homepage':None,'sources':[],'cinahl':None,'scielo':None,'nlm':None,'openalex':None,'koreamed':None})
     m['issns'].update(c['issns']); m['publisher']=m['publisher'] or c['publisher']; m['homepage']=m['homepage'] or c['homepage']
     m['sources'].append({'source':c['source'],'ref':c['ref'],'title':c['title']})
-    for key in ('cinahl','scielo','nlm','openalex'): m[key]=m[key] or c.get(key)
+    for key in ('cinahl','scielo','nlm','openalex','koreamed'): m[key]=m.get(key) or c.get(key)
 net=[{**m,'issns':sorted(m['issns'])} for m in merged.values()]
 json.dump({'counts':{f'{a} / {b}':n for (a,b),n in sorted(cnt.items())},'netNew':net,'held':[c for c in cands if c['dedupe']=='held'],'titleConflicts':[c for c in cands if c['dedupe']=='title_conflict']},open(f'{W}/nu/pool.json','w'),ensure_ascii=False)
 print(json.dumps({f'{a} / {b}':n for (a,b),n in sorted(cnt.items())},indent=1)); print('net-new merged journals:',len(net),'| multi-source:',sum(1 for m in net if len(m['sources'])>1))

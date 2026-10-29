@@ -1,0 +1,318 @@
+{
+ "OpenAlex sources: nanotitle": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:27:04Z",
+  "query": "GET /sources?filter=type:journal,display_name.search:nano&select=...&per-page=200 (cursor paging)",
+  "fetched": 111,
+  "reportedTotal": 111,
+  "pagination": "1 pages, cursor exhausted: True",
+  "notes": "Documented source filter; a source is returned when at least one of its topics is in the listed subfields, so membership alone is not department scope (topic weights are scored later).",
+  "rawFiles": {
+   "openalex-nanotitle.ndjson": {
+    "sha256": "e4dcc2ad64b5c2478572c13140a4cb74faacb215b86b40a1ca964e29ef38326a",
+    "bytes": 475808
+   }
+  }
+ },
+ "OpenAlex sources: nanotopic": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:27:33Z",
+  "query": "GET /sources?filter=type:journal,topics.id:T11486|T11646|T13052|T10083|T12627|T11582|T11523|T11342|T10321|T11169|T10956&select=...&per-page=200 (cursor paging)",
+  "fetched": 2049,
+  "reportedTotal": 2049,
+  "pagination": "11 pages, cursor exhausted: True",
+  "notes": "Documented source filter; a source is returned when at least one of its topics is in the listed subfields, so membership alone is not department scope (topic weights are scored later).",
+  "rawFiles": {
+   "openalex-nanotopic.ndjson": {
+    "sha256": "18e9a9de6d3f59f586981451cd6756c80a3acbfb4c4db4bde593283eb92f817c",
+    "bytes": 10160991
+   }
+  }
+ },
+ "OpenAlex sources: ayurtitle": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:27:34Z",
+  "query": "GET /sources?filter=type:journal,display_name.search:ayurved&select=...&per-page=200 (cursor paging)",
+  "fetched": 5,
+  "reportedTotal": 5,
+  "pagination": "1 pages, cursor exhausted: True",
+  "notes": "Documented source filter; a source is returned when at least one of its topics is in the listed subfields, so membership alone is not department scope (topic weights are scored later).",
+  "rawFiles": {
+   "openalex-ayurtitle.ndjson": {
+    "sha256": "33b01292ca241f1950ebd86d59650ef47d47c34a40aff095b7130cebe4fbceda",
+    "bytes": 19191
+   }
+  }
+ },
+ "OpenAlex sources: chem": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:27:43Z",
+  "query": "GET /sources?filter=type:journal,topics.subfield.id:1503|1506|1508|1507|1504&select=...&per-page=200 (cursor paging)",
+  "fetched": 5291,
+  "reportedTotal": 5291,
+  "pagination": "27 pages, cursor exhausted: True",
+  "notes": "Documented source filter; a source is returned when at least one of its topics is in the listed subfields, so membership alone is not department scope (topic weights are scored later).",
+  "rawFiles": {
+   "openalex-chem.ndjson": {
+    "sha256": "410835970e02c69a1ccc4a8b95fca856b8524bcfebaa30ed6f350c9bc83ad94f",
+    "bytes": 27987801
+   }
+  }
+ },
+ "Crossref member ieee (Institute of Electrical and Electronics Engineers (IEEE))": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:29:06Z",
+  "query": "GET /members/263/works?filter=type:journal-article,from-pub-date:2024-01-01 and 2025-07-01&rows=0&facet=issn:1000 ; GET /journals/{issn}",
+  "fetched": 276,
+  "reportedTotal": 331410,
+  "pagination": "ISSN facet returned 493 ISSNs (limit 1000) -> 276 journals after merging print/electronic",
+  "notes": "Journal-article deposits only (proceedings and magazines under other types are not counted). A facet is capped at 1000 ISSNs, so a publisher with more journals than that would be partial.",
+  "rawFiles": {
+   "crossref-ieee.ndjson": {
+    "sha256": "2b49dc44ae7a69732637f91721b7647c41ba74aaa9dcbd9745931bef69ca8a80",
+    "bytes": 103619
+   }
+  }
+ },
+ "OpenAlex sources: arch": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:29:07Z",
+  "query": "GET /sources?filter=type:journal,topics.subfield.id:2216&select=...&per-page=200 (cursor paging)",
+  "fetched": 7072,
+  "reportedTotal": 7072,
+  "pagination": "36 pages, cursor exhausted: True",
+  "notes": "Documented source filter; a source is returned when at least one of its topics is in the listed subfields, so membership alone is not department scope (topic weights are scored later).",
+  "rawFiles": {
+   "openalex-arch.ndjson": {
+    "sha256": "6e5f97a37d6330d235bd6ff780a8a2175e691b635d1c97723d5ba351d95431e5",
+    "bytes": 34466167
+   }
+  }
+ },
+ "Crossref member asme (ASME International)": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:29:40Z",
+  "query": "GET /members/33/works?filter=type:journal-article,from-pub-date:2024-01-01 and 2025-07-01&rows=0&facet=issn:1000 ; GET /journals/{issn}",
+  "fetched": 31,
+  "reportedTotal": 6940,
+  "pagination": "ISSN facet returned 59 ISSNs (limit 1000) -> 31 journals after merging print/electronic",
+  "notes": "Journal-article deposits only (proceedings and magazines under other types are not counted). A facet is capped at 1000 ISSNs, so a publisher with more journals than that would be partial.",
+  "rawFiles": {
+   "crossref-asme.ndjson": {
+    "sha256": "27251aa9bf8d133fa5be538206a8a387a3dac611832564a3cdadd0abfecd8598",
+    "bytes": 9810
+   }
+  }
+ },
+ "OpenAlex sources: elec": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:29:56Z",
+  "query": "GET /sources?filter=type:journal,topics.subfield.id:2208|2207|1711|1705&select=...&per-page=200 (cursor paging)",
+  "fetched": 35336,
+  "reportedTotal": 35336,
+  "pagination": "177 pages, cursor exhausted: True",
+  "notes": "Documented source filter; a source is returned when at least one of its topics is in the listed subfields, so membership alone is not department scope (topic weights are scored later).",
+  "rawFiles": {
+   "openalex-elec.ndjson": {
+    "sha256": "724ccb871d09899872802651c633aa0a0073fbed15916e2dc42837b260326506",
+    "bytes": 173758205
+   }
+  }
+ },
+ "Crossref member iet (Institution of Engineering and Technology (IET))": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:30:24Z",
+  "query": "GET /members/265/works?filter=type:journal-article,from-pub-date:2024-01-01 and 2025-07-01&rows=0&facet=issn:1000 ; GET /journals/{issn}",
+  "fetched": 51,
+  "reportedTotal": 22969,
+  "pagination": "ISSN facet returned 85 ISSNs (limit 1000) -> 51 journals after merging print/electronic",
+  "notes": "Journal-article deposits only (proceedings and magazines under other types are not counted). A facet is capped at 1000 ISSNs, so a publisher with more journals than that would be partial.",
+  "rawFiles": {
+   "crossref-iet.ndjson": {
+    "sha256": "ea0e0162985b65ef147b6d8cded6c4249096491dfb283fa16f289f35519d5c31",
+    "bytes": 18198
+   }
+  }
+ },
+ "OpenAlex sources: ayurtopic": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:30:25Z",
+  "query": "GET /sources?filter=type:journal,topics.id:T13483|T10431|T11709|T12657|T13090|T12891|T14261|T12647|T13651|T12298|T11613|T14521|T12346|T12962|T14331|T13335|T13919|T14461|T12215|T12685|T12497|T10035|T11332|T13921|T13776|T13422&select=...&per-page=200 (cursor paging)",
+  "fetched": 12913,
+  "reportedTotal": 12913,
+  "pagination": "65 pages, cursor exhausted: True",
+  "notes": "Documented source filter; a source is returned when at least one of its topics is in the listed subfields, so membership alone is not department scope (topic weights are scored later).",
+  "rawFiles": {
+   "openalex-ayurtopic.ndjson": {
+    "sha256": "f388da82db7e6596ea834cbcf25001bf2f28240392a036c40763c51359e11e90",
+    "bytes": 61783420
+   }
+  }
+ },
+ "OpenAlex sources: homeo": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:30:26Z",
+  "query": "GET /sources?filter=type:journal,display_name.search:homeopath&select=...&per-page=200 (cursor paging)",
+  "fetched": 0,
+  "reportedTotal": 0,
+  "pagination": "1 pages, cursor exhausted: True",
+  "notes": "Documented source filter; a source is returned when at least one of its topics is in the listed subfields, so membership alone is not department scope (topic weights are scored later).",
+  "rawFiles": {
+   "openalex-homeo.ndjson": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+   }
+  }
+ },
+ "OpenAlex sources: unani": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:30:28Z",
+  "query": "GET /sources?filter=type:journal,display_name.search:unani&select=...&per-page=200 (cursor paging)",
+  "fetched": 12,
+  "reportedTotal": 12,
+  "pagination": "1 pages, cursor exhausted: True",
+  "notes": "Documented source filter; a source is returned when at least one of its topics is in the listed subfields, so membership alone is not department scope (topic weights are scored later).",
+  "rawFiles": {
+   "openalex-unani.ndjson": {
+    "sha256": "b01c1a36e9bd1cf72eab3e09c6a0e232fe5f1883aa408d0d6ad65b5001aecec7",
+    "bytes": 47139
+   }
+  }
+ },
+ "Crossref member jsme (Japan Society of Mechanical Engineers)": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:30:43Z",
+  "query": "GET /members/124/works?filter=type:journal-article,from-pub-date:2024-01-01 and 2025-07-01&rows=0&facet=issn:1000 ; GET /journals/{issn}",
+  "fetched": 39,
+  "reportedTotal": 8918,
+  "pagination": "ISSN facet returned 39 ISSNs (limit 1000) -> 39 journals after merging print/electronic",
+  "notes": "Journal-article deposits only (proceedings and magazines under other types are not counted). A facet is capped at 1000 ISSNs, so a publisher with more journals than that would be partial.",
+  "rawFiles": {
+   "crossref-jsme.ndjson": {
+    "sha256": "585976f60e194e0d6b8e3bf8c1eaa28ee051b38fbe121ef12345c4a366ea8799",
+    "bytes": 13101
+   }
+  }
+ },
+ "Crossref member ieice (Institute of Electronics, Information and Communications Engineers (IEICE))": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:30:54Z",
+  "query": "GET /members/532/works?filter=type:journal-article,from-pub-date:2024-01-01 and 2025-07-01&rows=0&facet=issn:1000 ; GET /journals/{issn}",
+  "fetched": 8,
+  "reportedTotal": 3307,
+  "pagination": "ISSN facet returned 12 ISSNs (limit 1000) -> 8 journals after merging print/electronic",
+  "notes": "Journal-article deposits only (proceedings and magazines under other types are not counted). A facet is capped at 1000 ISSNs, so a publisher with more journals than that would be partial.",
+  "rawFiles": {
+   "crossref-ieice.ndjson": {
+    "sha256": "d8c01d8a303da23f513106ab6ad37bad8313ca7bacde762ca2994e996b05c50a",
+    "bytes": 3250
+   }
+  }
+ },
+ "OpenAlex sources: pharbio": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:31:29Z",
+  "query": "GET /sources?filter=type:journal,topics.subfield.id:3003|2736|3611|3002|1305|2402|1502&select=...&per-page=200 (cursor paging)",
+  "fetched": 21540,
+  "reportedTotal": 21540,
+  "pagination": "108 pages, cursor exhausted: True",
+  "notes": "Documented source filter; a source is returned when at least one of its topics is in the listed subfields, so membership alone is not department scope (topic weights are scored later).",
+  "rawFiles": {
+   "openalex-pharbio.ndjson": {
+    "sha256": "3e550fb9d118d4529e90b335d7aa1b4c467785ab636f8fd90628e64fc716917f",
+    "bytes": 104942387
+   }
+  }
+ },
+ "OpenAlex sources: physio": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:32:30Z",
+  "query": "GET /sources?filter=type:journal,topics.subfield.id:3612|2742|3603&select=...&per-page=200 (cursor paging)",
+  "fetched": 13525,
+  "reportedTotal": 13525,
+  "pagination": "68 pages, cursor exhausted: True",
+  "notes": "Documented source filter; a source is returned when at least one of its topics is in the listed subfields, so membership alone is not department scope (topic weights are scored later).",
+  "rawFiles": {
+   "openalex-physio.ndjson": {
+    "sha256": "cbc5083db4052e9d69e4a5cea1fc03e7b66cc16133c45d4b41e6ecfe98652cbd",
+    "bytes": 63452558
+   }
+  }
+ },
+ "DOAJ journal CSV": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:34:56Z",
+  "query": "GET https://doaj.org/csv (the public full-journal CSV)",
+  "fetched": 23554,
+  "pagination": "single file",
+  "notes": "Matched by ISSN/e-ISSN only against the whole catalogue; its keywords/LCC subjects feed the DOAJ department rule. Previous sessions found 0 genuinely new DOAJ journals; re-measured here.",
+  "rawFiles": {
+   "doaj.csv": {
+    "sha256": "d33c0556f7f205f80c2e3fc94a1fc96634eadde1d537b1d7c50abda8dd603eba",
+    "bytes": 25907814
+   }
+  }
+ },
+ "NLM Catalog (NLM Subject, serial[Type])": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:34:56Z",
+  "query": "esearch db=nlmcatalog term=\"<subject>\"[Subject] AND serial[Type] for Pharmacy, Biotechnology, Nanotechnology, Physical Therapy Modalities, Rehabilitation, Complementary Therapies, Medicine Traditional, Medicine Ayurvedic, Architecture, Chemical Engineering; esummary 200 per call",
+  "fetched": 4929,
+  "pagination": "retmax 10000 per subject; every subject returned under 2,100 ids so none was truncated",
+  "notes": "NLM gives no recency statement; publication evidence is looked up per journal in Crossref/OpenAlex/PubMed. Electrical, Electronics and Mechanical engineering have no NLM subject (NLM is a biomedical catalogue).",
+  "rawFiles": {
+   "nlm/subject-serials.json": {
+    "sha256": "68e3af4435550fd47bc82d393f9661fc5e4270a910a79689525e2b79ef40866b",
+    "bytes": 1300554
+   }
+  }
+ },
+ "IEEE Xplore: Browse Journals & Magazines by Title": {
+  "status": "blocked",
+  "retrieved": "2026-10-29T04:34:56Z",
+  "query": "GET https://ieeexplore.ieee.org/browse/periodicals/title",
+  "fetched": 0,
+  "pagination": "n/a",
+  "notes": "Returns a JavaScript shell with no title list in the HTML (the first probe returned HTTP 418). IEEE's undocumented internal REST calls were not used. IEEE Publishing Portal (publishingportal.ieee.org) is an application with no download. The IEEE journal list was therefore taken from IEEE's own deposits in Crossref (member 263), see the Crossref member entries.",
+  "rawFiles": {}
+ },
+ "Publisher catalogues refusing automated access": {
+  "status": "blocked",
+  "retrieved": "2026-10-29T04:34:56Z",
+  "query": "GET /… for digital-library.theiet.org, journals.sagepub.com (IMechE), aiche.org, sciencedirect.com, eurekaselect.com",
+  "fetched": 0,
+  "pagination": "n/a",
+  "notes": "HTTP 403 to non-browser clients; not bypassed. ASME (asme.org) and JSME (jsme.or.jp) timed out. Their journals were taken from Crossref publisher deposits (member 33 ASME, 265 IET, 124 JSME, 532 IEICE) and OpenAlex.",
+  "rawFiles": {}
+ },
+ "OpenAlex sources: ayur": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:34:58Z",
+  "query": "GET /sources?filter=type:journal,topics.subfield.id:2707&select=...&per-page=200 (cursor paging)",
+  "fetched": 9782,
+  "reportedTotal": 9782,
+  "pagination": "49 pages, cursor exhausted: True",
+  "notes": "Documented source filter; a source is returned when at least one of its topics is in the listed subfields, so membership alone is not department scope (topic weights are scored later).",
+  "rawFiles": {
+   "openalex-ayur.ndjson": {
+    "sha256": "24e61512e413bfea4fdcb65f64364a088d5c14c82e3d3f45a39294f1127391b3",
+    "bytes": 46445405
+   }
+  }
+ },
+ "OpenAlex sources: mech": {
+  "status": "complete",
+  "retrieved": "2026-10-29T04:35:58Z",
+  "query": "GET /sources?filter=type:journal,topics.subfield.id:2210|2211|2206|2203|2202|2209&select=...&per-page=200 (cursor paging)",
+  "fetched": 38533,
+  "reportedTotal": 38533,
+  "pagination": "193 pages, cursor exhausted: True",
+  "notes": "Documented source filter; a source is returned when at least one of its topics is in the listed subfields, so membership alone is not department scope (topic weights are scored later).",
+  "rawFiles": {
+   "openalex-mech.ndjson": {
+    "sha256": "54ba3fdd96e4db987192799d6513283f3f253e91aa5227bae29f282588b6534a",
+    "bytes": 194962539
+   }
+  }
+ }
+}

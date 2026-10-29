@@ -28,8 +28,8 @@ const file = process.argv.slice(2).find(a => !a.startsWith('--'));
   const startedAt = new Date().toISOString();
   const out = { database: db, runId: plan.runId, source: plan.source, dry: DRY, startedAt, requested: rows.length, inserted: 0, skippedIdentifierHeld: 0, skippedTitleHeld: 0, skippedRace: 0, failed: 0, firstError: null, batches: 0, insertedIds: [] };
   // The label names the source that listed the journal; a plan that merges several sources can carry it per row (row.basisSource), otherwise it is the plan's own source.
-  const LABEL = { 'OpenAlex Sources': 'OpenAlex', 'OpenAlex': 'OpenAlex', 'ROAD': 'ROAD', 'NLM Catalog': 'NLM Catalog', 'CINAHL': 'CINAHL', 'SciELO': 'SciELO', 'Crossref Journals': 'Crossref', 'Crossref': 'Crossref' };
-  const basisFor = (r) => `${LABEL[r.basisSource || plan.source] || 'Crossref'} listing — OA unverified`;
+  const LABEL = { 'OpenAlex Sources': 'OpenAlex', 'OpenAlex': 'OpenAlex', 'ROAD': 'ROAD', 'NLM Catalog': 'NLM Catalog', 'CINAHL': 'CINAHL', 'SciELO': 'SciELO', 'J-STAGE': 'J-STAGE', 'KoreaMed': 'KoreaMed', 'Crossref Journals': 'Crossref', 'Crossref': 'Crossref' };
+  const basisFor = (r) => { const src = r.basisSource || plan.source; return `${LABEL[src] || src} listing — OA unverified`; };   // an unknown source is named as itself, never mislabelled as another
 
   for (let i = 0; i < rows.length; i += BATCH) {
     const batch = rows.slice(i, i + BATCH);
