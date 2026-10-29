@@ -42,3 +42,8 @@ data/dept-coverage3/work/
 # Department coverage run 4: raw/work files (never committed)
 data/dept-coverage4/raw/
 data/dept-coverage4/work/
+
+# Content Library review: generated evidence (screenshots and audit outputs) is kept outside Git; scripts/audit-library-data-quality.ts regenerates it
+docs/content-library-usability-2026-10-29/screenshots/
+docs/library-data-quality-2026-10-29/*.csv
+docs/library-data-quality-2026-10-29/*.json

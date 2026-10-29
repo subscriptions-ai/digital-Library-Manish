@@ -1,6 +1,6 @@
 # Content Library usability and correctness (2026-10-29)
 
-Scope: the reader-facing Content Library in every reader dashboard. Nothing in production was touched: no catalogue record, no entitlement, no message, no deploy. All verification ran on `stm_library_qa` (a copy of the local development database) and the throwaway test database. Screenshots: `content-library-usability-2026-10-29/screenshots/`. Data-quality review: `library-data-quality-2026-10-29/`.
+Scope: the reader-facing Content Library in every reader dashboard. Nothing in production was touched: no catalogue record, no entitlement, no message, no deploy. All verification ran on `stm_library_qa` (a copy of the local development database) and the throwaway test database. Screenshots and the generated audit outputs are not in Git; the copies, with checksums, are in `/home/itb04/evidence/digital-library/library-usability-2026-10-29/` (`screenshots/`, `data-quality/`, `SHA256SUMS`). Data-quality review: `library-data-quality-2026-10-29/README.md`.
 
 ## 1. Role / route / access-state matrix
 
@@ -40,7 +40,7 @@ Routes: `/dashboard/library` (Browse), `/dashboard/library/access`, `/dashboard/
 
 ## 4. Changed files
 
-New: `src/lib/{libraryParams,libraryAvailability,libraryQuery,subjectFacets,accessSummary}.ts`, `src/components/library/{ResultCard,ContinueReading,AccessOverview}.tsx`, `scripts/{test-library-discovery.ts,qa-library-fixtures.ts,qa-browser.cjs,qa-library-flows.cjs,qa-library-roles.cjs,audit-library-data-quality.ts}`, this folder and `library-data-quality-2026-10-29/`.
+New: `src/lib/{libraryParams,libraryAvailability,libraryQuery,subjectFacets,accessSummary}.ts`, `src/components/library/{ResultCard,ContinueReading,AccessOverview}.tsx`, `scripts/{test-library-discovery.ts,qa-library-fixtures.ts,qa-browser.cjs,qa-library-flows.cjs,qa-library-roles.cjs,audit-library-data-quality.ts}`, this document and `library-data-quality-2026-10-29/README.md`.
 Changed: `server.ts` (list endpoints take the shared filters and say what each record offers; `/api/library/discovery-facets`; `/api/user/library-overview`; `/api/content/filters` by `GROUP BY`; a department the account does not hold is reported as `denied`), `src/components/StructuredLibrary.tsx` (rewritten around the address), `MyContentAccess.tsx` and `InstitutionContentAccess.tsx` (now one shared component), `src/lib/libraryRoute.ts`, `MetadataModal.tsx` (source link validated), `ui/Badge.tsx` (`title`), `scripts/test-department-access.ts` (the shortest address for "Articles" omits the default `kind`).
 
 The existing `/api/user/content-access` is unchanged and still served; nothing in the app reads it any more.

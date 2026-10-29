@@ -2,7 +2,7 @@
 
 Produced by `scripts/audit-library-data-quality.ts`. It is READ ONLY (every query is a `SELECT` inside a `READ ONLY` transaction); it wrote the files in this folder and changed no record. Nothing here has been applied. The numbers are from the local QA copy of the development database (`stm_library_qa`); **production was not queried** (read-only production access has been approved task by task, and this task did not ask for it), so every figure below must be re-run on production before any correction is decided. The script takes its database from `DATABASE_URL`, so it can be pointed at a read-only export.
 
-Files: `summary.json` (counts), `legacy-books-suspect.csv`, `structured-books-suspect.csv`, `subject-values-held-back.csv`, `proposed-corrections.json` (the manifest: one proposal per record, `action` is `propose-reclassify` or `needs-human-review`, never an instruction to run).
+The generated outputs (`summary.json`, `legacy-books-suspect.csv`, `structured-books-suspect.csv`, `subject-values-held-back.csv`, `proposed-corrections.json` — the manifest: one proposal per record, `action` is `propose-reclassify` or `needs-human-review`, never an instruction to run) are not kept in Git because the script regenerates them. The local-QA copy is in `/home/itb04/evidence/digital-library/library-usability-2026-10-29/data-quality/` (checksums in `SHA256SUMS`).
 
 ## 1. "Books" that look like journal articles
 
