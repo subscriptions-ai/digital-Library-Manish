@@ -52,6 +52,7 @@ import { parseJournalPaging, queryJournalPage, publicScope, subjectSlugSql } fro
 import { COMPANY_DETAILS, currentIssuer } from "./src/config.js";
 import { discoveryFiltersFrom, discoveryAnd, andOnto, libraryView, libraryFacets, availabilityWhere } from "./src/lib/libraryQuery.js";
 import { availabilityOf } from "./src/lib/libraryAvailability.js";
+import { contentWhere, contentOrderBy, sectionOverview, parseSort, isSection, type Collection } from "./src/lib/adminContent.js";
 import { cleanSubjectFacets } from "./src/lib/subjectFacets.js";
 
 import { canonicalOrSelf, canonicalOrSelfList, canonicalDepartmentName, resolveCanonicalDepartment, entitlementCovers, foldCounts, departmentFromSlug, spellingsOfAll } from "./src/lib/departmentRegistry.js";
@@ -12098,22 +12099,39 @@ async function startServer() {
 
   app.get("/api/admin/library/items", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
     try {
-      const { contentType, search, domain, status, page = '1', limit = '15' } = req.query;
+      const { contentType, search, domain, status, visibility, sort, page = '1', limit = '15' } = req.query;
+      if (!isSection(contentType)) return res.status(400).json({ error: "Unknown content type" });
       const kind = kindFor(contentType);
       const take = Math.min(parseInt(limit as string) || 15, 100000);
       const skip = ((parseInt(page as string) || 1) - 1) * take;
-      const where: any = {};
-      if (kind === 'article') where.contentType = contentType;
-      if (domain) where.domain = { in: await deptSpellings.expand([String(domain)]) };
-      if (status) where.status = status;
-      if (search) where.OR = [{ title: { contains: search as string, mode: 'insensitive' } }, { authors: { contains: search as string, mode: 'insensitive' } }];
+      // The same filter the department counts use (src/lib/adminContent.ts), so a count and the rows under it cannot disagree.
+      const where = await contentWhere(contentType, 'new', { q: String(search || ''), status: String(status || ''), visibility: String(visibility || ''), domain: String(domain || '') }, deptSpellings);
       const model = (prisma as any)[kind];
       const [rows, total] = await Promise.all([
-        model.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
+        model.findMany({ where, orderBy: contentOrderBy('new', parseSort(sort)), skip, take }),
         model.count({ where }),
       ]);
       res.json({ data: rows.map(aliasItem), total, page: parseInt(page as string) || 1, limit: take });
     } catch (e: any) { console.error("admin library list:", e); res.status(500).json({ error: "Failed to load items" }); }
+  });
+
+  // GET /api/admin/library/overview — the department counts and the cards above an admin content table, for any section and either
+  // collection (src/lib/adminContent.ts). The archived collection is the legacy `Content` table, which only a super admin can list, so
+  // the same rule applies to counting it. Aggregated in the database; no record is sent to the browser.
+  app.get("/api/admin/library/overview", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const section = req.query.contentType;
+      if (!isSection(section)) return res.status(400).json({ error: "Unknown content type" });
+      const collection: Collection = req.query.collection === 'archived' ? 'archived' : 'new';
+      const isSuper = req.user?.role === 'SuperAdmin';
+      if (collection === 'archived' && !isSuper) return res.status(403).json({ error: "The archived collection is for super admins" });
+      const s = (v: any) => (typeof v === 'string' ? v.trim() : '');
+      res.set('Cache-Control', 'no-store');
+      res.json(await sectionOverview(prisma, deptSpellings, section, collection, { q: s(req.query.q), status: s(req.query.status) }, { canSeeArchived: isSuper }));
+    } catch (e: any) {
+      console.error("admin library overview:", e?.message);
+      res.status(500).json({ error: "Failed to load the overview" });
+    }
   });
 
   app.get("/api/admin/library/items/:kind/:id", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
@@ -12264,25 +12282,29 @@ async function startServer() {
 
   // Admin: Content CRUD
   app.get("/api/admin/content", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
-
     try {
-      const { domain, contentType, search, status, page = "1", limit = "10" } = req.query;
+      const { domain, contentType, search, status, visibility, sort, page = "1", limit = "10" } = req.query;
       const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
-      
-      const where: any = {};
-      if (domain) where.domain = { in: await deptSpellings.expand([String(domain)]) };
-      if (contentType) where.contentType = contentType;
-      if (status) where.status = status;
-      if (search) {
-        where.OR = [
-          { title: { contains: search as string, mode: "insensitive" } },
-          { authors: { contains: search as string, mode: "insensitive" } },
-          { description: { contains: search as string, mode: "insensitive" } },
-        ];
+
+      let where: any = {};
+      if (isSection(contentType)) {
+        // The same filter the department counts use (src/lib/adminContent.ts), including the Unassigned bucket.
+        where = await contentWhere(contentType, 'archived', { q: String(search || ''), status: String(status || ''), visibility: String(visibility || ''), domain: String(domain || '') }, deptSpellings);
+      } else {
+        if (domain) where.domain = { in: await deptSpellings.expand([String(domain)]) };
+        if (contentType) where.contentType = contentType;
+        if (status) where.status = status;
+        if (search) {
+          where.OR = [
+            { title: { contains: search as string, mode: "insensitive" } },
+            { authors: { contains: search as string, mode: "insensitive" } },
+            { description: { contains: search as string, mode: "insensitive" } },
+          ];
+        }
       }
 
       const [contents, total] = await Promise.all([
-        prisma.content.findMany({ where, skip, take: parseInt(limit as string), orderBy: { publishedAt: 'desc' } }),
+        prisma.content.findMany({ where, skip, take: parseInt(limit as string), orderBy: contentOrderBy('archived', parseSort(sort)) }),
         prisma.content.count({ where })
       ]);
 

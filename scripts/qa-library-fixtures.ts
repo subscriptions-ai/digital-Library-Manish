@@ -58,6 +58,9 @@ const accounts: Record<string, any> = {
   pro:        { role: 'Subscriber', interestedDomains: ['Applied Sciences'] },
   free:       { role: 'Subscriber', interestedDomains: ['Applied Sciences'] },
   nodepts:    { role: 'Subscriber', interestedDomains: [] },
+  // staff, for the admin content sections
+  admin:      { role: 'SuperAdmin' },
+  manager:    { role: 'SubscriptionManager' },
 };
 const tokens: Record<string, any> = {};
 let n = 0;

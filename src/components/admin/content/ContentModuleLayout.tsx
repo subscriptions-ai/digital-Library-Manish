@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { List, PlusCircle, Upload } from 'lucide-react';
+import { SECTION_LABELS, isSection } from '../../../lib/adminContent';
 
 const CONTENT_TYPE_CONFIG: Record<string, { icon: string; label: string; color: string }> = {
   'Books':                   { icon: '📚', label: 'Books', color: 'blue' },
@@ -26,9 +27,13 @@ export function ContentModuleLayout({ contentType, children }: ContentModuleLayo
   const slug = contentType.toLowerCase().replace(/\s+/g, '-');
   const basePath = `/admin/${slug}`;
 
+  // The module's views. Creating a record has ONE entry point — the "Add <type>" button on the list — so it is not repeated as a tab; the tab
+  // appears only while the form is open, to say where you are (and to come back to it after a Bulk Import).
+  const singular = isSection(contentType) ? SECTION_LABELS[contentType].singular : 'Item';
+  const onForm = location.pathname === `${basePath}/new`;
   const tabs = [
     { label: 'All Entries', path: basePath, icon: <List size={15} /> },
-    { label: 'Add New', path: `${basePath}/new`, icon: <PlusCircle size={15} /> },
+    ...(onForm ? [{ label: `New ${singular}`, path: `${basePath}/new`, icon: <PlusCircle size={15} /> }] : []),
     { label: 'Bulk Import', path: `${basePath}/import`, icon: <Upload size={15} /> },
   ];
 
