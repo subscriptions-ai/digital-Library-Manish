@@ -1,3 +1,4 @@
+import { legacyPublicWhere } from './publicStatus';
 import { plainTitle } from './abstractPreview.js';
 import type { PrismaClient } from '@prisma/client';
 
@@ -29,7 +30,7 @@ export async function searchContent(prisma: PrismaClient, params: CatalogueSearc
   }
 
   const where: any = {
-    status: 'Published',
+    ...legacyPublicWhere,
     OR: [
       { title:       { contains: q, mode: 'insensitive' } },
       { authors:     { contains: q, mode: 'insensitive' } },
