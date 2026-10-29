@@ -19,7 +19,7 @@
  *   · a conflict found at write time (someone inserted an identifier after the check) rolls the whole batch back and the batch is re-checked and retried (at most 3 attempts), so the
  *     result is always exact; an unrecoverable failure stops the run (non-zero exit) with nothing partial in the database;
  *   · re-running a plan is idempotent: journals already present are skipped, and a run that inserts nothing writes no audit row.
- * Test hooks (--simulate-audit-failure, --simulate-race) work only on a database whose name ends in "_test".
+ * Test hooks (--simulate-audit-failure, --simulate-race, --simulate-race-always) work only on a database whose name ends in "_test".
  */
 const fs = require('node:fs');
 const crypto = require('node:crypto');
@@ -27,7 +27,7 @@ const { PrismaClient } = require('@prisma/client');
 
 const arg = (k, d) => { const a = process.argv.find(x => x.startsWith(`--${k}=`)); return a ? a.split('=')[1] : d; };
 const DRY = process.argv.includes('--dry');
-const SIM_AUDIT = process.argv.includes('--simulate-audit-failure'), SIM_RACE = process.argv.includes('--simulate-race');
+const SIM_AUDIT = process.argv.includes('--simulate-audit-failure'), SIM_RACE_ALWAYS = process.argv.includes('--simulate-race-always'), SIM_RACE = process.argv.includes('--simulate-race') || SIM_RACE_ALWAYS;
 const BATCH = Math.min(100, Math.max(1, parseInt(arg('batch', '100'), 10) || 100));
 const MAX = parseInt(arg('max', '0'), 10) || Infinity;
 const file = process.argv.slice(2).find(a => !a.startsWith('--'));
@@ -108,7 +108,7 @@ function prepare(r) {
       // 2. one transaction: every journal of the batch AND its audit row, or nothing
       const created = todo.map(x => ({ id: crypto.randomUUID(), x }));
       try {
-        if (SIM_RACE && !raceInjected) { raceInjected = true; const v = created[created.length - 1].x.row; await p.journal.create({ data: { title: `race ${crypto.randomUUID()}`, issn: v.issn, domain: v.domain, status: 'MetadataOnly', openAccess: false } }); }
+        if (SIM_RACE && (!raceInjected || SIM_RACE_ALWAYS)) { raceInjected = true; const v = created[created.length - 1].x.row; await p.journal.create({ data: { title: `race ${crypto.randomUUID()}`, issn: v.issn, domain: v.domain, status: 'MetadataOnly', openAccess: false } }); }
         await p.$transaction(async (tx) => {
           const res = await tx.journal.createMany({
             skipDuplicates: true,

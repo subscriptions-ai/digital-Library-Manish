@@ -1,0 +1,150 @@
+[
+ {
+  "title": "Artificial Intelligence Research and Applications",
+  "issns": [
+   "3108-3889"
+  ],
+  "dept": "Electrical Engineering",
+  "reason": "artificial-intelligence journal; electrical phrases on its site are application examples"
+ },
+ {
+  "title": "ATZelektronik",
+  "issns": [
+   "1862-1791",
+   "2192-8878"
+  ],
+  "dept": "Electronics & Telecommunication Engineering",
+  "reason": "trade magazine of the automotive industry (Springer Vieweg), not a research journal"
+ },
+ {
+  "title": "Control Systems and Optimization Letters",
+  "issns": [
+   "2985-6116"
+  ],
+  "dept": "Electrical Engineering",
+  "reason": "control and optimisation journal; the electrical phrases on its site are application examples, so the department is not confirmed"
+ },
+ {
+  "title": "Elektronika : konstrukcje, technologie, zastosowania",
+  "issns": [
+   "0033-2089",
+   "2449-9528"
+  ],
+  "dept": "Electronics & Telecommunication Engineering",
+  "reason": "Polish monthly trade/technical magazine, not a research journal"
+ },
+ {
+  "title": "Food and Bioprocess Technology",
+  "issns": [
+   "1935-5130",
+   "1935-5149"
+  ],
+  "dept": "Bio Technology",
+  "reason": "food science and engineering: filed under Agriculture, not Biotechnology, in the existing taxonomy"
+ },
+ {
+  "title": "International Journal of Image Graphics and Signal Processing",
+  "issns": [
+   "2074-9074",
+   "2074-9082"
+  ],
+  "dept": "Electronics & Telecommunication Engineering",
+  "reason": "image and graphics processing: computing, not electronics & telecommunication, on the evidence of its own scope page"
+ },
+ {
+  "title": "International Journal of Information and Communication Sciences",
+  "issns": [
+   "2575-1700",
+   "2575-1719"
+  ],
+  "dept": "Electronics & Telecommunication Engineering",
+  "reason": "information and communication technology in general: Computer / IT rather than Electronics & Telecommunication"
+ },
+ {
+  "title": "Journal of Superconductivity",
+  "issns": [
+   "0896-1107",
+   "1572-9605"
+  ],
+  "dept": "Electrical Engineering",
+  "reason": "condensed-matter physics journal, not electrical engineering"
+ },
+ {
+  "title": "Journal of Superconductivity and Novel Magnetism",
+  "issns": [
+   "1557-1939",
+   "1557-1947"
+  ],
+  "dept": "Electrical Engineering",
+  "reason": "condensed-matter physics journal, not electrical engineering"
+ },
+ {
+  "title": "Journal of Vibroengineering",
+  "issns": [
+   "1392-8716",
+   "2538-8460"
+  ],
+  "dept": "Electrical Engineering",
+  "reason": "vibration / mechanical engineering journal; its site lists many engineering fields, so the electrical phrases are not scope evidence"
+ },
+ {
+  "title": "Nature Sensors",
+  "issns": [
+   "3059-4499"
+  ],
+  "dept": "Electronics & Telecommunication Engineering",
+  "reason": "cross-disciplinary sensing journal: scope across physics, chemistry and biology, not confirmed as electronics"
+ },
+ {
+  "title": "PhotonicsViews",
+  "issns": [
+   "2626-1294",
+   "2626-1308"
+  ],
+  "dept": "Electronics & Telecommunication Engineering",
+  "reason": "magazine-style trade serial (Wiley), not a research journal"
+ },
+ {
+  "title": "Revista Eletrônica de Engenharia Elétrica e Engenharia Mecânica",
+  "issns": [
+   "2763-5325"
+  ],
+  "dept": "Electrical Engineering",
+  "reason": "title names both electrical and mechanical engineering: the department is not confirmed"
+ },
+ {
+  "title": "Science China Information Sciences",
+  "issns": [
+   "1869-1919",
+   "1674-733X"
+  ],
+  "dept": "Electronics & Telecommunication Engineering",
+  "reason": "broad information sciences (Computer / IT)"
+ },
+ {
+  "title": "Smart Systems and Devices",
+  "issns": [
+   "3093-3285",
+   "3093-3315"
+  ],
+  "dept": "Electrical Engineering",
+  "reason": "generic title; scope across several engineering fields"
+ },
+ {
+  "title": "Transactions on Electromagnetic Spectrum",
+  "issns": [
+   "2822-4744"
+  ],
+  "dept": "Electronics & Telecommunication Engineering",
+  "reason": "identity and scope unclear: the site text names power-systems topics, the title names the electromagnetic spectrum"
+ },
+ {
+  "title": "Waste and Biomass Valorization",
+  "issns": [
+   "1877-2641",
+   "1877-265X"
+  ],
+  "dept": "Bio Technology",
+  "reason": "waste and environmental engineering: scope not substantially biotechnology"
+ }
+]

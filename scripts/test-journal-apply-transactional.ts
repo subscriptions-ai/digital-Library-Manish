@@ -84,6 +84,28 @@ check('after a failed batch the run stops: neither batch is in the database', h.
 const refuse = spawnSync('node', ['scripts/journal-source-apply.cjs', '--dry', '--simulate-race', join(dir, 'x.json')], { env: { ...process.env, DATABASE_URL: real }, encoding: 'utf8' });
 check('the simulation flags are refused on a database whose name does not end in _test', refuse.status === 4 || /ENOENT|only allowed/.test(refuse.stderr));
 
+
+// 9. bounded retries: a conflict at EVERY attempt stops after 3 attempts, rolls everything back, writes no audit row
+const rowsB = [row(300), row(301), row(302)];
+const auditsB = (await audits()).length;
+const k = run(rowsB, ['--simulate-race-always']);
+check('retries are bounded: a conflict at every attempt ends after 3 attempts with a non-zero exit', k.status === 5 && k.out.attempts === 3 && k.out.failed > 0, `attempts ${k.out?.attempts}`);
+check('and leaves none of the batch\'s journals and no audit row (only the rows the test itself injected exist)', (await db.$queryRawUnsafe(`select count(*)::int n from "Journal" where title like $1`, `${RUN} journal 30%`) as any[])[0].n === 0 && (await audits()).length === auditsB);
+
+// 10. rollback dependency guard: the exact-id statement of the audit manifests never deletes a journal that has an article
+const keep = await db.journal.create({ data: { title: `${RUN} rollback keep`, issn: issn(base + 400), domain: 'Bio Technology', status: 'MetadataOnly', openAccess: false } });
+const drop = await db.journal.create({ data: { title: `${RUN} rollback drop`, issn: issn(base + 401), domain: 'Bio Technology', status: 'MetadataOnly', openAccess: false } });
+const art = await db.article.create({ data: { title: `${RUN} article`, journalId: keep.id } });
+const fk = await db.$queryRawUnsafe(`select pg_get_constraintdef(oid) def from pg_constraint where confrelid = '"Journal"'::regclass and contype = 'f' and conrelid = '"Article"'::regclass`) as any[];
+check('the only foreign key onto Journal that matters is Article.journalId ON DELETE SET NULL (so the NOT EXISTS guard is essential)', fk.some(x => /ON DELETE SET NULL/.test(x.def)));
+const deleted = await db.$queryRawUnsafe(`DELETE FROM "Journal" j WHERE j.id = ANY($1::text[]) AND NOT EXISTS (SELECT 1 FROM "Article" a WHERE a."journalId" = j.id) RETURNING j.id`, [keep.id, drop.id]) as any[];
+check('the guarded rollback deletes only the journal without articles', deleted.length === 1 && deleted[0].id === drop.id);
+const artAfter = await db.article.findUnique({ where: { id: art.id } });
+check('the journal with an article and its article are untouched (the article still points at it)', artAfter?.journalId === keep.id && !!(await db.journal.findUnique({ where: { id: keep.id } })));
+const again = await db.$queryRawUnsafe(`DELETE FROM "Journal" j WHERE j.id = ANY($1::text[]) AND NOT EXISTS (SELECT 1 FROM "Article" a WHERE a."journalId" = j.id) RETURNING j.id`, [keep.id, drop.id]) as any[];
+check('re-running the rollback is a no-op for the rows that are gone and still protects the other', again.length === 0);
+await db.$executeRawUnsafe(`delete from "Article" where title like $1`, `${RUN}%`);
+
 // cleanup of this test's own rows
 await db.$executeRawUnsafe(`delete from "Journal" where title like $1`, `${RUN}%`);
 await db.$executeRawUnsafe(`delete from "IngestionAudit" where action = 'JOURNAL_SOURCE_IMPORT' and meta->>'runId' = $1`, RUN);

@@ -1,0 +1,45 @@
+{
+ "Springer Nature public KBART title lists: complete journals, BioMed Central, Nature, Nature.com": {
+  "status": "complete",
+  "retrieved": "2026-10-29T07:24:29Z",
+  "query": "GET https://metadata.springernature.com/metadata/kbart/<file> for the files linked from https://metadata.springernature.com/kbart (public title lists \"to understand which titles are included in our collections and update discovery services\")",
+  "fetched": 4317,
+  "pagination": "4 files: CompleteSpringerJournals 3,574 rows, BioMedCentralAllTitles 442, NatureComAllTitles 231, NatureJournalsAll 70",
+  "notes": "KBART gives identity (ISSN, e-ISSN, title, publisher, official journal page title_url), not subject or current publication; date_last_issue_online is only a coverage date. Repeated across lists, the same title counts once.",
+  "rawFiles": {}
+ },
+ "Springer Nature KBART industry-sector lists (Biotechnology, Electronics, Telecommunications, Engineering, Energy/Utilities/Environment)": {
+  "status": "complete",
+  "retrieved": "2026-10-29T07:24:29Z",
+  "query": "same public interface, files SpringerIndustrySector<Name>Journals_2026-10-28.txt",
+  "fetched": 1799,
+  "pagination": "408 + 422 + 295 + 311 + 363 journals",
+  "notes": "The publisher's own commercial groupings, not a subject classification: the Biotechnology list contains pharmacology and medical journals (e.g. Archives of Pharmacal Research, Sports Medicine). Used only as ONE catalogue kind of evidence, never alone; Engineering and Energy lists not used as evidence.",
+  "rawFiles": {}
+ },
+ "Springer journal pages (title_url) read for aims and scope": {
+  "status": "complete",
+  "retrieved": "2026-10-29T07:24:29Z",
+  "query": "robots.txt then https://www.springer.com/journal/<id> and up to two same-host about pages, 1 request per host per second",
+  "fetched": 201,
+  "pagination": "201 candidates re-pointed from an unreadable listed homepage: all 201 answered; 35 further new candidates were read in the same run",
+  "notes": "robots.txt allowed the journal pages.",
+  "rawFiles": {}
+ },
+ "Wiley KBART resources": {
+  "status": "blocked",
+  "retrieved": "2026-10-29T07:24:29Z",
+  "query": "https://onlinelibrary.wiley.com/library-info/resources/discovery/kbart2019",
+  "fetched": 0,
+  "notes": "HTTP 403 Cloudflare \"Just a moment, enable JavaScript and cookies\". Not bypassed. Manual steps and the file the pipeline reads are in manual-exports.md.",
+  "rawFiles": {}
+ },
+ "IET journal portfolio page": {
+  "status": "blocked",
+  "retrieved": "2026-10-29T07:24:29Z",
+  "query": "https://www.theiet.org/publishing/publishing-with-the-iet/publishing-with-iet-journals",
+  "fetched": 0,
+  "notes": "Imperva/Incapsula challenge page (212 bytes, no content); digital-library.theiet.org HTTP 403. Not bypassed. IET journals are covered through IET's Crossref deposits (member 265, 51 journals). Manual steps in manual-exports.md.",
+  "rawFiles": {}
+ }
+}

@@ -1,0 +1,36 @@
+{
+ "currentRun": {
+  "A confirmed exclusion: non-journal serial / ceased / invalid ISSN": 270,
+  "B scope or policy exclusion by rule (department not supported, or non-Latin title)": 650,
+  "C unresolved identity: title conflict / rename / shared ISSN / no publisher": 36,
+  "D unresolved: held by hand (scope or type not confirmed)": 17,
+  "E unresolved publication evidence (P-B / P-C)": 281,
+  "F unresolved: one kind of department evidence, scope page not confirmable": 1446
+ },
+ "previousRun": {
+  "A confirmed exclusion: non-journal serial / ceased / invalid ISSN": 246,
+  "B scope or policy exclusion by rule (department not supported, or non-Latin title)": 640,
+  "C unresolved identity: title conflict / rename / shared ISSN / no publisher": 31,
+  "D unresolved: held by hand (scope or type not confirmed)": 10,
+  "E unresolved publication evidence (P-B / P-C)": 265,
+  "F unresolved: one kind of department evidence, scope page not confirmable": 1270
+ },
+ "netNew": 50407,
+ "heldInScope": 2683,
+ "eligible": 35,
+ "outOfScope": 47689,
+ "pool": {
+  "net-new": 50407,
+  "held-identifier": 40040,
+  "title-conflict": 1179
+ },
+ "clusters": 91626,
+ "twoRecordDifference": {
+  "previousNetNew": 49739,
+  "thisPoolOfPreviousRun": 49666,
+  "difference": 73,
+  "insertedByPreviousRun": 71,
+  "remaining": 2,
+  "explanation": "BiotechIntellect (inserted by the previous run as ISSN 2410-8308) has two further OpenAlex source records with the same title under other ISSNs (2091-1319, 3115-7920). Once the journal was in the catalogue they no longer count as net-new: they are title conflicts (title-conflict 1,172 -> 1,174), held, never merged. 49,739 - 71 - 2 = 49,666."
+ }
+}

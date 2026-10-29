@@ -38,3 +38,7 @@ data/dept-coverage2/work/
 # Department coverage run 3: raw/work files (never committed)
 data/dept-coverage3/raw/
 data/dept-coverage3/work/
+
+# Department coverage run 4: raw/work files (never committed)
+data/dept-coverage4/raw/
+data/dept-coverage4/work/

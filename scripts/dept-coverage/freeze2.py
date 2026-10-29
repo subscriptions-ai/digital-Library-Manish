@@ -8,7 +8,7 @@ sys.path.insert(0,os.path.dirname(__file__)); from ledger import ROOT
 RUN,OUT=sys.argv[1],sys.argv[2]; W=os.path.join(ROOT,'data',os.environ.get('RUN_DIR','dept-coverage2'),'work'); os.makedirs(OUT,exist_ok=True)
 st=json.load(open(f'{W}/stage2b.json')); elig=st['eligible'][:]
 HAND=json.load(open(f'{W}/hand-holds.json')) if os.path.exists(f'{W}/hand-holds.json') else {}
-PRIORITY=['Crossref member','NLM Catalog','SciELO','J-STAGE','OpenAlex','DOAJ']; LABEL={'Crossref member':'Crossref','NLM Catalog':'NLM Catalog','SciELO':'SciELO','J-STAGE':'J-STAGE','OpenAlex':'OpenAlex','DOAJ':'DOAJ'}
+PRIORITY=['Springer KBART','Crossref member','NLM Catalog','SciELO','J-STAGE','OpenAlex','DOAJ']; LABEL={'Springer KBART':'Springer Nature KBART','Crossref member':'Crossref','NLM Catalog':'NLM Catalog','SciELO':'SciELO','J-STAGE':'J-STAGE','OpenAlex':'OpenAlex','DOAJ':'DOAJ'}
 keep=[];hand=[]
 for c in sorted(elig,key=lambda c:c['title'].lower()):
     if c['title'] in HAND: hand.append({'title':c['title'],'issns':c['ids'],'dept':c['dept'],'reason':HAND[c['title']]}); continue

@@ -1,0 +1,1009 @@
+{
+ "runId": "dept-coverage4-2026-10-29-9a31ea75",
+ "executed": {
+  "canary": "2026-10-29T07:19:47.852Z",
+  "remainder": []
+ },
+ "frozenManifest": {
+  "file": "manifest-frozen.json",
+  "sha256": "c5fc33cfb29f96c6b998695b09fd4345d76c34172ffc92eb3b39536e6428e2eb",
+  "candidates": 18
+ },
+ "planChecksums": {
+  "plan-canary.json": "85a12cd1c0b15cbf1fa95b88dbd62d149f2c5f54b4cad10ebb1a90fa950940e9",
+  "plan-rest.json": "98ba0e369feb86db84e7c6944806f06564fa48128cf69afa5d17802a1cd5d1aa",
+  "hand-holds.json": "1d9236cd2fc279a0770a856a040b9a5baf1c448e7cb01049d83272b87bd70343"
+ },
+ "code": {
+  "frozenAtCommit": "31da70b73c1cecf7244234dbee21c73e77c0ead1",
+  "headWhenAssembled": "31da70b73c1cecf7244234dbee21c73e77c0ead1",
+  "fileSha256": {
+   "src/lib/ingestion/officialListDepartment.ts": "0cdcd0413755290abd894197e09795074a7037a737c6d5bb33ffc4fa92c7a363",
+   "src/lib/ingestion/titleTopicDepartment.ts": "a84f6ff2eecb9bc35fa9ebded361a21136984dc7d25a1a27dccb3b6356db971e",
+   "src/lib/ingestion/openAlexDepartments.ts": "203409592bc7d4f4b64f794d0b6a364f02a6bdb07ea5d128b6e9fd0e986ed091",
+   "src/lib/ingestion/nlmJournalDepartment.ts": "66048aad1d0f8faac792721edd4a88e8ee81e6a7c31a601ec49138c2f3e02d81",
+   "src/lib/ingestion/journalSourceImport.ts": "af6f6e923bf2dd3619d6b0981d83d7b70863551769675e989c2b857125a401b7",
+   "scripts/journal-source-apply.cjs": "0fb3a54938ffcaa3b9f74692c8d9bca1b277c7e16257ce2adcbef55101aae04e",
+   "scripts/dept-coverage/verify-prod.cjs": "a7ba81b582ba88910dcfa1d9e4a2f20245f3d6d2799810218d867f0d6795d48f",
+   "scripts/dept-coverage/stage1.py": "66d4ab64ae513b82f9ec3e8f42837ec2da812c6df77d90866b93d7b5ca04e1ec",
+   "scripts/dept-coverage/stage2.py": "fbe1a604241419a09d6008231c649ac2d52d7d7c138679fd682587570de82509",
+   "scripts/dept-coverage/freeze.py": "6d0232355015373a5a2f7d02628eb6a0933cef4fdbeb43ced119f149ba46ecda",
+   "scripts/dept-coverage/build_pool.py": "18d8da7d203df1ee8952924d75a8a3eec872c998f44fbfa20df10817102e54c5",
+   "scripts/dept-coverage/classify.ts": "f4282c6f0e05d27b18b2e43192842496c1217c030207a21f49dd3383bb158c52",
+   "scripts/dept-coverage/classify2.ts": "7e9e0276500e951edbdb00eb36a09a8c02261a4a03645bd98cf28d60042f98fe",
+   "scripts/dept-coverage/stage1b.py": "6249637cd818fc67aab497e3dbbe74105f0a85ea7c1ef386789da4cb62b96bb4",
+   "scripts/dept-coverage/stage2b.py": "7a171a762910b23a9dcb9a6a3cc39a789e2087bb00cd2f1638e0da80d2cb1e79",
+   "scripts/dept-coverage/aims_scope.py": "08d6c0746bbc9cb8fb9d78987576fadf3925313119ddee8680e637a298402a41",
+   "scripts/dept-coverage/freeze2.py": "58e9ea1e325bf2cc58bc63130efc1c6b98edd4192a45a54a0427927e8bb024ef",
+   "scripts/dept-coverage/build_pool2.py": "947b438b082cb977d6ed396310783fe36b95af57a0dda1c507a650f32c8d87fa",
+   "scripts/dept-coverage/live_check.py": "1fc2f653b9a896a5fe64a86b20f03568c441a9887af10009351cd5e8ee43ad8b",
+   "scripts/dept-coverage/audit-backfill.cjs": "dd7f9594f1cd65f0cbc71dd5997ada0ebd5a0f4a25fada42ddb3be21d0885cfc"
+  }
+ },
+ "canaryResult": {
+  "database": "postgres",
+  "runId": "dept-coverage4-2026-10-29-9a31ea75",
+  "source": "Multiple (per row basisSource)",
+  "dry": false,
+  "startedAt": "2026-10-29T07:19:47.852Z",
+  "requested": 18,
+  "inserted": 18,
+  "skippedIdentifierHeld": 0,
+  "skippedTitleHeld": 0,
+  "skippedRace": 0,
+  "rejected": [],
+  "sanitizedRows": 0,
+  "failed": 0,
+  "firstError": null,
+  "batches": 1,
+  "attempts": 1,
+  "finishedAt": "2026-10-29T07:19:48.001Z"
+ },
+ "restResults": [],
+ "verifyBefore": {
+  "at": "2026-10-29T07:19:05.513Z",
+  "db": "postgres",
+  "status": {
+   "NeedsReview": 25607,
+   "MetadataOnly": 16435,
+   "Accepted": 12840
+  },
+  "total": 54882,
+  "departments": {
+   "Chemical Engineering": {
+    "total": 239,
+    "public": 105,
+    "publicWithPublishedArticles": 66,
+    "needsReview": 134
+   },
+   "Engineering": {
+    "total": 9,
+    "public": 9,
+    "publicWithPublishedArticles": 9,
+    "needsReview": 0
+   },
+   "Architecture": {
+    "total": 359,
+    "public": 156,
+    "publicWithPublishedArticles": 68,
+    "needsReview": 203
+   },
+   "Applied Mechanics": {
+    "total": 297,
+    "public": 84,
+    "publicWithPublishedArticles": 3,
+    "needsReview": 213
+   },
+   "Electronics & Telecommunication Engineering": {
+    "total": 507,
+    "public": 215,
+    "publicWithPublishedArticles": 51,
+    "needsReview": 292
+   },
+   "Electrical Engineering": {
+    "total": 555,
+    "public": 340,
+    "publicWithPublishedArticles": 153,
+    "needsReview": 215
+   },
+   "Nano Technology": {
+    "total": 303,
+    "public": 165,
+    "publicWithPublishedArticles": 66,
+    "needsReview": 138
+   },
+   "Ayurveda": {
+    "total": 387,
+    "public": 275,
+    "publicWithPublishedArticles": 44,
+    "needsReview": 112
+   },
+   "Mechanical Engineering": {
+    "total": 705,
+    "public": 484,
+    "publicWithPublishedArticles": 100,
+    "needsReview": 221
+   },
+   "Bio Technology": {
+    "total": 778,
+    "public": 443,
+    "publicWithPublishedArticles": 272,
+    "needsReview": 335
+   },
+   "Pharmacy": {
+    "total": 665,
+    "public": 365,
+    "publicWithPublishedArticles": 136,
+    "needsReview": 300
+   },
+   "Physiotherapy": {
+    "total": 392,
+    "public": 318,
+    "publicWithPublishedArticles": 25,
+    "needsReview": 74
+   }
+  },
+  "existingRowsHash": {
+   "rows": 54882,
+   "sha256": "d3b74c6b4a2a07eefbbe1e26e1538f475cb1b33f636e9f42f587b8a799d659d8"
+  }
+ },
+ "canaryVerification": {
+  "at": "2026-10-29T07:20:05.687Z",
+  "db": "postgres",
+  "status": {
+   "NeedsReview": 25607,
+   "MetadataOnly": 16453,
+   "Accepted": 12840
+  },
+  "total": 54900,
+  "departments": {
+   "Chemical Engineering": {
+    "total": 239,
+    "public": 105,
+    "publicWithPublishedArticles": 66,
+    "needsReview": 134
+   },
+   "Engineering": {
+    "total": 9,
+    "public": 9,
+    "publicWithPublishedArticles": 9,
+    "needsReview": 0
+   },
+   "Architecture": {
+    "total": 359,
+    "public": 156,
+    "publicWithPublishedArticles": 68,
+    "needsReview": 203
+   },
+   "Applied Mechanics": {
+    "total": 297,
+    "public": 84,
+    "publicWithPublishedArticles": 3,
+    "needsReview": 213
+   },
+   "Electronics & Telecommunication Engineering": {
+    "total": 510,
+    "public": 218,
+    "publicWithPublishedArticles": 51,
+    "needsReview": 292
+   },
+   "Electrical Engineering": {
+    "total": 570,
+    "public": 355,
+    "publicWithPublishedArticles": 153,
+    "needsReview": 215
+   },
+   "Nano Technology": {
+    "total": 303,
+    "public": 165,
+    "publicWithPublishedArticles": 66,
+    "needsReview": 138
+   },
+   "Ayurveda": {
+    "total": 387,
+    "public": 275,
+    "publicWithPublishedArticles": 44,
+    "needsReview": 112
+   },
+   "Mechanical Engineering": {
+    "total": 705,
+    "public": 484,
+    "publicWithPublishedArticles": 100,
+    "needsReview": 221
+   },
+   "Bio Technology": {
+    "total": 778,
+    "public": 443,
+    "publicWithPublishedArticles": 272,
+    "needsReview": 335
+   },
+   "Pharmacy": {
+    "total": 665,
+    "public": 365,
+    "publicWithPublishedArticles": 136,
+    "needsReview": 300
+   },
+   "Physiotherapy": {
+    "total": 392,
+    "public": 318,
+    "publicWithPublishedArticles": 25,
+    "needsReview": 74
+   }
+  },
+  "existingRowsHash": {
+   "rows": 54882,
+   "sha256": "d3b74c6b4a2a07eefbbe1e26e1538f475cb1b33f636e9f42f587b8a799d659d8"
+  },
+  "inserted": {
+   "requested": 18,
+   "found": 18,
+   "fieldProblems": [],
+   "byDepartment": {
+    "Electrical Engineering": 15,
+    "Electronics & Telecommunication Engineering": 3
+   },
+   "identifierCollisions": [],
+   "sameTitleRows": [],
+   "articlesAttached": 0,
+   "createdWindow": {
+    "a": "2026-10-29T07:19:47.952Z",
+    "b": "2026-10-29T07:19:47.952Z"
+   }
+  },
+  "auditRows": [
+   {
+    "id": "5f76b9a5-948c-4734-ab7b-aadc146d7f35",
+    "at": "2026-10-29T07:19:47.977Z",
+    "action": "JOURNAL_SOURCE_IMPORT",
+    "batch": "1",
+    "n": 18
+   }
+  ],
+  "auditInserted": [
+   {
+    "batch": "1",
+    "id": "089ed5cc-8b68-4b3d-9489-522f04aae818",
+    "issn": "0932-383X",
+    "eissn": "1613-7620",
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S36874608|OpenAlex:https://openalex.org/S36874608|OpenAlex:https://openalex.org/S36874608|OpenAlex:https://openalex.org/S36874608|Springer KBART:springer-title:502|Springer KBART:springer-title:502"
+   },
+   {
+    "batch": "1",
+    "id": "0c13b8fe-c677-4300-bc0a-6a936d5767e9",
+    "issn": "1693-8097",
+    "eissn": "2549-8762",
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210197910|OpenAlex:https://openalex.org/S4210197910|OpenAlex:https://openalex.org/S4210197910"
+   },
+   {
+    "batch": "1",
+    "id": "0c537b53-9850-4cdc-ab90-27c8b04741ec",
+    "issn": "2502-1990",
+    "eissn": "2502-2105",
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210200485|OpenAlex:https://openalex.org/S4210200485|OpenAlex:https://openalex.org/S4210200485|OpenAlex:https://openalex.org/S4210200485"
+   },
+   {
+    "batch": "1",
+    "id": "178c18bb-1f1c-4ef7-a4e3-4359a9a2569d",
+    "issn": "2685-1814",
+    "eissn": "2685-7677",
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210186109|OpenAlex:https://openalex.org/S4210186109|OpenAlex:https://openalex.org/S4210186109"
+   },
+   {
+    "batch": "1",
+    "id": "1a5e94f8-0fdc-410c-8fac-9a9b6c7f4749",
+    "issn": "2089-2020",
+    "eissn": "2622-2000",
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210201788|OpenAlex:https://openalex.org/S4210201788"
+   },
+   {
+    "batch": "1",
+    "id": "2f946093-ce79-4054-9a79-889ace5737b1",
+    "issn": "2303-2901",
+    "eissn": "2654-7384",
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210214296|OpenAlex:https://openalex.org/S4210214296"
+   },
+   {
+    "batch": "1",
+    "id": "46bba806-0cd1-4cc3-89f6-7ad3cc23d4e4",
+    "issn": "2985-9506",
+    "eissn": null,
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4390297170|OpenAlex:https://openalex.org/S4390297170|OpenAlex:https://openalex.org/S4390297170"
+   },
+   {
+    "batch": "1",
+    "id": "497712d9-0ea8-4105-b8e8-3a7897ecd300",
+    "issn": "2797-815X",
+    "eissn": "2797-8745",
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S5407031988|OpenAlex:https://openalex.org/S5407031988"
+   },
+   {
+    "batch": "1",
+    "id": "5c13a754-d66f-4d5b-99c4-aa11cd49a0e9",
+    "issn": "3025-602X",
+    "eissn": null,
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S5407044330|OpenAlex:https://openalex.org/S5407044330"
+   },
+   {
+    "batch": "1",
+    "id": "64588740-cc33-4a60-b914-262ccd8ae5c3",
+    "issn": "2302-9927",
+    "eissn": "2685-0206",
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210174575|OpenAlex:https://openalex.org/S4210174575|OpenAlex:https://openalex.org/S4210174575"
+   },
+   {
+    "batch": "1",
+    "id": "683c39b1-a4d2-4e57-b0ad-2b5e282db7e8",
+    "issn": "2528-6498",
+    "eissn": "2549-0842",
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210179244|OpenAlex:https://openalex.org/S4210179244|OpenAlex:https://openalex.org/S4210179244"
+   },
+   {
+    "batch": "1",
+    "id": "6c51a1c8-d145-433d-8157-8e067ccdfadc",
+    "issn": "1858-2109",
+    "eissn": "2656-5676",
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210218345|OpenAlex:https://openalex.org/S4210218345|OpenAlex:https://openalex.org/S4210218345"
+   },
+   {
+    "batch": "1",
+    "id": "7acde680-43f1-4936-89c6-f6ac7c906617",
+    "issn": "3163-5121",
+    "eissn": null,
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S7407063413|OpenAlex:https://openalex.org/S7407063413"
+   },
+   {
+    "batch": "1",
+    "id": "7f14f593-00c0-43bb-ae2a-1772a99b0b4f",
+    "issn": "3031-9951",
+    "eissn": "3031-996X",
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S5407045637"
+   },
+   {
+    "batch": "1",
+    "id": "bffdbe6b-a816-40cb-8f1c-b3419a8de87b",
+    "issn": "1411-0814",
+    "eissn": "2407-6422",
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4306533213|OpenAlex:https://openalex.org/S4306533213"
+   },
+   {
+    "batch": "1",
+    "id": "c57b4cc1-7e0d-4a85-9a08-f5c2afd9b8ad",
+    "issn": "2964-2086",
+    "eissn": null,
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4387287394|OpenAlex:https://openalex.org/S4387287394|OpenAlex:https://openalex.org/S4387287394|OpenAlex:https://openalex.org/S4387287394"
+   },
+   {
+    "batch": "1",
+    "id": "ec73630d-dbdd-4498-94d8-cf244d2856fa",
+    "issn": "2523-2517",
+    "eissn": null,
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210236538|OpenAlex:https://openalex.org/S4210236538|OpenAlex:https://openalex.org/S4210236538|OpenAlex:https://openalex.org/S4210236538"
+   },
+   {
+    "batch": "1",
+    "id": "ff1e5188-c9f7-4297-afcf-cf7881a072e3",
+    "issn": "2549-4848",
+    "eissn": "2580-7749",
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S5407007184|OpenAlex:https://openalex.org/S5407007184|OpenAlex:https://openalex.org/S5407007184"
+   }
+  ]
+ },
+ "finalVerification": {
+  "at": "2026-10-29T07:20:05.687Z",
+  "db": "postgres",
+  "status": {
+   "NeedsReview": 25607,
+   "MetadataOnly": 16453,
+   "Accepted": 12840
+  },
+  "total": 54900,
+  "departments": {
+   "Chemical Engineering": {
+    "total": 239,
+    "public": 105,
+    "publicWithPublishedArticles": 66,
+    "needsReview": 134
+   },
+   "Engineering": {
+    "total": 9,
+    "public": 9,
+    "publicWithPublishedArticles": 9,
+    "needsReview": 0
+   },
+   "Architecture": {
+    "total": 359,
+    "public": 156,
+    "publicWithPublishedArticles": 68,
+    "needsReview": 203
+   },
+   "Applied Mechanics": {
+    "total": 297,
+    "public": 84,
+    "publicWithPublishedArticles": 3,
+    "needsReview": 213
+   },
+   "Electronics & Telecommunication Engineering": {
+    "total": 510,
+    "public": 218,
+    "publicWithPublishedArticles": 51,
+    "needsReview": 292
+   },
+   "Electrical Engineering": {
+    "total": 570,
+    "public": 355,
+    "publicWithPublishedArticles": 153,
+    "needsReview": 215
+   },
+   "Nano Technology": {
+    "total": 303,
+    "public": 165,
+    "publicWithPublishedArticles": 66,
+    "needsReview": 138
+   },
+   "Ayurveda": {
+    "total": 387,
+    "public": 275,
+    "publicWithPublishedArticles": 44,
+    "needsReview": 112
+   },
+   "Mechanical Engineering": {
+    "total": 705,
+    "public": 484,
+    "publicWithPublishedArticles": 100,
+    "needsReview": 221
+   },
+   "Bio Technology": {
+    "total": 778,
+    "public": 443,
+    "publicWithPublishedArticles": 272,
+    "needsReview": 335
+   },
+   "Pharmacy": {
+    "total": 665,
+    "public": 365,
+    "publicWithPublishedArticles": 136,
+    "needsReview": 300
+   },
+   "Physiotherapy": {
+    "total": 392,
+    "public": 318,
+    "publicWithPublishedArticles": 25,
+    "needsReview": 74
+   }
+  },
+  "existingRowsHash": {
+   "rows": 54882,
+   "sha256": "d3b74c6b4a2a07eefbbe1e26e1538f475cb1b33f636e9f42f587b8a799d659d8"
+  },
+  "inserted": {
+   "requested": 18,
+   "found": 18,
+   "fieldProblems": [],
+   "byDepartment": {
+    "Electrical Engineering": 15,
+    "Electronics & Telecommunication Engineering": 3
+   },
+   "identifierCollisions": [],
+   "sameTitleRows": [],
+   "articlesAttached": 0,
+   "createdWindow": {
+    "a": "2026-10-29T07:19:47.952Z",
+    "b": "2026-10-29T07:19:47.952Z"
+   }
+  },
+  "auditRows": [
+   {
+    "id": "5f76b9a5-948c-4734-ab7b-aadc146d7f35",
+    "at": "2026-10-29T07:19:47.977Z",
+    "action": "JOURNAL_SOURCE_IMPORT",
+    "batch": "1",
+    "n": 18
+   }
+  ],
+  "auditInserted": [
+   {
+    "batch": "1",
+    "id": "089ed5cc-8b68-4b3d-9489-522f04aae818",
+    "issn": "0932-383X",
+    "eissn": "1613-7620",
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S36874608|OpenAlex:https://openalex.org/S36874608|OpenAlex:https://openalex.org/S36874608|OpenAlex:https://openalex.org/S36874608|Springer KBART:springer-title:502|Springer KBART:springer-title:502"
+   },
+   {
+    "batch": "1",
+    "id": "0c13b8fe-c677-4300-bc0a-6a936d5767e9",
+    "issn": "1693-8097",
+    "eissn": "2549-8762",
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210197910|OpenAlex:https://openalex.org/S4210197910|OpenAlex:https://openalex.org/S4210197910"
+   },
+   {
+    "batch": "1",
+    "id": "0c537b53-9850-4cdc-ab90-27c8b04741ec",
+    "issn": "2502-1990",
+    "eissn": "2502-2105",
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210200485|OpenAlex:https://openalex.org/S4210200485|OpenAlex:https://openalex.org/S4210200485|OpenAlex:https://openalex.org/S4210200485"
+   },
+   {
+    "batch": "1",
+    "id": "178c18bb-1f1c-4ef7-a4e3-4359a9a2569d",
+    "issn": "2685-1814",
+    "eissn": "2685-7677",
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210186109|OpenAlex:https://openalex.org/S4210186109|OpenAlex:https://openalex.org/S4210186109"
+   },
+   {
+    "batch": "1",
+    "id": "1a5e94f8-0fdc-410c-8fac-9a9b6c7f4749",
+    "issn": "2089-2020",
+    "eissn": "2622-2000",
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210201788|OpenAlex:https://openalex.org/S4210201788"
+   },
+   {
+    "batch": "1",
+    "id": "2f946093-ce79-4054-9a79-889ace5737b1",
+    "issn": "2303-2901",
+    "eissn": "2654-7384",
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210214296|OpenAlex:https://openalex.org/S4210214296"
+   },
+   {
+    "batch": "1",
+    "id": "46bba806-0cd1-4cc3-89f6-7ad3cc23d4e4",
+    "issn": "2985-9506",
+    "eissn": null,
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4390297170|OpenAlex:https://openalex.org/S4390297170|OpenAlex:https://openalex.org/S4390297170"
+   },
+   {
+    "batch": "1",
+    "id": "497712d9-0ea8-4105-b8e8-3a7897ecd300",
+    "issn": "2797-815X",
+    "eissn": "2797-8745",
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S5407031988|OpenAlex:https://openalex.org/S5407031988"
+   },
+   {
+    "batch": "1",
+    "id": "5c13a754-d66f-4d5b-99c4-aa11cd49a0e9",
+    "issn": "3025-602X",
+    "eissn": null,
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S5407044330|OpenAlex:https://openalex.org/S5407044330"
+   },
+   {
+    "batch": "1",
+    "id": "64588740-cc33-4a60-b914-262ccd8ae5c3",
+    "issn": "2302-9927",
+    "eissn": "2685-0206",
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210174575|OpenAlex:https://openalex.org/S4210174575|OpenAlex:https://openalex.org/S4210174575"
+   },
+   {
+    "batch": "1",
+    "id": "683c39b1-a4d2-4e57-b0ad-2b5e282db7e8",
+    "issn": "2528-6498",
+    "eissn": "2549-0842",
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210179244|OpenAlex:https://openalex.org/S4210179244|OpenAlex:https://openalex.org/S4210179244"
+   },
+   {
+    "batch": "1",
+    "id": "6c51a1c8-d145-433d-8157-8e067ccdfadc",
+    "issn": "1858-2109",
+    "eissn": "2656-5676",
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210218345|OpenAlex:https://openalex.org/S4210218345|OpenAlex:https://openalex.org/S4210218345"
+   },
+   {
+    "batch": "1",
+    "id": "7acde680-43f1-4936-89c6-f6ac7c906617",
+    "issn": "3163-5121",
+    "eissn": null,
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S7407063413|OpenAlex:https://openalex.org/S7407063413"
+   },
+   {
+    "batch": "1",
+    "id": "7f14f593-00c0-43bb-ae2a-1772a99b0b4f",
+    "issn": "3031-9951",
+    "eissn": "3031-996X",
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S5407045637"
+   },
+   {
+    "batch": "1",
+    "id": "bffdbe6b-a816-40cb-8f1c-b3419a8de87b",
+    "issn": "1411-0814",
+    "eissn": "2407-6422",
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4306533213|OpenAlex:https://openalex.org/S4306533213"
+   },
+   {
+    "batch": "1",
+    "id": "c57b4cc1-7e0d-4a85-9a08-f5c2afd9b8ad",
+    "issn": "2964-2086",
+    "eissn": null,
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4387287394|OpenAlex:https://openalex.org/S4387287394|OpenAlex:https://openalex.org/S4387287394|OpenAlex:https://openalex.org/S4387287394"
+   },
+   {
+    "batch": "1",
+    "id": "ec73630d-dbdd-4498-94d8-cf244d2856fa",
+    "issn": "2523-2517",
+    "eissn": null,
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210236538|OpenAlex:https://openalex.org/S4210236538|OpenAlex:https://openalex.org/S4210236538|OpenAlex:https://openalex.org/S4210236538"
+   },
+   {
+    "batch": "1",
+    "id": "ff1e5188-c9f7-4297-afcf-cf7881a072e3",
+    "issn": "2549-4848",
+    "eissn": "2580-7749",
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S5407007184|OpenAlex:https://openalex.org/S5407007184|OpenAlex:https://openalex.org/S5407007184"
+   }
+  ]
+ },
+ "inserted": {
+  "count": 18,
+  "ids": [
+   "6c51a1c8-d145-433d-8157-8e067ccdfadc",
+   "0c13b8fe-c677-4300-bc0a-6a936d5767e9",
+   "089ed5cc-8b68-4b3d-9489-522f04aae818",
+   "46bba806-0cd1-4cc3-89f6-7ad3cc23d4e4",
+   "0c537b53-9850-4cdc-ab90-27c8b04741ec",
+   "c57b4cc1-7e0d-4a85-9a08-f5c2afd9b8ad",
+   "2f946093-ce79-4054-9a79-889ace5737b1",
+   "497712d9-0ea8-4105-b8e8-3a7897ecd300",
+   "5c13a754-d66f-4d5b-99c4-aa11cd49a0e9",
+   "7acde680-43f1-4936-89c6-f6ac7c906617",
+   "1a5e94f8-0fdc-410c-8fac-9a9b6c7f4749",
+   "178c18bb-1f1c-4ef7-a4e3-4359a9a2569d",
+   "683c39b1-a4d2-4e57-b0ad-2b5e282db7e8",
+   "ff1e5188-c9f7-4297-afcf-cf7881a072e3",
+   "ec73630d-dbdd-4498-94d8-cf244d2856fa",
+   "64588740-cc33-4a60-b914-262ccd8ae5c3",
+   "bffdbe6b-a816-40cb-8f1c-b3419a8de87b",
+   "7f14f593-00c0-43bb-ae2a-1772a99b0b4f"
+  ],
+  "canaryIds": [
+   "6c51a1c8-d145-433d-8157-8e067ccdfadc",
+   "0c13b8fe-c677-4300-bc0a-6a936d5767e9",
+   "089ed5cc-8b68-4b3d-9489-522f04aae818",
+   "46bba806-0cd1-4cc3-89f6-7ad3cc23d4e4",
+   "0c537b53-9850-4cdc-ab90-27c8b04741ec",
+   "c57b4cc1-7e0d-4a85-9a08-f5c2afd9b8ad",
+   "2f946093-ce79-4054-9a79-889ace5737b1",
+   "497712d9-0ea8-4105-b8e8-3a7897ecd300",
+   "5c13a754-d66f-4d5b-99c4-aa11cd49a0e9",
+   "7acde680-43f1-4936-89c6-f6ac7c906617",
+   "1a5e94f8-0fdc-410c-8fac-9a9b6c7f4749",
+   "178c18bb-1f1c-4ef7-a4e3-4359a9a2569d",
+   "683c39b1-a4d2-4e57-b0ad-2b5e282db7e8",
+   "ff1e5188-c9f7-4297-afcf-cf7881a072e3",
+   "ec73630d-dbdd-4498-94d8-cf244d2856fa",
+   "64588740-cc33-4a60-b914-262ccd8ae5c3",
+   "bffdbe6b-a816-40cb-8f1c-b3419a8de87b",
+   "7f14f593-00c0-43bb-ae2a-1772a99b0b4f"
+  ],
+  "restIds": [],
+  "rows": [
+   {
+    "id": "6c51a1c8-d145-433d-8157-8e067ccdfadc",
+    "issn": "1858-2109",
+    "eissn": "2656-5676",
+    "title": "E-Link Jurnal Teknik Elektro dan Informatika",
+    "department": "Electrical Engineering",
+    "basisSource": "OpenAlex",
+    "families": [
+     "title",
+     "topics"
+    ],
+    "sourceId": "OpenAlex:https://openalex.org/S4210218345|OpenAlex:https://openalex.org/S4210218345|OpenAlex:https://openalex.org/S4210218345"
+   },
+   {
+    "id": "0c13b8fe-c677-4300-bc0a-6a936d5767e9",
+    "issn": "1693-8097",
+    "eissn": "2549-8762",
+    "title": "Jurnal Litek Jurnal Listrik Telekomunikasi Elektronika",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "OpenAlex",
+    "families": [
+     "site",
+     "title"
+    ],
+    "sourceId": "OpenAlex:https://openalex.org/S4210197910|OpenAlex:https://openalex.org/S4210197910|OpenAlex:https://openalex.org/S4210197910"
+   },
+   {
+    "id": "089ed5cc-8b68-4b3d-9489-522f04aae818",
+    "issn": "0932-383X",
+    "eissn": "1613-7620",
+    "title": "e+i Elektrotechnik und Informationstechnik",
+    "department": "Electrical Engineering",
+    "basisSource": "Springer Nature KBART",
+    "families": [
+     "catalogue",
+     "title"
+    ],
+    "sourceId": "OpenAlex:https://openalex.org/S36874608|OpenAlex:https://openalex.org/S36874608|OpenAlex:https://openalex.org/S36874608|OpenAlex:https://openalex.org/S36874608|Springer KBART:springer-title:502|Springer KBART:springer-title:502"
+   },
+   {
+    "id": "46bba806-0cd1-4cc3-89f6-7ad3cc23d4e4",
+    "issn": "2985-9506",
+    "eissn": null,
+    "title": "Elconika Jurnal Teknik Elektro",
+    "department": "Electrical Engineering",
+    "basisSource": "OpenAlex",
+    "families": [
+     "title",
+     "topics"
+    ],
+    "sourceId": "OpenAlex:https://openalex.org/S4390297170|OpenAlex:https://openalex.org/S4390297170|OpenAlex:https://openalex.org/S4390297170"
+   },
+   {
+    "id": "0c537b53-9850-4cdc-ab90-27c8b04741ec",
+    "issn": "2502-1990",
+    "eissn": "2502-2105",
+    "title": "TEKTRIKA - Jurnal Penelitian dan Pengembangan Telekomunikasi Kendali Komputer Elektrik dan Elektronika",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "OpenAlex",
+    "families": [
+     "title",
+     "topics"
+    ],
+    "sourceId": "OpenAlex:https://openalex.org/S4210200485|OpenAlex:https://openalex.org/S4210200485|OpenAlex:https://openalex.org/S4210200485|OpenAlex:https://openalex.org/S4210200485"
+   },
+   {
+    "id": "c57b4cc1-7e0d-4a85-9a08-f5c2afd9b8ad",
+    "issn": "2964-2086",
+    "eissn": null,
+    "title": "ELECTROPS Jurnal Ilmiah Teknik Elektro",
+    "department": "Electrical Engineering",
+    "basisSource": "OpenAlex",
+    "families": [
+     "title",
+     "topics"
+    ],
+    "sourceId": "OpenAlex:https://openalex.org/S4387287394|OpenAlex:https://openalex.org/S4387287394|OpenAlex:https://openalex.org/S4387287394|OpenAlex:https://openalex.org/S4387287394"
+   },
+   {
+    "id": "2f946093-ce79-4054-9a79-889ace5737b1",
+    "issn": "2303-2901",
+    "eissn": "2654-7384",
+    "title": "Telekontran Jurnal Ilmiah Telekomunikasi Kendali dan Elektronika Terapan",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "OpenAlex",
+    "families": [
+     "site",
+     "title"
+    ],
+    "sourceId": "OpenAlex:https://openalex.org/S4210214296|OpenAlex:https://openalex.org/S4210214296"
+   },
+   {
+    "id": "497712d9-0ea8-4105-b8e8-3a7897ecd300",
+    "issn": "2797-815X",
+    "eissn": "2797-8745",
+    "title": "Fuse-teknik Elektro",
+    "department": "Electrical Engineering",
+    "basisSource": "OpenAlex",
+    "families": [
+     "title",
+     "topics"
+    ],
+    "sourceId": "OpenAlex:https://openalex.org/S5407031988|OpenAlex:https://openalex.org/S5407031988"
+   },
+   {
+    "id": "5c13a754-d66f-4d5b-99c4-aa11cd49a0e9",
+    "issn": "3025-602X",
+    "eissn": null,
+    "title": "INTRO Journal Informatika dan Teknik Elektro",
+    "department": "Electrical Engineering",
+    "basisSource": "OpenAlex",
+    "families": [
+     "title",
+     "topics"
+    ],
+    "sourceId": "OpenAlex:https://openalex.org/S5407044330|OpenAlex:https://openalex.org/S5407044330"
+   },
+   {
+    "id": "7acde680-43f1-4936-89c6-f6ac7c906617",
+    "issn": "3163-5121",
+    "eissn": null,
+    "title": "JTekEL Jurnal Teknik Elektro",
+    "department": "Electrical Engineering",
+    "basisSource": "OpenAlex",
+    "families": [
+     "title",
+     "topics"
+    ],
+    "sourceId": "OpenAlex:https://openalex.org/S7407063413|OpenAlex:https://openalex.org/S7407063413"
+   },
+   {
+    "id": "1a5e94f8-0fdc-410c-8fac-9a9b6c7f4749",
+    "issn": "2089-2020",
+    "eissn": "2622-2000",
+    "title": "JURNAL AMPLIFIER JURNAL ILMIAH BIDANG TEKNIK ELEKTRO DAN KOMPUTER",
+    "department": "Electrical Engineering",
+    "basisSource": "OpenAlex",
+    "families": [
+     "title",
+     "topics"
+    ],
+    "sourceId": "OpenAlex:https://openalex.org/S4210201788|OpenAlex:https://openalex.org/S4210201788"
+   },
+   {
+    "id": "178c18bb-1f1c-4ef7-a4e3-4359a9a2569d",
+    "issn": "2685-1814",
+    "eissn": "2685-7677",
+    "title": "Jurnal Teknik Elektro dan Komputasi (ELKOM)",
+    "department": "Electrical Engineering",
+    "basisSource": "OpenAlex",
+    "families": [
+     "title",
+     "topics"
+    ],
+    "sourceId": "OpenAlex:https://openalex.org/S4210186109|OpenAlex:https://openalex.org/S4210186109|OpenAlex:https://openalex.org/S4210186109"
+   },
+   {
+    "id": "683c39b1-a4d2-4e57-b0ad-2b5e282db7e8",
+    "issn": "2528-6498",
+    "eissn": "2549-0842",
+    "title": "Jurnal Teknik Elektro Uniba (JTE Uniba)",
+    "department": "Electrical Engineering",
+    "basisSource": "OpenAlex",
+    "families": [
+     "title",
+     "topics"
+    ],
+    "sourceId": "OpenAlex:https://openalex.org/S4210179244|OpenAlex:https://openalex.org/S4210179244|OpenAlex:https://openalex.org/S4210179244"
+   },
+   {
+    "id": "ff1e5188-c9f7-4297-afcf-cf7881a072e3",
+    "issn": "2549-4848",
+    "eissn": "2580-7749",
+    "title": "JuTEkS (Jurnal Teknik Elektro dan Sains)",
+    "department": "Electrical Engineering",
+    "basisSource": "OpenAlex",
+    "families": [
+     "title",
+     "topics"
+    ],
+    "sourceId": "OpenAlex:https://openalex.org/S5407007184|OpenAlex:https://openalex.org/S5407007184|OpenAlex:https://openalex.org/S5407007184"
+   },
+   {
+    "id": "ec73630d-dbdd-4498-94d8-cf244d2856fa",
+    "issn": "2523-2517",
+    "eissn": null,
+    "title": "Revista de Ingeniería Eléctrica",
+    "department": "Electrical Engineering",
+    "basisSource": "OpenAlex",
+    "families": [
+     "title",
+     "topics"
+    ],
+    "sourceId": "OpenAlex:https://openalex.org/S4210236538|OpenAlex:https://openalex.org/S4210236538|OpenAlex:https://openalex.org/S4210236538|OpenAlex:https://openalex.org/S4210236538"
+   },
+   {
+    "id": "64588740-cc33-4a60-b914-262ccd8ae5c3",
+    "issn": "2302-9927",
+    "eissn": "2685-0206",
+    "title": "Transient Jurnal Ilmiah Teknik Elektro",
+    "department": "Electrical Engineering",
+    "basisSource": "OpenAlex",
+    "families": [
+     "title",
+     "topics"
+    ],
+    "sourceId": "OpenAlex:https://openalex.org/S4210174575|OpenAlex:https://openalex.org/S4210174575|OpenAlex:https://openalex.org/S4210174575"
+   },
+   {
+    "id": "bffdbe6b-a816-40cb-8f1c-b3419a8de87b",
+    "issn": "1411-0814",
+    "eissn": "2407-6422",
+    "title": "Transmisi: Jurnal Ilmiah Teknik Elektro",
+    "department": "Electrical Engineering",
+    "basisSource": "OpenAlex",
+    "families": [
+     "title",
+     "topics"
+    ],
+    "sourceId": "OpenAlex:https://openalex.org/S4306533213|OpenAlex:https://openalex.org/S4306533213"
+   },
+   {
+    "id": "7f14f593-00c0-43bb-ae2a-1772a99b0b4f",
+    "issn": "3031-9951",
+    "eissn": "3031-996X",
+    "title": "Uranus Jurnal Ilmiah Teknik Elektro Sains dan Informatika",
+    "department": "Electrical Engineering",
+    "basisSource": "OpenAlex",
+    "families": [
+     "title",
+     "topics"
+    ],
+    "sourceId": "OpenAlex:https://openalex.org/S5407045637"
+   }
+  ]
+ },
+ "auditLocation": "Production table \"IngestionAudit\", action JOURNAL_SOURCE_IMPORT, meta.runId = this run id: one entry per batch, each listing inserted id, issn, dept, sourceId and evidence.",
+ "rollback": {
+  "sql": "DELETE FROM \"Journal\" j WHERE j.id = ANY($1::text[]) AND NOT EXISTS (SELECT 1 FROM \"Article\" a WHERE a.\"journalId\" = j.id) RETURNING j.id, j.issn",
+  "scope": "the exact inserted ids of this run; the rightsBasis label is shared with other runs and is NOT a safe scope",
+  "reviewed": {
+   "at": "2026-10-29T07:20:15.120Z",
+   "journals": 18,
+   "issnCount": 31,
+   "fks": [
+    {
+     "conname": "Article_journalId_fkey",
+     "tbl": "\"Article\"",
+     "def": "FOREIGN KEY (\"journalId\") REFERENCES \"Journal\"(id) ON UPDATE CASCADE ON DELETE SET NULL"
+    }
+   ],
+   "soft": {
+    "articleByJournalId": 0,
+    "articleByIssn": 0,
+    "ingestionRun": 0,
+    "libraryEventById": 0,
+    "libraryEventByIssn": 0
+   },
+   "labelCounts": [
+    {
+     "rb": "OpenAlex listing — OA unverified",
+     "total": 6521,
+     "in_run": 17
+    },
+    {
+     "rb": "Springer Nature KBART listing — OA unverified",
+     "total": 1,
+     "in_run": 1
+    }
+   ],
+   "wouldDelete": 18,
+   "audit": [
+    {
+     "id": "5f76b9a5-948c-4734-ab7b-aadc146d7f35",
+     "adminId": null,
+     "batch": "1",
+     "n": 18
+    }
+   ]
+  },
+  "executed": false,
+  "note": "Article.journalId is ON DELETE SET NULL, so the NOT EXISTS guard is essential. Re-count articles, ingestion runs and library events for these ids before any use. Audit rows have no foreign key and are never deleted."
+ },
+ "priorRuns": {
+  "dept-coverage2-2026-10-29-a8f54e56": 71,
+  "dept-coverage3-2026-10-29-45ec1cf6": 4,
+  "cumulativeVerifiedInProductionAt": "2026-10-29T07:06Z (75 of 75 rows present, 0 problems)",
+  "thisRun": 18,
+  "cumulativeAfter": 93,
+  "targetCeiling": 2000,
+  "remainingAllowanceAfter": 1907
+ },
+ "writer": {
+  "file": "scripts/journal-source-apply.cjs",
+  "tests": "scripts/test-journal-apply-transactional.ts 22/22 (adds bounded retries, rollback dependency guard)"
+ }
+}

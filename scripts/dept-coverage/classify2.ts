@@ -64,11 +64,15 @@ for await (const line of rl) {
   if (nl) { const subs: string[] = nl.nlmSubjects || []; const d = nlmDepartment(c.title, publisher, subs); if (d.dept === BT && d.confidence === 'high') cat.nlm = BT; else if (subs.some(s => NLM_BT.has(s)) && !subs.includes('Biomedical Engineering')) cat.nlmSubjectOnly = BT; }
   const sc = c.records.find((r: any) => r.src === 'SciELO');
   if (sc) for (const w of sc.wos || []) for (const [re, d] of WOS) if (re.test(w)) cat.scielo = d;
+  // Springer Nature KBART industry-sector lists (the publisher's own grouping): Biotechnology -> BT, Telecommunications -> ET, Electronics -> Electrical or Electronics (the title picks)
+  const sectors = new Set<string>(c.records.filter((r: any) => r.src === 'Springer KBART' && r.kbartSector).map((r: any) => r.kbartSector));
+  if (sectors.has('Biotechnology')) cat.kbart = BT; else if (sectors.has('Telecommunications')) cat.kbart = ET; else if (sectors.has('Electronics')) cat.kbart = 'EL_OR_ET';
+  const kb = c.records.filter((r: any) => r.src === 'Springer KBART');
   const dj = c.records.find((r: any) => r.src === 'DOAJ');
   if (dj) { const d = canonicalDepartmentName(departmentForDoajRow({ 'Journal title': c.title, Keywords: (dj.keywords || []).join(' | '), 'LCC Codes': dj.lcc || '' })); if (d && TARGETS.includes(d)) cat.doaj = d; }
   const judge = classifyJournal({ title: c.title, subjects: [] });
   const js = c.records.find((r: any) => r.src === 'J-STAGE');
-  res[c.ids[0]] = { title: titleD, body: body?.id || null, official, catalogue: cat, topicsStrict: strict && strict.dept ? { dept: strict.dept, confidence: strict.confidence } : null, shares: Object.fromEntries(shares.map(s => [s.department, Math.round(s.share * 100) / 100])), topicTotal: ev?.total || 0, lexicon: lex, judge: { dept: judge.dept, tier: judge.tier }, jstage: js ? { currentPubdate: js.currentPubdate, totalArticles: js.totalArticles, suspended: js.suspended } : null };
+  res[c.ids[0]] = { title: titleD, body: body?.id || null, official, catalogue: cat, topicsStrict: strict && strict.dept ? { dept: strict.dept, confidence: strict.confidence } : null, shares: Object.fromEntries(shares.map(s => [s.department, Math.round(s.share * 100) / 100])), topicTotal: ev?.total || 0, lexicon: lex, judge: { dept: judge.dept, tier: judge.tier }, springer: kb.length ? { sectors: [...sectors], lastDates: kb.map((r: any) => r.kbartLast || '') } : null, jstage: js ? { currentPubdate: js.currentPubdate, totalArticles: js.totalArticles, suspended: js.suspended } : null };
   n++;
 }
 writeFileSync(out, JSON.stringify(res));

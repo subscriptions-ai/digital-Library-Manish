@@ -96,6 +96,25 @@ if os.path.exists(jp):
         if not ids or s.get('type')!='Journal': continue
         add(src='J-STAGE',ref=f"jstage:{s['cd']}",url=s.get('jstageUrl'),group='jstage',title=__import__('html').unescape(s.get('title') or ''),alts=[],issns=ids,publisher=s.get('organization'),homepage=s.get('url'),
             currentPubdate=s.get('currentPubdate'),totalArticles=s.get('totalArticles'),suspended=s.get('suspended'),pubmed=s.get('pubmed'),jdoaj=s.get('doaj'))
+
+# --- Springer Nature public KBART title lists (https://metadata.springernature.com/kbart): official identity list; industry-sector lists are the publisher's own groupings
+import glob as _glob
+for kf in sorted(_glob.glob(os.path.join(ROOT,'data','dept-coverage4','raw','SpringerNature_*.txt'))):
+    base=os.path.basename(kf); m=re.search(r'IndustrySector(\w+?)Journals',base); sector=m.group(1) if m else None
+    with open(kf,encoding='utf-8',errors='replace',newline='') as fh:
+        for r in csv.DictReader(fh,delimiter='\t'):
+            ids=[i for i in dict.fromkeys([nissn(r.get('print_identifier')),nissn(r.get('online_identifier'))]) if i]
+            if not ids or r.get('publication_type')!='serial': continue
+            add(src='Springer KBART',ref=f"springer-title:{r.get('title_id')}",url=r.get('title_url'),group=base.replace('SpringerNature_Global_','')[:40],title=r.get('publication_title'),alts=[],issns=ids,publisher=r.get('publisher_name'),homepage=r.get('title_url'),
+                kbartSector=sector,kbartFirst=r.get('date_first_issue_online'),kbartLast=r.get('date_last_issue_online'),kbartNotes=r.get('coverage_notes'))
+
+# --- Wiley KBART (a manually downloaded official export: see docs/dept-coverage4-2026-10-29/manual-exports.md); same KBART columns, dropped into data/dept-coverage4/raw/wiley-kbart*.txt
+for kf in sorted(_glob.glob(os.path.join(ROOT,'data','dept-coverage4','raw','wiley-kbart*.txt'))):
+    with open(kf,encoding='utf-8',errors='replace',newline='') as fh:
+        for r in csv.DictReader(fh,delimiter='\t'):
+            ids=[i for i in dict.fromkeys([nissn(r.get('print_identifier')),nissn(r.get('online_identifier'))]) if i]
+            if not ids or (r.get('publication_type') or 'serial')!='serial': continue
+            add(src='Wiley KBART',ref=f"wiley-kbart:{ids[0]}",url=r.get('title_url'),group='wiley-kbart',title=r.get('publication_title'),alts=[],issns=ids,publisher=r.get('publisher_name'),homepage=r.get('title_url'),kbartFirst=r.get('date_first_issue_online'),kbartLast=r.get('date_last_issue_online'))
 print('source records:',collections.Counter(r['src'] for r in recs))
 # --- union-find over ISSNs
 parent={}

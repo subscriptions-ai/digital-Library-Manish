@@ -31,6 +31,11 @@ def families(k,v,heldInfo=None):
     # an NLM subject alone (nlmSubjectOnly) is NOT a family: NLM files chemistry, sensors and general biology under Biotechnology too
     if c.get('scielo')==BT: fam[BT]['catalogue']='SciELO WoS'
     if c.get('scielo')==ET: fam[ET]['catalogue']='SciELO WoS'
+    if c.get('kbart')==BT: fam[BT]['catalogue']='Springer KBART sector list'
+    if c.get('kbart')==ET: fam[ET]['catalogue']='Springer KBART sector list'
+    if c.get('kbart')=='EL_OR_ET':
+        hit=[d for d in (EL,ET) if d in v['title']]
+        if len(hit)==1: fam[hit[0]]['catalogue']='Springer KBART sector list (title picks)'
     if c.get('scielo')=='EL_OR_ET':
         hit=[d for d in (EL,ET) if d in v['title']]
         if len(hit)==1: fam[hit[0]]['catalogue']='SciELO WoS (title picks)'
@@ -85,7 +90,7 @@ for c in clusters():
     if cr: n24=max(n24,cr['recent2024']); n25=max(n25,cr['recent2025h2'])
     js=v.get('jstage'); jok=bool(js and (js.get('currentPubdate') or '')>='2025-01-01' and not js.get('suspended'))
     lowcount=(n24<3 or n25<1) and not jok      # OpenAlex's own counts can be missing or unlinked: Crossref is asked directly in stage 2 before anything is held for this
-    rec={'key':k,'ids':c['ids'],'title':title,'dept':d,'families':f,'publisher':pub,'sources':c['sources'],'recent':{'n2024_26':n24,'n2025_26':n25,'jstage':js},'homepage':next((r.get('homepage') for r in c['records'] if r.get('homepage')),None),
+    rec={'key':k,'ids':c['ids'],'title':title,'dept':d,'families':f,'publisher':pub,'sources':c['sources'],'recent':{'n2024_26':n24,'n2025_26':n25,'jstage':js},'homepage':next((r.get('homepage') for r in c['records'] if r['src']=='Springer KBART' and r.get('homepage')),None) or next((r.get('homepage') for r in c['records'] if r.get('homepage')),None),
          'country':(oa or {}).get('country'),'lowcount':lowcount,'societies':(oa or {}).get('societies',[]),'official':v['official'],'lexicon':v['lexicon'],'shares':v['shares']}
     (ready if len(f)>=2 else site).append(rec)
 print('READY (>=2 kinds):',len(ready),dict(collections.Counter(r['dept'] for r in ready)))
