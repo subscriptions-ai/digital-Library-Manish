@@ -1,436 +1,389 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Filter, Plus, Edit, Trash2, Eye, EyeOff, ExternalLink } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useLayoutEffect, useMemo, useRef } from 'react';
+import { Search, Filter, Plus, Edit, Trash2, Eye, EyeOff, ExternalLink, AlertCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import Papa from 'papaparse';
 
-import { DOMAINS } from '../../../constants';
-import { BooksDepartmentPanel, BooksSummary, NONE, useBooksOverview } from './BooksOverview';
+import { NO_DEPARTMENT, SECTION_LABELS, isSection, type AdminSection, type Collection } from '../../../lib/adminContent';
+import { applyAdminPatch, isNarrowed, parseAdminList, toAdminParams, type AdminListState } from '../../../lib/adminContentUrl';
+import { useMinWidth } from '../../../lib/useModalFocus';
+import { DEPARTMENT_PANEL_MIN_WIDTH, DepartmentDrawer, DepartmentPanel, SectionSummary, useSectionOverview } from './ContentOverview';
 
 interface ContentListViewProps {
   contentType: string;
 }
 
+const LIMIT = 15;
+const PANEL_KEY = 'admin-dept-panel-open';
+
+/**
+ * One admin content section: the same list for Books, Periodicals, Magazines, Case Reports, Theses, Conference Proceedings, Educational Videos and
+ * Newsletters. What one record IS differs by section and collection (src/lib/adminContent.ts) and the page says so; the department counts, the
+ * table and the Export all use one filter on the server, so they cannot disagree.
+ *
+ * The ADDRESS is the state (collection, search, status, public-only, department, sort, page): a refresh, a pasted link and Back all return to
+ * the same table. A change of filter writes a new address, so Back steps through them; typing in the search replaces the entry.
+ */
 export function ContentListView({ contentType }: ContentListViewProps) {
   const navigate = useNavigate();
+  const section: AdminSection = isSection(contentType) ? contentType : 'Periodicals';
+  const L = SECTION_LABELS[section];
+  const slug = contentType.toLowerCase().replace(/\s+/g, '-');
+  const kind = section === 'Books' ? 'book' : 'article';
+
+  const [sp, setSp] = useSearchParams();
+  const spKey = sp.toString();
+  const s: AdminListState = useMemo(() => parseAdminList(new URLSearchParams(spKey)), [spKey]);
+  // Never switched on the reader's behalf: an explicitly chosen collection stays, empty or not.
+  const collection: Collection = s.collection || 'new';
+  const update = useCallback((patch: Partial<AdminListState>, o: { replace?: boolean } = {}) => {
+    setSp(toAdminParams(applyAdminPatch({ ...s, collection }, patch)), { replace: !!o.replace, preventScrollReset: true });
+  }, [s, collection, setSp]);
+  // An address in an odd form (an unknown status, a page of 0) is rewritten to its canonical form.
+  const canonical = toAdminParams(s).toString();
+  useEffect(() => { if (canonical !== spKey) setSp(new URLSearchParams(canonical), { replace: true, preventScrollReset: true }); }, [canonical, spKey, setSp]);
+
   const [items, setItems] = useState<any[]>([]);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [domainFilter, setDomainFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  // Books only: 'public' counts and lists only what the public site lists. 'all' is every record.
-  const [visibility, setVisibility] = useState<'all' | 'public'>('all');
   const [loadFailed, setLoadFailed] = useState(false);
-  const [page, setPage] = useState(1);
-  const limit = 15;
+  const [retryKey, setRetryKey] = useState(0);
 
-  const slug = contentType.toLowerCase().replace(/\s+/g, '-');
-  const kind = contentType === 'Books' ? 'book' : 'article';
-
-  // 'new' = structured Article/Book dataset · 'archived' = legacy scraped Content
-  const [dataset, setDataset] = useState<'new' | 'archived'>(() => (sessionStorage.getItem(`clv_ds_${slug}`) as any) || 'new');
-  const [counts, setCounts] = useState<{ new: number; archived: number }>({ new: 0, archived: 0 });
-  const isBooks = contentType === 'Books';
-  // The department counts follow search and status, not the department chosen (so choosing one never empties the others).
-  const overview = useBooksOverview(isBooks, dataset, debouncedSearch, statusFilter);
-  useEffect(() => { sessionStorage.setItem(`clv_ds_${slug}`, dataset); setPage(1); setSelectedItems([]); }, [dataset, slug]);
-  const pickDomain = (d: string) => { setDomainFilter(d); setPage(1); };
-  const pickVisibility = (v: 'all' | 'public') => { setVisibility(v); if (v === 'public') setStatusFilter(''); setPage(1); };
-  const filtersSet = !!(search || domainFilter || statusFilter || visibility === 'public');
-  const clearFilters = () => { setSearch(''); setDebouncedSearch(''); setDomainFilter(''); setStatusFilter(''); setVisibility('all'); setPage(1); };
-
-  const authHdr = { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } };
-
+  // ── search: its own text while typing, the address after a pause ──
+  const [search, setSearch] = useState(s.q);
+  useEffect(() => { setSearch(s.q); }, [s.q]);
   useEffect(() => {
-    const t = setTimeout(() => { setDebouncedSearch(search); setPage(1); }, 400);
+    if (search === s.q) return;
+    const t = setTimeout(() => update({ q: search }, { replace: true }), 400);
     return () => clearTimeout(t);
-  }, [search]);
+  }, [search, s.q, update]);
 
-  // counts for both datasets (for the New/Archived toggle badges)
-  useEffect(() => {
-    if (isBooks) return; // the Books overview carries both collections
-    const q = `contentType=${encodeURIComponent(contentType)}&limit=1`;
-    Promise.all([
-      fetch(`/api/admin/library/items?${q}`, authHdr).then(r => r.json()).then(d => d.total || 0).catch(() => 0),
-      fetch(`/api/admin/content?${q}`, authHdr).then(r => r.json()).then(d => d.total || 0).catch(() => 0),
-    ]).then(([n, a]) => setCounts({ new: n, archived: a }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contentType, isBooks]);
-  useEffect(() => {
-    const c = overview.data?.collections;
-    if (isBooks && c) setCounts({ new: c.new?.total ?? 0, archived: c.archived?.total ?? 0 });
-  }, [isBooks, overview.data]);
+  // The department counts follow search and status, not the department chosen (so choosing one never empties the others).
+  const overview = useSectionOverview(section, collection, s.q, s.status);
+  const other: Collection = collection === 'new' ? 'archived' : 'new';
+  const counts = overview.data?.collections;
+  const otherTotal = counts ? counts[other]?.total : undefined;
+  const archivedVisible = !counts || counts.archived !== null;
 
-  const fetchItems = useCallback(async () => {
+  // ── the department panel (wide) or drawer (narrower) ──
+  const wide = useMinWidth(DEPARTMENT_PANEL_MIN_WIDTH);
+  const [panelOpen, setPanelOpen] = useState(() => { try { return localStorage.getItem(PANEL_KEY) !== '0'; } catch { return true; } });
+  const togglePanel = () => setPanelOpen(o => { const v = !o; try { localStorage.setItem(PANEL_KEY, v ? '1' : '0'); } catch { /* a stored preference is a convenience */ } return v; });
+  const deptLabel = s.domain === NO_DEPARTMENT ? 'Unassigned' : s.domain || 'All';
+  const facetProps = { state: overview, domain: s.domain, onPick: (d: string) => update({ domain: d }), visibility: s.visibility, section, collection };
+
+  // ── the table ──
+  const query = useCallback((extra: Record<string, string> = {}) => new URLSearchParams({
+    contentType, page: String(s.page), limit: String(LIMIT), sort: s.sort,
+    ...(s.q && { search: s.q }), ...(s.domain && { domain: s.domain }), ...(s.status && { status: s.status }), ...(s.visibility && { visibility: s.visibility }), ...extra,
+  }), [contentType, s]);
+  const base = collection === 'archived' ? '/api/admin/content' : '/api/admin/library/items';
+  const authHdr = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+
+  useEffect(() => {
+    const ctl = new AbortController();
     setLoading(true);
-    try {
-      const query = new URLSearchParams({
-        contentType,
-        page: page.toString(),
-        limit: limit.toString(),
-        ...(debouncedSearch && { search: debouncedSearch }),
-        ...(domainFilter && { domain: domainFilter }),
-        ...(statusFilter && { status: statusFilter }),
-        ...(isBooks && visibility === 'public' && { visibility }),
-      });
-      const base = dataset === 'archived' ? '/api/admin/content' : '/api/admin/library/items';
-      const res = await fetch(`${base}?${query}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      if (!res.ok) throw new Error('Failed to load');
-      const { data, total } = await res.json();
-      setItems(data);
-      setTotal(total);
-      setSelectedItems([]);
-      setLoadFailed(false);
-    } catch {
-      setLoadFailed(true);
-      toast.error('Failed to load content');
-    } finally {
-      setLoading(false);
-    }
-  }, [contentType, debouncedSearch, domainFilter, statusFilter, visibility, isBooks, page, dataset]);
+    fetch(`${base}?${query()}`, { ...authHdr(), signal: ctl.signal })
+      .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+      .then(({ data, total }) => { setItems(data); setTotal(total); setSelectedItems([]); setLoadFailed(false); setLoading(false); })
+      // A failed request is an error with a retry. It is never turned into "no records".
+      .catch(e => { if (e?.name === 'AbortError') return; setLoadFailed(true); setLoading(false); });
+    return () => ctl.abort();
+  }, [base, query, retryKey]);
 
-  useEffect(() => { fetchItems(); }, [fetchItems]);
+  // A page past the end (an old link, a filter that shrank the list) goes to the last page instead of showing an empty one.
+  useEffect(() => {
+    if (!loading && !loadFailed && total > 0 && items.length === 0 && s.page > 1) update({ page: Math.ceil(total / LIMIT) }, { replace: true });
+  }, [loading, loadFailed, total, items.length, s.page, update]);
+
+  const refresh = () => { setRetryKey(k => k + 1); overview.retry(); };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this item permanently?')) return;
     try {
-      const url = dataset === 'archived' ? `/api/admin/content/${id}` : `/api/admin/library/items/${kind}/${id}`;
-      await fetch(url, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      toast.success('Item deleted');
-      fetchItems(); overview.retry();
-    } catch {
-      toast.error('Delete failed');
-    }
+      const url = collection === 'archived' ? `/api/admin/content/${id}` : `/api/admin/library/items/${kind}/${id}`;
+      const r = await fetch(url, { method: 'DELETE', headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+      if (!r.ok) throw new Error(String(r.status));
+      toast.success('Item deleted'); refresh();
+    } catch { toast.error('Delete failed'); }
   };
 
   const handleTogglePublish = async (item: any) => {
-    const newStatus = item.status === 'Published' ? 'Draft' : 'Published';
+    const newStatus = String(item.status).toLowerCase() === 'published' ? 'Draft' : 'Published';
     try {
-      const url = dataset === 'archived' ? `/api/admin/content/${item.id}` : `/api/admin/library/items/${kind}/${item.id}`;
-      await fetch(url, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
-        body: JSON.stringify({ status: newStatus })
-      });
-      toast.success(`Item ${newStatus === 'Published' ? 'published' : 'unpublished'}`);
-      fetchItems(); overview.retry();
-    } catch {
-      toast.error('Status update failed');
-    }
+      const url = collection === 'archived' ? `/api/admin/content/${item.id}` : `/api/admin/library/items/${kind}/${item.id}`;
+      const r = await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` }, body: JSON.stringify({ status: newStatus }) });
+      if (!r.ok) throw new Error(String(r.status));
+      toast.success(`Item ${newStatus === 'Published' ? 'published' : 'unpublished'}`); refresh();
+    } catch { toast.error('Status update failed'); }
   };
 
-  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.checked) setSelectedItems(items.map(i => i.id));
-    else setSelectedItems([]);
-  };
-
-  const handleSelectItem = (id: string) => {
-    setSelectedItems(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
-  };
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => setSelectedItems(e.target.checked ? items.map(i => i.id) : []);
+  const handleSelectItem = (id: string) => setSelectedItems(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
 
   const handleBulkAction = async (action: 'Publish' | 'Draft' | 'Delete') => {
     if (!confirm(`Are you sure you want to ${action} ${selectedItems.length} items?`)) return;
     try {
-      const res = dataset === 'archived'
-        ? await fetch('/api/admin/content/bulk-action', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
-            body: JSON.stringify({ action, contentIds: selectedItems })
-          })
-        : await fetch('/api/admin/library/bulk', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
-            body: JSON.stringify({ action, kind, ids: selectedItems })
-          });
+      const res = collection === 'archived'
+        ? await fetch('/api/admin/content/bulk-action', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` }, body: JSON.stringify({ action, contentIds: selectedItems }) })
+        : await fetch('/api/admin/library/bulk', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` }, body: JSON.stringify({ action, kind, ids: selectedItems }) });
       const result = await res.json();
       if (!res.ok) throw new Error(result.error);
-      toast.success(result.message);
-      setSelectedItems([]);
-      fetchItems(); overview.retry();
-    } catch (err: any) {
-      toast.error(err.message || 'Bulk action failed');
-    }
+      toast.success(result.message); setSelectedItems([]); refresh();
+    } catch (err: any) { toast.error(err.message || 'Bulk action failed'); }
   };
 
   const handleExport = async () => {
     try {
       toast.loading('Exporting data...', { id: 'export' });
-      const query = new URLSearchParams({
-        contentType,
-        page: '1',
-        limit: '100000', // Fetch practically all matching records
-        ...(debouncedSearch && { search: debouncedSearch }),
-        ...(domainFilter && { domain: domainFilter }),
-        ...(statusFilter && { status: statusFilter }),
-        ...(isBooks && visibility === 'public' && { visibility }),
-      });
-      const base = dataset === 'archived' ? '/api/admin/content' : '/api/admin/library/items';
-      const res = await fetch(`${base}?${query}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
+      const res = await fetch(`${base}?${query({ page: '1', limit: '100000' })}`, authHdr());
       if (!res.ok) throw new Error('Export failed');
       const { data } = await res.json();
-      
-      if (!data || data.length === 0) {
-        toast.error('No data to export', { id: 'export' });
-        return;
-      }
-
-      // Map data for clean CSV
-      const csvData = data.map((item: any) => ({
-        Title: item.title,
-        Authors: item.authors,
-        Domain: item.domain,
-        SubjectArea: item.subjectArea,
-        ContentType: item.contentType,
-        AccessType: item.accessType,
-        Status: item.status,
-        PublishedAt: item.publishedAt ? format(new Date(item.publishedAt), 'yyyy-MM-dd HH:mm:ss') : '',
-        URL: item.fileUrl
-      }));
-
-      const csv = Papa.unparse(csvData);
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
+      if (!data || data.length === 0) { toast.error('No data to export', { id: 'export' }); return; }
+      const csv = Papa.unparse(data.map((item: any) => ({
+        Title: item.title, Authors: item.authors, Domain: item.domain, SubjectArea: item.subjectArea, ContentType: item.contentType, AccessType: item.accessType, Status: item.status,
+        PublishedAt: item.publishedAt ? format(new Date(item.publishedAt), 'yyyy-MM-dd HH:mm:ss') : '', URL: item.fileUrl,
+      })));
+      const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', `${contentType.replace(/\s+/g, '_')}_Export_${format(new Date(), 'yyyyMMdd')}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
+      document.body.appendChild(link); link.click(); document.body.removeChild(link);
       toast.success('Export successful', { id: 'export' });
-    } catch (err) {
-      toast.error('Export failed', { id: 'export' });
-    }
+    } catch { toast.error('Export failed', { id: 'export' }); }
   };
 
-  const totalPages = Math.ceil(total / limit) || 1;
-
-  return (
-    <div className="space-y-4">
-      {/* Dataset toggle: New (structured) vs Archived (legacy scraped) */}
-      <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1 w-fit">
-        <button onClick={() => setDataset('new')} title="The structured catalogue collection"
-          className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${dataset === 'new' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-          New <span className="ml-1 text-[10px] font-bold text-slate-400">{isBooks && !overview.data ? '—' : counts.new}</span>
-        </button>
-        <button onClick={() => setDataset('archived')} title="The older imported collection. Published archived items are listed publicly too."
-          className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${dataset === 'archived' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-          Archived <span className="ml-1 text-[10px] font-bold text-slate-400">{isBooks && !overview.data ? '—' : counts.archived}</span>
-        </button>
-      </div>
-
-      {isBooks && <BooksSummary state={overview} dataset={dataset} />}
-
-      <div className={isBooks ? 'grid grid-cols-1 gap-6 lg:grid-cols-[300px_minmax(0,1fr)]' : undefined}>
-      {isBooks && (
-        <BooksDepartmentPanel state={overview} domain={domainFilter} onPick={pickDomain} visibility={visibility} onVisibility={pickVisibility} dataset={dataset} />
-      )}
-      <div className="min-w-0 space-y-4">
+  const totalPages = Math.ceil(total / LIMIT) || 1;
+  const narrowed = isNarrowed(s);
+  const clearFilters = () => { setSearch(''); update({ q: '', status: '', visibility: '', domain: '' }); };
+  const collName = (c: Collection) => (c === 'new' ? 'New' : 'Archived');
+  const pickCollection = (c: Collection) => update({ collection: c });
+  const showTable = (
+    <div className="min-w-0 space-y-4">
       {/* Controls */}
-      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 items-start sm:items-center justify-between">
-        <div className="flex flex-wrap gap-2 flex-1">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
-            <input
-              type="text"
-              placeholder={isBooks ? 'Search title, author, ISBN or publisher...' : `Search title or author...`}
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className={`pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-xl bg-white outline-none focus:border-blue-500 ${isBooks ? 'w-72' : 'w-64'}`}
-            />
-          </div>
-          <div className="relative">
-            <select value={domainFilter} onChange={e => { setDomainFilter(e.target.value); setPage(1); }}
-              className="appearance-none pl-3 pr-8 py-2 text-sm border border-slate-200 rounded-xl bg-white outline-none focus:border-blue-500"
-            >
-              <option value="">All Domains</option>
-              {DOMAINS.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
-              {isBooks && <option value={NONE}>Unassigned / unclassified</option>}
-            </select>
-            <Filter size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-          </div>
-          <div className="relative">
-            <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); if (e.target.value && visibility === 'public') setVisibility('all'); setPage(1); }}
-              className="appearance-none pl-3 pr-8 py-2 text-sm border border-slate-200 rounded-xl bg-white outline-none focus:border-blue-500"
-            >
-              <option value="">All Status</option>
-              <option value="Published">Published</option>
-              <option value="Draft">Draft</option>
-              {isBooks && dataset === 'new' && <option value="Rejected">Rejected</option>}
-            </select>
-            <Filter size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-          </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative">
+          <label htmlFor="admin-content-search" className="sr-only">Search {L.plural}</label>
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} aria-hidden="true" />
+          <input id="admin-content-search" type="text" placeholder={section === 'Books' ? 'Title, author, ISBN or publisher…' : section === 'Periodicals' && collection === 'new' ? 'Title, author, journal or DOI…' : 'Title or author…'}
+            value={search} onChange={e => setSearch(e.target.value)}
+            className="w-64 max-w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-4 text-sm outline-none focus:border-blue-500 sm:w-72" />
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={handleExport}
-            className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 px-4 py-2 rounded-xl text-sm font-semibold shrink-0 transition-colors"
-          >
-            Export CSV
-          </button>
-          <button
-            onClick={() => navigate(`/admin/${slug}/new`)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-semibold shrink-0 transition-colors"
-          >
-            <Plus size={16} /> Add {contentType.replace(/s$/, '')}
+        {!wide && <DepartmentDrawer {...facetProps} label={deptLabel} />}
+        {wide && !panelOpen && <DepartmentPanel {...facetProps} open={false} onToggle={togglePanel} />}
+        <div className="relative">
+          <label htmlFor="admin-content-status" className="sr-only">Status</label>
+          <select id="admin-content-status" value={s.status} onChange={e => update({ status: e.target.value as any })}
+            className="appearance-none rounded-xl border border-slate-200 bg-white py-2 pl-3 pr-8 text-sm outline-none focus:border-blue-500">
+            <option value="">All status</option>
+            <option value="Published">Published</option>
+            <option value="Draft">Draft</option>
+            {collection === 'new' && <option value="Rejected">Rejected</option>}
+            <option value="Other">Other status</option>
+          </select>
+          <Filter size={13} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+        </div>
+        <div role="group" aria-label="What is shown" className="inline-flex rounded-xl bg-slate-100 p-0.5">
+          {([['', 'All records'], ['public', 'Public only']] as const).map(([v, label]) => (
+            <button key={v} type="button" aria-pressed={s.visibility === v} onClick={() => update({ visibility: v })}
+              className={`rounded-lg px-3 py-1.5 text-xs font-bold outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${s.visibility === v ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>{label}</button>
+          ))}
+        </div>
+        <div className="relative">
+          <label htmlFor="admin-content-sort" className="sr-only">Sort</label>
+          <select id="admin-content-sort" value={s.sort} onChange={e => update({ sort: e.target.value as any })}
+            className="appearance-none rounded-xl border border-slate-200 bg-white py-2 pl-3 pr-8 text-sm outline-none focus:border-blue-500">
+            <option value="added">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="title">Title A–Z</option>
+          </select>
+          <Filter size={13} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+        </div>
+        <div className="ml-auto flex gap-2">
+          <button onClick={handleExport} className="flex shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-200">Export CSV</button>
+          {/* The one way to create a record in this section (the module's tabs do not repeat it). */}
+          <button onClick={() => navigate(`/admin/${slug}/new`)} className="flex shrink-0 items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700">
+            <Plus size={16} aria-hidden="true" /> Add {L.singular}
           </button>
         </div>
       </div>
 
-      {isBooks && (
-        <div className="flex flex-wrap items-center justify-between gap-2 text-sm" aria-live="polite">
-          <p className="text-slate-600">
-            <span className="font-bold tabular-nums text-slate-900">{loading && !items.length ? '…' : total.toLocaleString('en-IN')}</span> book{total === 1 ? '' : 's'} match
-            {domainFilter ? <> in <span className="font-semibold">{domainFilter === NONE ? 'Unassigned' : domainFilter}</span></> : null}
-            {visibility === 'public' ? ', public only' : ''}
-          </p>
-          {filtersSet && (
-            <button type="button" onClick={clearFilters} className="rounded-lg px-3 py-1 text-xs font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-100">
-              Clear filters
-            </button>
-          )}
-        </div>
-      )}
+      <div className="flex flex-wrap items-center justify-between gap-2 text-sm" aria-live="polite">
+        <p className="text-slate-600">
+          <span className="font-bold tabular-nums text-slate-900">{loading && !items.length ? '…' : loadFailed ? '—' : total.toLocaleString('en-IN')}</span>{' '}
+          {total === 1 && !loadFailed ? L.one : L.plural} match
+          {s.domain ? <> in <span className="font-semibold">{deptLabel}</span></> : null}
+          {s.visibility === 'public' ? ', public only' : ''} · <span className="text-slate-500">{collName(collection)} collection</span>
+        </p>
+        {narrowed && <button type="button" onClick={clearFilters} className="rounded-lg px-3 py-1 text-xs font-bold text-slate-500 hover:bg-slate-100 hover:text-slate-800">Clear filters</button>}
+      </div>
 
-      {/* Bulk Action Bar */}
       {selectedItems.length > 0 && (
-        <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-xl text-sm font-medium animate-in fade-in slide-in-from-top-2">
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-800">
           <span className="font-bold">{selectedItems.length} selected</span>
-          <div className="h-4 w-px bg-blue-200 mx-1 border-hidden" />
-          <button onClick={() => handleBulkAction('Publish')} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">Publish</button>
-          <button onClick={() => handleBulkAction('Draft')} className="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">Draft</button>
+          <button onClick={() => handleBulkAction('Publish')} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700">Publish</button>
+          <button onClick={() => handleBulkAction('Draft')} className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700">Draft</button>
           <div className="flex-1" />
-          <button onClick={() => handleBulkAction('Delete')} className="bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded-lg text-xs font-semibold font-bold flex items-center gap-1.5 transition-colors">
-            <Trash2 size={13} /> Delete All
-          </button>
+          <button onClick={() => handleBulkAction('Delete')} className="flex items-center gap-1.5 rounded-lg bg-red-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-red-700"><Trash2 size={13} aria-hidden="true" /> Delete all</button>
         </div>
       )}
 
-      {/* Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      {/* Table: it scrolls inside its own box if it must; the page never does. */}
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
-        <table className="w-full text-sm text-left">
-          <thead>
-            <tr className="bg-slate-50 border-b border-slate-200">
-              <th className="px-5 py-3 w-12 text-center border-r border-slate-100">
-                <input type="checkbox" onChange={handleSelectAll} checked={items.length > 0 && selectedItems.length === items.length} className="rounded text-blue-600 w-4 h-4 cursor-pointer" />
-              </th>
-              <th className="px-5 py-3 font-semibold text-slate-600 w-2/5">Title & Author</th>
-              <th className="px-5 py-3 font-semibold text-slate-600">Domain</th>
-              <th className="px-5 py-3 font-semibold text-slate-600">Access</th>
-              <th className="px-5 py-3 font-semibold text-slate-600">Added</th>
-              <th className="px-5 py-3 font-semibold text-slate-600">Status</th>
-              <th className="px-5 py-3 font-semibold text-slate-600 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {loading ? (
-              <tr><td colSpan={7} className="py-16 text-center text-slate-400">
-                <div className="flex flex-col items-center gap-2">
-                  <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                  Loading...
-                </div>
-              </td></tr>
-            ) : loadFailed ? (
-              <tr><td colSpan={7} className="py-16 text-center text-slate-500" role="alert">
-                Could not load {contentType}.{' '}
-                <button type="button" onClick={() => fetchItems()} className="text-blue-600 font-bold hover:underline">Retry</button>
-              </td></tr>
-            ) : items.length === 0 ? (
-              <tr><td colSpan={7} className="py-16 text-center text-slate-400">
-                {filtersSet ? <>No {contentType} match these filters. <button type="button" onClick={clearFilters} className="text-blue-600 font-bold hover:underline">Clear filters</button></> : <>No {contentType} in the {dataset === 'archived' ? 'archived library' : 'new collection'}.</>}
-                {!filtersSet && dataset === 'new' && counts.archived > 0 && (
-                  <button onClick={() => setDataset('archived')} className="text-blue-600 font-bold ml-1 hover:underline">
-                    View {counts.archived} archived {contentType} →
-                  </button>
-                )}
-              </td></tr>
-            ) : items.map(item => (
-              <tr key={item.id} className={`transition-colors ${selectedItems.includes(item.id) ? 'bg-blue-50/50' : 'hover:bg-slate-50'}`}>
-                <td className="px-5 py-3 text-center border-r border-slate-50">
-                  <input type="checkbox" checked={selectedItems.includes(item.id)} onChange={() => handleSelectItem(item.id)} className="rounded text-blue-600 w-4 h-4 cursor-pointer" />
-                </td>
-                <td className="px-5 py-3">
-                  <div className="flex items-center gap-2">
-                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide shrink-0 ${dataset === 'archived' ? 'bg-slate-200 text-slate-600' : 'bg-blue-100 text-blue-700'}`}>
-                      {dataset === 'archived' ? 'Archived' : 'New'}
-                    </span>
-                    <div className="font-semibold text-slate-900 line-clamp-1">{item.title}</div>
-                  </div>
-                  <div className="text-xs text-slate-500 mt-0.5">{item.authors}</div>
-                </td>
-                <td className="px-5 py-3 text-slate-600">{item.domain || '—'}</td>
-                <td className="px-5 py-3">
-                  <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide
-                    ${item.accessType === 'Free' ? 'bg-emerald-100 text-emerald-700' : item.accessType === 'Subscription' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
-                    {item.accessType}
-                  </span>
-                </td>
-                <td className="px-5 py-3 text-slate-500 text-xs">{item.publishedAt ? format(new Date(item.publishedAt), 'dd MMM yy') : '—'}</td>
-                <td className="px-5 py-3">
-                  <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide
-                    ${item.status === 'Published' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                    {item.status}
-                  </span>
-                </td>
-                <td className="px-5 py-3">
-                  <div className="flex items-center justify-end gap-1">
-                    <button onClick={() => handleTogglePublish(item)} title={item.status === 'Published' ? 'Unpublish' : 'Publish'}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-colors">
-                      {item.status === 'Published' ? <EyeOff size={15} /> : <Eye size={15} />}
-                    </button>
-                    {item.fileUrl && <a href={item.fileUrl} target="_blank" rel="noreferrer"
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
-                      <ExternalLink size={15} />
-                    </a>}
-                    <button onClick={() => navigate(`/admin/${slug}/${item.id}${dataset === 'archived' ? '?src=archived' : ''}`)} title="Edit"
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
-                      <Edit size={15} />
-                    </button>
-                    <button onClick={() => handleDelete(item.id)} title="Delete"
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors">
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
-                </td>
+          <table className="w-full min-w-[760px] text-left text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 bg-slate-50">
+                <th className="w-12 border-r border-slate-100 px-4 py-3 text-center">
+                  <input type="checkbox" aria-label="Select all on this page" onChange={handleSelectAll} checked={items.length > 0 && selectedItems.length === items.length} className="h-4 w-4 cursor-pointer rounded text-blue-600" />
+                </th>
+                <th className="min-w-[260px] px-4 py-3 font-semibold text-slate-600">Title &amp; author</th>
+                <th className="px-4 py-3 font-semibold text-slate-600">Department</th>
+                <th className="px-4 py-3 font-semibold text-slate-600">Access</th>
+                <th className="whitespace-nowrap px-4 py-3 font-semibold text-slate-600">Added</th>
+                <th className="px-4 py-3 font-semibold text-slate-600">Status</th>
+                <th className="sticky right-0 bg-slate-50 px-4 py-3 text-right font-semibold text-slate-600 shadow-[-8px_0_8px_-8px_rgba(15,23,42,0.15)]">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {loading ? (
+                <tr><td colSpan={7} className="py-16 text-center text-slate-400">
+                  <div className="flex flex-col items-center gap-2"><div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />Loading…</div>
+                </td></tr>
+              ) : loadFailed ? (
+                <tr><td colSpan={7} className="py-16 text-center text-slate-600" role="alert">
+                  <span className="inline-flex items-center gap-2"><AlertCircle size={16} className="text-amber-600" aria-hidden="true" /> Could not load {L.plural}. This is not an empty collection.</span>{' '}
+                  <button type="button" onClick={refresh} className="font-bold text-blue-600 hover:underline">Retry</button>
+                </td></tr>
+              ) : items.length === 0 ? (
+                <tr><td colSpan={7} className="py-16 text-center text-slate-500">
+                  {narrowed ? (
+                    <>No {L.plural} in the {collName(collection)} collection match these filters. <button type="button" onClick={clearFilters} className="font-bold text-blue-600 hover:underline">Clear filters</button></>
+                  ) : (
+                    <>
+                      <p>There are no {L.plural} in the {collName(collection)} collection.</p>
+                      {typeof otherTotal === 'number' && otherTotal > 0 && (other !== 'archived' || archivedVisible) && (
+                        <button type="button" onClick={() => pickCollection(other)} className="mt-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-100">
+                          Open the {collName(other)} collection ({otherTotal.toLocaleString('en-IN')} {L.plural})
+                        </button>
+                      )}
+                    </>
+                  )}
+                </td></tr>
+              ) : items.map(item => (
+                <tr key={item.id} className={`align-top transition-colors ${selectedItems.includes(item.id) ? 'bg-blue-50/50' : 'hover:bg-slate-50'}`}>
+                  <td className="border-r border-slate-50 px-4 py-3 text-center">
+                    <input type="checkbox" aria-label={`Select ${item.title}`} checked={selectedItems.includes(item.id)} onChange={() => handleSelectItem(item.id)} className="h-4 w-4 cursor-pointer rounded text-blue-600" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <ClampedTitle title={item.title} />
+                    <AuthorList authors={item.authors} />
+                  </td>
+                  <td className="px-4 py-3 text-slate-600">{item.domain || <span className="text-slate-400">Unassigned</span>}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-block rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${item.accessType === 'Free' ? 'bg-emerald-100 text-emerald-700' : item.accessType === 'Subscription' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>{item.accessType}</span>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-500">{item.publishedAt ? format(new Date(item.publishedAt), 'dd MMM yy') : '—'}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-block rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${String(item.status).toLowerCase() === 'published' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{item.status}</span>
+                  </td>
+                  <td className={`sticky right-0 px-4 py-3 shadow-[-8px_0_8px_-8px_rgba(15,23,42,0.15)] ${selectedItems.includes(item.id) ? 'bg-blue-50' : 'bg-white'}`}>
+                    <div className="flex items-center justify-end gap-1">
+                      <button onClick={() => handleTogglePublish(item)} title={String(item.status).toLowerCase() === 'published' ? 'Unpublish' : 'Publish'} aria-label={`${String(item.status).toLowerCase() === 'published' ? 'Unpublish' : 'Publish'} ${item.title}`}
+                        className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-amber-50 hover:text-amber-600">
+                        {String(item.status).toLowerCase() === 'published' ? <EyeOff size={15} aria-hidden="true" /> : <Eye size={15} aria-hidden="true" />}
+                      </button>
+                      {item.fileUrl && <a href={item.fileUrl} target="_blank" rel="noreferrer" aria-label={`Open the file of ${item.title}`} className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-blue-50 hover:text-blue-600"><ExternalLink size={15} aria-hidden="true" /></a>}
+                      <button onClick={() => navigate(`/admin/${slug}/${item.id}${collection === 'archived' ? '?src=archived' : ''}`)} title="Edit" aria-label={`Edit ${item.title}`} className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600"><Edit size={15} aria-hidden="true" /></button>
+                      <button onClick={() => handleDelete(item.id)} title="Delete" aria-label={`Delete ${item.title}`} className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"><Trash2 size={15} aria-hidden="true" /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-        {/* Pagination */}
-        {total > 0 && (
-          <div className="p-4 border-t border-slate-100 flex items-center justify-between">
-            <span className="text-xs text-slate-500">
-              Showing {(page - 1) * limit + 1}–{Math.min(page * limit, total)} of {total} entries
-            </span>
-            <div className="flex gap-2">
-              <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}
-                className="px-3 py-1 text-xs border border-slate-200 rounded-lg disabled:opacity-40 hover:bg-slate-50">
-                ← Prev
-              </button>
-              <span className="px-3 py-1 text-xs text-slate-600">Page {page} / {totalPages}</span>
-              <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}
-                className="px-3 py-1 text-xs border border-slate-200 rounded-lg disabled:opacity-40 hover:bg-slate-50">
-                Next →
-              </button>
+        {total > 0 && !loadFailed && (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 p-4">
+            <span className="text-xs text-slate-500">Showing {(s.page - 1) * LIMIT + 1}–{Math.min(s.page * LIMIT, total)} of {total.toLocaleString('en-IN')} entries</span>
+            <div className="flex items-center gap-2">
+              <button disabled={s.page <= 1} onClick={() => update({ page: s.page - 1 })} className="rounded-lg border border-slate-200 px-3 py-1 text-xs hover:bg-slate-50 disabled:opacity-40">← Prev</button>
+              <span className="px-3 py-1 text-xs text-slate-600">Page {s.page} / {totalPages}</span>
+              <button disabled={s.page >= totalPages} onClick={() => update({ page: s.page + 1 })} className="rounded-lg border border-slate-200 px-3 py-1 text-xs hover:bg-slate-50 disabled:opacity-40">Next →</button>
             </div>
           </div>
         )}
       </div>
-      </div>
-      </div>
     </div>
+  );
+
+  return (
+    <div className="min-w-0 space-y-4">
+      {/* Collection: New (structured) vs Archived (legacy). Two collections, not statuses. */}
+      <div className="flex w-fit max-w-full items-center gap-1 rounded-xl bg-slate-100 p-1" role="group" aria-label="Collection">
+        {(['new', 'archived'] as const).filter(c => c === 'new' || archivedVisible).map(c => (
+          <button key={c} type="button" aria-pressed={collection === c} onClick={() => pickCollection(c)}
+            title={c === 'new' ? 'The structured catalogue collection' : 'The older imported collection. Published archived items are listed publicly too.'}
+            className={`rounded-lg px-4 py-1.5 text-xs font-bold transition-all ${collection === c ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+            {collName(c)}
+            <span className="ml-1 text-[10px] font-bold text-slate-400">{counts ? Number(counts[c]?.total ?? 0).toLocaleString('en-IN') : '—'}</span>
+          </button>
+        ))}
+      </div>
+
+      <SectionSummary state={overview} section={section} collection={collection} />
+
+      {wide && panelOpen ? (
+        <div className="grid grid-cols-[260px_minmax(0,1fr)] gap-6">
+          <DepartmentPanel {...facetProps} open onToggle={togglePanel} />
+          {showTable}
+        </div>
+      ) : showTable}
+    </div>
+  );
+}
+
+/** A title on up to two lines, with its full text one control away. The control appears only when the title is actually cut. */
+function ClampedTitle({ title }: { title: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const [cut, setCut] = useState(false);
+  useLayoutEffect(() => {
+    const el = ref.current; if (!el) return;
+    const measure = () => { if (!open) setCut(el.scrollHeight > el.clientHeight + 1); };
+    measure();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    ro?.observe(el);
+    return () => ro?.disconnect();
+  }, [title, open]);
+  return (
+    <div>
+      <div ref={ref} className={`font-semibold leading-snug text-slate-900 [overflow-wrap:anywhere] ${open ? '' : 'line-clamp-2'}`} title={cut && !open ? title : undefined}>{title}</div>
+      {(cut || open) && (
+        <button type="button" aria-expanded={open} onClick={() => setOpen(o => !o)} className="mt-0.5 text-[11px] font-bold text-blue-600 hover:underline">{open ? 'Show less' : 'Show full title'}</button>
+      )}
+    </div>
+  );
+}
+
+/** Two names, then "+N more" which opens the rest. */
+function AuthorList({ authors }: { authors?: string | null }) {
+  const [open, setOpen] = useState(false);
+  const names = useMemo(() => {
+    const t = String(authors || '').trim();
+    if (!t) return [];
+    return (t.includes(';') ? t.split(';') : t.split(',')).map(x => x.trim()).filter(Boolean);
+  }, [authors]);
+  if (!names.length) return null;
+  const shown = open ? names : names.slice(0, 2);
+  return (
+    <p className="mt-0.5 text-xs text-slate-500 [overflow-wrap:anywhere]">
+      {shown.join(', ')}
+      {names.length > 2 && (
+        <button type="button" aria-expanded={open} onClick={() => setOpen(o => !o)} className="ml-1.5 font-bold text-blue-600 hover:underline">{open ? 'Show fewer' : `+${names.length - 2} more`}</button>
+      )}
+    </p>
   );
 }

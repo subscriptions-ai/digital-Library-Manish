@@ -51,7 +51,8 @@ import { publicJournalCount, publicJournalStatusSql, publicJournalStatusWhere, P
 import { parseJournalPaging, queryJournalPage, publicScope, subjectSlugSql } from "./src/lib/journalPaging.js";
 import { COMPANY_DETAILS, currentIssuer } from "./src/config.js";
 import { publicBookWhere, publicLegacyBookWhere, publicBookSql, publicLegacyBookSql, publicBookCounts } from "./src/lib/publicBooks.js";
-import { booksOverview, bookWhere, NO_DEPARTMENT, type BookDataset } from "./src/lib/adminBooks.js";
+import { legacyPublicWhere, legacyPublicSql } from "./src/lib/publicStatus.js";
+import { contentWhere, contentOrderBy, sectionOverview, parseSort, isSection, type Collection } from "./src/lib/adminContent.js";
 import { canonicalOrSelf, canonicalOrSelfList, canonicalDepartmentName, resolveCanonicalDepartment, entitlementCovers, foldCounts, departmentFromSlug, spellingsOfAll } from "./src/lib/departmentRegistry.js";
 import { createDepartmentSpellings } from "./src/server/departmentSpellings.js";
 import { requireOfficialDepartments, requireOfficialDepartmentsOnEdit } from "./src/server/departmentInput.js";
@@ -615,7 +616,7 @@ async function startServer() {
     // rows found under all those spellings are each counted once.
     const domains = scope ? await deptSpellings.expand(scope) : undefined;
     const inDomains = domains?.length ? { domain: { in: domains } } : {};
-    const live = { status: { not: "Draft" } };
+    const live = { ...legacyPublicWhere };
 
     // Everything else on the archived shelf — theses, magazines, case reports,
     // proceedings, videos, newsletters. A reader opens those too, so a figure
@@ -678,7 +679,7 @@ async function startServer() {
                 count(*) filter (where c."contentType" = 'Books')::int,
                 count(*) filter (where c."contentType" not in ('Periodicals', 'Books'))::int
            from "Content" c
-          where c.status <> 'Draft' and c."domain" is not null ${f('c')}
+          where ${legacyPublicSql('c')} and c."domain" is not null ${f('c')}
           group by 1
        ) t
        group by 1
@@ -697,7 +698,7 @@ async function startServer() {
 
   app.get("/api/public/counts", async (req, res) => {
     try {
-      const live = { status: { not: "Draft" } };
+      const live = { ...legacyPublicWhere };
       const pub = { status: "Published" };
 
       const [counts, articles, newBooks, theses, legacyTotal] = await Promise.all([
@@ -755,7 +756,7 @@ async function startServer() {
       const [legacy, articles, books] = await Promise.all([
         prisma.content.groupBy({
           by: ['domain'],
-          where: { status: { not: 'Draft' }, domain: { not: null } },
+          where: { ...legacyPublicWhere, domain: { not: null } },
           _count: { id: true },
         }),
         (prisma as any).article.groupBy({
@@ -4344,7 +4345,7 @@ async function startServer() {
   // from is recorded on the row rather than enforced by a foreign key.
   // Only something a reader can open can be saved: a draft, or an id that exists nowhere, is "no longer exists".
   const favouriteKindOf = async (id: string): Promise<'Content' | 'Article' | 'Book' | null> => {
-    if (await prisma.content.count({ where: { id, status: { not: 'Draft' } } })) return 'Content';
+    if (await prisma.content.count({ where: { id, ...legacyPublicWhere } })) return 'Content';
     if (await (prisma as any).article.count({ where: { id, status: 'Published' } })) return 'Article';
     if (await (prisma as any).book.count({ where: { id, status: 'Published' } })) return 'Book';
     return null;
@@ -4646,7 +4647,7 @@ async function startServer() {
         prisma.content.groupBy({
           by: ['domain', 'contentType'],
           _count: { id: true },
-          where: { status: { in: ['Published', 'published'] } }
+          where: { ...legacyPublicWhere }
         }),
         (prisma as any).article.groupBy({
           by: ['domain', 'contentType'],
@@ -4763,7 +4764,7 @@ async function startServer() {
       let legacyDepts: string[] = []; let legacyTypes: string[] = [];
       const entSpellings = isAdmin ? [] : await deptSpellings.expand(ent.departments);
       if (isAdmin || scopeDomains.size) {
-        const legacyWhere: any = { status: { not: 'Draft' } };
+        const legacyWhere: any = { ...legacyPublicWhere };
         if (!isAdmin) {
           legacyWhere.domain = { in: entSpellings };
           if (subOr.length && !subOr.some(c => !c.contentType)) legacyWhere.AND = [{ OR: subOr }];
@@ -4789,7 +4790,7 @@ async function startServer() {
 
       // ARCHIVED — all published legacy content (browse the whole archive)
       // The archive is browsed within the account's departments too: its filters never list a department the account does not hold.
-      const archivedWhere: any = { status: { not: 'Draft' }, ...(isAdmin ? {} : { domain: { in: entSpellings } }) };
+      const archivedWhere: any = { ...legacyPublicWhere, ...(isAdmin ? {} : { domain: { in: entSpellings } }) };
       const [adg, acg] = await Promise.all([
         prisma.content.groupBy({ by: ['domain'], where: archivedWhere }),
         prisma.content.groupBy({ by: ['contentType'], where: archivedWhere }),
@@ -4903,7 +4904,7 @@ async function startServer() {
       const take = parseInt(limit as string);
 
       // Build prisma WHERE clause
-      const where: any = { status: { not: "Draft" } };
+      const where: any = { ...legacyPublicWhere };
       // domain may be a single value or a comma-joined list ("All Subscribed Domains")
       if (domain) {
         const doms = String(domain).split(',').map(s => s.trim()).filter(Boolean);
@@ -5151,7 +5152,7 @@ async function startServer() {
   };
 
   const resolveViewable = async (id: string, isAdmin: boolean) => {
-    const c = await prisma.content.findFirst({ where: isAdmin ? { id } : { id, status: { not: 'Draft' } } });
+    const c = await prisma.content.findFirst({ where: isAdmin ? { id } : { id, ...legacyPublicWhere } });
     if (c) return { kind: 'content' as const, item: c, fileUrl: c.fileUrl, title: c.title, contentType: c.contentType, accessType: c.accessType, status: c.status };
     const a = await (prisma as any).article.findFirst({ where: isAdmin ? { id } : { id, status: 'Published' } });
     if (a) return { kind: 'article' as const, item: a, fileUrl: a.pdfUrl, title: a.title, contentType: a.contentType || 'Periodicals', accessType: a.accessType || 'OpenAccess', status: a.status };
@@ -7201,7 +7202,7 @@ async function startServer() {
   async function syncContentModuleCounts() {
     const groups = await prisma.content.groupBy({
       by: ['domain', 'contentType'],
-      where: { status: { in: ['Published', 'published'] }, domain: { not: null } },
+      where: { ...legacyPublicWhere, domain: { not: null } },
       _count: { id: true }
     });
     // One module per department and content type: a department filed under two spellings is counted together, and
@@ -7346,7 +7347,7 @@ async function startServer() {
       const videos = await prisma.content.findMany({
         where: { 
           contentType: "Educational Videos", 
-          status: { in: ["Published", "published"] } 
+          ...legacyPublicWhere 
         }
       });
 
@@ -7464,7 +7465,7 @@ async function startServer() {
         // Published alone made this page's shelves smaller than the library's.
         prisma.content.groupBy({
           by: ['contentType'],
-          where: { domain: { in: spelled }, status: { not: 'Draft' } },
+          where: { domain: { in: spelled }, ...legacyPublicWhere },
           _count: { id: true },
           orderBy: { contentType: 'asc' },
         }),
@@ -10778,7 +10779,7 @@ async function startServer() {
   app.get("/api/library/content/:id", authenticateJWT, async (req: any, res: any) => {
     try {
       const c = await prisma.content.findFirst({
-        where: { id: req.params.id, status: { not: 'Draft' } },
+        where: { id: req.params.id, ...legacyPublicWhere },
         select: {
           id: true, title: true, description: true, authors: true, domain: true,
           contentType: true, subjectArea: true, tags: true, views: true,
@@ -10798,7 +10799,7 @@ async function startServer() {
       const related = await prisma.content.findMany({
         where: {
           id: { not: c.id },
-          status: { not: 'Draft' },
+          ...legacyPublicWhere,
           domain: c.domain || undefined,
           contentType: c.contentType,
         },
@@ -11412,7 +11413,7 @@ async function startServer() {
         collectionCounts(),
         (prisma as any).$queryRawUnsafe(
           `select "contentType" as type, count(*)::int as n from "Content"
-           where status <> 'Draft' and "contentType" not in ('Periodicals', 'Books')
+           where ${legacyPublicSql('"Content"')} and "contentType" not in ('Periodicals', 'Books')
            group by 1 order by 2 desc`),
         (prisma as any).$queryRawUnsafe(
           `select coalesce("accessStatus", 'MetadataOnly') as s, count(*)::int as n from (
@@ -11960,49 +11961,41 @@ async function startServer() {
     publishedAt: row.createdAt,
   });
 
-  /**
-   * The Books overview: department counts and the cards above the table. Counts use the same filter as the list (src/lib/adminBooks.ts),
-   * so choosing a department shows exactly the number beside it. Aggregated here in the database; no book is sent to the browser.
-   * The archived collection is the legacy `Content` table, which only a super admin can list, so the same rule applies to its counts.
-   */
-  app.get("/api/admin/library/books/overview", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
-    try {
-      const dataset: BookDataset = req.query.dataset === 'archived' ? 'archived' : 'new';
-      const isSuper = req.user?.role === 'SuperAdmin';
-      if (dataset === 'archived' && !isSuper) return res.status(403).json({ error: "The archived collection is for super admins" });
-      const s = (v: any) => (typeof v === 'string' ? v.trim() : '');
-      const out = await booksOverview(prisma, deptSpellings, dataset, { q: s(req.query.q), status: s(req.query.status) });
-      if (!isSuper) out.collections.archived = null;
-      res.json(out);
-    } catch (e: any) {
-      console.error("admin books overview:", e?.message);
-      res.status(500).json({ error: "Failed to load the books overview" });
-    }
-  });
-
   app.get("/api/admin/library/items", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
     try {
-      const { contentType, search, domain, status, visibility, page = '1', limit = '15' } = req.query;
+      const { contentType, search, domain, status, visibility, sort, page = '1', limit = '15' } = req.query;
+      if (!isSection(contentType)) return res.status(400).json({ error: "Unknown content type" });
       const kind = kindFor(contentType);
       const take = Math.min(parseInt(limit as string) || 15, 100000);
       const skip = ((parseInt(page as string) || 1) - 1) * take;
-      let where: any = {};
-      if (kind === 'book') {
-        // The same filter the Books department counts use (src/lib/adminBooks.ts), so a count and the rows under it cannot disagree.
-        where = await bookWhere('new', { q: String(search || ''), status: String(status || ''), visibility: String(visibility || ''), domain: String(domain || '') }, deptSpellings);
-      } else {
-        where.contentType = contentType;
-        if (domain) where.domain = { in: await deptSpellings.expand([String(domain)]) };
-        if (status) where.status = status;
-        if (search) where.OR = [{ title: { contains: search as string, mode: 'insensitive' } }, { authors: { contains: search as string, mode: 'insensitive' } }];
-      }
+      // The same filter the department counts use (src/lib/adminContent.ts), so a count and the rows under it cannot disagree.
+      const where = await contentWhere(contentType, 'new', { q: String(search || ''), status: String(status || ''), visibility: String(visibility || ''), domain: String(domain || '') }, deptSpellings);
       const model = (prisma as any)[kind];
       const [rows, total] = await Promise.all([
-        model.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
+        model.findMany({ where, orderBy: contentOrderBy('new', parseSort(sort)), skip, take }),
         model.count({ where }),
       ]);
       res.json({ data: rows.map(aliasItem), total, page: parseInt(page as string) || 1, limit: take });
     } catch (e: any) { console.error("admin library list:", e); res.status(500).json({ error: "Failed to load items" }); }
+  });
+
+  // GET /api/admin/library/overview — the department counts and the cards above an admin content table, for any section and either
+  // collection (src/lib/adminContent.ts). The archived collection is the legacy `Content` table, which only a super admin can list, so
+  // the same rule applies to counting it. Aggregated in the database; no record is sent to the browser.
+  app.get("/api/admin/library/overview", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const section = req.query.contentType;
+      if (!isSection(section)) return res.status(400).json({ error: "Unknown content type" });
+      const collection: Collection = req.query.collection === 'archived' ? 'archived' : 'new';
+      const isSuper = req.user?.role === 'SuperAdmin';
+      if (collection === 'archived' && !isSuper) return res.status(403).json({ error: "The archived collection is for super admins" });
+      const s = (v: any) => (typeof v === 'string' ? v.trim() : '');
+      res.set('Cache-Control', 'no-store');
+      res.json(await sectionOverview(prisma, deptSpellings, section, collection, { q: s(req.query.q), status: s(req.query.status) }, { canSeeArchived: isSuper }));
+    } catch (e: any) {
+      console.error("admin library overview:", e?.message);
+      res.status(500).json({ error: "Failed to load the overview" });
+    }
   });
 
   app.get("/api/admin/library/items/:kind/:id", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
@@ -12153,15 +12146,14 @@ async function startServer() {
 
   // Admin: Content CRUD
   app.get("/api/admin/content", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
-
     try {
-      const { domain, contentType, search, status, visibility, page = "1", limit = "10" } = req.query;
+      const { domain, contentType, search, status, visibility, sort, page = "1", limit = "10" } = req.query;
       const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
-      
+
       let where: any = {};
-      if (contentType === 'Books') {
-        // Archived books use the same filter as the department counts (src/lib/adminBooks.ts), including the Unassigned bucket.
-        where = await bookWhere('archived', { q: String(search || ''), status: String(status || ''), visibility: String(visibility || ''), domain: String(domain || '') }, deptSpellings);
+      if (isSection(contentType)) {
+        // The same filter the department counts use (src/lib/adminContent.ts), including the Unassigned bucket.
+        where = await contentWhere(contentType, 'archived', { q: String(search || ''), status: String(status || ''), visibility: String(visibility || ''), domain: String(domain || '') }, deptSpellings);
       } else {
         if (domain) where.domain = { in: await deptSpellings.expand([String(domain)]) };
         if (contentType) where.contentType = contentType;
@@ -12176,7 +12168,7 @@ async function startServer() {
       }
 
       const [contents, total] = await Promise.all([
-        prisma.content.findMany({ where, skip, take: parseInt(limit as string), orderBy: { publishedAt: 'desc' } }),
+        prisma.content.findMany({ where, skip, take: parseInt(limit as string), orderBy: contentOrderBy('archived', parseSort(sort)) }),
         prisma.content.count({ where })
       ]);
 
@@ -16610,7 +16602,7 @@ async function startServer() {
     try {
       const { id } = req.params;
       const content = await prisma.content.findFirst({
-        where: { id, status: "Published" },
+        where: { id, ...legacyPublicWhere },
         select: {
           id: true,
           title: true,

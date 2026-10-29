@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
+import { legacyPublicWhere, legacyPublicSql } from './publicStatus';
 
 /**
  * What counts as a book the public catalogue lists, and what counts as a book a reader can open here. One definition, used by every
@@ -12,9 +13,9 @@ import type { PrismaClient } from '@prisma/client';
  * publicly exactly like a structured one. Each table has its own lifecycle (Draft | Published | Rejected on Book; Published | Draft on
  * Content), and the two never share an id, so a book is counted once per row.
  *
- * LISTED (the public figure): a `Book` is listed when its status is Published; a legacy `Content` book when its status is not Draft.
- * Those two tests are the ones the public lists have always applied (src/…/library/books and /content/list); they are written down here
- * instead of being repeated in a dozen queries.
+ * LISTED (the public figure): a `Book` is listed when its status is Published; a legacy `Content` book unless its status withholds it. That
+ * legacy rule lives in publicStatus.ts and is the one every public count, list, department query and item gate now applies (it used to be
+ * "not Draft" written out in a dozen places). Today the two agree on every production row.
  *
  * READABLE (a different, smaller figure): listed AND a full-text file is actually served from here. A listed record can be metadata
  * only (the licence does not allow hosting, so the reader is sent to the source), and must never be presented as full text.
@@ -30,17 +31,17 @@ export const BOOK_STATUS = { Published: 'Published', Draft: 'Draft', Rejected: '
 /** Prisma: the structured books that are listed. */
 export const publicBookWhere = { status: BOOK_STATUS.Published } as const;
 /** Prisma: the legacy books that are listed. */
-export const publicLegacyBookWhere = { contentType: 'Books', status: { not: 'Draft' } } as const;
+export const publicLegacyBookWhere = { contentType: 'Books', ...legacyPublicWhere } as const;
 
 /** Prisma: listed AND readable here. */
 export const readableBookWhere = { status: BOOK_STATUS.Published, accessStatus: 'ViewableHere', pdfUrl: { not: null } } as const;
 export const readableLegacyBookWhere = {
-  contentType: 'Books', status: { not: 'Draft' }, validationStatus: 'VALID_VIEWABLE', fileUrl: { not: null },
+  contentType: 'Books', ...legacyPublicWhere, validationStatus: 'VALID_VIEWABLE', fileUrl: { not: null },
 } as const;
 
 /** SQL twins of the above, for a table aliased `alias`. */
 export const publicBookSql = (alias = 'b') => `${alias}.status = 'Published'`;
-export const publicLegacyBookSql = (alias = 'c') => `${alias}."contentType" = 'Books' and ${alias}.status <> 'Draft'`;
+export const publicLegacyBookSql = (alias = 'c') => `${alias}."contentType" = 'Books' and ${legacyPublicSql(alias)}`;
 export const readableBookSql = (alias = 'b') => `${publicBookSql(alias)} and ${alias}."accessStatus" = 'ViewableHere' and ${alias}."pdfUrl" is not null`;
 export const readableLegacyBookSql = (alias = 'c') =>
   `${publicLegacyBookSql(alias)} and ${alias}."validationStatus" = 'VALID_VIEWABLE' and ${alias}."fileUrl" is not null`;
