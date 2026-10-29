@@ -9,7 +9,7 @@ Publication evidence, by lineage (OpenAlex repeats Crossref's DOIs, so the two a
 """
 import json,os,sys,subprocess,collections,re,time,urllib.request,urllib.parse
 sys.path.insert(0,os.path.dirname(__file__)); from ledger import ROOT
-W=os.path.join(ROOT,'data','dept-coverage2','work'); R2=os.path.join(ROOT,'data','dept-coverage2','raw'); D=os.path.dirname(os.path.abspath(__file__))
+W=os.path.join(ROOT,'data',os.environ.get('RUN_DIR','dept-coverage2'),'work'); R2=os.path.join(ROOT,'data',os.environ.get('RUN_DIR','dept-coverage2'),'raw'); D=os.path.dirname(os.path.abspath(__file__))
 s1=json.load(open(f'{W}/stage1b.json')); sc=json.load(open(f'{W}/scope.json'))
 EL,ET,BT='Electrical Engineering','Electronics & Telecommunication Engineering','Bio Technology'; T=[EL,ET,BT]
 held=list(s1['held']); C=[]

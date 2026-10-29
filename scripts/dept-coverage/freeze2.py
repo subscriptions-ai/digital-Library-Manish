@@ -5,7 +5,7 @@ remainder (written in batches of <= 100). Local files only. Cap: 2,000 unique jo
 """
 import json,os,sys,hashlib,collections,subprocess
 sys.path.insert(0,os.path.dirname(__file__)); from ledger import ROOT
-RUN,OUT=sys.argv[1],sys.argv[2]; W=os.path.join(ROOT,'data','dept-coverage2','work'); os.makedirs(OUT,exist_ok=True)
+RUN,OUT=sys.argv[1],sys.argv[2]; W=os.path.join(ROOT,'data',os.environ.get('RUN_DIR','dept-coverage2'),'work'); os.makedirs(OUT,exist_ok=True)
 st=json.load(open(f'{W}/stage2b.json')); elig=st['eligible'][:]
 HAND=json.load(open(f'{W}/hand-holds.json')) if os.path.exists(f'{W}/hand-holds.json') else {}
 PRIORITY=['Crossref member','NLM Catalog','SciELO','J-STAGE','OpenAlex','DOAJ']; LABEL={'Crossref member':'Crossref','NLM Catalog':'NLM Catalog','SciELO':'SciELO','J-STAGE':'J-STAGE','OpenAlex':'OpenAlex','DOAJ':'DOAJ'}
@@ -34,7 +34,7 @@ def row(c):
             'evidence':{'listedBy':srcs,'families':c['families'],'sources':c['sources'],'official':c['official'].get('evidence') if (c.get('official') or {}).get('dept') else None,'lexicon':c.get('lexicon'),'topicShares':c.get('shares'),
                         'site':{'status':c['site'].get('status'),'hits':c['site'].get('hits'),'year2025_26':c['site'].get('year2025_26'),'pages':[{k:q[k] for k in('url','status','at','sha256')} for q in (c['site'].get('pages') or [])],'snippet':(c['site'].get('snippet') or '')[:300]},
                         'publication':{'class':p['class'],'why':p['why'],'corroboration':p.get('corroboration')},'publisherFill':c.get('publisherFill'),'renameCheck':{'nlmRelations':(c.get('renameCheck') or {}).get('nlmRelations')},'verified':'2026-10-29','urls':urls}}
-rows=[_clean(row(c)) for c in keep]
+rows=[row(c) for c in keep]      # evidence is kept exactly as collected: the writer sanitises it and documents every change
 lists=collections.defaultdict(list)
 for r in rows: lists[(r['domain'],r['basisSource'])].append(r)
 order=[]; ls=[lists[k] for k in sorted(lists,key=lambda k:-len(lists[k]))]

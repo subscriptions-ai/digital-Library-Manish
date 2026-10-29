@@ -41,7 +41,7 @@ const lexShare = (topics: any[]) => {
 const WOS: [RegExp, string][] = [[/telecommunications/i, ET], [/engineering,? electrical (&|and) electronic/i, 'EL_OR_ET'], [/biotechnology (&|and) applied microbiology/i, BT]];
 const NLM_BT = new Set(['Biotechnology', 'Industrial Microbiology', 'Genetic Engineering', 'Bioengineering', 'Bioreactors', 'Biofuels', 'Fermentation']);
 
-const inp = process.argv[2] || 'data/dept-coverage2/work/pool.ndjson', out = process.argv[3] || 'data/dept-coverage2/work/classified.json';
+const inp = process.argv[2] || `data/${process.env.RUN_DIR || 'dept-coverage2'}/work/pool.ndjson`, out = process.argv[3] || `data/${process.env.RUN_DIR || 'dept-coverage2'}/work/classified.json`;
 const res: Record<string, any> = {}; let n = 0;
 const rl = createInterface({ input: createReadStream(inp, { encoding: 'utf8' }), crlfDelay: Infinity });
 for await (const line of rl) {

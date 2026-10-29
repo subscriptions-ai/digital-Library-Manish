@@ -5,7 +5,7 @@ with ONE promising kind it goes to the aims-and-scope check (stage 3, the journa
 """
 import json,os,re,sys,collections,unicodedata
 sys.path.insert(0,os.path.dirname(__file__)); from ledger import ROOT
-W=os.path.join(ROOT,'data','dept-coverage2','work')
+W=os.path.join(ROOT,'data',os.environ.get('RUN_DIR','dept-coverage2'),'work')
 cl=json.load(open(f'{W}/classified.json'))
 def clusters():
     for line in open(f'{W}/pool.ndjson'):

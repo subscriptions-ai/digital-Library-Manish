@@ -1,0 +1,54 @@
+{
+ "Wikidata SPARQL: official website (P856) by ISSN (P236)": {
+  "status": "complete",
+  "retrieved": "2026-10-29T06:46:19Z",
+  "query": "query.wikidata.org/sparql, VALUES of the ISSNs of 875 candidates whose own site could not be read, batches of 80",
+  "fetched": 745,
+  "pagination": "11 batches; identity = ISSN equality, never title",
+  "notes": "745 ISSNs have an official website. 95 of the recovered sites could be read and are the only new scope evidence; 62 did not answer and 6 disallow automated access. Wikidata subjects were NOT used as department evidence (an aggregator).",
+  "rawFiles": {}
+ },
+ "Journal sites: URL variants of listed homepages": {
+  "status": "partial",
+  "retrieved": "2026-10-29T06:46:19Z",
+  "query": "https/http and www/non-www variants of the listed homepage, 15 s timeout, robots.txt respected",
+  "fetched": 325,
+  "pagination": "325 listed homepages retried: 21 now readable, 269 still unreachable, 35 robots-disallowed",
+  "notes": "A failed request is no evidence either way.",
+  "rawFiles": {}
+ },
+ "Journal sites: standard aims-and-scope pages (second look)": {
+  "status": "partial",
+  "retrieved": "2026-10-29T06:46:20Z",
+  "query": "<journal root>/about, /about/editorialPolicies, /aims-and-scope, /aims-scope, /about-the-journal, /about-journal; same host, robots.txt respected, 1 request per host per second",
+  "fetched": 611,
+  "pagination": "611 sites that had answered but not confirmed a scope",
+  "notes": "Added 2 confirmations.",
+  "rawFiles": {}
+ },
+ "Crossref publisher deposits, third set (KIEES x2, IEEK, SICE, JSAEM, KSMB, MSMBB)": {
+  "status": "complete",
+  "retrieved": "2026-10-29T06:46:20Z",
+  "query": "GET /members/{id}/works?filter=type:journal-article,from-pub-date:2024-01-01 facet=issn + GET /journals/{issn}",
+  "fetched": 9,
+  "pagination": "2, 1, 1, 3, 1, 1, 1 journals",
+  "notes": "Added no in-scope journal that was not already held. Searches for IETE, Chinese Institute of Electronics, China Institute of Communications, KICS, Chinese Society of Biotechnology and others found no Crossref member with deposits.",
+  "rawFiles": {}
+ },
+ "IEEE Xplore KBART title lists (official all-journals export)": {
+  "status": "blocked",
+  "retrieved": "2026-10-29T06:46:20Z",
+  "query": "https://ieeexplore.ieee.org/Xplorehelp/discovery-services/kbart-title-lists",
+  "fetched": 0,
+  "notes": "The page is a script-driven application behind an anti-bot layer (HTTP 418 to the first probe); the export link is not in the page HTML. Not bypassed. The IEEE ASPP brochure PDF (innovate.ieee.org) was read and contains no title list.",
+  "rawFiles": {}
+ },
+ "Springer Nature Metadata Downloader (official title lists with subjects)": {
+  "status": "blocked",
+  "retrieved": "2026-10-29T06:46:20Z",
+  "query": "https://metadata.springernature.com/journals",
+  "fetched": 0,
+  "notes": "An interactive tool whose downloads are produced by undocumented calls; not driven programmatically. Elsevier, Wiley, SAGE, T&F and IOP library title-list pages returned 403/404 to automated clients.",
+  "rawFiles": {}
+ }
+}

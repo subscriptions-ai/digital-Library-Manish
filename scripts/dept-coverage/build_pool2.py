@@ -10,7 +10,7 @@ Nothing is written to any database.
 """
 import json,os,sys,re,csv,glob,collections,unicodedata
 sys.path.insert(0,os.path.dirname(__file__)); from ledger import RAW,ROOT
-WORK=os.path.join(ROOT,'data','dept-coverage2','work'); os.makedirs(WORK,exist_ok=True)
+WORK=os.path.join(ROOT,'data',os.environ.get('RUN_DIR','dept-coverage2'),'work'); os.makedirs(WORK,exist_ok=True)
 csv.field_size_limit(10**9)
 def valid_issn(s):
     s=(s or '').upper()
@@ -22,7 +22,7 @@ def nissn(s):
     return f'{s[:4]}-{s[4:]}' if len(s)==8 else None
 def ntitle(t): return re.sub(r'[^a-z0-9]+',' ',unicodedata.normalize('NFKD',(t or '').lower()).encode('ascii','ignore').decode()).strip()
 
-snap=json.load(open(os.path.join(ROOT,'data','dept-coverage2','raw','catalogue-snapshot.json')))
+snap=json.load(open(os.path.join(ROOT,'data',os.environ.get('RUN_DIR','dept-coverage2'),'raw','catalogue-snapshot.json')))
 cat=snap['all']
 byId={}; byTitle=collections.defaultdict(list)
 for j in cat:

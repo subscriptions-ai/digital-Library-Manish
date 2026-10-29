@@ -34,3 +34,7 @@ data/dept-coverage/work/
 # Department coverage run 2: raw third-party lists, the production snapshot and intermediate work files (never committed)
 data/dept-coverage2/raw/
 data/dept-coverage2/work/
+
+# Department coverage run 3: raw/work files (never committed)
+data/dept-coverage3/raw/
+data/dept-coverage3/work/
