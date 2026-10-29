@@ -1,0 +1,15 @@
+{
+ "reason": "the canary audit entry failed in production (Postgres 22P05: a NUL character inside evidence.site.snippet of \"Bioprocess\"); the journal rows were written correctly. NUL/control characters were stripped from evidence strings in the manifests. No journal field changed.",
+ "before": {
+  "manifest-frozen.json": "b19b060baee5599496b953c10c90a0cf511a68b72fe2a5c5c3bb7c676743ba13",
+  "plan-canary.json": "2a6915669269b03e14de2d5b7152c2119536af01afae9c41d9d380d254b01a88",
+  "plan-rest.json": "9e75849aea3defab2f1273a7d95237ad0b24ca635b6bd4f7140fe4cbfcdbb164",
+  "plan-rest-1.json": "9e75849aea3defab2f1273a7d95237ad0b24ca635b6bd4f7140fe4cbfcdbb164"
+ },
+ "after": {
+  "manifest-frozen.json": "fbba9dab9b3ce827571e9cd20a9a1cb55f723df33ddfa87ac7f1291902ebfb4f",
+  "plan-canary.json": "c0e01d82ce82c2dabfbd7f9eb6800f9a4f3d7d09f274803a4bdcbb94f8a46381",
+  "plan-rest.json": "d765ccf32d6a1019e2142f5aa8ede56abd549365ea36fed4a0c62e2470dfc8b2",
+  "plan-rest-1.json": "d765ccf32d6a1019e2142f5aa8ede56abd549365ea36fed4a0c62e2470dfc8b2"
+ }
+}

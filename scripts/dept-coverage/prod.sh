@@ -26,6 +26,10 @@ case "$1" in
     C=$(container); { printf 'var __SINCE__ = "%s";\n' "$2"; cat "$HERE/dept-coverage/new-rows.cjs"; } | ssh_ "docker exec -i -w /app $C node -" ;;
   rollback-review)
     C=$(container); { printf 'var __IDS__ = %s;\n' "$(cat "$2")"; printf 'var __RUN__ = "%s";\n' "$3"; cat "$HERE/dept-coverage/rollback-review.cjs"; } | ssh_ "docker exec -i -w /app $C node -" ;;
+  active-runs)
+    C=$(container); ssh_ "docker exec -i -w /app $C node -" < "$HERE/dept-coverage/active-runs.cjs" ;;
+  audit-backfill)
+    C=$(container); { printf 'var __PLAN__ = %s;\n' "$(cat "$2")"; printf 'var __BATCH__ = %s;\n' "$3"; printf 'var __NOTE__ = %s;\n' "$(python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "$4")"; cat "$HERE/dept-coverage/audit-backfill.cjs"; } | ssh_ "docker exec -i -w /app $C node -" ;;
   apply)
     C=$(container); PLAN=$2; shift 2
     { printf 'var __PLAN__ = %s;\n' "$(cat "$PLAN")"; cat "$HERE/journal-source-apply.cjs"; } | ssh_ "docker exec -i -w /app $C node - --batch=100 $*" ;;

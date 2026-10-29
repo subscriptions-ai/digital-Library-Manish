@@ -15,7 +15,8 @@ cres=rd('canary-result.json'); rres=[rd(os.path.basename(f)) for f in sorted(glo
 ids_c=cres['insertedIds'] if cres else []; ids_r=[i for r in rres for i in r['insertedIds']]
 allids=ids_c+ids_r
 code={}
-for f in ['src/lib/ingestion/officialListDepartment.ts','src/lib/ingestion/titleTopicDepartment.ts','src/lib/ingestion/openAlexDepartments.ts','src/lib/ingestion/nlmJournalDepartment.ts','src/lib/ingestion/journalSourceImport.ts','scripts/journal-source-apply.cjs','scripts/dept-coverage/verify-prod.cjs','scripts/dept-coverage/stage1.py','scripts/dept-coverage/stage2.py','scripts/dept-coverage/freeze.py','scripts/dept-coverage/build_pool.py','scripts/dept-coverage/classify.ts']:
+for f in ['src/lib/ingestion/officialListDepartment.ts','src/lib/ingestion/titleTopicDepartment.ts','src/lib/ingestion/openAlexDepartments.ts','src/lib/ingestion/nlmJournalDepartment.ts','src/lib/ingestion/journalSourceImport.ts','scripts/journal-source-apply.cjs','scripts/dept-coverage/verify-prod.cjs','scripts/dept-coverage/stage1.py','scripts/dept-coverage/stage2.py','scripts/dept-coverage/freeze.py','scripts/dept-coverage/build_pool.py','scripts/dept-coverage/classify.ts','scripts/dept-coverage/classify2.ts','scripts/dept-coverage/stage1b.py','scripts/dept-coverage/stage2b.py','scripts/dept-coverage/aims_scope.py','scripts/dept-coverage/freeze2.py','scripts/dept-coverage/build_pool2.py','scripts/dept-coverage/live_check.py','scripts/dept-coverage/audit-backfill.cjs']:
+    if not os.path.exists(os.path.join(ROOT,f)): continue
     code[f]=hashlib.sha256(open(os.path.join(ROOT,f),'rb').read()).hexdigest()
 head=subprocess.run(['git','rev-parse','HEAD'],capture_output=True,text=True,cwd=ROOT).stdout.strip()
 sql='DELETE FROM "Journal" j WHERE j.id = ANY($1::text[]) AND NOT EXISTS (SELECT 1 FROM "Article" a WHERE a."journalId" = j.id) RETURNING j.id, j.issn'

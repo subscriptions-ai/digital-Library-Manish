@@ -30,3 +30,7 @@ data/nursing-coverage/work/
 # Department coverage run: raw third-party lists, the production snapshot and intermediate work files (facts only, kept on disk for reuse, never committed)
 data/dept-coverage/raw/
 data/dept-coverage/work/
+
+# Department coverage run 2: raw third-party lists, the production snapshot and intermediate work files (never committed)
+data/dept-coverage2/raw/
+data/dept-coverage2/work/

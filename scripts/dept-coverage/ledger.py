@@ -7,7 +7,7 @@ status: complete | partial | blocked | not-attempted
 import json,os,hashlib,time
 ROOT=os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..'))
 RAW=os.path.join(ROOT,'data','dept-coverage','raw')
-LEDGER=os.path.join(ROOT,'docs','dept-coverage-2026-10-29','coverage-ledger.json')
+LEDGER=os.environ.get('COVERAGE_LEDGER') or os.path.join(ROOT,'docs','dept-coverage-2026-10-29','coverage-ledger.json')
 def sha(path):
     h=hashlib.sha256()
     with open(path,'rb') as f:

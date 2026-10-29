@@ -1,0 +1,80 @@
+{
+ "NLM Catalog second subject set (13 NLM Subjects)": {
+  "status": "complete",
+  "retrieved": "2026-10-29T06:13:41Z",
+  "query": "esearch db=nlmcatalog \"<subject>\"[Subject] AND serial[Type] for Industrial Microbiology, Genetic Engineering, Bioreactors, Bioengineering, Biomedical Engineering, Enzymes, Fermentation, Electrical Engineering, Electronics, Telecommunications, Biosensing Techniques, Cell Culture Techniques, Biofuels",
+  "fetched": 1411,
+  "pagination": "retmax 10000; no subject was truncated",
+  "notes": "Used alongside the first NLM set (4,929 serials, run 1). An NLM subject alone is not accepted as Biotechnology evidence (it needs a biotechnology term in the title).",
+  "rawFiles": {
+   "nlm/subject-serials2.json": {
+    "sha256": "8b0b1c3c63115360bb1eb62cfa74396c9be886e1891202dd6e383df474843e73",
+    "bytes": 421338
+   }
+  }
+ },
+ "OpenAlex sources: biotech2 (topics.id for 15 bioprocess/biotechnology topics)": {
+  "status": "complete",
+  "retrieved": "2026-10-29T06:13:41Z",
+  "query": "GET /sources?filter=type:journal,topics.id:<15 topic ids>&per-page=200 (cursor paging)",
+  "fetched": 9047,
+  "reportedTotal": 9047,
+  "pagination": "cursor exhausted",
+  "notes": "Topic ids found with GET /topics?search=<term>; generic microbiology, food-safety and plain biosensor topics were left out.",
+  "rawFiles": {}
+ },
+ "OpenAlex sources: elec2 (subfields 2102, 3105, 3107, 1708, 2504, 3102)": {
+  "status": "complete",
+  "retrieved": "2026-10-29T06:13:41Z",
+  "query": "GET /sources?filter=type:journal,topics.subfield.id:2102|3105|3107|1708|2504|3102 (cursor paging)",
+  "fetched": 13725,
+  "reportedTotal": 13725,
+  "pagination": "cursor exhausted",
+  "notes": "Energy engineering and power technology, instrumentation, optics, hardware and architecture, electronic/optical/magnetic materials, acoustics. Added no in-scope journal that was not already held.",
+  "rawFiles": {}
+ },
+ "SciELO ArticleMeta (reused from the Nursing run)": {
+  "status": "complete",
+  "retrieved": "2026-10-29T06:13:41Z",
+  "query": "GET /api/v1/journal/?collection=<code> for every collection (fetched 2026-10-29 by the Nursing session, not downloaded again)",
+  "fetched": 2280,
+  "pagination": "single response per collection",
+  "notes": "Web of Science areas used as a catalogue subject: Telecommunications; Engineering, Electrical & Electronic (the title picks Electrical vs Electronics); Biotechnology & Applied Microbiology.",
+  "rawFiles": {}
+ },
+ "J-STAGE official public-data journal list (reused from the Nursing run)": {
+  "status": "complete",
+  "retrieved": "2026-10-29T06:13:41Z",
+  "query": "https://www.jstage.jst.go.jp/pub/jnllist/journals_list_en.zip (J-STAGE Public data, UPDATE 2026/10/29)",
+  "fetched": 4509,
+  "pagination": "single file",
+  "notes": "Used for its own latest-publication date (independent of Crossref). No subject is published, so J-STAGE journals needed title and topic evidence. List pages were not scraped.",
+  "rawFiles": {}
+ },
+ "Journal websites: aims and scope (robots.txt respected)": {
+  "status": "partial",
+  "retrieved": "2026-10-29T06:13:41Z",
+  "query": "robots.txt, homepage and up to two same-host aims/scope/about pages, 1 request per host per second, identifying User-Agent; homepage from the listing or, when absent, the landing-page root Crossref holds for the journal's recent articles",
+  "fetched": 2253,
+  "pagination": "2,253 candidates: 1,080 read, 579 unreachable (timeout, 4xx, 5xx), 506 no homepage found, 88 disallowed by robots.txt (not fetched)",
+  "notes": "A failed request, a robots disallow or a missing homepage is recorded as no evidence, never as inactivity. Pages are kept as URL, status, time and text sha256 in the manifest; page text is not stored.",
+  "rawFiles": {}
+ },
+ "Crossref publisher deposits, second set (IEEJ, KIEE, KIEEME, Optica, ITE, Electromagnetics Academy, ICROS, KSBB, JSBBA, SPIE)": {
+  "status": "complete",
+  "retrieved": "2026-10-29T06:13:41Z",
+  "query": "GET /members/{id}/works?filter=type:journal-article,from-pub-date:2024-01-01 facet=issn + GET /journals/{issn}",
+  "fetched": 58,
+  "pagination": "ISSN facet well under the 1000 limit for every member",
+  "notes": "8, 1, 1, 15, 2, 5, 1, 1, 1 and 14 journals. The first-run lists (IEEE 276, ASME 31, IET 51, JSME 39, IEICE 8) were reused unchanged.",
+  "rawFiles": {}
+ },
+ "Blocked in run 1, still blocked (not retried, not bypassed)": {
+  "status": "blocked",
+  "retrieved": "2026-10-29T06:13:41Z",
+  "query": "IEEE Xplore title browse and Publishing Portal (JavaScript application); IET Digital Library, SAGE (IMechE), ScienceDirect, EurekaSelect (HTTP 403 to non-browser clients)",
+  "fetched": 0,
+  "notes": "IEEE and IET catalogues are therefore represented only by their own Crossref deposits.",
+  "rawFiles": {}
+ }
+}

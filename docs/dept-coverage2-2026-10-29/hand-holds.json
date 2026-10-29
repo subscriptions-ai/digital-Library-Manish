@@ -1,0 +1,63 @@
+[
+ {
+  "title": "Artificial Intelligence Research and Applications",
+  "issns": [
+   "3108-3889"
+  ],
+  "dept": "Electrical Engineering",
+  "reason": "artificial-intelligence journal; electrical phrases on its site are application examples"
+ },
+ {
+  "title": "Journal of Superconductivity",
+  "issns": [
+   "0896-1107",
+   "1572-9605"
+  ],
+  "dept": "Electrical Engineering",
+  "reason": "condensed-matter physics journal, not electrical engineering"
+ },
+ {
+  "title": "Journal of Superconductivity and Novel Magnetism",
+  "issns": [
+   "1557-1939",
+   "1557-1947"
+  ],
+  "dept": "Electrical Engineering",
+  "reason": "condensed-matter physics journal, not electrical engineering"
+ },
+ {
+  "title": "Journal of Vibroengineering",
+  "issns": [
+   "1392-8716",
+   "2538-8460"
+  ],
+  "dept": "Electrical Engineering",
+  "reason": "vibration / mechanical engineering journal; its site lists many engineering fields, so the electrical phrases are not scope evidence"
+ },
+ {
+  "title": "PhotonicsViews",
+  "issns": [
+   "2626-1294",
+   "2626-1308"
+  ],
+  "dept": "Electronics & Telecommunication Engineering",
+  "reason": "magazine-style trade serial (Wiley), not a research journal"
+ },
+ {
+  "title": "Smart Systems and Devices",
+  "issns": [
+   "3093-3285",
+   "3093-3315"
+  ],
+  "dept": "Electrical Engineering",
+  "reason": "generic title; scope across several engineering fields"
+ },
+ {
+  "title": "Transactions on Electromagnetic Spectrum",
+  "issns": [
+   "2822-4744"
+  ],
+  "dept": "Electronics & Telecommunication Engineering",
+  "reason": "identity and scope unclear: the site text names power-systems topics, the title names the electromagnetic spectrum"
+ }
+]

@@ -19,13 +19,22 @@ import type { DeptDecision } from './journalSourceImport.js';
  * any missing leg is `low` and the journal is held.
  */
 
-const D = { elec: 'Electrical Engineering', etc: 'Electronics & Telecommunication Engineering', mech: 'Mechanical Engineering', appMech: 'Applied Mechanics' };
+const D = { elec: 'Electrical Engineering', etc: 'Electronics & Telecommunication Engineering', mech: 'Mechanical Engineering', appMech: 'Applied Mechanics', bio: 'Bio Technology' };
 
 export type Body = { id: string; name: string; test: RegExp; family: string[] };
 export const BODIES: Body[] = [
   { id: 'ieee', name: 'IEEE', test: /\bIEEE\b|Institute of Electrical and Electronics Engineers/i, family: [D.elec, D.etc] },
   { id: 'iet', name: 'IET', test: /Institution of Engineering and Technology|\bIET\b/i, family: [D.elec, D.etc] },
   { id: 'ieice', name: 'IEICE', test: /Institute of Electronics,? Information and Communication Engineers|\bIEICE\b/i, family: [D.elec, D.etc] },
+  { id: 'ieej', name: 'IEEJ', test: /Institute of Electrical Engineers of Japan|\bIEEJ\b/i, family: [D.elec, D.etc] },
+  { id: 'kiee', name: 'KIEE', test: /Korean Institute of Electrical Engineers|Korean Institute of Electrical and Electronic Material Engineers|Institute of Korean Electrical and Electronics Engineers/i, family: [D.elec, D.etc] },
+  { id: 'icros', name: 'ICROS', test: /Institute of Control, Robotics and Systems/i, family: [D.elec] },
+  { id: 'ite', name: 'ITE', test: /Institute of Image Information and Television Engineers/i, family: [D.etc] },
+  { id: 'ema', name: 'EMA', test: /Electromagnetics Academy/i, family: [D.etc] },
+  { id: 'optica', name: 'Optica', test: /Optica Publishing Group|\bOptica\b|Optical Society of America/i, family: [D.etc] },
+  { id: 'spie', name: 'SPIE', test: /SPIE-Intl Soc Optical Eng|\bSPIE\b/i, family: [D.etc] },
+  { id: 'ksbb', name: 'KSBB', test: /Korean Society for Biotechnology and Bioengineering/i, family: [D.bio] },
+  { id: 'jsbba', name: 'JSBBA', test: /Society for Biotechnology, Japan|Japan Society for Bioscience, Biotechnology, and Agrochemistry/i, family: [D.bio] },
   { id: 'asme', name: 'ASME', test: /\bASME\b|American Society of Mechanical Engineers/i, family: [D.mech, D.appMech] },
   { id: 'imeche', name: 'IMechE', test: /Institution of Mechanical Engineers|\bIMechE\b/i, family: [D.mech, D.appMech] },
   { id: 'jsme', name: 'JSME', test: /Japan Society of Mechanical Engineers|\bJSME\b/i, family: [D.mech, D.appMech] },
@@ -40,6 +49,7 @@ const TITLE_WORDS: Record<string, RegExp> = {
   [D.elec]: /\bpower (systems?|electronics|delivery|engineering|apparatus|system|and energy|grid)\b|\bpower\b(?!.*\b(communication|wireless))|smart grids?|electric(al)? (machines?|power|drives?|vehicles?|engineering|energy|insulation)|\belectrification\b|industrial (electronics|informatics|automation)|\bdrives?\b|control systems?|automatic control|automation science|\bmagnetics\b|dielectrics?|superconductiv|plasma science|instrumentation and measurement|energy conversion|industry applications|high[- ]voltage|\bswitchgear|\btransformers?\b|photovoltaics?|\bmotors?\b|\bgrid\b/i,
   [D.etc]: /communications?|telecommunication|wireless|signal processing|microwave|antennas?|propagation|photonics|lightwave|optical (communications?|networking|networks?|fib(er|re))|electron devices?|circuits? and systems|\bcircuits\b|\bvlsi\b|solid[- ]state (circuits|electronics)|networking|sensors?\b|information theory|vehicular technology|broadcasting|consumer electronics|terahertz|electromagnetic compatibility|\bradar\b|\brf\b|electronic (devices|materials|packaging|components)|cognitive radio/i,
   [D.mech]: /mechanical (design|engineering|systems?|science)|manufacturing|machining|heat transfer|thermal (science|engineering|management)|turbomachinery|gas turbines?|combustion|tribology|mechatronics|\brobotics?\b|dynamic systems|energy resources technology|engineering for gas turbines|internal combustion|automotive|vehicle (dynamics|design)|machine design|machines? (and|&) mechanisms|refrigeration|hvac|welding|fatigue/i,
+  [D.bio]: /biotechnolog|biotech\b|bioprocess|bio-?engineering|biocatalys|fermentation|enzyme (technology|engineering)|synthetic biology|metabolic engineering|biorefin|bioresource technology|bioscience,? biotechnology/i,
   [D.appMech]: /applied mechanics|solid mechanics|fluid mechanics|fluids engineering|\bmechanics\b|vibration|acoustics|structural (mechanics|dynamics)|computational mechanics|continuum|elasticity|plasticity|fracture|fatigue and fracture|computational and nonlinear dynamics|nondestructive evaluation|offshore mechanics/i,
 };
 

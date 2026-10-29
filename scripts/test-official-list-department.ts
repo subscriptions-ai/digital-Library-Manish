@@ -33,6 +33,11 @@ t('engineering and physical-science topics together can support a society journa
 t('the same title is held when computing leads the topics', officialListDepartment({ title: 'IEEE Signal Processing Letters', publisher: IEEE, topicShares: [share('Computer / IT', 0.7, 5), share(T, 0.2, 3)], topicTotal: 3000 }).confidence === 'low');
 t('a few engineering topics are not "broad engineering" support', officialListDepartment({ title: 'IEEE Transactions on Plasma Science', publisher: IEEE, topicShares: [share('Science', 0.5, 2), share('Medical Sciences', 0.3, 2)], topicTotal: 3000 }).confidence === 'low');
 
+// second run: Japanese/Korean electrical societies, Optica, and the biotechnology societies
+t('IEEJ, KIEE, Optica, KSBB and JSBBA are recognised bodies', ['Institute of Electrical Engineers of Japan (IEE Japan)', 'The Korean Institute of Electrical Engineers', 'Optica Publishing Group', 'Korean Society for Biotechnology and Bioengineering', 'Japan Society for Bioscience, Biotechnology, and Agrochemistry'].every(p => bodyOf({ publisher: p }) !== null));
+t('a biotechnology society journal needs a biotechnology term in its title: "Bioprocess" yes, "Cell Reports" no', titleFamilyHits('Journal of Bioscience and Bioengineering', ['Bio Technology']).length === 1 && titleFamilyHits('Cell Reports', ['Bio Technology']).length === 0);
+t('a society journal with a biotechnology title and engineering-free topics is placed on its own department share', officialListDepartment({ title: 'Biotechnology and Bioprocess Engineering', publisher: 'Korean Society for Biotechnology and Bioengineering', topicShares: [share('Bio Technology', 0.55, 4)], topicTotal: 800 }).dept === 'Bio Technology');
+
 // non-journals
 t('magazines, newsletters, proceedings and standards are never journals', ['IEEE Power and Energy Magazine', 'IEEE Communications Magazine', 'Proceedings of the IEEE Conference on Power', 'IEEE Standards Newsletter'].every(x => NON_JOURNAL.test(x)));
 t('a magazine from a recognised body is held', officialListDepartment({ title: 'IEEE Industry Applications Magazine', publisher: IEEE, topicShares: [share(E, 0.7)], topicTotal: 900 }).dept === null);
