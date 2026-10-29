@@ -4,6 +4,7 @@ import {
   Tag, Info, Quote,
 } from 'lucide-react';
 import { FullAbstractLink } from './FullAbstractLink';
+import { safeExternalUrl } from '../lib/libraryAvailability';
 
 /**
  * Full-metadata popup for library entries.
@@ -84,7 +85,7 @@ export function MetadataModal({ item, isBook = false, onClose, onOpen }: Props) 
   // cover and the metadata — so the book lives with its publisher and this link
   // is the entire point of the record. Without it the popup ended on "cite using
   // the details above", which is a dead end dressed up as an answer.
-  const linkOut: string = item?.originalUrl || doiUrl || '';
+  const linkOut: string = safeExternalUrl(item?.externalUrl, item?.originalUrl) || safeExternalUrl(doiUrl) || '';
   const cover: string = book ? (item?.coverUrl || meta.coverUrl || '') : '';
   const [coverBroken, setCoverBroken] = useState(false);
 

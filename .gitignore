@@ -30,3 +30,8 @@ data/nursing-coverage/work/
 # Department coverage run: raw third-party lists, the production snapshot and intermediate work files (facts only, kept on disk for reuse, never committed)
 data/dept-coverage/raw/
 data/dept-coverage/work/
+
+# Content Library review: generated evidence (screenshots and audit outputs) is kept outside Git; scripts/audit-library-data-quality.ts regenerates it
+docs/content-library-usability-2026-10-29/screenshots/
+docs/library-data-quality-2026-10-29/*.csv
+docs/library-data-quality-2026-10-29/*.json

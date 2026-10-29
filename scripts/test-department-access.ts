@@ -25,7 +25,8 @@ section('The address that opens the existing library, already narrowed');
 check('Browse <Department> Content: the department, nothing else', libraryUrl(reader, { domain: 'Computer / IT' }) === '/dashboard/library?domain=Computer+%2F+IT');
 check('the department round-trips through the library’s own address reader', new URLSearchParams(libraryUrl(reader, { domain: 'Computer / IT' }).split('?')[1]).get('domain') === 'Computer / IT');
 check('View all Books: department + Books', libraryUrl(reader, { domain: 'Management', kind: 'books' }) === '/dashboard/library?kind=books&domain=Management');
-check('View all Articles: department + Articles', libraryUrl(reader, { domain: 'Management', kind: 'articles' }) === '/dashboard/library?kind=articles&domain=Management');
+// Articles is the library's default shelf, so the shortest address for it names only the department.
+check('View all Articles: department + Articles', libraryUrl(reader, { domain: 'Management', kind: 'articles' }) === '/dashboard/library?domain=Management');
 check('Periodicals: the archived shelf, that type, that department', libraryUrl(reader, { domain: 'Law', mode: 'archived', atype: 'Periodicals' }) === '/dashboard/library?mode=archived&domain=Law&atype=Periodicals');
 check('an institution account gets the same filters in its own library', libraryUrl(inst, { domain: 'Law', kind: 'books' }) === '/institution/explore?kind=books&domain=Law');
 check('no filter: the whole library', libraryUrl(reader) === '/dashboard/library');

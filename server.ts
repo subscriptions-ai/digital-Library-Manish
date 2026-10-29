@@ -52,6 +52,10 @@ import { parseJournalPaging, queryJournalPage, publicScope, subjectSlugSql } fro
 import { COMPANY_DETAILS, currentIssuer } from "./src/config.js";
 import { publicBookWhere, publicLegacyBookWhere, publicBookSql, publicLegacyBookSql, publicBookCounts } from "./src/lib/publicBooks.js";
 import { booksOverview, bookWhere, NO_DEPARTMENT, type BookDataset } from "./src/lib/adminBooks.js";
+import { discoveryFiltersFrom, discoveryAnd, andOnto, libraryView, libraryFacets, availabilityWhere } from "./src/lib/libraryQuery.js";
+import { availabilityOf } from "./src/lib/libraryAvailability.js";
+import { cleanSubjectFacets } from "./src/lib/subjectFacets.js";
+
 import { canonicalOrSelf, canonicalOrSelfList, canonicalDepartmentName, resolveCanonicalDepartment, entitlementCovers, foldCounts, departmentFromSlug, spellingsOfAll } from "./src/lib/departmentRegistry.js";
 import { createDepartmentSpellings } from "./src/server/departmentSpellings.js";
 import { requireOfficialDepartments, requireOfficialDepartmentsOnEdit } from "./src/server/departmentInput.js";
@@ -4712,6 +4716,84 @@ async function startServer() {
     }
   });
 
+  // One count per department, content type and availability, taken over the whole catalogue and remembered for a few minutes. The same rows
+  // answer every reader — each is then held to their own departments — so a page load never scans the catalogue again. It counts with the
+  // tests the lists filter by (src/lib/libraryQuery.ts), so a number here is the number the list under it shows.
+  let overviewCache: { at: number; rows: { domain: string; contentType: string; collection: 'new' | 'archived'; availability: 'readable' | 'external' | 'metadata'; n: number }[] } | null = null;
+  const overviewRows = async () => {
+    if (overviewCache && Date.now() - overviewCache.at < 5 * 60_000) return overviewCache.rows;
+    const q = (sql: string) => (prisma as any).$queryRawUnsafe(sql) as Promise<any[]>;
+    const [arts, books, legacy] = await Promise.all([
+      q(`select a."domain" d, coalesce(a."contentType",'Periodicals') t,
+                case when a."pdfUrl" is not null and (a."accessStatus" is null or a."accessStatus" = 'ViewableHere') then 'readable'
+                     when a."originalUrl" like 'http://%' or a."originalUrl" like 'https://%' then 'external' else 'metadata' end k, count(*)::int n
+           from "Article" a where a.status = 'Published' and a."domain" is not null group by 1,2,3`),
+      q(`select b."domain" d, 'Books' t,
+                case when b."pdfUrl" is not null and b."accessStatus" = 'ViewableHere' then 'readable'
+                     when b."originalUrl" like 'http://%' or b."originalUrl" like 'https://%' then 'external' else 'metadata' end k, count(*)::int n
+           from "Book" b where b.status = 'Published' and b."domain" is not null group by 1,2,3`), // listed = Published: the same test as publicBookSql in src/lib/publicBooks.ts
+      q(`select c."domain" d, c."contentType" t,
+                case when c."fileUrl" is not null and c."validationStatus" = 'VALID_VIEWABLE' then 'readable' else 'metadata' end k, count(*)::int n
+           from "Content" c where c.status <> 'Draft' and c."domain" is not null group by 1,2,3`),
+    ]);
+    const rows = [
+      ...arts.map(r => ({ domain: r.d, contentType: r.t, collection: 'new' as const, availability: r.k, n: r.n })),
+      ...books.map(r => ({ domain: r.d, contentType: r.t, collection: 'new' as const, availability: r.k, n: r.n })),
+      ...legacy.map(r => ({ domain: r.d, contentType: r.t, collection: 'archived' as const, availability: r.k, n: r.n })),
+    ];
+    overviewCache = { at: Date.now(), rows };
+    return rows;
+  };
+
+  // GET /api/user/library-overview — what this account can open, department by department, said in the account's own terms:
+  // how many items the catalogue holds for each content type, how many of them are readable HERE, and on what basis the access is held.
+  // It reads entitlement; it never changes it.
+  app.get("/api/user/library-overview", authenticateJWT, async (req: any, res) => {
+    try {
+      const ent = await entitlementFor(req.user, req);
+      const subs = ent.all ? [] : ((await getUserActiveSubscriptions(req.user.uid, req.user.role, req.user.institutionId)) || []);
+      const timed = await isFreeMember(req);
+      const ends = subs.map((x: any) => (x.endDate ? new Date(x.endDate).getTime() : 0)).filter(Boolean);
+      const rows = await overviewRows();
+
+      const by = new Map<string, Map<string, any>>();
+      for (const r of rows) {
+        const dept = canonicalOrSelf(r.domain);
+        if (!entitlementAllows(ent, dept)) continue;
+        const dm = by.get(dept) || new Map<string, any>(); by.set(dept, dm);
+        // One row per content type AND shelf: a type held on both is two rows, because Browse leads to one shelf and its number must be that shelf's.
+        const key = `${r.contentType}|${r.collection}`;
+        const m = dm.get(key) || { contentType: r.contentType, collection: r.collection, total: 0, readable: 0, external: 0, metadata: 0, newCount: 0, legacyCount: 0 };
+        m.total += r.n; m[r.availability] += r.n;
+        if (r.collection === 'new') m.newCount += r.n; else m.legacyCount += r.n;
+        dm.set(key, m);
+      }
+      const departments = [...by.entries()].map(([name, dm]) => {
+        const modules = [...dm.values()].map(m => ({ ...m, hasAccess: checkContentAccess({ domain: name, contentType: m.contentType }, ent, subs) }))
+          .sort((a, b) => b.total - a.total);
+        return { name, total: modules.reduce((n, m) => n + m.total, 0), modules };
+      }).sort((a, b) => a.name.localeCompare(b.name));
+
+      res.set('Cache-Control', 'no-store');
+      res.json({
+        access: {
+          // staff | subscription | institution-subscription | selected | institution-selected | none — why the account can open these departments.
+          basis: ent.source,
+          // True while the free reading clock applies: no active subscription, so reading is in timed sessions.
+          timed,
+          premium: !timed && !ent.all,
+          staff: ent.source === 'staff',
+          // The earliest end among the subscriptions that are running; null when there is none.
+          expiresAt: ends.length ? new Date(Math.min(...ends)).toISOString() : null,
+        },
+        departments,
+      });
+    } catch (e: any) {
+      console.error("library-overview error:", e?.message);
+      res.status(500).json({ error: "Failed to load the library overview" });
+    }
+  });
+
   // GET /api/user/access-scope — the departments + content types the user can actually access
   // (union of their active subscriptions). Admin/manager roles see everything (all:true).
   app.get("/api/user/access-scope", authenticateJWT, async (req: any, res) => {
@@ -4806,6 +4888,16 @@ async function startServer() {
   });
 
   // GET /api/content/filters - Get dynamic filters (subjectAreas and tags) for a specific domain
+  let copiedSubjectsCache: { at: number; set: Set<string> } | null = null;
+  const titleCopiedSubjects = async (): Promise<Set<string>> => {
+    if (copiedSubjectsCache && Date.now() - copiedSubjectsCache.at < 10 * 60_000) return copiedSubjectsCache.set;
+    const rows: any[] = await (prisma as any).$queryRawUnsafe(
+      `select distinct lower(btrim("subjectArea")) as s from "Content"
+        where "subjectArea" is not null and length(btrim("subjectArea")) >= 3
+          and (lower(btrim(title)) = lower(btrim("subjectArea")) or (length("subjectArea") >= 20 and lower(title) like lower(btrim("subjectArea")) || '%'))`);
+    copiedSubjectsCache = { at: Date.now(), set: new Set(rows.map(r => String(r.s))) };
+    return copiedSubjectsCache.set;
+  };
   app.get("/api/content/filters", async (req: any, res) => {
     try {
       const { domain, subjectArea, contentType, search } = req.query;
@@ -4846,45 +4938,43 @@ async function startServer() {
         }
       }
 
-      const contents = await prisma.content.findMany({
-        where,
-        select: { domain: true, subjectArea: true, tags: true, title: true },
-      });
-
-      const subjectsSet = new Set<string>();
-      const tagsSet = new Set<string>();
+      // Counted in the database: one row per distinct stored value, not one per record. The old version read every row's title and tags
+      // into memory to build three small lists.
+      const subjectWhere = { ...where };
+      const [domainRows, subjectRows] = await Promise.all([
+        prisma.content.groupBy({ by: ['domain'], where, _count: { _all: true } }),
+        prisma.content.groupBy({ by: ['subjectArea'], where: subjectWhere, _count: { _all: true } }),
+      ]);
       const domainsSet = new Set<string>();
-      const selectedSubjects = subjectArea ? String(subjectArea).split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : [];
+      for (const d of domainRows) if (d.domain) domainsSet.add(canonicalOrSelf(String(d.domain).trim()));
+      // Only an approved category is offered: a title, a number, a DOI, a web address or a citation is not a subject (src/lib/subjectFacets.ts).
+      // The stored value is untouched; it is just not a filter.
+      // A subject that is really the record's own title copied into the column is held back too; which values those are is asked once,
+      // in the database, and remembered for a few minutes.
+      const copied = await titleCopiedSubjects();
+      const facets = cleanSubjectFacets(subjectRows
+        .filter((r: any) => !(typeof r.subjectArea === 'string' && copied.has(r.subjectArea.trim().toLowerCase())))
+        .map((r: any) => ({ subjectArea: r.subjectArea, count: r._count._all })));
 
-      contents.forEach((c: any) => {
-        if (c.domain) domainsSet.add(canonicalOrSelf(c.domain.trim()));
-        // Only a believable category is offered; a title or a bare number is not a subject.
-        const cleanSubject = cleanSubjectArea(c.subjectArea, c.title);
-        if (cleanSubject) subjectsSet.add(cleanSubject);
-        
-        let shouldAddTags = true;
-        if (selectedSubjects.length > 0) {
-          const cSub = c.subjectArea ? c.subjectArea.trim().toLowerCase() : "";
-          if (!selectedSubjects.includes(cSub)) {
-            shouldAddTags = false;
-          }
-        }
-
-        if (shouldAddTags && c.tags) {
+      // Tags are offered only once a subject is chosen, so only those subjects' rows are read, and a bounded number of them.
+      const tagsSet = new Set<string>();
+      const selectedSubjects = subjectArea ? String(subjectArea).split(',').map(s => s.trim()).filter(Boolean) : [];
+      if (selectedSubjects.length) {
+        const tagged = await prisma.content.findMany({
+          where: { ...where, OR: selectedSubjects.map(s => ({ subjectArea: { equals: s, mode: 'insensitive' as const } })) },
+          select: { tags: true }, take: 5000,
+        });
+        for (const c of tagged as any[]) {
           const tagsArray = Array.isArray(c.tags) ? c.tags : (typeof c.tags === 'string' ? c.tags.split(',') : []);
-          tagsArray.forEach((t: string) => {
-            if (typeof t === 'string') {
-              const trimmed = t.trim();
-              if (trimmed) tagsSet.add(trimmed);
-            }
-          });
+          for (const t of tagsArray) if (typeof t === 'string' && t.trim()) tagsSet.add(t.trim());
         }
-      });
+      }
 
       res.json({
         domains: Array.from(domainsSet).sort(),
-        subjects: Array.from(subjectsSet).sort(),
-        tags: Array.from(tagsSet).sort()
+        subjects: facets.subjects.map(x => x.name),
+        subjectCounts: Object.fromEntries(facets.subjects.map(x => [x.name, x.count])),
+        tags: Array.from(tagsSet).sort(),
       });
     } catch (error) {
       console.error("Filter fetch error:", error);
@@ -4910,6 +5000,8 @@ async function startServer() {
         if (doms.length) where.domain = { in: await deptSpellings.expand(doms) };
       }
       if (contentType) where.contentType = String(contentType);
+      // Whether the full text is held here (the archived shelf keeps no source page, so it has "readable" and "metadata only").
+      andOnto(where, discoveryAnd('content', { avail: discoveryFiltersFrom(req.query).avail }));
       
       if (subjectArea) {
         const subjects = String(subjectArea).split(',').map(s => s.trim()).filter(Boolean);
@@ -4955,7 +5047,7 @@ async function startServer() {
         ent = await entitlementFor(userDetails, req);
         const requested = domain ? String(domain).split(',').map(d => d.trim()).filter(Boolean) : [];
         if (!(await applyEntitlementToWhere(where, ent, requested))) {
-          return res.json({ data: [], total: 0, page: parseInt(page as string), limit: take });
+          return res.json({ data: [], total: 0, page: parseInt(page as string), limit: take, denied: true });
         }
       }
 
@@ -4991,7 +5083,7 @@ async function startServer() {
         }
 
         return res.json({ 
-          data: contents.map(c => ({ ...publicContent(c), locked: false })), 
+          data: contents.map(c => ({ ...publicContent(c), locked: false, availability: availabilityOf('content', c).availability, entitled: true })), 
           total, 
           page: parseInt(page as string), 
           limit: take 
@@ -5016,7 +5108,7 @@ async function startServer() {
 
       if (!userDetails) {
         return res.json({
-          data: contents.map(c => ({ ...publicContent(c), locked: true, fileUrl: null })),
+          data: contents.map(c => ({ ...publicContent(c), locked: true, fileUrl: null, availability: availabilityOf('content', c).availability, entitled: null })),
           total, page: parseInt(page as string), limit: take
         });
       }
@@ -5028,9 +5120,9 @@ async function startServer() {
         const hasAccess = checkContentAccess(c, ent!, activeSubs);
         if (!hasAccess) {
           // Hide sensitive URL and mark locked
-          return { ...publicContent(c), fileUrl: null, locked: true };
+          return { ...publicContent(c), fileUrl: null, locked: true, availability: availabilityOf('content', c).availability, entitled: false };
         }
-        return { ...publicContent(c), locked: false };
+        return { ...publicContent(c), locked: false, availability: availabilityOf('content', c).availability, entitled: true };
       });
 
       res.json({ data: protectedContents, total, page: parseInt(page), limit: take });
@@ -10524,6 +10616,41 @@ async function startServer() {
     return [{ year: 'desc' }, { createdAt: 'desc' }];
   };
 
+  // Whether the department a reader asked for was refused (it is not one of theirs). Said apart from "nothing matched", because the
+  // screen has to tell "you do not hold this department" from "no record fits these filters".
+  const scopeDenied = (where: any) => where.domain === '__no_access__' || (Array.isArray(where.domain?.in) && where.domain.in.length === 1 && where.domain.in[0] === '__no_access__');
+
+  // Whether a record is covered by the asking reader's plan (department AND any content-type limit of that plan); null for a visitor.
+  // One answer per department and type, so a page of rows costs a couple of lookups, not one per row.
+  const entitlementProbe = async (req: any) => {
+    const ud = optionalUser(req);
+    if (!ud) return (_d: any, _t: any): boolean | null => null;
+    const ent = await entitlementFor(ud, req);
+    const subs = ent.all ? [] : ((await getUserActiveSubscriptions(ud.uid, ud.role, ud.institutionId)) || []);
+    const memo = new Map<string, boolean>();
+    return (domain: any, contentType: any): boolean | null => {
+      const k = `${domain}|${contentType}`;
+      if (!memo.has(k)) memo.set(k, checkContentAccess({ domain, contentType }, ent, subs));
+      return memo.get(k)!;
+    };
+  };
+
+  // The filters a department's shelf can offer (publisher, language, year, article type, availability) — only values that have records
+  // behind them, for the account's own scope. One request per shelf and department; nothing is fetched row by row.
+  app.get("/api/library/discovery-facets", async (req: any, res: any) => {
+    try {
+      const kind = req.query.kind === 'books' ? 'book' : 'article';
+      const where: any = { status: 'Published' };
+      await applyDomainScope(where, req.query.domain, await libraryScopeDomains(req));
+      if (scopeDenied(where)) return res.json({ denied: true, publishers: [], languages: [], years: [], types: [], availability: { readable: 0, external: 0, metadata: 0 }, verifiedOa: 0 });
+      // The type filter narrows the other facets (Theses' publishers) but not the list of types itself.
+      const f = discoveryFiltersFrom(req.query);
+      if (f.atype && kind === 'article') andOnto(where, discoveryAnd('article', { atype: f.atype }));
+      res.set('Cache-Control', 'private, max-age=60');
+      res.json(await libraryFacets(prisma, kind, where));
+    } catch (e: any) { console.error("library discovery-facets:", e?.message); res.status(500).json({ error: "Failed to load filters" }); }
+  });
+
   app.get("/api/library/articles", async (req: any, res: any) => {
     try {
       const { domain, journalId, journalIds, journalIssn, publisher, year, volume, issue, search, oa, sort, page = '1', limit = '20' } = req.query;
@@ -10534,14 +10661,15 @@ async function startServer() {
       else if (journalId) where.journalId = journalId;
       if (journalIssn) where.journalIssn = journalIssn;
       if (publisher) where.publisherName = publisher;
-      if (year) where.year = parseInt(year as string);
       if (volume) where.volume = String(volume);
       if (issue) where.issue = String(issue);
       if (search) where.OR = [{ title: { contains: search as string, mode: 'insensitive' } }, { authors: { contains: search as string, mode: 'insensitive' } }];
       // Open access narrowed the page the client had already been given, so a
       // page of twelve could show three while the header still claimed 27,056.
       // It belongs in the query, with the count.
-      if (oa === '1') where.accessType = { in: ['OpenAccess', 'Free'] };
+      // `oa=1` is open access a recorded open licence backs, not a source's bare "open access" label (src/lib/libraryQuery.ts); availability,
+      // language, year and article type are conditions of the same query, so the count and the page agree.
+      andOnto(where, discoveryAnd('article', { ...discoveryFiltersFrom(req.query), publisher: undefined }));
       const take = Math.min(parseInt(limit as string) || 20, 100);
       const skip = ((parseInt(page as string) || 1) - 1) * take;
       // Join the journal so the metadata popup can show ISSN/eISSN even when the
@@ -10563,7 +10691,11 @@ async function startServer() {
         });
       }
 
-      res.json({ data: data.map(publicArticle), total, page: parseInt(page as string) || 1, limit: take });
+      const entitled = await entitlementProbe(req);
+      res.json({
+        data: data.map((a: any) => libraryView('article', publicArticle(a), entitled(a.domain, a.contentType || 'Periodicals'))),
+        total, page: parseInt(page as string) || 1, limit: take, ...(scopeDenied(where) ? { denied: true } : {}),
+      });
     } catch (e: any) { console.error("library articles:", e); res.status(500).json({ error: "Failed to load articles" }); }
   });
 
@@ -11867,11 +11999,12 @@ async function startServer() {
 
   app.get("/api/library/books", async (req: any, res: any) => {
     try {
-      const { domain, search, oa, sort, page = '1', limit = '20' } = req.query;
+      const { domain, search, sort, page = '1', limit = '20' } = req.query;
       const where: any = { ...publicBookWhere };
       await applyDomainScope(where, domain, await libraryScopeDomains(req));
-      if (search) where.title = { contains: search as string, mode: 'insensitive' };
-      if (oa === '1') where.accessType = { in: ['OpenAccess', 'Free'] };
+      // Title or author, as the search box says. (It matched the title only.)
+      if (search) where.OR = [{ title: { contains: search as string, mode: 'insensitive' } }, { authors: { contains: search as string, mode: 'insensitive' } }];
+      andOnto(where, discoveryAnd('book', { ...discoveryFiltersFrom(req.query), atype: undefined }));
       const take = Math.min(parseInt(limit as string) || 20, 100);
       const skip = ((parseInt(page as string) || 1) - 1) * take;
       const [data, total] = await Promise.all([
@@ -11894,7 +12027,12 @@ async function startServer() {
         const { metadata, ...rest } = b;
         return b.accessStatus === 'ViewableHere' ? rest : { ...rest, pdfUrl: null };
       };
-      res.json({ data: data.map((b: any) => publicBook(forPublic(b))), total, page: parseInt(page as string) || 1, limit: take });
+      const entitled = await entitlementProbe(req);
+      // Availability is read from the stored record BEFORE the file address is taken off a record that is not served from here.
+      res.json({
+        data: data.map((b: any) => { const v = libraryView('book', b, entitled(b.domain, 'Books')); return publicBook(forPublic(v)); }),
+        total, page: parseInt(page as string) || 1, limit: take, ...(scopeDenied(where) ? { denied: true } : {}),
+      });
     } catch (e: any) { res.status(500).json({ error: "Failed to load books" }); }
   });
 
