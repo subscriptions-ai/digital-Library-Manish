@@ -11,7 +11,18 @@ const check = (name, ok, detail = '') => { ok ? pass++ : fail++; console.log(`  
 const setSelect = (p, label, value) => p.eval(`(()=>{const s=document.querySelector('select[aria-label=${JSON.stringify(label)}]'); if(!s) return false; const set=Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set; set.call(s,${JSON.stringify(value)}); s.dispatchEvent(new Event('change',{bubbles:true})); return true})()`);
 const rows = (p) => p.eval('document.querySelectorAll("article").length');
 const total = (p) => p.eval('(document.querySelector("[aria-live=polite]")?.innerText.match(/([\\d,]+)\\s+result/)||[])[1]');
-const settle = async (p) => { await sleep(700); await p.waitFor('!document.querySelector("[role=status][aria-label=\x27Loading results\x27]")', 20000); await sleep(300); };
+const LOADING = '!document.querySelector("[role=status][aria-label=\x27Loading results\x27]")';
+// A list that is about to refetch (the facets or the access overview arrive after first paint) has not settled: wait for two identical readings 500 ms apart.
+const settle = async (p) => {
+  await sleep(700); await p.waitFor(LOADING, 20000);
+  let prev = null;
+  for (let i = 0; i < 24; i++) {
+    const cur = await p.eval('JSON.stringify([document.querySelectorAll("article").length, ' + LOADING + ', (document.querySelector("[aria-live=polite]")?.innerText||"").slice(0,40)])');
+    if (cur === prev && JSON.parse(cur)[1]) break;
+    prev = cur; await sleep(500);
+  }
+  await sleep(300);
+};
 
 (async () => {
   const b = await launch();
@@ -35,6 +46,7 @@ const settle = async (p) => { await sleep(700); await p.waitFor('!document.query
     u = new URL(base + await p.url());
     check('page 2 is in the URL', u.searchParams.get('page') === '2', u.search);
     const urlPage2 = await p.url();
+    await p.waitFor('[...document.querySelectorAll("input[type=radio]")].some(x=>x.parentElement.innerText.startsWith("At the source"))');
     await p.eval('(()=>{const r=[...document.querySelectorAll("input[type=radio]")].find(x=>x.parentElement.innerText.startsWith("At the source")); r.click(); return true})()'); await settle(p);
     u = new URL(base + await p.url());
     check('changing a filter resets the page', !u.searchParams.has('page') && u.searchParams.get('avail') === 'external', u.search);
@@ -55,6 +67,7 @@ const settle = async (p) => { await sleep(700); await p.waitFor('!document.query
     await p.goto('/institution/explore?domain=Applied+Sciences&avail=readable', 'document.querySelectorAll("article").length>0'); await settle(p);
     const before = await p.url();
     check('readable filter: every row offers Read', await p.eval('[...document.querySelectorAll("article")].every(a=>[...a.querySelectorAll("button")].some(x=>x.innerText.trim()==="Read"))'));
+    await p.waitFor('[...document.querySelectorAll("article button")].some(x=>x.innerText.trim()==="Read")');
     await p.eval('[...document.querySelectorAll("article button")].find(x=>x.innerText.trim()==="Read").click()'); await sleep(2500);
     check('Read opens the viewer', (await p.url()).startsWith('/institution/viewer/'), await p.url());
     await p.back(); await settle(p);
@@ -64,6 +77,7 @@ const settle = async (p) => { await sleep(700); await p.waitFor('!document.query
     await p.close();
     p = await b.open(base, tok.librarian.token, { width: 390, height: 844, mobile: true });
     await p.goto('/institution/explore?domain=Applied+Sciences', 'document.querySelectorAll("article").length>0'); await settle(p);
+    await p.waitFor('[...document.querySelectorAll("button")].some(b=>b.offsetParent!==null&&b.innerText.trim().startsWith("Filters"))');
     await p.eval('[...document.querySelectorAll("button")].find(b=>b.innerText.trim().startsWith("Filters")).click()'); await sleep(500);
     check('drawer is a dialog', await p.eval('document.querySelector("#library-filters")?.getAttribute("role")==="dialog"'));
     check('focus moved into the drawer', await p.eval('document.querySelector("#library-filters").contains(document.activeElement)'));
@@ -77,7 +91,7 @@ const settle = async (p) => { await sleep(700); await p.waitFor('!document.query
     const mine = { faculty: '/dashboard/library', student: '/dashboard/library', researcher: '/dashboard/library', college: '/institution/explore', corporate: '/institution/explore', pro: '/dashboard/library', free: '/dashboard/library', librarian: '/institution/explore' };
     for (const [role, path] of Object.entries(mine)) {
       const q = await b.open(base, tok[role].token);
-      await q.goto(path + '?domain=Applied+Sciences', 'document.querySelectorAll("article, [role=alert], h1").length>0'); await settle(q);
+      await q.goto(path + '?domain=Applied+Sciences', 'document.querySelectorAll("article, [role=alert]").length>0'); await settle(q);
       const here = await q.url();
       const n = await rows(q);
       check(`${role}: stays on ${path} and lists records`, here.startsWith(path) && n > 0, `${here} rows=${n}`);
@@ -92,7 +106,7 @@ const settle = async (p) => { await sleep(700); await p.waitFor('!document.query
     console.log('\n6. A failed request is an error with a retry — never "0 results"');
     const f = await b.open(base, tok.librarian.token);
     await f.send('Network.setBlockedURLs', { urls: ['*api/library/articles*'] });
-    await f.goto('/institution/explore?domain=Applied+Sciences', 'document.body.innerText.length>300'); await sleep(2500);
+    await f.goto('/institution/explore?domain=Applied+Sciences', 'document.body.innerText.length>300'); await f.waitFor('!!document.querySelector("[role=alert]")', 20000).catch(() => {}); await sleep(500);
     check('an error is shown with a Try again control', await f.eval('!!document.querySelector("[role=alert]") && document.body.innerText.includes("Try again")'));
     check('no "0 results" / "No articles" claim is made', await f.eval('!/\\b0\\s+results|No articles/.test(document.body.innerText)'));
     check('the filters are still there and unchanged', (await f.url()).includes('domain=Applied+Sciences'));
