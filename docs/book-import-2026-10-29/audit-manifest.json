@@ -1,0 +1,22 @@
+{
+ "runId": "book-source-2026-10-29-f3a1c7e2",
+ "sha256": "8c48ef435dce1a93b55643c5fd32ba78c4d6227cfdcef29c8569075fcc5e6610",
+ "toolingCommit": "3985408 (freeze/apply/verify at 7d84c90..3985408)",
+ "insertedCount": 9493,
+ "batches": 96,
+ "insertedIds": "inserted-ids.json",
+ "committedBatches": "committed-batches.ndjson",
+ "auditAction": "BOOK_SOURCE_IMPORT",
+ "productionBefore": {
+  "books": 102190,
+  "published": 65582,
+  "publicFigure": 94926,
+  "at": "2026-10-29T06:55:30.898Z"
+ },
+ "productionAfter": {
+  "books": 111683,
+  "published": 75075,
+  "publicFigure": 104419,
+  "at": "2026-10-29T09:02:01.520Z"
+ }
+}
