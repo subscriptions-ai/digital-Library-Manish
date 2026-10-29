@@ -1,0 +1,2207 @@
+{
+ "generatedAt": "2026-10-29T07:18:29.637Z",
+ "mode": "PROPOSED ONLY — nothing has been changed; applying this is a separate, reviewed step",
+ "database": "stm_library_qa",
+ "proposals": [
+  {
+   "table": "Content",
+   "id": "b2f575fe-6587-4539-b926-dbc9961a1d9e",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "0b8c47d1-1cca-45f5-b274-6f78a1d8dffc",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "f60137da-baed-4610-8b67-fa3aec108d57",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "159f7ed2-f59e-4e43-b823-396a53c8ba01",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "32b5f80e-36c4-4bc5-9a79-504c463aebe2",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "e695b1ce-4c89-4137-a1c9-9c4c45dc55ab",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "2491720c-2519-4f37-824e-c9575e36b02a",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "c9bc0cf6-c2d2-47b8-9467-66177abad503",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "2cd775e5-3468-4e67-bb8b-d523b287865a",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "a425329d-2f38-451a-a64a-99bab902db1c",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "fa5198c7-8179-4b9c-8437-2e41c31ca0b8",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "bf2df1ee-9376-4d1e-bb95-ca287f2120c6",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "97c866e9-8879-411d-9007-f17cfaf4d82f",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "38bf9402-7d22-4080-b684-f1b1db42cd7a",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "12d073c5-ef56-4e72-abe2-ff2466589956",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "8e2a7ee9-b4a0-45d2-aa91-b6aec04a3e1f",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "700ac8e6-9f23-440f-b9e7-93dcf8872185",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "47707a30-d98d-4f42-a35f-7152da2ea863",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "2fcf75a0-3194-4de5-b191-0cf50c14f5cb",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "a2527c3e-2ffd-4b3b-bd7a-f7c9aad3d623",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "b987a9ee-6ec8-454a-87d0-416b96e47d83",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "a23bbce8-3743-46e0-8937-2c046c5b6f3e",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "d8133a0a-ad8d-44e1-9360-bb288f6a1054",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "5690c20c-ef5a-4a70-b108-14cec9e46094",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "4c626307-b356-4de3-b479-9a788bff526d",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "a716cb49-8794-459d-be00-d231e3470a46",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "d44aa07f-684f-4e9c-a5a6-c3b043ecdf1c",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "9dc10343-7d1c-473e-959c-2a9ce8c6ca06",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "32207171-64b2-46fa-9e60-e2c2daeab2e5",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "79515ad2-ef23-451d-9daf-a74e2865888e",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "7c8a62ef-bc92-4ca2-be65-724fc4a37ad8",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "a6bb222f-e84b-4a3f-b1e2-092a3cc5b7ad",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "70554a50-70f8-4663-9a62-795992cc7a53",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "c587395a-5177-48b8-869c-d8e5a955508c",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "b57b696c-3c9d-43c5-bf87-470f1e3b7dc9",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "140c0f7b-7578-4453-b32a-cc583f4bf407",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "eb9e0ad2-ef50-4e9b-ac4d-87b785872f7a",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "6720b8cc-8bd7-48f0-a0b8-01d8685025e4",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "df74d9dc-6555-4414-9b3a-e6094241f99a",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "8949b5d1-0865-4334-9645-d82ed9f91cd0",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "01c53552-5569-4f92-90f2-08152cf7c903",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "4ef29e10-c09b-4305-92b8-666f1961d084",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "0da247d2-e5f6-4810-b181-a51ca105a199",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "d6ae9e27-1c22-4075-8187-7108b91156a3",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "e0b895a2-92cf-4f11-9e9d-2c218bc23626",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "a7e7a787-fbf1-4b24-b37e-b8f7c2b78840",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "03d14499-c081-4724-8136-140ebffe48d4",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "dfd75e27-847f-4082-a4e0-73d36faa3db5",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "ca94475c-f02c-419d-b715-7190b573b03a",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "136e7b91-643e-42ef-b70c-abbdd882867f",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "698b250f-73d8-43e3-bb50-402bfa6fc9c7",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "78dd2248-1506-4bcb-ab47-a73ecde4bbcc",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "7adb3ed4-865f-406b-bbcc-363a9398e31b",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "40e4f07a-eee1-4fca-8da7-36b098b28e3c",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "84c9c89a-4b3a-4810-89f2-5c99350fae84",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "852ed3d2-5bab-4d8d-89e6-4036c3bdb5fb",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "57c200b2-cd85-413d-b1f4-45139ed755f8",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "5c693457-0d41-4b24-b9fa-e9573de332bf",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "14f3e82f-20b9-4ca0-b4e6-c21709ed8214",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "ccbaeae8-5607-4b89-9b57-6a0d0aa8a61b",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "c41480c4-45e4-4090-b244-7f2c7190342a",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "59431600-731b-43b4-8fe7-9a6c2e058c63",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "432dc008-435a-44e9-ab12-5fc4a8a81891",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "1905e4e1-b050-4153-8aba-24cffc2b9604",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "895f0409-3fae-450b-8afb-c94b8d108de5",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "04804938-f471-40e3-a18f-2b313dca1cb2",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "eaa575b4-e56f-4e97-b8d8-23546a07ae2f",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "435748b1-2a83-4407-81c3-a81f584c0e67",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "beb193fd-cf68-4f87-99c6-b9c066724520",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "d707cd0a-312a-44db-b1a1-235c52263e03",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "dca85d68-37f3-47e6-bb07-da0e9e4444a8",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "69e1945e-236d-4b16-bc10-e585aa56a0d0",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "f6c6354c-cc09-4a5d-a7e3-9ced051e5ddd",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "4f0e380a-3182-4ec3-a324-b370ade7eea8",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "97d9b5d4-4d4d-4f59-9919-18435b8cf512",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "3324a833-1b55-46e2-8ced-0acf8348ff54",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "db6c66a8-4217-427d-b71e-c0f48018d6f0",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "18d94871-ed52-4d49-9b67-132fde4e23c0",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "fa33f53e-9036-440a-a32a-806a5937ccfa",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "406c3519-df9c-4710-86b1-242a6f28571d",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "f8fbf359-6e0e-48b5-8f40-0ee5ce0838ad",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "f44d6c8d-5c33-4a23-910b-c9bfd5e330f5",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "c4cd146e-974e-4bc2-911d-02b10ae9ed33",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "1399c55a-6786-4cb6-8b89-8cdafcad0f5a",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "16db94dd-d517-403c-80c2-8e50b39954f4",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "d76e4813-8762-48e6-8103-53a36b12b864",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "188418b2-5201-4540-b0a7-28d0a9349386",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "0901638e-4a59-4967-862c-b34ace4b4244",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "6b1d3c05-7330-4230-9541-c922c406f0d2",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "b966a9ee-b7cc-47c7-9fc4-581cee1c3ad1",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "d0d735d8-cd06-45ce-98ce-7b831b2376d1",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "e3c39f1b-208a-44e8-b8d9-56728a9b4922",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "5ae18ad2-a6f6-42f4-9fb8-30acaf3ae54a",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "39006939-fd6b-4797-97ed-75da5553700b",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "20db60e4-112f-4c8d-8e3d-f2be652aa415",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "145a0dbf-fb02-4f8e-95d9-1c89a18f7e24",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "1c288a02-b786-4871-82df-7e1e9e15f113",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "5e1966b3-a593-4090-97fd-88c56c29600d",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "7eaae672-ea11-41bf-839b-0acb526a28c4",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "5134fde6-255d-49f1-ab96-1983da3976fc",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "f413d0f5-9beb-4c2e-b732-9c7dd9d27090",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "0b1952c5-0940-4888-a54a-f24b80740134",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "3a147f31-3d47-490c-845c-7dfd35b9ffeb",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "77e2a664-823b-480c-839e-958c1c81371e",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "fcc8de92-a657-44af-a0ec-d7ed61b8828c",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "4980d4df-3e5c-4a56-8ac1-9310a329fcbf",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "105fe952-7d21-48a8-a60d-4985ac51f067",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "4a9e5cd7-12d7-4a3a-873d-0b3ccf7c950a",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "d6ce39f7-414f-40e4-a82a-0a9af9a8dff8",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "4e12a9e1-9375-432f-a01e-79ab61a3e586",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "52146f40-24a0-4276-afea-b7f059d449a0",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "64816972-c568-436e-822e-7d6a6f6670e2",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "d227b074-3a7e-416a-a152-8bda0ccb0c04",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "017344a4-3a59-435b-b623-0468f9d4c6e9",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "9a41866e-1ae8-4bcf-810a-6c64b0aa88ce",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "5650e1e4-9690-49d7-8a23-f22811c7607b",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "20f5f7bf-b532-4b72-8767-839f930b2500",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "181a088f-3f0e-4cad-babc-cd4a2316ae05",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "33a37f09-0940-4f90-8645-d12d445ce25f",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "dd8dd52e-6f14-40ff-84c2-4715f972cbe1",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "88608ec7-991d-4c46-b22b-c0a4dbeec8ba",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "description opens as an abstract",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "d4186111-20b1-4098-bfcf-ed767d11ba8e",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "774f03ce-ce5b-44af-a627-16d1924d04a3",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "b1b0f3c6-ad17-4407-935b-e9d090a17b60",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "da920f99-d6b9-46cb-b131-082f474e2521",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "e1610a5b-593d-4f52-b2a3-bfcdeba88d7a",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "3a7659fd-55c1-431a-b27c-1d3dd386a1d2",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "c4699bd6-0fbb-4066-85a9-1886e5adae2e",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "48588d9e-d2c3-4b4c-b27c-72cbc537709b",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "7256149e-16dd-49b2-bebd-b6037574581b",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "58653f42-4bff-49e8-9a83-5625100f9d1d",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "description opens as an abstract",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "a04297c4-f8a9-41f1-9f4d-0df2e5775c84",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "a6e201c2-4d60-44d8-89df-3950a5d1e1cd",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "84f2e4f5-38d6-49ef-9a44-fd8d98ed1070",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "42371b8c-927a-41e6-9c11-1cd7fe738d45",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "696c4e1e-4cec-44fe-8215-13373ba1151b",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "427a22a1-5f18-4155-96a4-ccbc9e693f8a",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "7cdd3e11-9284-42af-964f-a06ba58624b3",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "fb58e712-ad5e-4b64-806d-e2778f827eb7",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "dfa92063-1e1c-4b7e-a540-b98c25b2802b",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "48922819-d9bb-4f9e-b101-c9ff79afee7d",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "description opens as an abstract",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "3364c7df-97d6-4117-8841-8a4ba98175c6",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "f3d599d7-2161-4310-98e0-94d719f5b579",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "de2e847e-e192-43ad-bedc-e275cb9db1ec",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "701da56f-025c-4463-9e91-051eabddf839",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "04de4c03-8e95-4ee3-b9a4-2cb55d0e9514",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "5d949eaf-fd7b-4b35-bd38-8e283bca060c",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "739dec42-afa6-4430-98aa-a4d60a243d40",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "2a6e0595-9b35-43bd-99cf-0aeea9a06105",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "948c0030-3347-4564-8686-23c0f3382619",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "bbc9c37e-2144-4d1a-bec9-f5ec5c084b8c",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "a30b7d93-b8a6-44b2-b980-8c2655d1be7a",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "3302eadf-5153-4764-81c3-37ab6d306e68",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "98c3e436-ffc5-4fda-86cd-4f4b9cf0998b",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "0e206bc2-8004-4d00-98b7-110afa47dc2b",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "bdf67a36-61d9-4b3b-8bff-27f5b2d31630",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "a35d8b1e-d0b9-4621-a945-18c8f38438b1",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "9c77bf09-b3ff-47c0-bd3c-c88bfbc72727",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "f2fc3b30-54ce-4057-91ce-6b6f8acdf089",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "description opens as an abstract",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "5b10a698-0212-4133-9c2c-bf109f437aba",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "85c0a1d4-349f-4f98-aaac-d4ab7d64651b",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "c0e15481-8394-417c-afad-49c2f1d4b0ae",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "high",
+   "evidence": "file address is an article page of a journal platform; description opens as an abstract",
+   "action": "propose-reclassify"
+  },
+  {
+   "table": "Content",
+   "id": "5220c439-297d-4b6d-abf8-f6d6c972670f",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "560ad44b-4cff-4806-b6ed-772539a2a06a",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "ce5c8ce3-8b01-4434-af0b-d9de5c791d31",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "description opens as an abstract",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "22e64e83-5c87-4d31-96e2-28d497fd3d35",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "85248698-cc85-4f8e-968a-3b84f6f379ac",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "description opens as an abstract",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "311e1e79-9760-4483-b8cc-4319b1d7acd2",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "description opens as an abstract",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "e3dd1d8c-119d-47be-a822-edba183f5ad2",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Content",
+   "id": "67b3c956-e216-46c1-9b56-599c110d82d5",
+   "field": "contentType",
+   "from": "Books",
+   "proposed": "Periodicals (journal article)",
+   "confidence": "medium",
+   "evidence": "file address is an article page of a journal platform",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "63cf03b1-8b09-4979-8446-fe88c58d3b27",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "page range is an article's; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "58aabb40-9e29-4200-9847-dd3b98cde1d8",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "page range is an article's; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "2e32ab7d-0b99-48e2-a632-bf72c83f790a",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "page range is an article's; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "bb319363-6fc0-4715-a9ce-ab4787e070ec",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "29d5a334-954d-4057-b92c-1af655377426",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "page range is an article's; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "f2787928-d418-46a5-a9a2-f49124a088c0",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "cc93ae5b-751e-41be-8968-6fc144e3aa24",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "d22bef96-b4a9-4e0d-9d6b-35d08471379c",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "988cc574-46f0-43a6-b39a-648afe38b8da",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "9c89e3da-9d51-4de0-828f-9ed4fd865e47",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "4947d7d4-f79e-41f4-a7a8-fc30fcea8a42",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "1aa2795c-6201-436e-9c11-044cc2672ceb",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "77f30cd6-8605-4c06-bdf8-93989cc021e6",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "636d7855-b83c-4db8-9cad-313f5260ac9d",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "5da3a4f4-9026-4329-b251-5d66edf8e666",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "page range is an article's; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "eea83b9f-a56a-4d81-9465-49612261ff13",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "10ffbe7f-306c-45f5-b248-8c44d5f2cbc7",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "2ce4b27b-0a75-40c0-a580-c77d899acd74",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "acea7fcc-7f23-4dd6-8f11-1b61e9f8b1c7",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "page range is an article's; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "275d1caa-a2b2-4283-9fc3-6e8dacb9ac6b",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "d9f20964-e14c-48e8-ad90-557539def13b",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "b03c34df-f0dd-4a16-97fd-34763d8e11ce",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "page range is an article's; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "2e110a68-05ad-4cc1-940c-3752c02cc9c2",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "page range is an article's; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "2015d54b-aee7-433e-81dd-1251cbd56310",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "page range is an article's; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "26ce3e30-a182-4f83-acac-d15a6b27d080",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "page range is an article's; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "df6bf16e-2f3d-4372-907f-d8b06a692c6a",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "4bdeb6dc-c21f-4f6d-916e-1521fbc1d131",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "30396fb3-b28f-418d-8888-9476d8f393e5",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "ec43e05f-5c83-4ea1-9e1d-e0b6761b3503",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "a2de8722-3909-4ea9-959c-0b92fed67779",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "d44d54ab-44b3-40a6-92ed-b1d7531fac8f",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "8840f158-8039-4b52-9da5-e5d2db4061a6",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "fd66d071-6c24-4e5b-bd6c-41e4a1f195ee",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "4f325908-036e-4fc3-bad2-23fa537e7a92",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "e03d5f0a-65de-4ea3-8248-b40ae2389ee8",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "a64dc0f2-02b5-4929-98fb-9fa9366db2de",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "a0cac3ed-f021-4bc6-8190-d0b9e0ae2ed7",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "page range is an article's; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "62b07bbe-f217-4f77-9ba1-b664a723aa1b",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "d95f63cc-0fd0-4c25-b195-21e13ce772f3",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "63e95326-e262-4c62-8fc5-21998453b240",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "88534ea9-6085-41f5-913d-1d7d6d1a2bca",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "a4c9bc51-842c-4f6c-8f6f-aeba4655615a",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "a270537e-b5db-48ae-bb60-d509eb725eb9",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "40cd1d70-4656-4f59-921a-b757c70c05bc",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "9ecc8e82-6c32-4137-beb9-221f5be045f2",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "1c35447e-c4b3-42f7-92b7-ea7e387e720c",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "page range is an article's; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "08a91f0c-3359-4d3d-81b9-cf1b89d1ef48",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "page range is an article's; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "8772f2b5-77d6-4b6f-a0c7-5793958683ba",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "a58a3e51-ed85-4977-bf95-57dd70c470b7",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "DOI or source page names an article; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  },
+  {
+   "table": "Book",
+   "id": "58701b79-0385-43ec-a90d-164e076e2cd8",
+   "field": "record kind",
+   "from": "Book",
+   "proposed": "Article (journal article)",
+   "confidence": "medium",
+   "evidence": "page range is an article's; no ISBN and nothing in the address that says book",
+   "action": "needs-human-review"
+  }
+ ]
+}

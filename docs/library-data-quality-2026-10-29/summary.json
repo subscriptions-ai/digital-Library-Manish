@@ -1,0 +1,108 @@
+{
+ "legacyBooksTotal": 313,
+ "legacySuspectHigh": 55,
+ "legacySuspectMedium": 115,
+ "legacyKeptWithBookEvidence": 115,
+ "legacyNoEvidence": 28,
+ "legacySuspectByDomain": [
+  [
+   "Management",
+   170
+  ]
+ ],
+ "structuredBooksChecked": 6796,
+ "structuredSuspect": 50,
+ "subjectSummary": [
+  {
+   "table": "legacy Content (archived shelf)",
+   "distinct": 165,
+   "held": 6,
+   "recordsAffected": 70
+  },
+  {
+   "table": "Article",
+   "distinct": 7113,
+   "held": 66,
+   "recordsAffected": 3622
+  },
+  {
+   "table": "Book",
+   "distinct": 4645,
+   "held": 11,
+   "recordsAffected": 14
+  },
+  {
+   "table": "Journal",
+   "distinct": 572,
+   "held": 0,
+   "recordsAffected": 0
+  }
+ ],
+ "titlesWithMarkup": {
+  "Article": 54,
+  "Book": 5,
+  "Content": 90
+ },
+ "topHostsOfSuspect": [
+  [
+   "jsezu.journals.ekb.eg",
+   65
+  ],
+  [
+   "jmr.usb.ac.ir",
+   10
+  ],
+  [
+   "jes.journals.ekb.eg",
+   5
+  ],
+  [
+   "jims.atu.ac.ir",
+   5
+  ],
+  [
+   "criticalstudy.ihcs.ac.ir",
+   5
+  ],
+  [
+   "www.e3s-conferences.org",
+   4
+  ],
+  [
+   "publij.ir",
+   3
+  ],
+  [
+   "businessperspectives.org",
+   2
+  ],
+  [
+   "nytsqb.aiijournal.com",
+   2
+  ],
+  [
+   "tssq.atu.ac.ir",
+   2
+  ],
+  [
+   "www.jmep.ir",
+   2
+  ],
+  [
+   "jks.atu.ac.ir",
+   2
+  ],
+  [
+   "csmj.mosuljournals.com",
+   2
+  ],
+  [
+   "im.rihu.ac.ir",
+   2
+  ],
+  [
+   "www.ajhtl.com",
+   2
+  ]
+ ]
+}

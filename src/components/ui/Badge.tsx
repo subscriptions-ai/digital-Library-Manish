@@ -3,10 +3,10 @@ import { cn } from '../../lib/utils';
 
 export type BadgeTone = 'neutral' | 'accent' | 'success' | 'caution' | 'alarm';
 
-export function Badge({ tone = 'neutral', dot, className, children }: {
-  tone?: BadgeTone; dot?: boolean; className?: string; children: ReactNode;
+export function Badge({ tone = 'neutral', dot, className, title, children }: {
+  tone?: BadgeTone; dot?: boolean; className?: string; /** Said on hover and to a screen reader: what the badge means. */ title?: string; children: ReactNode;
 }) {
-  return <span className={cn('badge', `badge-${tone}`, dot && 'badge-dot', className)}>{children}</span>;
+  return <span className={cn('badge', `badge-${tone}`, dot && 'badge-dot', className)} title={title}>{children}</span>;
 }
 
 /**
