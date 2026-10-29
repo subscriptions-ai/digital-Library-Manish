@@ -50,6 +50,8 @@ import { buildQuotationEmailHtml } from "./src/lib/quotation/quotationEmail.js";
 import { publicJournalCount, publicJournalStatusSql, publicJournalStatusWhere, PUBLIC_JOURNAL_STATUSES } from "./src/lib/publicJournals.js";
 import { parseJournalPaging, queryJournalPage, publicScope, subjectSlugSql } from "./src/lib/journalPaging.js";
 import { COMPANY_DETAILS, currentIssuer } from "./src/config.js";
+import { publicBookWhere, publicLegacyBookWhere, publicBookSql, publicLegacyBookSql, publicBookCounts } from "./src/lib/publicBooks.js";
+import { booksOverview, bookWhere, NO_DEPARTMENT, type BookDataset } from "./src/lib/adminBooks.js";
 import { canonicalOrSelf, canonicalOrSelfList, canonicalDepartmentName, resolveCanonicalDepartment, entitlementCovers, foldCounts, departmentFromSlug, spellingsOfAll } from "./src/lib/departmentRegistry.js";
 import { createDepartmentSpellings } from "./src/server/departmentSpellings.js";
 import { requireOfficialDepartments, requireOfficialDepartmentsOnEdit } from "./src/server/departmentInput.js";
@@ -618,19 +620,19 @@ async function startServer() {
     // Everything else on the archived shelf — theses, magazines, case reports,
     // proceedings, videos, newsletters. A reader opens those too, so a figure
     // called "the whole library" has to count them.
-    const [journalTitles, newArticles, legacyPeriodicals, newBooks, legacyBooks, legacyOther] = await Promise.all([
+    const [journalTitles, newArticles, legacyPeriodicals, bookCounts, legacyOther] = await Promise.all([
       publicJournalCount(prisma, { domains }),
       (prisma as any).article.count({ where: { status: 'Published', ...inDomains } }),
       prisma.content.count({ where: { contentType: "Periodicals", ...live, ...inDomains } }),
-      (prisma as any).book.count({ where: { status: 'Published', ...inDomains } }),
-      prisma.content.count({ where: { contentType: "Books", ...live, ...inDomains } }),
+      // Books are counted by the one public definition (src/lib/publicBooks.ts), the same one the admin overview and the lists use.
+      publicBookCounts(prisma, { domains }),
       prisma.content.count({
         where: { contentType: { notIn: ["Periodicals", "Books"] }, ...live, ...inDomains },
       }),
     ]);
 
     const articles = newArticles + legacyPeriodicals;
-    const books = newBooks + legacyBooks;
+    const books = bookCounts.listed;
     return {
       journals: journalTitles,
       articles,
@@ -668,7 +670,7 @@ async function startServer() {
          union all
          select b."domain", 0, count(*)::int, 0
            from "Book" b
-          where b.status = 'Published' and b."domain" is not null ${f('b')}
+          where ${publicBookSql('b')} and b."domain" is not null ${f('b')}
           group by 1
          union all
          select c."domain",
@@ -701,7 +703,7 @@ async function startServer() {
       const [counts, articles, newBooks, theses, legacyTotal] = await Promise.all([
         collectionCounts(),
         (prisma as any).article.count({ where: pub }),
-        (prisma as any).book.count({ where: pub }),
+        (prisma as any).book.count({ where: publicBookWhere }),
         prisma.content.count({ where: { contentType: "Theses", ...live } }),
         prisma.content.count({ where: live }),
       ]);
@@ -763,7 +765,7 @@ async function startServer() {
         }),
         (prisma as any).book.groupBy({
           by: ['domain'],
-          where: { status: 'Published', domain: { not: null } },
+          where: { ...publicBookWhere, domain: { not: null } },
           _count: { id: true },
         }),
       ]);
@@ -4654,7 +4656,7 @@ async function startServer() {
         (prisma as any).book.groupBy({
           by: ['domain'],
           _count: { id: true },
-          where: { status: 'Published' }
+          where: publicBookWhere
         }),
       ]);
 
@@ -4778,9 +4780,9 @@ async function startServer() {
       const domFilter = isAdmin ? {} : { domain: { in: entSpellings } };
       const [aDepts, bDepts, aCount, bCount] = await Promise.all([
         (prisma as any).article.groupBy({ by: ['domain'], where: { status: 'Published', ...domFilter } }),
-        (prisma as any).book.groupBy({ by: ['domain'], where: { status: 'Published', ...domFilter } }),
+        (prisma as any).book.groupBy({ by: ['domain'], where: { ...publicBookWhere, ...domFilter } }),
         (prisma as any).article.count({ where: { status: 'Published', ...domFilter } }),
-        (prisma as any).book.count({ where: { status: 'Published', ...domFilter } }),
+        (prisma as any).book.count({ where: { ...publicBookWhere, ...domFilter } }),
       ]);
       // One entry per department, whatever spelling the rows were stored under.
       const newDepts = canonicalOrSelfList([...aDepts.map((x: any) => x.domain), ...bDepts.map((x: any) => x.domain)].filter(Boolean));
@@ -7467,7 +7469,7 @@ async function startServer() {
           orderBy: { contentType: 'asc' },
         }),
         (prisma as any).article.count({ where: { domain: { in: spelled }, status: 'Published' } }),
-        (prisma as any).book.count({ where: { domain: { in: spelled }, status: 'Published' } }),
+        (prisma as any).book.count({ where: { domain: { in: spelled }, ...publicBookWhere } }),
         publicJournalCount(prisma, { domains: spelled }),
       ]);
 
@@ -10869,7 +10871,7 @@ async function startServer() {
       const [page, articles, books, publisherRows, publisherCount, years, authorRows] = await Promise.all([
         queryJournalPage(prisma, where, [spelled], paging),
         (prisma as any).article.count({ where: { domain: { in: spelled }, status: 'Published' } }),
-        (prisma as any).book.count({ where: { domain: { in: spelled }, status: 'Published' } }),
+        (prisma as any).book.count({ where: { domain: { in: spelled }, ...publicBookWhere } }),
         // The publishers shown beside the shelf are the biggest fifty; `publisherTotal` is how many there are.
         (prisma as any).$queryRawUnsafe(
           `select j."publisherName" as name, count(*)::int as journals
@@ -11607,7 +11609,7 @@ async function startServer() {
   app.get("/api/library/book/:id", async (req: any, res: any) => {
     try {
       const book = await (prisma as any).book.findFirst({
-        where: { id: String(req.params.id || ''), status: 'Published' },
+        where: { id: String(req.params.id || ''), ...publicBookWhere },
         select: {
           id: true, title: true, authors: true, publisherName: true, isbn: true, doi: true,
           year: true, edition: true, pages: true, subject: true, domain: true, language: true,
@@ -11635,7 +11637,7 @@ async function startServer() {
       const { source: _s, ownershipSource: _o, licence: _l, licenceIsNC: _n, rightsStatus: _r, ...bookOut } = publicBook(book);
 
       const alongside = await (prisma as any).book.findMany({
-        where: { status: 'Published', id: { not: book.id }, ...(book.domain ? { domain: book.domain } : {}) },
+        where: { ...publicBookWhere, id: { not: book.id }, ...(book.domain ? { domain: book.domain } : {}) },
         orderBy: { createdAt: 'desc' }, take: 4,
         select: { id: true, title: true, authors: true, coverUrl: true, domain: true, year: true },
       });
@@ -11866,7 +11868,7 @@ async function startServer() {
   app.get("/api/library/books", async (req: any, res: any) => {
     try {
       const { domain, search, oa, sort, page = '1', limit = '20' } = req.query;
-      const where: any = { status: 'Published' };
+      const where: any = { ...publicBookWhere };
       await applyDomainScope(where, domain, await libraryScopeDomains(req));
       if (search) where.title = { contains: search as string, mode: 'insensitive' };
       if (oa === '1') where.accessType = { in: ['OpenAccess', 'Free'] };
@@ -11958,17 +11960,42 @@ async function startServer() {
     publishedAt: row.createdAt,
   });
 
+  /**
+   * The Books overview: department counts and the cards above the table. Counts use the same filter as the list (src/lib/adminBooks.ts),
+   * so choosing a department shows exactly the number beside it. Aggregated here in the database; no book is sent to the browser.
+   * The archived collection is the legacy `Content` table, which only a super admin can list, so the same rule applies to its counts.
+   */
+  app.get("/api/admin/library/books/overview", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
+    try {
+      const dataset: BookDataset = req.query.dataset === 'archived' ? 'archived' : 'new';
+      const isSuper = req.user?.role === 'SuperAdmin';
+      if (dataset === 'archived' && !isSuper) return res.status(403).json({ error: "The archived collection is for super admins" });
+      const s = (v: any) => (typeof v === 'string' ? v.trim() : '');
+      const out = await booksOverview(prisma, deptSpellings, dataset, { q: s(req.query.q), status: s(req.query.status) });
+      if (!isSuper) out.collections.archived = null;
+      res.json(out);
+    } catch (e: any) {
+      console.error("admin books overview:", e?.message);
+      res.status(500).json({ error: "Failed to load the books overview" });
+    }
+  });
+
   app.get("/api/admin/library/items", authenticateJWT, requireAdminOrManager, async (req: any, res: any) => {
     try {
-      const { contentType, search, domain, status, page = '1', limit = '15' } = req.query;
+      const { contentType, search, domain, status, visibility, page = '1', limit = '15' } = req.query;
       const kind = kindFor(contentType);
       const take = Math.min(parseInt(limit as string) || 15, 100000);
       const skip = ((parseInt(page as string) || 1) - 1) * take;
-      const where: any = {};
-      if (kind === 'article') where.contentType = contentType;
-      if (domain) where.domain = { in: await deptSpellings.expand([String(domain)]) };
-      if (status) where.status = status;
-      if (search) where.OR = [{ title: { contains: search as string, mode: 'insensitive' } }, { authors: { contains: search as string, mode: 'insensitive' } }];
+      let where: any = {};
+      if (kind === 'book') {
+        // The same filter the Books department counts use (src/lib/adminBooks.ts), so a count and the rows under it cannot disagree.
+        where = await bookWhere('new', { q: String(search || ''), status: String(status || ''), visibility: String(visibility || ''), domain: String(domain || '') }, deptSpellings);
+      } else {
+        where.contentType = contentType;
+        if (domain) where.domain = { in: await deptSpellings.expand([String(domain)]) };
+        if (status) where.status = status;
+        if (search) where.OR = [{ title: { contains: search as string, mode: 'insensitive' } }, { authors: { contains: search as string, mode: 'insensitive' } }];
+      }
       const model = (prisma as any)[kind];
       const [rows, total] = await Promise.all([
         model.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
@@ -12128,19 +12155,24 @@ async function startServer() {
   app.get("/api/admin/content", authenticateJWT, requireSuperAdmin, async (req: any, res) => {
 
     try {
-      const { domain, contentType, search, status, page = "1", limit = "10" } = req.query;
+      const { domain, contentType, search, status, visibility, page = "1", limit = "10" } = req.query;
       const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
       
-      const where: any = {};
-      if (domain) where.domain = { in: await deptSpellings.expand([String(domain)]) };
-      if (contentType) where.contentType = contentType;
-      if (status) where.status = status;
-      if (search) {
-        where.OR = [
-          { title: { contains: search as string, mode: "insensitive" } },
-          { authors: { contains: search as string, mode: "insensitive" } },
-          { description: { contains: search as string, mode: "insensitive" } },
-        ];
+      let where: any = {};
+      if (contentType === 'Books') {
+        // Archived books use the same filter as the department counts (src/lib/adminBooks.ts), including the Unassigned bucket.
+        where = await bookWhere('archived', { q: String(search || ''), status: String(status || ''), visibility: String(visibility || ''), domain: String(domain || '') }, deptSpellings);
+      } else {
+        if (domain) where.domain = { in: await deptSpellings.expand([String(domain)]) };
+        if (contentType) where.contentType = contentType;
+        if (status) where.status = status;
+        if (search) {
+          where.OR = [
+            { title: { contains: search as string, mode: "insensitive" } },
+            { authors: { contains: search as string, mode: "insensitive" } },
+            { description: { contains: search as string, mode: "insensitive" } },
+          ];
+        }
       }
 
       const [contents, total] = await Promise.all([

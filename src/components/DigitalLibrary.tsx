@@ -125,10 +125,19 @@ export function DigitalLibrary() {
     return <Navigate to={`${paths.browse}${search}`} replace />;
   }
 
+  // Every record the catalogue lists, from the same counts as the tiles below. Journals are titles that hold the articles, so they are not added in.
+  const catalogueRecords = Object.keys(counts).length
+    ? Object.entries(counts).reduce((sum, [k, v]) => (k === "Journals" || k === "BooksReadable" ? sum : sum + v), 0)
+    : null;
+
   const OFFERINGS: { name: string; count: number | undefined; icon: React.ReactNode; desc?: string }[] = [
     { name: "Available Journal Titles", count: counts["Journals"], icon: <BookOpen size={24} aria-hidden="true" />, desc: "Distinct journal publications available in the catalogue." },
     { name: "Research Articles", count: counts["Articles"], icon: <FileText size={24} aria-hidden="true" />, desc: "Individual research papers available across journal titles and sources." },
-    { name: "Academic E-Books", count: counts["Books"], icon: <Book size={24} aria-hidden="true" /> },
+    // Books listed in the catalogue, not books that open here: most are records linking to the publisher or repository.
+    { name: "Academic Books Listed", count: counts["Books"], icon: <Book size={24} aria-hidden="true" />,
+      desc: typeof counts["BooksReadable"] === "number"
+        ? `Open-access academic books in the catalogue. ${counts["BooksReadable"].toLocaleString("en-IN")} open to read in full here; the others link to the publisher or repository.`
+        : "Open-access academic books in the catalogue; full text is shown only where the licence allows." },
     { name: "Research Theses", count: counts["Theses"], icon: <GraduationCap size={24} aria-hidden="true" /> },
     { name: "Conference Proceedings", count: counts["Conference Proceedings"], icon: <Presentation size={24} aria-hidden="true" /> },
     { name: "Educational Videos", count: counts["Educational Videos"], icon: <Video size={24} aria-hidden="true" /> },
@@ -195,8 +204,8 @@ export function DigitalLibrary() {
                     <Database size={20} />
                   </div>
                   <div>
-                    <div className="on-dark-3 text-xs font-semibold">Total Assets</div>
-                    <div className="on-dark text-lg font-bold">30,000+</div>
+                    <div className="on-dark-3 text-xs font-semibold">Catalogue Records</div>
+                    <div className="on-dark text-lg font-bold tnum">{catalogueRecords === null ? "—" : catalogueRecords.toLocaleString("en-IN")}</div>
                   </div>
                 </div>
               </div>
