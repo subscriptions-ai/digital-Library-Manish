@@ -1,0 +1,41 @@
+{
+ "taxonomy": {
+  "REJECTED: confirmed non-journal serial / ceased / invalid ISSN": 267,
+  "UNRESOLVED: identity (title conflict, rename, shared ISSN, no publisher)": 35,
+  "REJECTED: department not supported (title/classifier rule) or non-Latin title": 651,
+  "UNRESOLVED: one kind of department evidence, scope not confirmable": 1442,
+  "UNRESOLVED: publication evidence": 283,
+  "MANUAL HOLD: eligible on the rules, held by judgement (scope or type not confirmed)": 14
+ },
+ "N": 50389,
+ "held": 2678,
+ "eligible": 16,
+ "outOfScope": 47695,
+ "singleEvidenceDelta": {
+  "removed": {
+   "inserted (round 4)": 17,
+   "held: the journal's own site states that publication has ceased": 1,
+   "held: publication evidence P-B": 14,
+   "held: no publisher recorded (also none in Crossref/OpenAlex with a matching ": 1,
+   "held: near-identical title already in the catalogue (possible rename, editio": 2,
+   "eligible, held by hand": 5
+  },
+  "added": {
+   "round 3 out of scope (no evidence); now has one kind": 134,
+   "not in the round-3 pool: new net-new from Springer KBART lists": 82
+  },
+  "stayed": 1230,
+  "S3": 1270,
+  "S4": 1446
+ },
+ "addedByKind": {
+  "catalogue": 184,
+  "title": 32
+ },
+ "stayedByKind": {
+  "title": 164,
+  "topics": 1059,
+  "catalogue": 3,
+  "society": 4
+ }
+}

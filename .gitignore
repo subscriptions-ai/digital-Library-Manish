@@ -47,3 +47,7 @@ data/dept-coverage4/work/
 docs/content-library-usability-2026-10-29/screenshots/
 docs/library-data-quality-2026-10-29/*.csv
 docs/library-data-quality-2026-10-29/*.json
+
+# Department coverage run 5: raw/work files (never committed)
+data/dept-coverage5/raw/
+data/dept-coverage5/work/

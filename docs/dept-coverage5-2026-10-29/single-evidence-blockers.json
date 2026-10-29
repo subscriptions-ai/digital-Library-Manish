@@ -1,0 +1,40 @@
+{
+ "singleEvidence": 1442,
+ "byBlocker": {
+  "site unreachable": 339,
+  "no homepage found": 199,
+  "readable: lacked scope (no department phrase)": 413,
+  "robots.txt disallows (incl. redirect destination)": 250,
+  "readable: ambiguous (1-2 phrases)": 181,
+  "readable: phrases present but not strong": 38,
+  "readable: contradicted (other department leads)": 22
+ },
+ "byDepartment": {
+  "Bio Technology": {
+   "robots.txt disallows (incl. redirect destination)": 156,
+   "no homepage found": 51,
+   "readable: lacked scope (no department phrase)": 41,
+   "readable: ambiguous (1-2 phrases)": 28,
+   "site unreachable": 53,
+   "readable: phrases present but not strong": 2
+  },
+  "Electrical Engineering": {
+   "site unreachable": 189,
+   "readable: lacked scope (no department phrase)": 254,
+   "no homepage found": 84,
+   "readable: ambiguous (1-2 phrases)": 108,
+   "robots.txt disallows (incl. redirect destination)": 40,
+   "readable: phrases present but not strong": 7,
+   "readable: contradicted (other department leads)": 18
+  },
+  "Electronics & Telecommunication Engineering": {
+   "no homepage found": 64,
+   "site unreachable": 97,
+   "readable: lacked scope (no department phrase)": 118,
+   "readable: ambiguous (1-2 phrases)": 45,
+   "robots.txt disallows (incl. redirect destination)": 54,
+   "readable: phrases present but not strong": 29,
+   "readable: contradicted (other department leads)": 4
+  }
+ }
+}

@@ -1,0 +1,24 @@
+{
+ "pagesCollected": 230,
+ "host": "link.springer.com (reached by redirect from www.springer.com/journal/<id>)",
+ "robotsTxt": "User-agent: * Disallow: /",
+ "dispositionBeforePurge": {
+  "lacked scope: no department phrase on the pages read (landing page about 4,000 characters, no aims text)": 157,
+  "ambiguous: 1-2 department phrases only": 63,
+  "scope confirmed (3+ phrases, clear lead)": 8,
+  "contradicted: another target department leads": 2
+ },
+ "afterPurge": "all evidence from this host discarded; aims-and-scope pages (link.springer.com/journal/<id>/aims-and-scope) are disallowed by the same robots.txt and were not read (226 of 229 skipped), so Springer-hosted candidates cannot be scope-checked automatically",
+ "entriesPurgedByRobotsAudit": {
+  "run2": 36,
+  "run3": 40,
+  "run4": 238
+ },
+ "hosts": {
+  "link.springer.com": 233,
+  "pmc.ncbi.nlm.nih.gov": 3,
+  "ocean.kisti.re.kr": 2,
+  "ijetjournal.org": 1,
+  "www.journals-sathyabama.com": 1
+ }
+}

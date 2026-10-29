@@ -29,7 +29,10 @@ def get(url,limit=400_000):
     try:
         r=urllib.request.urlopen(req,timeout=15); ct=r.headers.get('Content-Type','')
         if 'html' not in ct.lower() and 'xml' not in ct.lower(): return r.status,None,url
-        return r.status,r.read(limit).decode(r.headers.get_content_charset() or 'utf-8','replace'),r.geturl()
+        final=r.geturl()
+        # a redirect may lead to another host whose robots.txt forbids automated access: the destination is checked too, and its content is discarded if disallowed
+        if urllib.parse.urlparse(final).netloc!=urllib.parse.urlparse(url).netloc and not allowed(final): return 0,None,final
+        return r.status,r.read(limit).decode(r.headers.get_content_charset() or 'utf-8','replace'),final
     except urllib.error.HTTPError as e: return e.code,None,url
     except Exception as e: return 0,None,url
 def allowed(url):

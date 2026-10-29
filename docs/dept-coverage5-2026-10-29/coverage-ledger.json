@@ -1,0 +1,37 @@
+{
+ "IET portfolio pages (publishing-with-iet-journals, FAQs, open-access journals)": {
+  "status": "partial",
+  "retrieved": "2026-10-29T07:49:05Z",
+  "query": "GET the three theiet.org pages (HTTP 200 this round); ietresearch.onlinelibrary.wiley.com and digital-library.theiet.org",
+  "fetched": 3,
+  "pagination": "3 pages read; 2 hosts blocked (HTTP 403 Cloudflare)",
+  "notes": "The pages contain no journal list; the FAQ names 11 partnership journals, 10 already in the catalogue. The IET Research Hub (Wiley) is blocked.",
+  "rawFiles": {}
+ },
+ "Wiley KBART (retested)": {
+  "status": "blocked",
+  "retrieved": "2026-10-29T07:49:05Z",
+  "query": "https://onlinelibrary.wiley.com/library-info/resources/discovery/kbart2019 and /kbart",
+  "fetched": 0,
+  "notes": "HTTP 403 Cloudflare challenge. Not bypassed. Needs a person: see manual-exports.md.",
+  "rawFiles": {}
+ },
+ "link.springer.com (aims-and-scope pages)": {
+  "status": "blocked",
+  "retrieved": "2026-10-29T07:49:05Z",
+  "query": "https://link.springer.com/journal/<id>/aims-and-scope for 229 candidates",
+  "fetched": 0,
+  "pagination": "226 skipped by robots.txt (User-agent: * Disallow: /)",
+  "notes": "robots.txt of link.springer.com disallows all automated access. Evidence earlier read there through a redirect was purged (see robots-redirect-incident.md).",
+  "rawFiles": {}
+ },
+ "Website evidence audit against the robots.txt of each page's own host": {
+  "status": "complete",
+  "retrieved": "2026-10-29T07:49:05Z",
+  "query": "robots_audit.py over every page URL kept in the scope files of rounds 2-5 (761 hosts)",
+  "fetched": 761,
+  "pagination": "238 entries purged in rounds 4 and 5 (233 link.springer.com, 3 pmc.ncbi.nlm.nih.gov, 2 ocean.kisti.re.kr); 36 in round 2; 40 in round 3",
+  "notes": "Four inserted journals had a link.springer.com page among their evidence; each keeps two other kinds of evidence.",
+  "rawFiles": {}
+ }
+}

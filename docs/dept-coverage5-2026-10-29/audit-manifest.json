@@ -1,0 +1,503 @@
+{
+ "runId": "dept-coverage5-2026-10-29-cbf52543",
+ "executed": {
+  "canary": "2026-10-29T07:47:25.268Z",
+  "remainder": []
+ },
+ "frozenManifest": {
+  "file": "manifest-frozen.json",
+  "sha256": "ba9d5815603a1898d4038c0c9108ec3b080bca86517c5ad555b1bd3b9561d6eb",
+  "candidates": 2
+ },
+ "planChecksums": {
+  "plan-canary.json": "b9d5fc974113314b7ca7231f270bdec5b10dc2c200c0679d4615cd9b72b05b55",
+  "plan-rest.json": "cb7b55a8179505762336709fe98a5b219bf1c43ee16a7c9aaf751f4d52218a2b",
+  "hand-holds.json": "619565c67f0b38b341d848131db86ea78485fe3d750f182cf8fd89a9fc93856d"
+ },
+ "code": {
+  "frozenAtCommit": "afb68feb1480679e94a750b96c4d3b15f5a9541d",
+  "headWhenAssembled": "afb68feb1480679e94a750b96c4d3b15f5a9541d",
+  "fileSha256": {
+   "src/lib/ingestion/officialListDepartment.ts": "0cdcd0413755290abd894197e09795074a7037a737c6d5bb33ffc4fa92c7a363",
+   "src/lib/ingestion/titleTopicDepartment.ts": "537e79de69573f5217a5646e81836931998d7f42403bc1aa0cc473b7e6e9487a",
+   "src/lib/ingestion/openAlexDepartments.ts": "203409592bc7d4f4b64f794d0b6a364f02a6bdb07ea5d128b6e9fd0e986ed091",
+   "src/lib/ingestion/nlmJournalDepartment.ts": "66048aad1d0f8faac792721edd4a88e8ee81e6a7c31a601ec49138c2f3e02d81",
+   "src/lib/ingestion/journalSourceImport.ts": "af6f6e923bf2dd3619d6b0981d83d7b70863551769675e989c2b857125a401b7",
+   "scripts/journal-source-apply.cjs": "0fb3a54938ffcaa3b9f74692c8d9bca1b277c7e16257ce2adcbef55101aae04e",
+   "scripts/dept-coverage/verify-prod.cjs": "a7ba81b582ba88910dcfa1d9e4a2f20245f3d6d2799810218d867f0d6795d48f",
+   "scripts/dept-coverage/stage1.py": "66d4ab64ae513b82f9ec3e8f42837ec2da812c6df77d90866b93d7b5ca04e1ec",
+   "scripts/dept-coverage/stage2.py": "fbe1a604241419a09d6008231c649ac2d52d7d7c138679fd682587570de82509",
+   "scripts/dept-coverage/freeze.py": "6d0232355015373a5a2f7d02628eb6a0933cef4fdbeb43ced119f149ba46ecda",
+   "scripts/dept-coverage/build_pool.py": "18d8da7d203df1ee8952924d75a8a3eec872c998f44fbfa20df10817102e54c5",
+   "scripts/dept-coverage/classify.ts": "f4282c6f0e05d27b18b2e43192842496c1217c030207a21f49dd3383bb158c52",
+   "scripts/dept-coverage/classify2.ts": "7e9e0276500e951edbdb00eb36a09a8c02261a4a03645bd98cf28d60042f98fe",
+   "scripts/dept-coverage/stage1b.py": "6249637cd818fc67aab497e3dbbe74105f0a85ea7c1ef386789da4cb62b96bb4",
+   "scripts/dept-coverage/stage2b.py": "7a171a762910b23a9dcb9a6a3cc39a789e2087bb00cd2f1638e0da80d2cb1e79",
+   "scripts/dept-coverage/aims_scope.py": "e71cf342b9d3e2938f08475f24690851c28b3055a5ca17187a33d04f09c65245",
+   "scripts/dept-coverage/freeze2.py": "58e9ea1e325bf2cc58bc63130efc1c6b98edd4192a45a54a0427927e8bb024ef",
+   "scripts/dept-coverage/build_pool2.py": "947b438b082cb977d6ed396310783fe36b95af57a0dda1c507a650f32c8d87fa",
+   "scripts/dept-coverage/live_check.py": "1fc2f653b9a896a5fe64a86b20f03568c441a9887af10009351cd5e8ee43ad8b",
+   "scripts/dept-coverage/audit-backfill.cjs": "dd7f9594f1cd65f0cbc71dd5997ada0ebd5a0f4a25fada42ddb3be21d0885cfc"
+  }
+ },
+ "canaryResult": {
+  "database": "postgres",
+  "runId": "dept-coverage5-2026-10-29-cbf52543",
+  "source": "Multiple (per row basisSource)",
+  "dry": false,
+  "startedAt": "2026-10-29T07:47:25.268Z",
+  "requested": 2,
+  "inserted": 2,
+  "skippedIdentifierHeld": 0,
+  "skippedTitleHeld": 0,
+  "skippedRace": 0,
+  "rejected": [],
+  "sanitizedRows": 0,
+  "failed": 0,
+  "firstError": null,
+  "batches": 1,
+  "attempts": 1,
+  "finishedAt": "2026-10-29T07:47:25.384Z"
+ },
+ "restResults": [],
+ "verifyBefore": {
+  "at": "2026-10-29T07:46:44.163Z",
+  "db": "postgres",
+  "status": {
+   "NeedsReview": 25607,
+   "MetadataOnly": 16453,
+   "Accepted": 12840
+  },
+  "total": 54900,
+  "departments": {
+   "Chemical Engineering": {
+    "total": 239,
+    "public": 105,
+    "publicWithPublishedArticles": 66,
+    "needsReview": 134
+   },
+   "Engineering": {
+    "total": 9,
+    "public": 9,
+    "publicWithPublishedArticles": 9,
+    "needsReview": 0
+   },
+   "Architecture": {
+    "total": 359,
+    "public": 156,
+    "publicWithPublishedArticles": 68,
+    "needsReview": 203
+   },
+   "Applied Mechanics": {
+    "total": 297,
+    "public": 84,
+    "publicWithPublishedArticles": 3,
+    "needsReview": 213
+   },
+   "Electronics & Telecommunication Engineering": {
+    "total": 510,
+    "public": 218,
+    "publicWithPublishedArticles": 51,
+    "needsReview": 292
+   },
+   "Electrical Engineering": {
+    "total": 570,
+    "public": 355,
+    "publicWithPublishedArticles": 153,
+    "needsReview": 215
+   },
+   "Nano Technology": {
+    "total": 303,
+    "public": 165,
+    "publicWithPublishedArticles": 66,
+    "needsReview": 138
+   },
+   "Ayurveda": {
+    "total": 387,
+    "public": 275,
+    "publicWithPublishedArticles": 44,
+    "needsReview": 112
+   },
+   "Mechanical Engineering": {
+    "total": 705,
+    "public": 484,
+    "publicWithPublishedArticles": 100,
+    "needsReview": 221
+   },
+   "Bio Technology": {
+    "total": 778,
+    "public": 443,
+    "publicWithPublishedArticles": 272,
+    "needsReview": 335
+   },
+   "Pharmacy": {
+    "total": 665,
+    "public": 365,
+    "publicWithPublishedArticles": 136,
+    "needsReview": 300
+   },
+   "Physiotherapy": {
+    "total": 392,
+    "public": 318,
+    "publicWithPublishedArticles": 25,
+    "needsReview": 74
+   }
+  },
+  "existingRowsHash": {
+   "rows": 54900,
+   "sha256": "c0128cf66a291facb64a286abb0b5c1a644249df38ab1c5d6512d5171a2dd1b7"
+  }
+ },
+ "canaryVerification": {
+  "at": "2026-10-29T07:47:33.557Z",
+  "db": "postgres",
+  "status": {
+   "NeedsReview": 25607,
+   "MetadataOnly": 16455,
+   "Accepted": 12840
+  },
+  "total": 54902,
+  "departments": {
+   "Chemical Engineering": {
+    "total": 239,
+    "public": 105,
+    "publicWithPublishedArticles": 66,
+    "needsReview": 134
+   },
+   "Engineering": {
+    "total": 9,
+    "public": 9,
+    "publicWithPublishedArticles": 9,
+    "needsReview": 0
+   },
+   "Architecture": {
+    "total": 359,
+    "public": 156,
+    "publicWithPublishedArticles": 68,
+    "needsReview": 203
+   },
+   "Applied Mechanics": {
+    "total": 297,
+    "public": 84,
+    "publicWithPublishedArticles": 3,
+    "needsReview": 213
+   },
+   "Electronics & Telecommunication Engineering": {
+    "total": 510,
+    "public": 218,
+    "publicWithPublishedArticles": 51,
+    "needsReview": 292
+   },
+   "Electrical Engineering": {
+    "total": 572,
+    "public": 357,
+    "publicWithPublishedArticles": 153,
+    "needsReview": 215
+   },
+   "Nano Technology": {
+    "total": 303,
+    "public": 165,
+    "publicWithPublishedArticles": 66,
+    "needsReview": 138
+   },
+   "Ayurveda": {
+    "total": 387,
+    "public": 275,
+    "publicWithPublishedArticles": 44,
+    "needsReview": 112
+   },
+   "Mechanical Engineering": {
+    "total": 705,
+    "public": 484,
+    "publicWithPublishedArticles": 100,
+    "needsReview": 221
+   },
+   "Bio Technology": {
+    "total": 778,
+    "public": 443,
+    "publicWithPublishedArticles": 272,
+    "needsReview": 335
+   },
+   "Pharmacy": {
+    "total": 665,
+    "public": 365,
+    "publicWithPublishedArticles": 136,
+    "needsReview": 300
+   },
+   "Physiotherapy": {
+    "total": 392,
+    "public": 318,
+    "publicWithPublishedArticles": 25,
+    "needsReview": 74
+   }
+  },
+  "existingRowsHash": {
+   "rows": 54900,
+   "sha256": "c0128cf66a291facb64a286abb0b5c1a644249df38ab1c5d6512d5171a2dd1b7"
+  },
+  "inserted": {
+   "requested": 2,
+   "found": 2,
+   "fieldProblems": [],
+   "byDepartment": {
+    "Electrical Engineering": 2
+   },
+   "identifierCollisions": [],
+   "sameTitleRows": [],
+   "articlesAttached": 0,
+   "createdWindow": {
+    "a": "2026-10-29T07:47:25.371Z",
+    "b": "2026-10-29T07:47:25.371Z"
+   }
+  },
+  "auditRows": [
+   {
+    "id": "b88093b7-50d8-4e2d-b2b8-024d10ea0bf7",
+    "at": "2026-10-29T07:47:25.377Z",
+    "action": "JOURNAL_SOURCE_IMPORT",
+    "batch": "1",
+    "n": 2
+   }
+  ],
+  "auditInserted": [
+   {
+    "batch": "1",
+    "id": "10d2c9f9-1e2c-4f49-9bb7-ea5ad18d4b50",
+    "issn": "2685-2276",
+    "eissn": "2685-7014",
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210202942|OpenAlex:https://openalex.org/S4210202942"
+   },
+   {
+    "batch": "1",
+    "id": "869ab782-277c-4025-a1c8-3283ca0d8537",
+    "issn": "2502-5562",
+    "eissn": null,
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210211856"
+   }
+  ]
+ },
+ "finalVerification": {
+  "at": "2026-10-29T07:47:33.557Z",
+  "db": "postgres",
+  "status": {
+   "NeedsReview": 25607,
+   "MetadataOnly": 16455,
+   "Accepted": 12840
+  },
+  "total": 54902,
+  "departments": {
+   "Chemical Engineering": {
+    "total": 239,
+    "public": 105,
+    "publicWithPublishedArticles": 66,
+    "needsReview": 134
+   },
+   "Engineering": {
+    "total": 9,
+    "public": 9,
+    "publicWithPublishedArticles": 9,
+    "needsReview": 0
+   },
+   "Architecture": {
+    "total": 359,
+    "public": 156,
+    "publicWithPublishedArticles": 68,
+    "needsReview": 203
+   },
+   "Applied Mechanics": {
+    "total": 297,
+    "public": 84,
+    "publicWithPublishedArticles": 3,
+    "needsReview": 213
+   },
+   "Electronics & Telecommunication Engineering": {
+    "total": 510,
+    "public": 218,
+    "publicWithPublishedArticles": 51,
+    "needsReview": 292
+   },
+   "Electrical Engineering": {
+    "total": 572,
+    "public": 357,
+    "publicWithPublishedArticles": 153,
+    "needsReview": 215
+   },
+   "Nano Technology": {
+    "total": 303,
+    "public": 165,
+    "publicWithPublishedArticles": 66,
+    "needsReview": 138
+   },
+   "Ayurveda": {
+    "total": 387,
+    "public": 275,
+    "publicWithPublishedArticles": 44,
+    "needsReview": 112
+   },
+   "Mechanical Engineering": {
+    "total": 705,
+    "public": 484,
+    "publicWithPublishedArticles": 100,
+    "needsReview": 221
+   },
+   "Bio Technology": {
+    "total": 778,
+    "public": 443,
+    "publicWithPublishedArticles": 272,
+    "needsReview": 335
+   },
+   "Pharmacy": {
+    "total": 665,
+    "public": 365,
+    "publicWithPublishedArticles": 136,
+    "needsReview": 300
+   },
+   "Physiotherapy": {
+    "total": 392,
+    "public": 318,
+    "publicWithPublishedArticles": 25,
+    "needsReview": 74
+   }
+  },
+  "existingRowsHash": {
+   "rows": 54900,
+   "sha256": "c0128cf66a291facb64a286abb0b5c1a644249df38ab1c5d6512d5171a2dd1b7"
+  },
+  "inserted": {
+   "requested": 2,
+   "found": 2,
+   "fieldProblems": [],
+   "byDepartment": {
+    "Electrical Engineering": 2
+   },
+   "identifierCollisions": [],
+   "sameTitleRows": [],
+   "articlesAttached": 0,
+   "createdWindow": {
+    "a": "2026-10-29T07:47:25.371Z",
+    "b": "2026-10-29T07:47:25.371Z"
+   }
+  },
+  "auditRows": [
+   {
+    "id": "b88093b7-50d8-4e2d-b2b8-024d10ea0bf7",
+    "at": "2026-10-29T07:47:25.377Z",
+    "action": "JOURNAL_SOURCE_IMPORT",
+    "batch": "1",
+    "n": 2
+   }
+  ],
+  "auditInserted": [
+   {
+    "batch": "1",
+    "id": "10d2c9f9-1e2c-4f49-9bb7-ea5ad18d4b50",
+    "issn": "2685-2276",
+    "eissn": "2685-7014",
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210202942|OpenAlex:https://openalex.org/S4210202942"
+   },
+   {
+    "batch": "1",
+    "id": "869ab782-277c-4025-a1c8-3283ca0d8537",
+    "issn": "2502-5562",
+    "eissn": null,
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210211856"
+   }
+  ]
+ },
+ "inserted": {
+  "count": 2,
+  "ids": [
+   "10d2c9f9-1e2c-4f49-9bb7-ea5ad18d4b50",
+   "869ab782-277c-4025-a1c8-3283ca0d8537"
+  ],
+  "canaryIds": [
+   "10d2c9f9-1e2c-4f49-9bb7-ea5ad18d4b50",
+   "869ab782-277c-4025-a1c8-3283ca0d8537"
+  ],
+  "restIds": [],
+  "rows": [
+   {
+    "id": "10d2c9f9-1e2c-4f49-9bb7-ea5ad18d4b50",
+    "issn": "2685-2276",
+    "eissn": "2685-7014",
+    "title": "Jurnal Elektronika Listrik dan Teknologi Informasi Terapan",
+    "department": "Electrical Engineering",
+    "basisSource": "OpenAlex",
+    "families": [
+     "title",
+     "topics"
+    ],
+    "sourceId": "OpenAlex:https://openalex.org/S4210202942|OpenAlex:https://openalex.org/S4210202942"
+   },
+   {
+    "id": "869ab782-277c-4025-a1c8-3283ca0d8537",
+    "issn": "2502-5562",
+    "eissn": null,
+    "title": "Jurnal Fokus Elektroda Energi Listrik Telekomunikasi Komputer Elektronika dan Kendali)",
+    "department": "Electrical Engineering",
+    "basisSource": "OpenAlex",
+    "families": [
+     "title",
+     "topics"
+    ],
+    "sourceId": "OpenAlex:https://openalex.org/S4210211856"
+   }
+  ]
+ },
+ "auditLocation": "Production table \"IngestionAudit\", action JOURNAL_SOURCE_IMPORT, meta.runId = this run id: one entry per batch, each listing inserted id, issn, dept, sourceId and evidence.",
+ "rollback": {
+  "sql": "DELETE FROM \"Journal\" j WHERE j.id = ANY($1::text[]) AND NOT EXISTS (SELECT 1 FROM \"Article\" a WHERE a.\"journalId\" = j.id) RETURNING j.id, j.issn",
+  "scope": "the exact inserted ids of this run; the rightsBasis label is shared with other runs and is NOT a safe scope",
+  "reviewed": {
+   "at": "2026-10-29T07:47:42.964Z",
+   "journals": 2,
+   "issnCount": 3,
+   "fks": [
+    {
+     "conname": "Article_journalId_fkey",
+     "tbl": "\"Article\"",
+     "def": "FOREIGN KEY (\"journalId\") REFERENCES \"Journal\"(id) ON UPDATE CASCADE ON DELETE SET NULL"
+    }
+   ],
+   "soft": {
+    "articleByJournalId": 0,
+    "articleByIssn": 0,
+    "ingestionRun": 0,
+    "libraryEventById": 0,
+    "libraryEventByIssn": 0
+   },
+   "labelCounts": [
+    {
+     "rb": "OpenAlex listing — OA unverified",
+     "total": 6523,
+     "in_run": 2
+    }
+   ],
+   "wouldDelete": 2,
+   "audit": [
+    {
+     "id": "b88093b7-50d8-4e2d-b2b8-024d10ea0bf7",
+     "adminId": null,
+     "batch": "1",
+     "n": 2
+    }
+   ]
+  },
+  "executed": false,
+  "note": "Article.journalId is ON DELETE SET NULL, so the NOT EXISTS guard is essential. Re-count articles, ingestion runs and library events for these ids before any use. Audit rows have no foreign key and are never deleted."
+ },
+ "priorRuns": {
+  "dept-coverage2": 71,
+  "dept-coverage3": 4,
+  "dept-coverage4": 18,
+  "cumulativeVerifiedInProductionAt": "2026-10-29T07:27Z (93 of 93 rows present, 0 problems)",
+  "thisRun": 2,
+  "cumulativeAfter": 95,
+  "targetCeiling": 2000,
+  "remainingAllowanceAfter": 1905
+ }
+}
