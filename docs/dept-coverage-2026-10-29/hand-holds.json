@@ -1,0 +1,37 @@
+[
+ {
+  "title": "Panorama actual del medicamento",
+  "issns": [
+   "0210-1394"
+  ],
+  "dept": "Pharmacy",
+  "reason": "professional drug-information bulletin of a pharmacists' council, not a research journal"
+ },
+ {
+  "title": "PhotonicsViews",
+  "issns": [
+   "2626-1294",
+   "2626-1308"
+  ],
+  "dept": "Electronics & Telecommunication Engineering",
+  "reason": "magazine-style trade serial (Wiley), not a research journal"
+ },
+ {
+  "title": "maschinenbau",
+  "issns": [
+   "2730-9835",
+   "2730-9843"
+  ],
+  "dept": "Mechanical Engineering",
+  "reason": "German trade magazine of the same name; identity and type unconfirmed"
+ },
+ {
+  "title": "Pharmaceutical journal/The pharmaceutical journal",
+  "issns": [
+   "0031-6873",
+   "2053-6186"
+  ],
+  "dept": "Pharmacy",
+  "reason": "professional news magazine of the Royal Pharmaceutical Society, not a research journal"
+ }
+]

@@ -1,0 +1,5161 @@
+{
+ "runId": "dept-coverage-2026-10-29-caca7d79",
+ "executed": {
+  "canary": "2026-10-29T05:11:53.786Z",
+  "remainder": [
+   "2026-10-29T05:13:59.235Z",
+   "2026-10-29T05:14:50.353Z",
+   "2026-10-29T05:15:33.559Z"
+  ]
+ },
+ "frozenManifest": {
+  "file": "manifest-frozen.json",
+  "sha256": "1367102e830a9b6b82e3d88f1fe5226da0fcbd08234ed592f890dd12bb9d07c4",
+  "candidates": 231
+ },
+ "planChecksums": {
+  "plan-canary.json": "fdb79d59b2b3d0a9e0d5e4d2add1d73e768fba7f56760ca455c41294393a9b65",
+  "plan-rest.json": "479633df5cc19b9ca139dec4c4f79a5a6528812d101644ad278373392ea2814a",
+  "hand-holds.json": "f7fa08076a8d92d6a6c12989819285ff1fa3eb9285f93653598a96b7760d078c"
+ },
+ "code": {
+  "frozenAtCommit": "45db9d9d05596874bfabe1b1603967810aaa37f9",
+  "headWhenAssembled": "3d5c2b19bc170cf6d81d7c95949e4fba399c5c01",
+  "fileSha256": {
+   "src/lib/ingestion/officialListDepartment.ts": "dad804837a9bd866f2a1215d66876f3460b05151b6a4663d1c123b0e6fb38817",
+   "src/lib/ingestion/titleTopicDepartment.ts": "ba48267b166a946575dbcb8883e51f5b8152ab332e6bf1e6d97bd4683465c4b0",
+   "src/lib/ingestion/openAlexDepartments.ts": "203409592bc7d4f4b64f794d0b6a364f02a6bdb07ea5d128b6e9fd0e986ed091",
+   "src/lib/ingestion/nlmJournalDepartment.ts": "66048aad1d0f8faac792721edd4a88e8ee81e6a7c31a601ec49138c2f3e02d81",
+   "src/lib/ingestion/journalSourceImport.ts": "af6f6e923bf2dd3619d6b0981d83d7b70863551769675e989c2b857125a401b7",
+   "scripts/journal-source-apply.cjs": "24fb2d34fc5c8931725e053a6491abf7090cc291915aebff3c60dc77b32c1e78",
+   "scripts/dept-coverage/verify-prod.cjs": "a7ba81b582ba88910dcfa1d9e4a2f20245f3d6d2799810218d867f0d6795d48f",
+   "scripts/dept-coverage/stage1.py": "66d4ab64ae513b82f9ec3e8f42837ec2da812c6df77d90866b93d7b5ca04e1ec",
+   "scripts/dept-coverage/stage2.py": "fbe1a604241419a09d6008231c649ac2d52d7d7c138679fd682587570de82509",
+   "scripts/dept-coverage/freeze.py": "6d0232355015373a5a2f7d02628eb6a0933cef4fdbeb43ced119f149ba46ecda",
+   "scripts/dept-coverage/build_pool.py": "18d8da7d203df1ee8952924d75a8a3eec872c998f44fbfa20df10817102e54c5",
+   "scripts/dept-coverage/classify.ts": "f4282c6f0e05d27b18b2e43192842496c1217c030207a21f49dd3383bb158c52"
+  }
+ },
+ "canaryResult": {
+  "database": "postgres",
+  "runId": "dept-coverage-2026-10-29-caca7d79",
+  "source": "Multiple (per row basisSource)",
+  "dry": false,
+  "startedAt": "2026-10-29T05:11:53.786Z",
+  "requested": 25,
+  "inserted": 25,
+  "skippedIdentifierHeld": 0,
+  "skippedTitleHeld": 0,
+  "skippedRace": 0,
+  "failed": 0,
+  "firstError": null,
+  "batches": 1,
+  "finishedAt": "2026-10-29T05:11:53.976Z"
+ },
+ "restResults": [
+  {
+   "database": "postgres",
+   "runId": "dept-coverage-2026-10-29-caca7d79",
+   "source": "Multiple (per row basisSource)",
+   "dry": false,
+   "startedAt": "2026-10-29T05:13:59.235Z",
+   "requested": 100,
+   "inserted": 100,
+   "skippedIdentifierHeld": 0,
+   "skippedTitleHeld": 0,
+   "skippedRace": 0,
+   "failed": 0,
+   "firstError": null,
+   "batches": 1,
+   "finishedAt": "2026-10-29T05:13:59.752Z"
+  },
+  {
+   "database": "postgres",
+   "runId": "dept-coverage-2026-10-29-caca7d79",
+   "source": "Multiple (per row basisSource)",
+   "dry": false,
+   "startedAt": "2026-10-29T05:14:50.353Z",
+   "requested": 100,
+   "inserted": 100,
+   "skippedIdentifierHeld": 0,
+   "skippedTitleHeld": 0,
+   "skippedRace": 0,
+   "failed": 0,
+   "firstError": null,
+   "batches": 1,
+   "finishedAt": "2026-10-29T05:14:51.613Z"
+  },
+  {
+   "database": "postgres",
+   "runId": "dept-coverage-2026-10-29-caca7d79",
+   "source": "Multiple (per row basisSource)",
+   "dry": false,
+   "startedAt": "2026-10-29T05:15:33.559Z",
+   "requested": 6,
+   "inserted": 6,
+   "skippedIdentifierHeld": 0,
+   "skippedTitleHeld": 0,
+   "skippedRace": 0,
+   "failed": 0,
+   "firstError": null,
+   "batches": 1,
+   "finishedAt": "2026-10-29T05:15:33.697Z"
+  }
+ ],
+ "verifyBefore": {
+  "at": "2026-10-29T05:11:26.299Z",
+  "db": "postgres",
+  "status": {
+   "NeedsReview": 25607,
+   "MetadataOnly": 16129,
+   "Accepted": 12840
+  },
+  "total": 54576,
+  "departments": {
+   "Chemical Engineering": {
+    "total": 238,
+    "public": 104,
+    "publicWithPublishedArticles": 66,
+    "needsReview": 134
+   },
+   "Engineering": {
+    "total": 9,
+    "public": 9,
+    "publicWithPublishedArticles": 9,
+    "needsReview": 0
+   },
+   "Architecture": {
+    "total": 357,
+    "public": 154,
+    "publicWithPublishedArticles": 68,
+    "needsReview": 203
+   },
+   "Applied Mechanics": {
+    "total": 294,
+    "public": 81,
+    "publicWithPublishedArticles": 3,
+    "needsReview": 213
+   },
+   "Electronics & Telecommunication Engineering": {
+    "total": 422,
+    "public": 130,
+    "publicWithPublishedArticles": 51,
+    "needsReview": 292
+   },
+   "Electrical Engineering": {
+    "total": 522,
+    "public": 307,
+    "publicWithPublishedArticles": 153,
+    "needsReview": 215
+   },
+   "Nano Technology": {
+    "total": 290,
+    "public": 152,
+    "publicWithPublishedArticles": 66,
+    "needsReview": 138
+   },
+   "Ayurveda": {
+    "total": 369,
+    "public": 257,
+    "publicWithPublishedArticles": 44,
+    "needsReview": 112
+   },
+   "Mechanical Engineering": {
+    "total": 652,
+    "public": 431,
+    "publicWithPublishedArticles": 100,
+    "needsReview": 221
+   },
+   "Bio Technology": {
+    "total": 754,
+    "public": 419,
+    "publicWithPublishedArticles": 272,
+    "needsReview": 335
+   },
+   "Pharmacy": {
+    "total": 595,
+    "public": 295,
+    "publicWithPublishedArticles": 136,
+    "needsReview": 300
+   },
+   "Physiotherapy": {
+    "total": 388,
+    "public": 314,
+    "publicWithPublishedArticles": 25,
+    "needsReview": 74
+   }
+  },
+  "existingRowsHash": {
+   "rows": 54576,
+   "sha256": "6adecc05297a57ce9af4b9e44c8e840e41d59117dcee754b617b66876f868d1c"
+  }
+ },
+ "canaryVerification": {
+  "at": "2026-10-29T05:12:08.920Z",
+  "db": "postgres",
+  "status": {
+   "NeedsReview": 25607,
+   "MetadataOnly": 16154,
+   "Accepted": 12840
+  },
+  "total": 54601,
+  "departments": {
+   "Chemical Engineering": {
+    "total": 239,
+    "public": 105,
+    "publicWithPublishedArticles": 66,
+    "needsReview": 134
+   },
+   "Engineering": {
+    "total": 9,
+    "public": 9,
+    "publicWithPublishedArticles": 9,
+    "needsReview": 0
+   },
+   "Architecture": {
+    "total": 359,
+    "public": 156,
+    "publicWithPublishedArticles": 68,
+    "needsReview": 203
+   },
+   "Applied Mechanics": {
+    "total": 296,
+    "public": 83,
+    "publicWithPublishedArticles": 3,
+    "needsReview": 213
+   },
+   "Electronics & Telecommunication Engineering": {
+    "total": 425,
+    "public": 133,
+    "publicWithPublishedArticles": 51,
+    "needsReview": 292
+   },
+   "Electrical Engineering": {
+    "total": 524,
+    "public": 309,
+    "publicWithPublishedArticles": 153,
+    "needsReview": 215
+   },
+   "Nano Technology": {
+    "total": 292,
+    "public": 154,
+    "publicWithPublishedArticles": 66,
+    "needsReview": 138
+   },
+   "Ayurveda": {
+    "total": 372,
+    "public": 260,
+    "publicWithPublishedArticles": 44,
+    "needsReview": 112
+   },
+   "Mechanical Engineering": {
+    "total": 655,
+    "public": 434,
+    "publicWithPublishedArticles": 100,
+    "needsReview": 221
+   },
+   "Bio Technology": {
+    "total": 756,
+    "public": 421,
+    "publicWithPublishedArticles": 272,
+    "needsReview": 335
+   },
+   "Pharmacy": {
+    "total": 598,
+    "public": 298,
+    "publicWithPublishedArticles": 136,
+    "needsReview": 300
+   },
+   "Physiotherapy": {
+    "total": 390,
+    "public": 316,
+    "publicWithPublishedArticles": 25,
+    "needsReview": 74
+   }
+  },
+  "existingRowsHash": {
+   "rows": 54576,
+   "sha256": "6adecc05297a57ce9af4b9e44c8e840e41d59117dcee754b617b66876f868d1c"
+  },
+  "inserted": {
+   "requested": 25,
+   "found": 25,
+   "fieldProblems": [],
+   "byDepartment": {
+    "Nano Technology": 2,
+    "Electronics & Telecommunication Engineering": 3,
+    "Bio Technology": 2,
+    "Mechanical Engineering": 3,
+    "Physiotherapy": 2,
+    "Ayurveda": 3,
+    "Pharmacy": 3,
+    "Electrical Engineering": 2,
+    "Applied Mechanics": 2,
+    "Chemical Engineering": 1,
+    "Architecture": 2
+   },
+   "identifierCollisions": [],
+   "sameTitleRows": [],
+   "articlesAttached": 0,
+   "createdWindow": {
+    "a": "2026-10-29T05:11:53.874Z",
+    "b": "2026-10-29T05:11:53.950Z"
+   }
+  },
+  "auditRows": [
+   {
+    "id": "fa79ec57-62aa-4b32-bfea-8fbaa58e9cc6",
+    "at": "2026-10-29T05:11:53.961Z",
+    "action": "JOURNAL_SOURCE_IMPORT",
+    "batch": "1",
+    "n": 25
+   }
+  ]
+ },
+ "finalVerification": {
+  "at": "2026-10-29T05:19:31.595Z",
+  "db": "postgres",
+  "status": {
+   "NeedsReview": 25607,
+   "MetadataOnly": 16360,
+   "Accepted": 12840
+  },
+  "total": 54807,
+  "departments": {
+   "Chemical Engineering": {
+    "total": 239,
+    "public": 105,
+    "publicWithPublishedArticles": 66,
+    "needsReview": 134
+   },
+   "Engineering": {
+    "total": 9,
+    "public": 9,
+    "publicWithPublishedArticles": 9,
+    "needsReview": 0
+   },
+   "Architecture": {
+    "total": 359,
+    "public": 156,
+    "publicWithPublishedArticles": 68,
+    "needsReview": 203
+   },
+   "Applied Mechanics": {
+    "total": 297,
+    "public": 84,
+    "publicWithPublishedArticles": 3,
+    "needsReview": 213
+   },
+   "Electronics & Telecommunication Engineering": {
+    "total": 462,
+    "public": 170,
+    "publicWithPublishedArticles": 51,
+    "needsReview": 292
+   },
+   "Electrical Engineering": {
+    "total": 539,
+    "public": 324,
+    "publicWithPublishedArticles": 153,
+    "needsReview": 215
+   },
+   "Nano Technology": {
+    "total": 303,
+    "public": 165,
+    "publicWithPublishedArticles": 66,
+    "needsReview": 138
+   },
+   "Ayurveda": {
+    "total": 387,
+    "public": 275,
+    "publicWithPublishedArticles": 44,
+    "needsReview": 112
+   },
+   "Mechanical Engineering": {
+    "total": 705,
+    "public": 484,
+    "publicWithPublishedArticles": 100,
+    "needsReview": 221
+   },
+   "Bio Technology": {
+    "total": 764,
+    "public": 429,
+    "publicWithPublishedArticles": 272,
+    "needsReview": 335
+   },
+   "Pharmacy": {
+    "total": 665,
+    "public": 365,
+    "publicWithPublishedArticles": 136,
+    "needsReview": 300
+   },
+   "Physiotherapy": {
+    "total": 392,
+    "public": 318,
+    "publicWithPublishedArticles": 25,
+    "needsReview": 74
+   }
+  },
+  "existingRowsHash": {
+   "rows": 54576,
+   "sha256": "6adecc05297a57ce9af4b9e44c8e840e41d59117dcee754b617b66876f868d1c"
+  },
+  "inserted": {
+   "requested": 231,
+   "found": 231,
+   "fieldProblems": [],
+   "byDepartment": {
+    "Pharmacy": 70,
+    "Nano Technology": 13,
+    "Ayurveda": 18,
+    "Mechanical Engineering": 53,
+    "Electronics & Telecommunication Engineering": 40,
+    "Electrical Engineering": 17,
+    "Bio Technology": 10,
+    "Applied Mechanics": 3,
+    "Physiotherapy": 4,
+    "Chemical Engineering": 1,
+    "Architecture": 2
+   },
+   "identifierCollisions": [],
+   "sameTitleRows": [],
+   "articlesAttached": 0,
+   "createdWindow": {
+    "a": "2026-10-29T05:11:53.874Z",
+    "b": "2026-10-29T05:15:33.686Z"
+   }
+  },
+  "auditRows": [
+   {
+    "id": "fa79ec57-62aa-4b32-bfea-8fbaa58e9cc6",
+    "at": "2026-10-29T05:11:53.961Z",
+    "action": "JOURNAL_SOURCE_IMPORT",
+    "batch": "1",
+    "n": 25
+   },
+   {
+    "id": "870458d1-03bc-46ef-973f-c38b059e4526",
+    "at": "2026-10-29T05:13:59.700Z",
+    "action": "JOURNAL_SOURCE_IMPORT",
+    "batch": "1",
+    "n": 100
+   },
+   {
+    "id": "71173ecd-d401-4c46-bfe0-d8294a123211",
+    "at": "2026-10-29T05:14:51.565Z",
+    "action": "JOURNAL_SOURCE_IMPORT",
+    "batch": "1",
+    "n": 100
+   },
+   {
+    "id": "c5442494-04db-4923-a2e4-ed38071a7820",
+    "at": "2026-10-29T05:15:33.691Z",
+    "action": "JOURNAL_SOURCE_IMPORT",
+    "batch": "1",
+    "n": 6
+   }
+  ],
+  "auditInserted": [
+   {
+    "batch": "1",
+    "id": "050facab-8155-4ddb-ac46-6faf16436efa",
+    "issn": "2688-1047",
+    "eissn": null,
+    "dept": "Nano Technology",
+    "sourceId": "OpenAlex:https://openalex.org/S7407056351|OpenAlex:https://openalex.org/S7407056351|OpenAlex:https://openalex.org/S7407056351|OpenAlex:https://openalex.org/S7407056351|OpenAlex:https://openalex.org/S7407056351"
+   },
+   {
+    "batch": "1",
+    "id": "1be8b63f-4db8-46bb-b20f-60a596270e13",
+    "issn": "2575-5951",
+    "eissn": "2575-596X",
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210198937|OpenAlex:https://openalex.org/S4210198937"
+   },
+   {
+    "batch": "1",
+    "id": "1cf20be2-a0c4-49fb-9166-daf87c5ba3f1",
+    "issn": "1024-2422",
+    "eissn": "1026-5503",
+    "dept": "Bio Technology",
+    "sourceId": "OpenAlex:https://openalex.org/S946611601|OpenAlex:https://openalex.org/S946611601|NLM Catalog:nlmcatalog:9602086"
+   },
+   {
+    "batch": "1",
+    "id": "20109b5a-538a-4aba-8986-7348fbf01f0f",
+    "issn": "2460-3988",
+    "eissn": "2581-0979",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210201226|OpenAlex:https://openalex.org/S4210201226|OpenAlex:https://openalex.org/S4210201226"
+   },
+   {
+    "batch": "1",
+    "id": "4632c1b8-ae12-4827-ad5d-65113ba60f54",
+    "issn": "1518-9740",
+    "eissn": "2526-9747",
+    "dept": "Physiotherapy",
+    "sourceId": "OpenAlex:https://openalex.org/S4210180064|OpenAlex:https://openalex.org/S4210180064|OpenAlex:https://openalex.org/S4210180064|NLM Catalog:nlmcatalog:101137551"
+   },
+   {
+    "batch": "1",
+    "id": "62cb0e51-86c2-4258-9603-22ac4c349f01",
+    "issn": "2456-3668",
+    "eissn": "2583-5661",
+    "dept": "Ayurveda",
+    "sourceId": "OpenAlex:https://openalex.org/S4306500771|OpenAlex:https://openalex.org/S4306500771|OpenAlex:https://openalex.org/S4306500771"
+   },
+   {
+    "batch": "1",
+    "id": "799c0673-596e-4c1f-bbaa-96f0b738d8ae",
+    "issn": "2710-4001",
+    "eissn": null,
+    "dept": "Nano Technology",
+    "sourceId": "OpenAlex:https://openalex.org/S5407023214|OpenAlex:https://openalex.org/S5407023214|OpenAlex:https://openalex.org/S5407023214"
+   },
+   {
+    "batch": "1",
+    "id": "7b92a1f7-3ffb-4bfd-af34-00c8c8fdf4de",
+    "issn": "2722-0796",
+    "eissn": "2722-080X",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210208226|OpenAlex:https://openalex.org/S4210208226"
+   },
+   {
+    "batch": "1",
+    "id": "7e462df9-4227-4d50-b765-d4b10aaebd99",
+    "issn": "0003-4509",
+    "eissn": "2772-803X",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S193932567|OpenAlex:https://openalex.org/S193932567|NLM Catalog:nlmcatalog:446043"
+   },
+   {
+    "batch": "1",
+    "id": "85f4525c-a481-460a-b9e5-43b8c6fdb5cb",
+    "issn": "0278-081X",
+    "eissn": "1531-5878",
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S20109229|OpenAlex:https://openalex.org/S20109229"
+   },
+   {
+    "batch": "1",
+    "id": "94e587f6-2c56-4c34-a6d5-61f4bfdbb406",
+    "issn": "2502-4922",
+    "eissn": "2615-0867",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210221227|OpenAlex:https://openalex.org/S4210221227|OpenAlex:https://openalex.org/S4210221227"
+   },
+   {
+    "batch": "1",
+    "id": "a8d00b16-fa5c-490d-ad7f-80a816e5a7d6",
+    "issn": "2218-3116",
+    "eissn": null,
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S5407053626"
+   },
+   {
+    "batch": "1",
+    "id": "abda433a-a584-4ab8-aa09-dbf3190788c3",
+    "issn": "1898-4088",
+    "eissn": "2300-5319",
+    "dept": "Applied Mechanics",
+    "sourceId": "OpenAlex:https://openalex.org/S2738513642|OpenAlex:https://openalex.org/S2738513642"
+   },
+   {
+    "batch": "1",
+    "id": "be199e5e-f8d8-488d-b61e-31506433b7ba",
+    "issn": "3070-2607",
+    "eissn": null,
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S5407055216|OpenAlex:https://openalex.org/S5407055216"
+   },
+   {
+    "batch": "1",
+    "id": "c56e24a3-2351-4ccd-94c3-09051801c9c1",
+    "issn": "1555-1415",
+    "eissn": "1555-1423",
+    "dept": "Applied Mechanics",
+    "sourceId": "OpenAlex:https://openalex.org/S73930687|OpenAlex:https://openalex.org/S73930687|Crossref member:member:33|Crossref member:member:33"
+   },
+   {
+    "batch": "1",
+    "id": "c5ff5f87-e34a-4cde-aa95-57a7869a13a9",
+    "issn": "0001-1541",
+    "eissn": "1547-5905",
+    "dept": "Chemical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S147177414|OpenAlex:https://openalex.org/S147177414|OpenAlex:https://openalex.org/S147177414|NLM Catalog:nlmcatalog:9879346"
+   },
+   {
+    "batch": "1",
+    "id": "cba78ab7-fb81-48fe-9f65-62d459ebe624",
+    "issn": "0974-6986",
+    "eissn": "0974-6994",
+    "dept": "Ayurveda",
+    "sourceId": "OpenAlex:https://openalex.org/S4210224779|OpenAlex:https://openalex.org/S4210224779|OpenAlex:https://openalex.org/S4210224779|OpenAlex:https://openalex.org/S4210224779"
+   },
+   {
+    "batch": "1",
+    "id": "cdb22a80-2ff3-4cca-9fb5-f01b73ba7eba",
+    "issn": "0041-0020",
+    "eissn": "1478-341X",
+    "dept": "Architecture",
+    "sourceId": "OpenAlex:https://openalex.org/S127305097|NLM Catalog:nlmcatalog:101085245"
+   },
+   {
+    "batch": "1",
+    "id": "d39991de-d9f7-4ead-851c-b9ecc47b6e19",
+    "issn": "1307-2080",
+    "eissn": "2636-8552",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S4210233185|OpenAlex:https://openalex.org/S4210233185|OpenAlex:https://openalex.org/S4210233185|OpenAlex:https://openalex.org/S4210233185"
+   },
+   {
+    "batch": "1",
+    "id": "d76918a0-1f58-483a-8770-c9d1215066bc",
+    "issn": "2190-572X",
+    "eissn": "2190-5738",
+    "dept": "Bio Technology",
+    "sourceId": "OpenAlex:https://openalex.org/S4210190239|OpenAlex:https://openalex.org/S4210190239|NLM Catalog:nlmcatalog:101565857"
+   },
+   {
+    "batch": "1",
+    "id": "d89a82ce-7d8c-4aad-a9f7-adde61389d58",
+    "issn": "2435-6891",
+    "eissn": null,
+    "dept": "Architecture",
+    "sourceId": "OpenAlex:https://openalex.org/S7407057331|OpenAlex:https://openalex.org/S7407057331"
+   },
+   {
+    "batch": "1",
+    "id": "d89c0d22-ec7d-4bb3-b51f-126a6130bec9",
+    "issn": "3048-9822",
+    "eissn": null,
+    "dept": "Ayurveda",
+    "sourceId": "OpenAlex:https://openalex.org/S5407047186|OpenAlex:https://openalex.org/S5407047186|OpenAlex:https://openalex.org/S5407047186"
+   },
+   {
+    "batch": "1",
+    "id": "ef3552c3-ff6e-4b42-b36c-ab7d07ceba05",
+    "issn": "0211-5638",
+    "eissn": "1578-2107",
+    "dept": "Physiotherapy",
+    "sourceId": "OpenAlex:https://openalex.org/S79831086|OpenAlex:https://openalex.org/S79831086|OpenAlex:https://openalex.org/S79831086|NLM Catalog:nlmcatalog:9518003"
+   },
+   {
+    "batch": "1",
+    "id": "f8421132-6698-4477-9f1e-39a83c25e8ec",
+    "issn": "2411-4367",
+    "eissn": "2411-4375",
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210178219|OpenAlex:https://openalex.org/S4210178219"
+   },
+   {
+    "batch": "1",
+    "id": "fffb72d2-3c40-4dd7-94d0-a9346510ac3e",
+    "issn": "2689-0259",
+    "eissn": null,
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S7407056560"
+   },
+   {
+    "batch": "1",
+    "id": "0109842d-ed9d-478a-966c-4fcd63780a1b",
+    "issn": "0301-4606",
+    "eissn": "2408-8463",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S2764489654|OpenAlex:https://openalex.org/S2764489654|OpenAlex:https://openalex.org/S2764489654|NLM Catalog:nlmcatalog:402036"
+   },
+   {
+    "batch": "1",
+    "id": "017bf59d-41ba-4389-b668-0bf8a1583cef",
+    "issn": "2767-0171",
+    "eissn": null,
+    "dept": "Nano Technology",
+    "sourceId": "OpenAlex:https://openalex.org/S4210233527|OpenAlex:https://openalex.org/S4210233527|OpenAlex:https://openalex.org/S4210233527|OpenAlex:https://openalex.org/S4210233527|OpenAlex:https://openalex.org/S4210233527|OpenAlex:https://openalex.org/S4210233527|OpenAlex:https://openalex.org/S4210233527"
+   },
+   {
+    "batch": "1",
+    "id": "031e3b62-a901-45e9-a5b6-d681841fd304",
+    "issn": "2347-6362",
+    "eissn": null,
+    "dept": "Ayurveda",
+    "sourceId": "OpenAlex:https://openalex.org/S4404662304|OpenAlex:https://openalex.org/S4404662304|OpenAlex:https://openalex.org/S4404662304|OpenAlex:https://openalex.org/S4404662304|OpenAlex:https://openalex.org/S4404662304"
+   },
+   {
+    "batch": "1",
+    "id": "062cec18-6888-4335-89b6-b6036b055774",
+    "issn": "1536-1225",
+    "eissn": "1548-5757",
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S189798733|OpenAlex:https://openalex.org/S189798733|Crossref member:member:263"
+   },
+   {
+    "batch": "1",
+    "id": "06a44ca0-5b84-4321-a9a3-32f1a2838285",
+    "issn": "2287-5417",
+    "eissn": "2799-6182",
+    "dept": "Ayurveda",
+    "sourceId": "OpenAlex:https://openalex.org/S4210191146|OpenAlex:https://openalex.org/S4210191146|OpenAlex:https://openalex.org/S4210191146"
+   },
+   {
+    "batch": "1",
+    "id": "06e3bf4c-bc6b-48ce-ad9b-75a634187c5f",
+    "issn": "2809-9397",
+    "eissn": null,
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S5407033705|OpenAlex:https://openalex.org/S5407033705|OpenAlex:https://openalex.org/S5407033705"
+   },
+   {
+    "batch": "1",
+    "id": "079dec24-d359-4f36-b3ed-5b1cbf60edb1",
+    "issn": "2583-2018",
+    "eissn": null,
+    "dept": "Ayurveda",
+    "sourceId": "OpenAlex:https://openalex.org/S5407010272|OpenAlex:https://openalex.org/S5407010272|OpenAlex:https://openalex.org/S5407010272|OpenAlex:https://openalex.org/S5407010272|OpenAlex:https://openalex.org/S5407010272"
+   },
+   {
+    "batch": "1",
+    "id": "0ab70837-ed11-4e23-902e-af3cd6d2b728",
+    "issn": "3109-9939",
+    "eissn": null,
+    "dept": "Nano Technology",
+    "sourceId": "OpenAlex:https://openalex.org/S5407052974|OpenAlex:https://openalex.org/S5407052974|OpenAlex:https://openalex.org/S5407052974|OpenAlex:https://openalex.org/S5407052974|OpenAlex:https://openalex.org/S5407052974"
+   },
+   {
+    "batch": "1",
+    "id": "0ae852db-d7a1-4eb9-a6d2-9de48b2a2d1d",
+    "issn": "3108-2297",
+    "eissn": null,
+    "dept": "Ayurveda",
+    "sourceId": "OpenAlex:https://openalex.org/S7407062570|OpenAlex:https://openalex.org/S7407062570|OpenAlex:https://openalex.org/S7407062570"
+   },
+   {
+    "batch": "1",
+    "id": "0df5e22a-4979-4729-b1e7-d16d847c46a3",
+    "issn": "2581-947X",
+    "eissn": null,
+    "dept": "Ayurveda",
+    "sourceId": "OpenAlex:https://openalex.org/S4210224362|OpenAlex:https://openalex.org/S4210224362"
+   },
+   {
+    "batch": "1",
+    "id": "0e165603-9ff9-4a4f-8569-f2e9bb4fa444",
+    "issn": "2332-7782",
+    "eissn": "2372-2088",
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4306422867|OpenAlex:https://openalex.org/S4306422867|Crossref member:member:263"
+   },
+   {
+    "batch": "1",
+    "id": "10029ea5-8d25-4423-bec5-e48d9b539529",
+    "issn": "0018-9456",
+    "eissn": "1557-9662",
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S10892749|OpenAlex:https://openalex.org/S10892749|Crossref member:member:263"
+   },
+   {
+    "batch": "1",
+    "id": "13296bc2-8986-4357-a585-2a3a8c19a7e1",
+    "issn": "2234-9871",
+    "eissn": "2235-8129",
+    "dept": "Nano Technology",
+    "sourceId": "OpenAlex:https://openalex.org/S4210222556|OpenAlex:https://openalex.org/S4210222556|OpenAlex:https://openalex.org/S4210222556|OpenAlex:https://openalex.org/S4210222556"
+   },
+   {
+    "batch": "1",
+    "id": "13a473c5-ce06-4030-9f1a-21e0df7666e7",
+    "issn": "0018-9545",
+    "eissn": "1939-9359",
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S10936095|OpenAlex:https://openalex.org/S10936095|Crossref member:member:263"
+   },
+   {
+    "batch": "1",
+    "id": "16fd8d87-1065-41fc-9a2f-7a81b8892597",
+    "issn": "2231-2331",
+    "eissn": "2231-234X",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S4210195007|OpenAlex:https://openalex.org/S4210195007|OpenAlex:https://openalex.org/S4210195007"
+   },
+   {
+    "batch": "1",
+    "id": "1a39e409-e309-4af2-ad7c-61e5551f1635",
+    "issn": "3066-2494",
+    "eissn": null,
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S5407048732|OpenAlex:https://openalex.org/S5407048732|Crossref member:member:263"
+   },
+   {
+    "batch": "1",
+    "id": "1b08a385-6a1c-49ec-a41f-60b95db990f5",
+    "issn": "2320-7329",
+    "eissn": null,
+    "dept": "Ayurveda",
+    "sourceId": "OpenAlex:https://openalex.org/S4210170823|OpenAlex:https://openalex.org/S4210170823|OpenAlex:https://openalex.org/S4210170823|OpenAlex:https://openalex.org/S4210170823|OpenAlex:https://openalex.org/S4210170823"
+   },
+   {
+    "batch": "1",
+    "id": "1d61df15-ac8c-489e-95f8-2b2352836a8f",
+    "issn": "1816-1820",
+    "eissn": "1816-1839",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S195682263|OpenAlex:https://openalex.org/S195682263|OpenAlex:https://openalex.org/S195682263|NLM Catalog:nlmcatalog:101262443"
+   },
+   {
+    "batch": "1",
+    "id": "1dc0cd1a-4174-436c-a78c-1ecfd1a0079e",
+    "issn": "0739-3717",
+    "eissn": "1048-9002",
+    "dept": "Applied Mechanics",
+    "sourceId": "OpenAlex:https://openalex.org/S31534900|OpenAlex:https://openalex.org/S31534900"
+   },
+   {
+    "batch": "1",
+    "id": "1f3a60cf-e5b0-446d-a130-f19e6d1d6aeb",
+    "issn": "3124-9434",
+    "eissn": null,
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S7407063589|OpenAlex:https://openalex.org/S7407063589"
+   },
+   {
+    "batch": "1",
+    "id": "20f4b99f-0e99-47c2-bc6c-80bf9bd97b54",
+    "issn": "2637-6423",
+    "eissn": null,
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210205027|OpenAlex:https://openalex.org/S4210205027|Crossref member:member:263"
+   },
+   {
+    "batch": "1",
+    "id": "2114d3d0-7ec6-44b5-8a62-5d0022d5768a",
+    "issn": "1932-6254",
+    "eissn": "1932-7005",
+    "dept": "Bio Technology",
+    "sourceId": "OpenAlex:https://openalex.org/S68700368|NLM Catalog:nlmcatalog:101308490"
+   },
+   {
+    "batch": "1",
+    "id": "21eb7e75-a420-46d5-b494-0502a39ee18a",
+    "issn": "2161-8763",
+    "eissn": "2161-8771",
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210193291"
+   },
+   {
+    "batch": "1",
+    "id": "23ecb434-11ea-4ebd-8e96-e70538c597c8",
+    "issn": "2582-8029",
+    "eissn": null,
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210171935|OpenAlex:https://openalex.org/S4210171935"
+   },
+   {
+    "batch": "1",
+    "id": "2a556629-6d6e-4099-a4f7-4be4ee11c69b",
+    "issn": "2528-6382",
+    "eissn": "2541-3562",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210182293|OpenAlex:https://openalex.org/S4210182293"
+   },
+   {
+    "batch": "1",
+    "id": "2c97e3bf-6cae-4d58-a5b0-2c3a08c4277d",
+    "issn": "1753-1039",
+    "eissn": "1753-1047",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S171861169|OpenAlex:https://openalex.org/S171861169"
+   },
+   {
+    "batch": "1",
+    "id": "2ce3f3cc-64cd-449f-9126-0f184fdf5e56",
+    "issn": "0018-9316",
+    "eissn": "1557-9611",
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S100142436|OpenAlex:https://openalex.org/S100142436|Crossref member:member:263"
+   },
+   {
+    "batch": "1",
+    "id": "2d56d363-a850-466e-b411-32c41684fd33",
+    "issn": "1134-7198",
+    "eissn": "2605-1230",
+    "dept": "Bio Technology",
+    "sourceId": "OpenAlex:https://openalex.org/S4306526653|NLM Catalog:nlmcatalog:101558644"
+   },
+   {
+    "batch": "1",
+    "id": "307bb200-5327-4caf-924b-d2c6e5e5f5f1",
+    "issn": "0018-9464",
+    "eissn": "1941-0069",
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S50523690|OpenAlex:https://openalex.org/S50523690|Crossref member:member:263"
+   },
+   {
+    "batch": "1",
+    "id": "3130d619-b6ff-403d-b19b-ddef2c977f79",
+    "issn": "0741-3106",
+    "eissn": "1558-0563",
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S19887683|OpenAlex:https://openalex.org/S19887683|Crossref member:member:263"
+   },
+   {
+    "batch": "1",
+    "id": "32417070-00b6-4c64-8235-fb2f966e7635",
+    "issn": "2602-439X",
+    "eissn": null,
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4220651408"
+   },
+   {
+    "batch": "1",
+    "id": "34819871-766a-4d35-8756-39ff170c31d5",
+    "issn": "1937-3368",
+    "eissn": "1937-3376",
+    "dept": "Bio Technology",
+    "sourceId": "OpenAlex:https://openalex.org/S13647896|NLM Catalog:nlmcatalog:101466660"
+   },
+   {
+    "batch": "1",
+    "id": "3850a634-3dd0-4ebe-9cb3-f0ddc5fc17e0",
+    "issn": "1937-3384",
+    "eissn": "1937-3392",
+    "dept": "Bio Technology",
+    "sourceId": "OpenAlex:https://openalex.org/S190192123|NLM Catalog:nlmcatalog:101466663"
+   },
+   {
+    "batch": "1",
+    "id": "3c3fedc4-f435-4f29-bee7-0206651209a0",
+    "issn": "2621-556X",
+    "eissn": null,
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210184974|OpenAlex:https://openalex.org/S4210184974"
+   },
+   {
+    "batch": "1",
+    "id": "482a0214-6453-4b3a-bf99-c5c322fa69ba",
+    "issn": "2088-088X",
+    "eissn": "2502-1729",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210170303|OpenAlex:https://openalex.org/S4210170303"
+   },
+   {
+    "batch": "1",
+    "id": "4d6df12b-aca0-4a89-91a1-cc8c3bb21028",
+    "issn": "2469-7281",
+    "eissn": "2469-729X",
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210234470|OpenAlex:https://openalex.org/S4210234470|OpenAlex:https://openalex.org/S4210234470|Crossref member:member:263"
+   },
+   {
+    "batch": "1",
+    "id": "544d1d6b-6130-4903-8803-28a645e46051",
+    "issn": "0194-2638",
+    "eissn": "1541-3144",
+    "dept": "Physiotherapy",
+    "sourceId": "OpenAlex:https://openalex.org/S102185553|NLM Catalog:nlmcatalog:8109120"
+   },
+   {
+    "batch": "1",
+    "id": "55ae8586-d59f-41ec-8ea5-48448a9cc41d",
+    "issn": "1949-307X",
+    "eissn": "1949-3088",
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S115902931|OpenAlex:https://openalex.org/S115902931|Crossref member:member:263"
+   },
+   {
+    "batch": "1",
+    "id": "56b9e6ae-31e4-48fd-9bff-2ac3729e0ca9",
+    "issn": "2052-2002",
+    "eissn": "2052-2010",
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210224015"
+   },
+   {
+    "batch": "1",
+    "id": "5a462e0e-455f-41b1-8df4-372ca3ef36a3",
+    "issn": "3066-5736",
+    "eissn": null,
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S5407048801|OpenAlex:https://openalex.org/S5407048801|Crossref member:member:263"
+   },
+   {
+    "batch": "1",
+    "id": "5e32dc99-82f7-4efa-89c7-fb566f2b264d",
+    "issn": "2156-3381",
+    "eissn": "2156-3403",
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S137728576|OpenAlex:https://openalex.org/S137728576|Crossref member:member:263"
+   },
+   {
+    "batch": "1",
+    "id": "62ac4a1e-a1a0-4496-83e6-6079a582ca87",
+    "issn": "0278-0070",
+    "eissn": "1937-4151",
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S100835903|Crossref member:member:263"
+   },
+   {
+    "batch": "1",
+    "id": "62d05bc9-0739-4064-b461-a22eb65eff77",
+    "issn": "2720-9520",
+    "eissn": "2354-8584",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4387288635|OpenAlex:https://openalex.org/S4387288635|OpenAlex:https://openalex.org/S4387288635"
+   },
+   {
+    "batch": "1",
+    "id": "6642ae3b-ca66-44c6-9b96-e22b75d03a23",
+    "issn": "1389-2002",
+    "eissn": "1875-5453",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S195680726|OpenAlex:https://openalex.org/S195680726|OpenAlex:https://openalex.org/S195680726"
+   },
+   {
+    "batch": "1",
+    "id": "674c314d-f65f-4b0c-8cde-3b1afd96c84e",
+    "issn": "2469-7249",
+    "eissn": "2469-7257",
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210194209|OpenAlex:https://openalex.org/S4210194209|OpenAlex:https://openalex.org/S4210194209|Crossref member:member:263"
+   },
+   {
+    "batch": "1",
+    "id": "684e2ae7-f447-46fd-81bf-6158688952b9",
+    "issn": "0014-8237",
+    "eissn": "2065-0019",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S77753237|OpenAlex:https://openalex.org/S77753237|OpenAlex:https://openalex.org/S77753237|NLM Catalog:nlmcatalog:9427240"
+   },
+   {
+    "batch": "1",
+    "id": "69c93dce-fa96-4fb5-b5bd-4949db1c0aa8",
+    "issn": "0733-8716",
+    "eissn": "1558-0008",
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S90422530|OpenAlex:https://openalex.org/S90422530|Crossref member:member:263"
+   },
+   {
+    "batch": "1",
+    "id": "6b0ca3eb-b566-4e1b-8779-6f8a82b00d48",
+    "issn": "0018-9375",
+    "eissn": "1558-187X",
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S163644703|OpenAlex:https://openalex.org/S163644703|Crossref member:member:263"
+   },
+   {
+    "batch": "1",
+    "id": "6cb3849d-8daf-4632-9dda-a15cb6a25d9e",
+    "issn": "2320-5091",
+    "eissn": null,
+    "dept": "Ayurveda",
+    "sourceId": "OpenAlex:https://openalex.org/S4210240564|OpenAlex:https://openalex.org/S4210240564|OpenAlex:https://openalex.org/S4210240564|OpenAlex:https://openalex.org/S4210240564"
+   },
+   {
+    "batch": "1",
+    "id": "6ce9937f-b1cb-4d02-8eeb-af3612c9164a",
+    "issn": "0093-3813",
+    "eissn": "1939-9375",
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S164692974|OpenAlex:https://openalex.org/S164692974|OpenAlex:https://openalex.org/S164692974|Crossref member:member:263"
+   },
+   {
+    "batch": "1",
+    "id": "70c55d3d-8896-4a99-a811-d0f0afc819f8",
+    "issn": "2146-9067",
+    "eissn": null,
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S2764913414|OpenAlex:https://openalex.org/S2764913414|OpenAlex:https://openalex.org/S2764913414"
+   },
+   {
+    "batch": "1",
+    "id": "7971dae6-eefc-4da5-b4de-4c9aafde2bcb",
+    "issn": "3078-7157",
+    "eissn": "3078-7165",
+    "dept": "Ayurveda",
+    "sourceId": "OpenAlex:https://openalex.org/S5407049233|OpenAlex:https://openalex.org/S5407049233|OpenAlex:https://openalex.org/S5407049233|OpenAlex:https://openalex.org/S5407049233"
+   },
+   {
+    "batch": "1",
+    "id": "7bd45b49-db8a-47e7-a05c-fbc0283d7bc5",
+    "issn": "2352-507X",
+    "eissn": "2352-5088",
+    "dept": "Nano Technology",
+    "sourceId": "OpenAlex:https://openalex.org/S2764574320|OpenAlex:https://openalex.org/S2764574320|OpenAlex:https://openalex.org/S2764574320"
+   },
+   {
+    "batch": "1",
+    "id": "7d9f814a-0d20-47d3-bbe9-f58be894df45",
+    "issn": "3089-5022",
+    "eissn": "3089-5170",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S5407049883|OpenAlex:https://openalex.org/S5407049883|OpenAlex:https://openalex.org/S5407049883"
+   },
+   {
+    "batch": "1",
+    "id": "7ee6a87b-8cfd-470a-a132-2ab7d0db4850",
+    "issn": "2515-0464",
+    "eissn": "2515-0472",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210207026|OpenAlex:https://openalex.org/S4210207026|OpenAlex:https://openalex.org/S4210207026"
+   },
+   {
+    "batch": "1",
+    "id": "7fe468dc-482c-4d1b-ab46-8bf9315a9a22",
+    "issn": "2962-4290",
+    "eissn": null,
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4387285944|OpenAlex:https://openalex.org/S4387285944|OpenAlex:https://openalex.org/S4387285944"
+   },
+   {
+    "batch": "1",
+    "id": "803b30c5-145f-4db1-bd78-4dcc3aa0bf0a",
+    "issn": "1347-4367",
+    "eissn": "1880-0920",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S185835163"
+   },
+   {
+    "batch": "1",
+    "id": "874cff73-56bd-4b6c-9898-39c542f154f3",
+    "issn": "2399-1984",
+    "eissn": null,
+    "dept": "Nano Technology",
+    "sourceId": "OpenAlex:https://openalex.org/S4210169526|OpenAlex:https://openalex.org/S4210169526|OpenAlex:https://openalex.org/S4210169526"
+   },
+   {
+    "batch": "1",
+    "id": "8be6a197-8a47-4566-90a4-a5ce404bfa06",
+    "issn": "2816-573X",
+    "eissn": null,
+    "dept": "Nano Technology",
+    "sourceId": "OpenAlex:https://openalex.org/S4389157969|OpenAlex:https://openalex.org/S4389157969|OpenAlex:https://openalex.org/S4389157969|OpenAlex:https://openalex.org/S4389157969"
+   },
+   {
+    "batch": "1",
+    "id": "8e46ada3-1080-4a3d-8bf4-527d6e631db9",
+    "issn": "1531-2054",
+    "eissn": "2168-5835",
+    "dept": "Ayurveda",
+    "sourceId": "OpenAlex:https://openalex.org/S2764662227|OpenAlex:https://openalex.org/S2764662227|OpenAlex:https://openalex.org/S2764662227|OpenAlex:https://openalex.org/S2764662227|NLM Catalog:nlmcatalog:100965420"
+   },
+   {
+    "batch": "1",
+    "id": "8fda0e32-9c32-4689-bb8a-8385726a018a",
+    "issn": "1877-9123",
+    "eissn": "1877-9131",
+    "dept": "Nano Technology",
+    "sourceId": "OpenAlex:https://openalex.org/S4210236171|OpenAlex:https://openalex.org/S4210236171"
+   },
+   {
+    "batch": "1",
+    "id": "923288f2-6e8b-48ad-b656-de372705bedc",
+    "issn": "2578-8760",
+    "eissn": null,
+    "dept": "Nano Technology",
+    "sourceId": "OpenAlex:https://openalex.org/S4210231627|OpenAlex:https://openalex.org/S4210231627|OpenAlex:https://openalex.org/S4210231627|OpenAlex:https://openalex.org/S4210231627"
+   },
+   {
+    "batch": "1",
+    "id": "9a0f39a8-88bf-42ee-8e07-92e27b41f058",
+    "issn": "3117-4051",
+    "eissn": "3117-406X",
+    "dept": "Ayurveda",
+    "sourceId": "OpenAlex:https://openalex.org/S7407055898|OpenAlex:https://openalex.org/S7407055898|OpenAlex:https://openalex.org/S7407055898"
+   },
+   {
+    "batch": "1",
+    "id": "9ab384da-1c7b-4a9d-b768-58b2f5161dae",
+    "issn": "2096-6326",
+    "eissn": "2662-1738",
+    "dept": "Bio Technology",
+    "sourceId": "OpenAlex:https://openalex.org/S4210188184|NLM Catalog:nlmcatalog:381280"
+   },
+   {
+    "batch": "1",
+    "id": "9f7c79fe-d371-4e4f-9b00-02e18fac3b99",
+    "issn": "0973-8398",
+    "eissn": "1998-409X",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S66408587|OpenAlex:https://openalex.org/S66408587|OpenAlex:https://openalex.org/S66408587|NLM Catalog:nlmcatalog:101498921"
+   },
+   {
+    "batch": "1",
+    "id": "a20b6f21-42fa-4a47-b193-73f14ea16f3c",
+    "issn": "1753-2507",
+    "eissn": "1753-2515",
+    "dept": "Nano Technology",
+    "sourceId": "OpenAlex:https://openalex.org/S158809845|OpenAlex:https://openalex.org/S158809845|OpenAlex:https://openalex.org/S158809845"
+   },
+   {
+    "batch": "1",
+    "id": "a2ccaba3-162b-4c1f-bac9-d0a51bc3ba5f",
+    "issn": "2407-7852",
+    "eissn": "2597-7083",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210238169|OpenAlex:https://openalex.org/S4210238169"
+   },
+   {
+    "batch": "1",
+    "id": "aa27d613-b445-43bf-a7aa-f4e4cc3ca508",
+    "issn": "1742-5247",
+    "eissn": "1744-7593",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S51663496"
+   },
+   {
+    "batch": "1",
+    "id": "b6d60c50-f677-4ed8-8acd-d1f952460ba4",
+    "issn": "0913-5006",
+    "eissn": "1881-2732",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S69402063"
+   },
+   {
+    "batch": "1",
+    "id": "b79203b7-8117-4461-9fe1-de650a015463",
+    "issn": "2616-4485",
+    "eissn": "2616-4493",
+    "dept": "Ayurveda",
+    "sourceId": "OpenAlex:https://openalex.org/S4306513978|OpenAlex:https://openalex.org/S4306513978|OpenAlex:https://openalex.org/S4306513978"
+   },
+   {
+    "batch": "1",
+    "id": "bab49122-6464-4515-a031-0fdcd07859fb",
+    "issn": "2163-3983",
+    "eissn": "2163-3991",
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S2764539530|OpenAlex:https://openalex.org/S2764539530"
+   },
+   {
+    "batch": "1",
+    "id": "bf1c9e98-4aac-42a9-97f5-177e406d25ad",
+    "issn": "3117-3853",
+    "eissn": null,
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S5407053664|OpenAlex:https://openalex.org/S5407053664|OpenAlex:https://openalex.org/S5407053664"
+   },
+   {
+    "batch": "1",
+    "id": "c4423642-e96a-4496-a4ed-bf7f486c10f4",
+    "issn": "1932-4545",
+    "eissn": "1940-9990",
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S80299757|OpenAlex:https://openalex.org/S80299757|OpenAlex:https://openalex.org/S80299757|Crossref member:member:263|NLM Catalog:nlmcatalog:101312520"
+   },
+   {
+    "batch": "1",
+    "id": "c63342a3-03bd-4237-9fd8-d6c30458719b",
+    "issn": "1937-3341",
+    "eissn": "1937-335X",
+    "dept": "Bio Technology",
+    "sourceId": "OpenAlex:https://openalex.org/S19081469|NLM Catalog:nlmcatalog:101466659"
+   },
+   {
+    "batch": "1",
+    "id": "cae37467-e361-47ec-abd8-3c7233c689e7",
+    "issn": "2156-342X",
+    "eissn": "2156-3446",
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S202289667|OpenAlex:https://openalex.org/S202289667|Crossref member:member:263"
+   },
+   {
+    "batch": "1",
+    "id": "cb6cb6f1-2813-48f5-8263-2bc2aedbbdef",
+    "issn": "3107-4057",
+    "eissn": null,
+    "dept": "Ayurveda",
+    "sourceId": "OpenAlex:https://openalex.org/S5407050545|OpenAlex:https://openalex.org/S5407050545"
+   },
+   {
+    "batch": "1",
+    "id": "cd55d569-e5c4-4453-9319-3b4655268583",
+    "issn": "2194-9379",
+    "eissn": "2194-9387",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S4210226141|OpenAlex:https://openalex.org/S4210226141|OpenAlex:https://openalex.org/S4210226141"
+   },
+   {
+    "batch": "1",
+    "id": "cebac6a9-e9df-47bf-8ed4-32521df22702",
+    "issn": "0973-3507",
+    "eissn": null,
+    "dept": "Ayurveda",
+    "sourceId": "OpenAlex:https://openalex.org/S4210209715|OpenAlex:https://openalex.org/S4210209715"
+   },
+   {
+    "batch": "1",
+    "id": "d167645b-1ff4-451a-808f-4e30b7c48ecc",
+    "issn": "3029-2824",
+    "eissn": null,
+    "dept": "Nano Technology",
+    "sourceId": "OpenAlex:https://openalex.org/S5407045084|OpenAlex:https://openalex.org/S5407045084|OpenAlex:https://openalex.org/S5407045084|OpenAlex:https://openalex.org/S5407045084"
+   },
+   {
+    "batch": "1",
+    "id": "d51cb2a4-68d6-4d7a-8236-9fc71f559e7f",
+    "issn": "2996-6647",
+    "eissn": null,
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4404675360|Crossref member:member:263"
+   },
+   {
+    "batch": "1",
+    "id": "d8066a04-24fa-46e5-9ad9-733ac2544b75",
+    "issn": "2721-5377",
+    "eissn": "2721-7825",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210194947|OpenAlex:https://openalex.org/S4210194947|OpenAlex:https://openalex.org/S4210194947"
+   },
+   {
+    "batch": "1",
+    "id": "da0a2ea7-6948-4049-81c8-e80a9f65fc2b",
+    "issn": "2808-4306",
+    "eissn": "2829-2898",
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S5407033131|OpenAlex:https://openalex.org/S5407033131"
+   },
+   {
+    "batch": "1",
+    "id": "dc272dbd-4bd5-4cca-b3a3-c066441d32cd",
+    "issn": "3123-5425",
+    "eissn": null,
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S5407054971|OpenAlex:https://openalex.org/S5407054971"
+   },
+   {
+    "batch": "1",
+    "id": "dc67a304-16af-4b97-bbf6-27988b1b8e9d",
+    "issn": "1985-5133",
+    "eissn": "2180-1983",
+    "dept": "Bio Technology",
+    "sourceId": "OpenAlex:https://openalex.org/S4210238497|OpenAlex:https://openalex.org/S4210238497|NLM Catalog:nlmcatalog:101566057"
+   },
+   {
+    "batch": "1",
+    "id": "dd855de0-e6e2-450c-8966-20e985c06993",
+    "issn": "1474-0338",
+    "eissn": "1744-764X",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S20709540|OpenAlex:https://openalex.org/S20709540"
+   },
+   {
+    "batch": "1",
+    "id": "ddabc55f-39f2-46bd-9da0-1e9c33d4eb1e",
+    "issn": "1064-2285",
+    "eissn": "2162-6561",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210198580|OpenAlex:https://openalex.org/S4210198580"
+   },
+   {
+    "batch": "1",
+    "id": "de9893be-16af-4189-a9bf-8654e465cf76",
+    "issn": "1051-8223",
+    "eissn": "1558-2515",
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S119074828|OpenAlex:https://openalex.org/S119074828|Crossref member:member:263"
+   },
+   {
+    "batch": "1",
+    "id": "df4d10dc-179c-4882-9a2c-e67d0c9c54b2",
+    "issn": "2768-1866",
+    "eissn": null,
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4387282875|OpenAlex:https://openalex.org/S4387282875|Crossref member:member:263"
+   },
+   {
+    "batch": "1",
+    "id": "e29ed750-3e3c-4a2c-86fe-fd30ee7ad2c3",
+    "issn": "0976-5921",
+    "eissn": null,
+    "dept": "Ayurveda",
+    "sourceId": "OpenAlex:https://openalex.org/S2764371585|OpenAlex:https://openalex.org/S2764371585|OpenAlex:https://openalex.org/S2764371585|OpenAlex:https://openalex.org/S2764371585"
+   },
+   {
+    "batch": "1",
+    "id": "e3505f4a-10b3-48cc-8f44-cf68e5811f6e",
+    "issn": "1672-2620",
+    "eissn": null,
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S2764921571|OpenAlex:https://openalex.org/S2764921571|OpenAlex:https://openalex.org/S2764921571"
+   },
+   {
+    "batch": "1",
+    "id": "e63718a0-a11b-40e4-8319-22162711e0b9",
+    "issn": "2320-4850",
+    "eissn": null,
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S4210218350|OpenAlex:https://openalex.org/S4210218350|OpenAlex:https://openalex.org/S4210218350"
+   },
+   {
+    "batch": "1",
+    "id": "e6d30af2-99c4-4b3d-82ad-e2ca4c09ffd3",
+    "issn": "2582-8622",
+    "eissn": null,
+    "dept": "Nano Technology",
+    "sourceId": "OpenAlex:https://openalex.org/S4210237033|OpenAlex:https://openalex.org/S4210237033"
+   },
+   {
+    "batch": "1",
+    "id": "ebba0583-8166-49f7-ae42-785426b13e43",
+    "issn": "1070-9878",
+    "eissn": "1558-4135",
+    "dept": "Electrical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S19003042|OpenAlex:https://openalex.org/S19003042|Crossref member:member:263"
+   },
+   {
+    "batch": "1",
+    "id": "eccd9181-9cdb-4d15-98c1-0b7c9b61b7fb",
+    "issn": "2578-4986",
+    "eissn": null,
+    "dept": "Ayurveda",
+    "sourceId": "OpenAlex:https://openalex.org/S4210227581|OpenAlex:https://openalex.org/S4210227581|OpenAlex:https://openalex.org/S4210227581"
+   },
+   {
+    "batch": "1",
+    "id": "edad79c7-a7ca-45b8-80f9-1a258f37869a",
+    "issn": "2151-8629",
+    "eissn": null,
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S194389430|OpenAlex:https://openalex.org/S194389430"
+   },
+   {
+    "batch": "1",
+    "id": "edf4249e-87a1-4425-b729-4c255aa15390",
+    "issn": "2250-1444",
+    "eissn": "2250-1460",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S2765029502|OpenAlex:https://openalex.org/S2765029502|OpenAlex:https://openalex.org/S2765029502"
+   },
+   {
+    "batch": "1",
+    "id": "f56ea683-34c9-491b-879f-58829b83ef0f",
+    "issn": "1224-5984",
+    "eissn": "2248-3942",
+    "dept": "Bio Technology",
+    "sourceId": "OpenAlex:https://openalex.org/S39127591|OpenAlex:https://openalex.org/S39127591|NLM Catalog:nlmcatalog:101537003"
+   },
+   {
+    "batch": "1",
+    "id": "f85ea7ce-7a1d-411e-ab56-d36205347766",
+    "issn": "0270-3181",
+    "eissn": "1541-3152",
+    "dept": "Physiotherapy",
+    "sourceId": "OpenAlex:https://openalex.org/S4335093|OpenAlex:https://openalex.org/S4335093|NLM Catalog:nlmcatalog:8102920"
+   },
+   {
+    "batch": "1",
+    "id": "f9973ba9-d954-4cc7-ac89-5b5a0acaea45",
+    "issn": "2385-409X",
+    "eissn": null,
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S2764767441|NLM Catalog:nlmcatalog:101658463"
+   },
+   {
+    "batch": "1",
+    "id": "ff3fecaa-ca16-4593-8f3b-4db33c1a338a",
+    "issn": "0009-9236",
+    "eissn": "1085-8733",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S159852663"
+   },
+   {
+    "batch": "1",
+    "id": "0213202a-2b74-4a56-8ac3-0f3b24f05269",
+    "issn": "2583-116X",
+    "eissn": null,
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S4220651961|OpenAlex:https://openalex.org/S4220651961|OpenAlex:https://openalex.org/S4220651961"
+   },
+   {
+    "batch": "1",
+    "id": "04d6925f-9eeb-427d-88ea-4e22176a0a69",
+    "issn": "1091-0344",
+    "eissn": "1532-2483",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S128799162|OpenAlex:https://openalex.org/S128799162"
+   },
+   {
+    "batch": "1",
+    "id": "059fd5f6-5b69-43d9-84a7-a13659598e86",
+    "issn": "1942-4302",
+    "eissn": "1942-4310",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S198805599|OpenAlex:https://openalex.org/S198805599|Crossref member:member:33"
+   },
+   {
+    "batch": "1",
+    "id": "09236da4-7725-4a13-9467-dc9c9a0b1e56",
+    "issn": "3029-1348",
+    "eissn": null,
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S5407045033"
+   },
+   {
+    "batch": "1",
+    "id": "0abc98dc-be36-484f-84b8-3f53d857d73f",
+    "issn": "3048-8842",
+    "eissn": null,
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S5407047157|OpenAlex:https://openalex.org/S5407047157|OpenAlex:https://openalex.org/S5407047157|OpenAlex:https://openalex.org/S5407047157"
+   },
+   {
+    "batch": "1",
+    "id": "0c6baede-fb97-41cd-aed1-a162ae06f4b9",
+    "issn": "0733-8724",
+    "eissn": "1558-2213",
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S2307745|OpenAlex:https://openalex.org/S2307745|Crossref member:member:263"
+   },
+   {
+    "batch": "1",
+    "id": "0d361ade-d651-42f1-9a34-47fd7fc777b6",
+    "issn": "0916-8516",
+    "eissn": "1745-1345",
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S2493627025|OpenAlex:https://openalex.org/S2493627025|Crossref member:member:263"
+   },
+   {
+    "batch": "1",
+    "id": "0e692d37-0d8a-4ee5-98b5-b2fd3b11eb06",
+    "issn": "0265-2048",
+    "eissn": "1464-5246",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S160681128|OpenAlex:https://openalex.org/S160681128|NLM Catalog:nlmcatalog:8500513"
+   },
+   {
+    "batch": "1",
+    "id": "0ec386b1-24a6-4cf4-9d30-79beed54e7f5",
+    "issn": "2708-4477",
+    "eissn": "2708-4485",
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4220651791|OpenAlex:https://openalex.org/S4220651791"
+   },
+   {
+    "batch": "1",
+    "id": "10325769-9a13-4131-95df-930358af7404",
+    "issn": "0291-1981",
+    "eissn": "1952-4064",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S4306515216|NLM Catalog:nlmcatalog:8709198"
+   },
+   {
+    "batch": "1",
+    "id": "164392c1-8c48-46d9-82e4-13ad22d489ee",
+    "issn": "2164-5450",
+    "eissn": "2164-5469",
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210210311|OpenAlex:https://openalex.org/S4210210311"
+   },
+   {
+    "batch": "1",
+    "id": "190c64b2-54e8-4d2c-8780-196657e0caa4",
+    "issn": "2996-8968",
+    "eissn": null,
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S7407056795|OpenAlex:https://openalex.org/S7407056795|OpenAlex:https://openalex.org/S7407056795"
+   },
+   {
+    "batch": "1",
+    "id": "19be35e5-0f2a-4c1e-b5d8-d80b14970c91",
+    "issn": "2320-4923",
+    "eissn": "2320-4931",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S4210175143|OpenAlex:https://openalex.org/S4210175143|OpenAlex:https://openalex.org/S4210175143|OpenAlex:https://openalex.org/S4210175143"
+   },
+   {
+    "batch": "1",
+    "id": "21b48145-5a86-48ca-8dae-ddb779b2bead",
+    "issn": "2630-533X",
+    "eissn": null,
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S4210202275|OpenAlex:https://openalex.org/S4210202275|OpenAlex:https://openalex.org/S4210202275"
+   },
+   {
+    "batch": "1",
+    "id": "226994d4-8d56-4e34-966a-fecbe9414abc",
+    "issn": "2597-4254",
+    "eissn": "2829-2855",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4393918877|OpenAlex:https://openalex.org/S4393918877"
+   },
+   {
+    "batch": "1",
+    "id": "231f47fa-cf9c-4ea9-a60d-53c8459f4779",
+    "issn": "3083-2845",
+    "eissn": null,
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S7407055932|OpenAlex:https://openalex.org/S7407055932|OpenAlex:https://openalex.org/S7407055932"
+   },
+   {
+    "batch": "1",
+    "id": "25e799aa-59ec-4fc0-980c-52fc695ff501",
+    "issn": "2306-2819",
+    "eissn": null,
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210221414|OpenAlex:https://openalex.org/S4210221414"
+   },
+   {
+    "batch": "1",
+    "id": "2997d3b7-1412-4123-80ec-39ae2191bf61",
+    "issn": "1821-4932",
+    "eissn": "2956-2252",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210183851|OpenAlex:https://openalex.org/S4210183851"
+   },
+   {
+    "batch": "1",
+    "id": "29bbb7e9-6de2-4d31-bdde-06702e2714e6",
+    "issn": "2088-9038",
+    "eissn": "2549-9645",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210216454|OpenAlex:https://openalex.org/S4210216454|OpenAlex:https://openalex.org/S4210216454"
+   },
+   {
+    "batch": "1",
+    "id": "2ba4500b-e8d8-4549-a09e-e3ecbca9f14c",
+    "issn": "0138-0346",
+    "eissn": "2300-9896",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S2764484758|OpenAlex:https://openalex.org/S2764484758|OpenAlex:https://openalex.org/S2764484758"
+   },
+   {
+    "batch": "1",
+    "id": "2e0bc613-9e65-415a-a89f-df5e05646734",
+    "issn": "1003-2169",
+    "eissn": "1993-033X",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S159320098|OpenAlex:https://openalex.org/S159320098|OpenAlex:https://openalex.org/S159320098"
+   },
+   {
+    "batch": "1",
+    "id": "30755456-9c5b-4a37-9069-df43e2218076",
+    "issn": "1735-7780",
+    "eissn": "2228-7876",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S2764551330|OpenAlex:https://openalex.org/S2764551330|OpenAlex:https://openalex.org/S2764551330|OpenAlex:https://openalex.org/S2764551330|NLM Catalog:nlmcatalog:101585019"
+   },
+   {
+    "batch": "1",
+    "id": "30c46c9e-00c3-4ab6-8d00-6375ce84d37e",
+    "issn": "2088-5784",
+    "eissn": "2620-9675",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210196488|OpenAlex:https://openalex.org/S4210196488|OpenAlex:https://openalex.org/S4210196488"
+   },
+   {
+    "batch": "1",
+    "id": "30c57483-4861-43c1-b8a5-a9143ec0e766",
+    "issn": "2233-6036",
+    "eissn": "2383-4846",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210193880|OpenAlex:https://openalex.org/S4210193880"
+   },
+   {
+    "batch": "1",
+    "id": "3449d0cf-1a18-4600-9e94-d59bae770065",
+    "issn": "2455-5177",
+    "eissn": null,
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S4210223050|OpenAlex:https://openalex.org/S4210223050|OpenAlex:https://openalex.org/S4210223050"
+   },
+   {
+    "batch": "1",
+    "id": "35adef1d-063e-4da9-88e3-e4c562fc40fe",
+    "issn": "2087-698X",
+    "eissn": "2721-5857",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210199848|OpenAlex:https://openalex.org/S4210199848"
+   },
+   {
+    "batch": "1",
+    "id": "3920383a-f017-440a-b7ca-8736d91486ca",
+    "issn": "2476-583X",
+    "eissn": "2676-6787",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4306516400|OpenAlex:https://openalex.org/S4306516400"
+   },
+   {
+    "batch": "1",
+    "id": "3de63860-be25-4c97-87bd-5854c6675c38",
+    "issn": "0253-7613",
+    "eissn": "1998-3751",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S112348374|OpenAlex:https://openalex.org/S112348374|OpenAlex:https://openalex.org/S112348374"
+   },
+   {
+    "batch": "1",
+    "id": "456d408e-09bf-4f99-9c96-722efd1d2eec",
+    "issn": "0976-3333",
+    "eissn": "2582-6050",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S4210209180|OpenAlex:https://openalex.org/S4210209180|OpenAlex:https://openalex.org/S4210209180|NLM Catalog:nlmcatalog:101595874"
+   },
+   {
+    "batch": "1",
+    "id": "52f03583-2dad-49fe-9cba-add44632309b",
+    "issn": "2407-7062",
+    "eissn": "2442-5435",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S4210196544|OpenAlex:https://openalex.org/S4210196544"
+   },
+   {
+    "batch": "1",
+    "id": "54227f3c-181a-48f6-b767-e6cab23c21f5",
+    "issn": "2394-2584",
+    "eissn": null,
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210233280|OpenAlex:https://openalex.org/S4210233280"
+   },
+   {
+    "batch": "1",
+    "id": "55f2c729-feb4-42c5-b7db-d2db301c224a",
+    "issn": "3042-5697",
+    "eissn": null,
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S5407046237|OpenAlex:https://openalex.org/S5407046237"
+   },
+   {
+    "batch": "1",
+    "id": "586cf2c8-fb0f-4278-b73d-c2b27304029a",
+    "issn": "1738-494X",
+    "eissn": "1976-3824",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S11422300|OpenAlex:https://openalex.org/S11422300|OpenAlex:https://openalex.org/S11422300"
+   },
+   {
+    "batch": "1",
+    "id": "592c5513-68c7-4a31-92f1-c6cbb1218f2e",
+    "issn": "0889-504X",
+    "eissn": "1528-8900",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210171160|OpenAlex:https://openalex.org/S4210171160|Crossref member:member:33"
+   },
+   {
+    "batch": "1",
+    "id": "5e552ffc-c69f-4396-b268-9c30b19bd61c",
+    "issn": "1413-9626",
+    "eissn": "2763-7654",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S4210227963|OpenAlex:https://openalex.org/S4210227963"
+   },
+   {
+    "batch": "1",
+    "id": "634165b2-aa55-4c91-950a-d10b37245f3b",
+    "issn": "2620-6706",
+    "eissn": "2686-0597",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210223597"
+   },
+   {
+    "batch": "1",
+    "id": "6395a254-a702-44f3-8176-ec5502910ed6",
+    "issn": "0354-9836",
+    "eissn": "2334-7163",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S177423656|OpenAlex:https://openalex.org/S177423656|OpenAlex:https://openalex.org/S177423656"
+   },
+   {
+    "batch": "1",
+    "id": "65254745-0a78-445e-ac35-50abb02e9a7d",
+    "issn": "2958-020X",
+    "eissn": "2958-0218",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4393920039|OpenAlex:https://openalex.org/S4393920039"
+   },
+   {
+    "batch": "1",
+    "id": "666da455-4e1f-429a-9f9f-f9a66297474b",
+    "issn": "3047-4469",
+    "eissn": null,
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S4404676479|OpenAlex:https://openalex.org/S4404676479|OpenAlex:https://openalex.org/S4404676479|OpenAlex:https://openalex.org/S4404676479"
+   },
+   {
+    "batch": "1",
+    "id": "68e22dc3-b014-4913-ae7e-0ae322578b2e",
+    "issn": "0975-4415",
+    "eissn": null,
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S4210211336|OpenAlex:https://openalex.org/S4210211336|OpenAlex:https://openalex.org/S4210211336|OpenAlex:https://openalex.org/S4210211336"
+   },
+   {
+    "batch": "1",
+    "id": "6aeb4c93-73f0-453f-b3b4-a206113eddb3",
+    "issn": "2455-2925",
+    "eissn": null,
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210239092"
+   },
+   {
+    "batch": "1",
+    "id": "6b716861-c3ba-4e9d-a89b-3a8357a31924",
+    "issn": "3066-2583",
+    "eissn": null,
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S5407048734"
+   },
+   {
+    "batch": "1",
+    "id": "6bdb1067-bb89-40cc-9854-04915cf6fbd3",
+    "issn": "0976-6723",
+    "eissn": "2249-3948",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S5406942771|OpenAlex:https://openalex.org/S5406942771|OpenAlex:https://openalex.org/S5406942771"
+   },
+   {
+    "batch": "1",
+    "id": "6cf087e1-f263-40e2-a68c-34ce90ff0389",
+    "issn": "2320-4230",
+    "eissn": null,
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S2764587262|OpenAlex:https://openalex.org/S2764587262|OpenAlex:https://openalex.org/S2764587262"
+   },
+   {
+    "batch": "1",
+    "id": "6e887c1b-1f66-4aac-879e-68e4cf906c7b",
+    "issn": "2319-670X",
+    "eissn": "2319-6718",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S4210240504|OpenAlex:https://openalex.org/S4210240504|OpenAlex:https://openalex.org/S4210240504"
+   },
+   {
+    "batch": "1",
+    "id": "71b2f71b-c2b9-42d3-9627-2f9ab0ef297a",
+    "issn": "2693-7247",
+    "eissn": null,
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S4210178491|OpenAlex:https://openalex.org/S4210178491"
+   },
+   {
+    "batch": "1",
+    "id": "7284d8b9-830f-4266-9fae-c9a2cd8cd825",
+    "issn": "0277-0008",
+    "eissn": "1875-9114",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S122731057|NLM Catalog:nlmcatalog:8111305"
+   },
+   {
+    "batch": "1",
+    "id": "7339a7b5-f8be-400b-b26e-dfd1e7f7da65",
+    "issn": "2664-6862",
+    "eissn": "2664-6870",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S4387287749|OpenAlex:https://openalex.org/S4387287749|OpenAlex:https://openalex.org/S4387287749"
+   },
+   {
+    "batch": "1",
+    "id": "769c9114-fb1e-4125-a360-6a6d965a9827",
+    "issn": "2788-9246",
+    "eissn": "2788-9254",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S4387287093|OpenAlex:https://openalex.org/S4387287093|OpenAlex:https://openalex.org/S4387287093"
+   },
+   {
+    "batch": "1",
+    "id": "7dcaff50-8286-4abe-8ae3-37eb00968279",
+    "issn": "1137-2729",
+    "eissn": "2255-3509",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4404676604|OpenAlex:https://openalex.org/S4404676604"
+   },
+   {
+    "batch": "1",
+    "id": "7ee59058-e486-40d0-a017-2b7b5a58a22f",
+    "issn": "2664-7591",
+    "eissn": "2664-7605",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S4387285458|OpenAlex:https://openalex.org/S4387285458|OpenAlex:https://openalex.org/S4387285458"
+   },
+   {
+    "batch": "1",
+    "id": "7f734c8c-cdf3-4c4d-86f2-b51d14d9456f",
+    "issn": "2407-3555",
+    "eissn": "2356-3222",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4306518871|OpenAlex:https://openalex.org/S4306518871|OpenAlex:https://openalex.org/S4306518871"
+   },
+   {
+    "batch": "1",
+    "id": "80bfc843-7962-4712-beb1-3e6dd008b7d2",
+    "issn": "0161-8458",
+    "eissn": "1050-0472",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S88457320|OpenAlex:https://openalex.org/S88457320|OpenAlex:https://openalex.org/S88457320|Crossref member:member:33"
+   },
+   {
+    "batch": "1",
+    "id": "80c5f461-eb91-43ee-827f-732c126e8d9b",
+    "issn": "3107-393X",
+    "eissn": null,
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S5407051804|OpenAlex:https://openalex.org/S5407051804|OpenAlex:https://openalex.org/S5407051804"
+   },
+   {
+    "batch": "1",
+    "id": "81df4564-dc2a-4aa7-afbd-f46573142ea3",
+    "issn": "0219-6867",
+    "eissn": "1793-6896",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S105779745|OpenAlex:https://openalex.org/S105779745"
+   },
+   {
+    "batch": "1",
+    "id": "827dbe45-dba5-44a5-b95a-768093c6ce71",
+    "issn": "1995-4565",
+    "eissn": null,
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210181979|OpenAlex:https://openalex.org/S4210181979"
+   },
+   {
+    "batch": "1",
+    "id": "8786380e-c7ca-49eb-ad73-aad59a137f4f",
+    "issn": "2321-7480",
+    "eissn": "2322-0368",
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210187833|OpenAlex:https://openalex.org/S4210187833"
+   },
+   {
+    "batch": "1",
+    "id": "8a72dad1-ac5d-41b6-92a5-35160d3cae94",
+    "issn": "0972-8899",
+    "eissn": null,
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S4210224890|OpenAlex:https://openalex.org/S4210224890|OpenAlex:https://openalex.org/S4210224890"
+   },
+   {
+    "batch": "1",
+    "id": "8ce3a1e2-9508-4d9c-8df9-852c22a30b72",
+    "issn": "0735-2727",
+    "eissn": "1934-8061",
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210186357|OpenAlex:https://openalex.org/S4210186357"
+   },
+   {
+    "batch": "1",
+    "id": "8e81ed09-c155-40ad-8a40-652ded5fdef6",
+    "issn": "3042-5344",
+    "eissn": null,
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S5407046235"
+   },
+   {
+    "batch": "1",
+    "id": "8e8afc4d-03c4-4532-8636-8a303e55010b",
+    "issn": "2326-9065",
+    "eissn": "2326-9073",
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210187317|OpenAlex:https://openalex.org/S4210187317"
+   },
+   {
+    "batch": "1",
+    "id": "92d224ce-5b2b-474e-a43b-bde68e8435cd",
+    "issn": "3063-2226",
+    "eissn": null,
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S4404660628|OpenAlex:https://openalex.org/S4404660628|OpenAlex:https://openalex.org/S4404660628|OpenAlex:https://openalex.org/S4404660628|OpenAlex:https://openalex.org/S4404660628"
+   },
+   {
+    "batch": "1",
+    "id": "951e0287-25ab-4e67-86aa-8c549674a71b",
+    "issn": "1773-2247",
+    "eissn": "2588-8943",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S97205441|OpenAlex:https://openalex.org/S97205441|OpenAlex:https://openalex.org/S97205441|OpenAlex:https://openalex.org/S97205441"
+   },
+   {
+    "batch": "1",
+    "id": "985b3b4a-9884-451b-977c-41bf1f3df1a1",
+    "issn": "1225-6153",
+    "eissn": "2287-8955",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210223004|OpenAlex:https://openalex.org/S4210223004"
+   },
+   {
+    "batch": "1",
+    "id": "9cae2839-7ba7-4844-a4f6-b13b4bdbb723",
+    "issn": "2474-753X",
+    "eissn": null,
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S4210223221|OpenAlex:https://openalex.org/S4210223221|OpenAlex:https://openalex.org/S4210223221"
+   },
+   {
+    "batch": "1",
+    "id": "9ef9ff0b-4bab-499b-9fa9-d059fec68c86",
+    "issn": "2692-4757",
+    "eissn": null,
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S4210223598|OpenAlex:https://openalex.org/S4210223598|OpenAlex:https://openalex.org/S4210223598"
+   },
+   {
+    "batch": "1",
+    "id": "a029d62f-75df-4a58-9e44-95db43763c5c",
+    "issn": "2301-6663",
+    "eissn": "2477-250X",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210233436|OpenAlex:https://openalex.org/S4210233436|OpenAlex:https://openalex.org/S4210233436"
+   },
+   {
+    "batch": "1",
+    "id": "a084ce23-4d8d-4603-b764-134ff532262d",
+    "issn": "2582-8843",
+    "eissn": null,
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210229742|OpenAlex:https://openalex.org/S4210229742"
+   },
+   {
+    "batch": "1",
+    "id": "a234691b-8ada-48dc-8ddb-66d846d77917",
+    "issn": "2368-6111",
+    "eissn": null,
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210180793|OpenAlex:https://openalex.org/S4210180793"
+   },
+   {
+    "batch": "1",
+    "id": "a448f3cd-9150-4a8a-b4ef-04f233e0c8a8",
+    "issn": "2574-7797",
+    "eissn": null,
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S4210229879|OpenAlex:https://openalex.org/S4210229879|OpenAlex:https://openalex.org/S4210229879"
+   },
+   {
+    "batch": "1",
+    "id": "a68876e9-945a-4bae-ae09-b9de8809ead5",
+    "issn": "2582-1458",
+    "eissn": null,
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210180210"
+   },
+   {
+    "batch": "1",
+    "id": "a6919e92-b318-4470-b39e-8c6a2d010fcd",
+    "issn": "1300-4182",
+    "eissn": null,
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S4220650949|OpenAlex:https://openalex.org/S4220650949|OpenAlex:https://openalex.org/S4220650949"
+   },
+   {
+    "batch": "1",
+    "id": "a9a9f196-76fc-4684-8b69-1f575b27bd17",
+    "issn": "3025-8766",
+    "eissn": null,
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4387998040|OpenAlex:https://openalex.org/S4387998040"
+   },
+   {
+    "batch": "1",
+    "id": "b2192e0d-d192-43a8-8b7a-f09e00eb9892",
+    "issn": "2321-3760",
+    "eissn": null,
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S5406990727|OpenAlex:https://openalex.org/S5406990727"
+   },
+   {
+    "batch": "1",
+    "id": "b46eb948-69d5-4e1b-b24d-8a9b6100bd11",
+    "issn": "0250-474X",
+    "eissn": "1998-3743",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S87963693|OpenAlex:https://openalex.org/S87963693|OpenAlex:https://openalex.org/S87963693|NLM Catalog:nlmcatalog:7809431"
+   },
+   {
+    "batch": "1",
+    "id": "bcd0ea8f-12b9-4123-a345-6c89404c3848",
+    "issn": "2640-4532",
+    "eissn": "2640-4540",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S4210184155|OpenAlex:https://openalex.org/S4210184155|OpenAlex:https://openalex.org/S4210184155|OpenAlex:https://openalex.org/S4210184155"
+   },
+   {
+    "batch": "1",
+    "id": "c0084b00-99c7-4360-8b34-1d852d0ae8d9",
+    "issn": "0975-1483",
+    "eissn": "0975-1505",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S172241011|OpenAlex:https://openalex.org/S172241011|OpenAlex:https://openalex.org/S172241011|NLM Catalog:nlmcatalog:101537066"
+   },
+   {
+    "batch": "1",
+    "id": "c1a05c71-feae-4865-a30a-f6078c1ffac9",
+    "issn": "2348-4012",
+    "eissn": null,
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S7407076519|OpenAlex:https://openalex.org/S7407076519|OpenAlex:https://openalex.org/S7407076519"
+   },
+   {
+    "batch": "1",
+    "id": "c4066b59-3f3a-49f4-aa25-b0ded32aaaa5",
+    "issn": "2409-5826",
+    "eissn": null,
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210217660|OpenAlex:https://openalex.org/S4210217660"
+   },
+   {
+    "batch": "1",
+    "id": "c6937363-fdd3-440e-b307-fa4af41e2e5d",
+    "issn": "2582-7235",
+    "eissn": null,
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S4210218019|OpenAlex:https://openalex.org/S4210218019|OpenAlex:https://openalex.org/S4210218019"
+   },
+   {
+    "batch": "1",
+    "id": "c6b0bcaa-b153-41d6-982e-79b73c0e2a4b",
+    "issn": "2746-6418",
+    "eissn": null,
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S4210235596|OpenAlex:https://openalex.org/S4210235596|OpenAlex:https://openalex.org/S4210235596|OpenAlex:https://openalex.org/S4210235596"
+   },
+   {
+    "batch": "1",
+    "id": "c8cc0786-f642-495d-be71-77eea250dec8",
+    "issn": "0742-4795",
+    "eissn": "1528-8919",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210208105|OpenAlex:https://openalex.org/S4210208105|OpenAlex:https://openalex.org/S4210208105|Crossref member:member:33"
+   },
+   {
+    "batch": "1",
+    "id": "ca390ebc-d16d-4897-b134-150bafc9019e",
+    "issn": "0944-6524",
+    "eissn": "1863-7353",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S43349511|OpenAlex:https://openalex.org/S43349511"
+   },
+   {
+    "batch": "1",
+    "id": "cc2e8dfe-3b34-4850-a386-21fe6c85e603",
+    "issn": "3109-0613",
+    "eissn": "3109-2365",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S5407050404|OpenAlex:https://openalex.org/S5407050404|OpenAlex:https://openalex.org/S5407050404"
+   },
+   {
+    "batch": "1",
+    "id": "cc822471-95c0-4854-90f0-ec6036923801",
+    "issn": "0975-234X",
+    "eissn": "0975-4377",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S2765058431|OpenAlex:https://openalex.org/S2765058431|OpenAlex:https://openalex.org/S2765058431|OpenAlex:https://openalex.org/S2765058431"
+   },
+   {
+    "batch": "1",
+    "id": "cddd20a8-690a-494d-b38c-962e74e5ae6f",
+    "issn": "0957-798X",
+    "eissn": "3041-2293",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210208990|OpenAlex:https://openalex.org/S4210208990"
+   },
+   {
+    "batch": "1",
+    "id": "d29501a5-4767-4947-a23f-ee72f380404f",
+    "issn": "1907-350X",
+    "eissn": "2597-7563",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210193356|OpenAlex:https://openalex.org/S4210193356|OpenAlex:https://openalex.org/S4210193356"
+   },
+   {
+    "batch": "1",
+    "id": "d3b57d05-7e91-4869-8ca6-e7989bb9d7d3",
+    "issn": "2581-8449",
+    "eissn": null,
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210240679"
+   },
+   {
+    "batch": "1",
+    "id": "dc99e19c-27e9-4bd8-903d-25591a52f8d1",
+    "issn": "1606-4313",
+    "eissn": "2618-8937",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210222106"
+   },
+   {
+    "batch": "1",
+    "id": "dda66f62-6c67-4cb6-a723-f460b353cb85",
+    "issn": "0976-1357",
+    "eissn": "0976-1527",
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210196922"
+   },
+   {
+    "batch": "1",
+    "id": "de14bed4-1718-40b0-a7a1-b5d5b001cd17",
+    "issn": "0975-7058",
+    "eissn": null,
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S2764477652|OpenAlex:https://openalex.org/S2764477652|OpenAlex:https://openalex.org/S2764477652"
+   },
+   {
+    "batch": "1",
+    "id": "e6ce674a-0bdc-42e9-b273-be6f77d91c49",
+    "issn": "3091-4531",
+    "eissn": null,
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S5407055382|OpenAlex:https://openalex.org/S5407055382"
+   },
+   {
+    "batch": "1",
+    "id": "e939e194-1598-4d8d-8f01-643d14d7e69a",
+    "issn": "2709-2135",
+    "eissn": "3008-0991",
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210212042|OpenAlex:https://openalex.org/S4210212042"
+   },
+   {
+    "batch": "1",
+    "id": "ea76e8e6-54a1-499f-8844-73fa6e31d5d6",
+    "issn": "3048-5428",
+    "eissn": null,
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S4404664124|OpenAlex:https://openalex.org/S4404664124|OpenAlex:https://openalex.org/S4404664124|OpenAlex:https://openalex.org/S4404664124"
+   },
+   {
+    "batch": "1",
+    "id": "eb0280d7-7e4e-43da-9e04-3455eacbcfaa",
+    "issn": "2319-4197",
+    "eissn": "2319-4200",
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S2765052338|OpenAlex:https://openalex.org/S2765052338"
+   },
+   {
+    "batch": "1",
+    "id": "eb16be9b-b417-4c09-a961-4cd0e225a42c",
+    "issn": "2582-8320",
+    "eissn": null,
+    "dept": "Electronics & Telecommunication Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210213650|OpenAlex:https://openalex.org/S4210213650"
+   },
+   {
+    "batch": "1",
+    "id": "eefe7410-9512-4094-bacf-f629e1c93e7f",
+    "issn": "2669-1116",
+    "eissn": null,
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4210225849|OpenAlex:https://openalex.org/S4210225849"
+   },
+   {
+    "batch": "1",
+    "id": "f1ec2f03-317d-44d7-85bd-328205a07cbb",
+    "issn": "0972-7396",
+    "eissn": null,
+    "dept": "Mechanical Engineering",
+    "sourceId": "OpenAlex:https://openalex.org/S4387287882|OpenAlex:https://openalex.org/S4387287882"
+   },
+   {
+    "batch": "1",
+    "id": "f2e39ced-6e5b-4e6d-8548-f968cf6b1eea",
+    "issn": "1726-6882",
+    "eissn": "1726-6890",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S54803862|OpenAlex:https://openalex.org/S54803862|OpenAlex:https://openalex.org/S54803862|NLM Catalog:nlmcatalog:101208407"
+   },
+   {
+    "batch": "1",
+    "id": "ff60f03e-f416-4c6f-b9e3-5089da6bdaad",
+    "issn": "2347-8330",
+    "eissn": null,
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S5407051125|OpenAlex:https://openalex.org/S5407051125|OpenAlex:https://openalex.org/S5407051125|OpenAlex:https://openalex.org/S5407051125"
+   },
+   {
+    "batch": "1",
+    "id": "2f3cbe42-60ee-4399-9e86-7e725eee2da2",
+    "issn": "2074-9457",
+    "eissn": null,
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S4210203313|OpenAlex:https://openalex.org/S4210203313|OpenAlex:https://openalex.org/S4210203313|NLM Catalog:nlmcatalog:101285988"
+   },
+   {
+    "batch": "1",
+    "id": "6ce816d9-d941-45a1-b072-a675b1cfdde8",
+    "issn": "3027-7922",
+    "eissn": null,
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S4404668928|OpenAlex:https://openalex.org/S4404668928|OpenAlex:https://openalex.org/S4404668928"
+   },
+   {
+    "batch": "1",
+    "id": "819f2777-02d8-4c01-8b62-b4d0dccb3d20",
+    "issn": "2639-9636",
+    "eissn": "2639-9644",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S4210183711|OpenAlex:https://openalex.org/S4210183711|OpenAlex:https://openalex.org/S4210183711|NLM Catalog:nlmcatalog:101737969"
+   },
+   {
+    "batch": "1",
+    "id": "c94b907d-6b7e-4b55-a723-676c6cc31900",
+    "issn": "1026-552X",
+    "eissn": null,
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S2764444506|OpenAlex:https://openalex.org/S2764444506|OpenAlex:https://openalex.org/S2764444506|NLM Catalog:nlmcatalog:101261968"
+   },
+   {
+    "batch": "1",
+    "id": "d32f688c-444f-4a3d-9a12-41640201b906",
+    "issn": "0973-8045",
+    "eissn": null,
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S5407052223|OpenAlex:https://openalex.org/S5407052223|OpenAlex:https://openalex.org/S5407052223|NLM Catalog:nlmcatalog:101492614"
+   },
+   {
+    "batch": "1",
+    "id": "feee1c85-1360-4774-87b1-ad070d18288e",
+    "issn": "1304-530X",
+    "eissn": "2148-6247",
+    "dept": "Pharmacy",
+    "sourceId": "OpenAlex:https://openalex.org/S4210180858|OpenAlex:https://openalex.org/S4210180858"
+   }
+  ]
+ },
+ "inserted": {
+  "count": 231,
+  "ids": [
+   "d39991de-d9f7-4ead-851c-b9ecc47b6e19",
+   "94e587f6-2c56-4c34-a6d5-61f4bfdbb406",
+   "1be8b63f-4db8-46bb-b20f-60a596270e13",
+   "d89c0d22-ec7d-4bb3-b51f-126a6130bec9",
+   "a8d00b16-fa5c-490d-ad7f-80a816e5a7d6",
+   "799c0673-596e-4c1f-bbaa-96f0b738d8ae",
+   "d76918a0-1f58-483a-8770-c9d1215066bc",
+   "ef3552c3-ff6e-4b42-b36c-ab7d07ceba05",
+   "abda433a-a584-4ab8-aa09-dbf3190788c3",
+   "cdb22a80-2ff3-4cca-9fb5-f01b73ba7eba",
+   "c5ff5f87-e34a-4cde-aa95-57a7869a13a9",
+   "fffb72d2-3c40-4dd7-94d0-a9346510ac3e",
+   "20109b5a-538a-4aba-8986-7348fbf01f0f",
+   "f8421132-6698-4477-9f1e-39a83c25e8ec",
+   "62cb0e51-86c2-4258-9603-22ac4c349f01",
+   "be199e5e-f8d8-488d-b61e-31506433b7ba",
+   "050facab-8155-4ddb-ac46-6faf16436efa",
+   "1cf20be2-a0c4-49fb-9166-daf87c5ba3f1",
+   "4632c1b8-ae12-4827-ad5d-65113ba60f54",
+   "c56e24a3-2351-4ccd-94c3-09051801c9c1",
+   "d89a82ce-7d8c-4aad-a9f7-adde61389d58",
+   "7e462df9-4227-4d50-b765-d4b10aaebd99",
+   "7b92a1f7-3ffb-4bfd-af34-00c8c8fdf4de",
+   "85f4525c-a481-460a-b9e5-43b8c6fdb5cb",
+   "cba78ab7-fb81-48fe-9f65-62d459ebe624",
+   "5e32dc99-82f7-4efa-89c7-fb566f2b264d",
+   "8fda0e32-9c32-4689-bb8a-8385726a018a",
+   "dc67a304-16af-4b97-bbf6-27988b1b8e9d",
+   "f85ea7ce-7a1d-411e-ab56-d36205347766",
+   "1dc0cd1a-4174-436c-a78c-1ecfd1a0079e",
+   "e63718a0-a11b-40e4-8319-22162711e0b9",
+   "06e3bf4c-bc6b-48ce-ad9b-75a634187c5f",
+   "bab49122-6464-4515-a031-0fdcd07859fb",
+   "6cb3849d-8daf-4632-9dda-a15cb6a25d9e",
+   "55ae8586-d59f-41ec-8ea5-48448a9cc41d",
+   "8be6a197-8a47-4566-90a4-a5ce404bfa06",
+   "2114d3d0-7ec6-44b5-8a62-5d0022d5768a",
+   "544d1d6b-6130-4903-8803-28a645e46051",
+   "edf4249e-87a1-4425-b729-4c255aa15390",
+   "62d05bc9-0739-4064-b461-a22eb65eff77",
+   "062cec18-6888-4335-89b6-b6036b055774",
+   "e29ed750-3e3c-4a2c-86fe-fd30ee7ad2c3",
+   "de9893be-16af-4189-a9bf-8654e465cf76",
+   "a20b6f21-42fa-4a47-b193-73f14ea16f3c",
+   "f56ea683-34c9-491b-879f-58829b83ef0f",
+   "16fd8d87-1065-41fc-9a2f-7a81b8892597",
+   "482a0214-6453-4b3a-bf99-c5c322fa69ba",
+   "3130d619-b6ff-403d-b19b-ddef2c977f79",
+   "b79203b7-8117-4461-9fe1-de650a015463",
+   "ebba0583-8166-49f7-ae42-785426b13e43",
+   "923288f2-6e8b-48ad-b656-de372705bedc",
+   "2d56d363-a850-466e-b411-32c41684fd33",
+   "9f7c79fe-d371-4e4f-9b00-02e18fac3b99",
+   "a2ccaba3-162b-4c1f-bac9-d0a51bc3ba5f",
+   "674c314d-f65f-4b0c-8cde-3b1afd96c84e",
+   "9a0f39a8-88bf-42ee-8e07-92e27b41f058",
+   "10029ea5-8d25-4423-bec5-e48d9b539529",
+   "d167645b-1ff4-451a-808f-4e30b7c48ecc",
+   "c63342a3-03bd-4237-9fd8-d6c30458719b",
+   "0109842d-ed9d-478a-966c-4fcd63780a1b",
+   "edad79c7-a7ca-45b8-80f9-1a258f37869a",
+   "4d6df12b-aca0-4a89-91a1-cc8c3bb21028",
+   "8e46ada3-1080-4a3d-8bf4-527d6e631db9",
+   "307bb200-5327-4caf-924b-d2c6e5e5f5f1",
+   "874cff73-56bd-4b6c-9898-39c542f154f3",
+   "34819871-766a-4d35-8756-39ff170c31d5",
+   "ff3fecaa-ca16-4593-8f3b-4db33c1a338a",
+   "e3505f4a-10b3-48cc-8f44-cf68e5811f6e",
+   "1a39e409-e309-4af2-ad7c-61e5551f1635",
+   "031e3b62-a901-45e9-a5b6-d681841fd304",
+   "6ce9937f-b1cb-4d02-8eeb-af3612c9164a",
+   "017bf59d-41ba-4389-b668-0bf8a1583cef",
+   "3850a634-3dd0-4ebe-9cb3-f0ddc5fc17e0",
+   "6642ae3b-ca66-44c6-9b96-e22b75d03a23",
+   "ddabc55f-39f2-46bd-9da0-1e9c33d4eb1e",
+   "69c93dce-fa96-4fb5-b5bd-4949db1c0aa8",
+   "0df5e22a-4979-4729-b1e7-d16d847c46a3",
+   "df4d10dc-179c-4882-9a2c-e67d0c9c54b2",
+   "13296bc2-8986-4357-a585-2a3a8c19a7e1",
+   "9ab384da-1c7b-4a9d-b768-58b2f5161dae",
+   "1d61df15-ac8c-489e-95f8-2b2352836a8f",
+   "7fe468dc-482c-4d1b-ab46-8bf9315a9a22",
+   "5a462e0e-455f-41b1-8df4-372ca3ef36a3",
+   "eccd9181-9cdb-4d15-98c1-0b7c9b61b7fb",
+   "0e165603-9ff9-4a4f-8569-f2e9bb4fa444",
+   "7bd45b49-db8a-47e7-a05c-fbc0283d7bc5",
+   "b6d60c50-f677-4ed8-8acd-d1f952460ba4",
+   "23ecb434-11ea-4ebd-8e96-e70538c597c8",
+   "20f4b99f-0e99-47c2-bc6c-80bf9bd97b54",
+   "06a44ca0-5b84-4321-a9a3-32f1a2838285",
+   "1f3a60cf-e5b0-446d-a130-f19e6d1d6aeb",
+   "e6d30af2-99c4-4b3d-82ad-e2ca4c09ffd3",
+   "bf1c9e98-4aac-42a9-97f5-177e406d25ad",
+   "7d9f814a-0d20-47d3-bbe9-f58be894df45",
+   "c4423642-e96a-4496-a4ed-bf7f486c10f4",
+   "7971dae6-eefc-4da5-b4de-4c9aafde2bcb",
+   "56b9e6ae-31e4-48fd-9bff-2ac3729e0ca9",
+   "0ab70837-ed11-4e23-902e-af3cd6d2b728",
+   "803b30c5-145f-4db1-bd78-4dcc3aa0bf0a",
+   "70c55d3d-8896-4a99-a811-d0f0afc819f8",
+   "2ce3f3cc-64cd-449f-9126-0f184fdf5e56",
+   "cb6cb6f1-2813-48f5-8263-2bc2aedbbdef",
+   "32417070-00b6-4c64-8235-fb2f966e7635",
+   "cd55d569-e5c4-4453-9319-3b4655268583",
+   "7ee6a87b-8cfd-470a-a132-2ab7d0db4850",
+   "62ac4a1e-a1a0-4496-83e6-6079a582ca87",
+   "1b08a385-6a1c-49ec-a41f-60b95db990f5",
+   "3c3fedc4-f435-4f29-bee7-0206651209a0",
+   "f9973ba9-d954-4cc7-ac89-5b5a0acaea45",
+   "2c97e3bf-6cae-4d58-a5b0-2c3a08c4277d",
+   "6b0ca3eb-b566-4e1b-8779-6f8a82b00d48",
+   "079dec24-d359-4f36-b3ed-5b1cbf60edb1",
+   "da0a2ea7-6948-4049-81c8-e80a9f65fc2b",
+   "aa27d613-b445-43bf-a7aa-f4e4cc3ca508",
+   "2a556629-6d6e-4099-a4f7-4be4ee11c69b",
+   "cae37467-e361-47ec-abd8-3c7233c689e7",
+   "0ae852db-d7a1-4eb9-a6d2-9de48b2a2d1d",
+   "21eb7e75-a420-46d5-b494-0502a39ee18a",
+   "dd855de0-e6e2-450c-8966-20e985c06993",
+   "dc272dbd-4bd5-4cca-b3a3-c066441d32cd",
+   "13a473c5-ce06-4030-9f1a-21e0df7666e7",
+   "cebac6a9-e9df-47bf-8ed4-32521df22702",
+   "684e2ae7-f447-46fd-81bf-6158688952b9",
+   "d8066a04-24fa-46e5-9ad9-733ac2544b75",
+   "d51cb2a4-68d6-4d7a-8236-9fc71f559e7f",
+   "c6b0bcaa-b153-41d6-982e-79b73c0e2a4b",
+   "dc99e19c-27e9-4bd8-903d-25591a52f8d1",
+   "0d361ade-d651-42f1-9a34-47fd7fc777b6",
+   "a6919e92-b318-4470-b39e-8c6a2d010fcd",
+   "e939e194-1598-4d8d-8f01-643d14d7e69a",
+   "eb0280d7-7e4e-43da-9e04-3455eacbcfaa",
+   "5e552ffc-c69f-4396-b268-9c30b19bd61c",
+   "81df4564-dc2a-4aa7-afbd-f46573142ea3",
+   "eb16be9b-b417-4c09-a961-4cd0e225a42c",
+   "0213202a-2b74-4a56-8ac3-0f3b24f05269",
+   "c4066b59-3f3a-49f4-aa25-b0ded32aaaa5",
+   "a084ce23-4d8d-4603-b764-134ff532262d",
+   "b46eb948-69d5-4e1b-b24d-8a9b6100bd11",
+   "c8cc0786-f642-495d-be71-77eea250dec8",
+   "0ec386b1-24a6-4cf4-9d30-79beed54e7f5",
+   "3de63860-be25-4c97-87bd-5854c6675c38",
+   "a234691b-8ada-48dc-8ddb-66d846d77917",
+   "6aeb4c93-73f0-453f-b3b4-a206113eddb3",
+   "19be35e5-0f2a-4c1e-b5d8-d80b14970c91",
+   "80bfc843-7962-4712-beb1-3e6dd008b7d2",
+   "54227f3c-181a-48f6-b767-e6cab23c21f5",
+   "de14bed4-1718-40b0-a7a1-b5d5b001cd17",
+   "586cf2c8-fb0f-4278-b73d-c2b27304029a",
+   "dda66f62-6c67-4cb6-a723-f460b353cb85",
+   "b2192e0d-d192-43a8-8b7a-f09e00eb9892",
+   "059fd5f6-5b69-43d9-84a7-a13659598e86",
+   "0c6baede-fb97-41cd-aed1-a162ae06f4b9",
+   "68e22dc3-b014-4913-ae7e-0ae322578b2e",
+   "eefe7410-9512-4094-bacf-f629e1c93e7f",
+   "09236da4-7725-4a13-9467-dc9c9a0b1e56",
+   "80c5f461-eb91-43ee-827f-732c126e8d9b",
+   "2997d3b7-1412-4123-80ec-39ae2191bf61",
+   "a68876e9-945a-4bae-ae09-b9de8809ead5",
+   "6bdb1067-bb89-40cc-9854-04915cf6fbd3",
+   "2e0bc613-9e65-415a-a89f-df5e05646734",
+   "d3b57d05-7e91-4869-8ca6-e7989bb9d7d3",
+   "190c64b2-54e8-4d2c-8780-196657e0caa4",
+   "592c5513-68c7-4a31-92f1-c6cbb1218f2e",
+   "e6ce674a-0bdc-42e9-b273-be6f77d91c49",
+   "7339a7b5-f8be-400b-b26e-dfd1e7f7da65",
+   "3920383a-f017-440a-b7ca-8736d91486ca",
+   "8e81ed09-c155-40ad-8a40-652ded5fdef6",
+   "6e887c1b-1f66-4aac-879e-68e4cf906c7b",
+   "985b3b4a-9884-451b-977c-41bf1f3df1a1",
+   "55f2c729-feb4-42c5-b7db-d2db301c224a",
+   "769c9114-fb1e-4125-a360-6a6d965a9827",
+   "30c57483-4861-43c1-b8a5-a9143ec0e766",
+   "164392c1-8c48-46d9-82e4-13ad22d489ee",
+   "456d408e-09bf-4f99-9c96-722efd1d2eec",
+   "634165b2-aa55-4c91-950a-d10b37245f3b",
+   "8ce3a1e2-9508-4d9c-8df9-852c22a30b72",
+   "7ee59058-e486-40d0-a017-2b7b5a58a22f",
+   "d29501a5-4767-4947-a23f-ee72f380404f",
+   "8e8afc4d-03c4-4532-8636-8a303e55010b",
+   "f2e39ced-6e5b-4e6d-8548-f968cf6b1eea",
+   "7f734c8c-cdf3-4c4d-86f2-b51d14d9456f",
+   "827dbe45-dba5-44a5-b95a-768093c6ce71",
+   "10325769-9a13-4131-95df-930358af7404",
+   "a9a9f196-76fc-4684-8b69-1f575b27bd17",
+   "25e799aa-59ec-4fc0-980c-52fc695ff501",
+   "951e0287-25ab-4e67-86aa-8c549674a71b",
+   "04d6925f-9eeb-427d-88ea-4e22176a0a69",
+   "8786380e-c7ca-49eb-ad73-aad59a137f4f",
+   "0abc98dc-be36-484f-84b8-3f53d857d73f",
+   "f1ec2f03-317d-44d7-85bd-328205a07cbb",
+   "6cf087e1-f263-40e2-a68c-34ce90ff0389",
+   "65254745-0a78-445e-ac35-50abb02e9a7d",
+   "3449d0cf-1a18-4600-9e94-d59bae770065",
+   "ca390ebc-d16d-4897-b134-150bafc9019e",
+   "0e692d37-0d8a-4ee5-98b5-b2fd3b11eb06",
+   "226994d4-8d56-4e34-966a-fecbe9414abc",
+   "ea76e8e6-54a1-499f-8844-73fa6e31d5d6",
+   "7dcaff50-8286-4abe-8ae3-37eb00968279",
+   "ff60f03e-f416-4c6f-b9e3-5089da6bdaad",
+   "29bbb7e9-6de2-4d31-bdde-06702e2714e6",
+   "21b48145-5a86-48ca-8dae-ddb779b2bead",
+   "2ba4500b-e8d8-4549-a09e-e3ecbca9f14c",
+   "666da455-4e1f-429a-9f9f-f9a66297474b",
+   "30c46c9e-00c3-4ab6-8d00-6375ce84d37e",
+   "8a72dad1-ac5d-41b6-92a5-35160d3cae94",
+   "cddd20a8-690a-494d-b38c-962e74e5ae6f",
+   "c6937363-fdd3-440e-b307-fa4af41e2e5d",
+   "6395a254-a702-44f3-8176-ec5502910ed6",
+   "c0084b00-99c7-4360-8b34-1d852d0ae8d9",
+   "231f47fa-cf9c-4ea9-a60d-53c8459f4779",
+   "30755456-9c5b-4a37-9069-df43e2218076",
+   "a029d62f-75df-4a58-9e44-95db43763c5c",
+   "92d224ce-5b2b-474e-a43b-bde68e8435cd",
+   "35adef1d-063e-4da9-88e3-e4c562fc40fe",
+   "cc2e8dfe-3b34-4850-a386-21fe6c85e603",
+   "52f03583-2dad-49fe-9cba-add44632309b",
+   "9cae2839-7ba7-4844-a4f6-b13b4bdbb723",
+   "c1a05c71-feae-4865-a30a-f6078c1ffac9",
+   "a448f3cd-9150-4a8a-b4ef-04f233e0c8a8",
+   "9ef9ff0b-4bab-499b-9fa9-d059fec68c86",
+   "6b716861-c3ba-4e9d-a89b-3a8357a31924",
+   "bcd0ea8f-12b9-4123-a345-6c89404c3848",
+   "71b2f71b-c2b9-42d3-9627-2f9ab0ef297a",
+   "7284d8b9-830f-4266-9fae-c9a2cd8cd825",
+   "cc822471-95c0-4854-90f0-ec6036923801",
+   "c94b907d-6b7e-4b55-a723-676c6cc31900",
+   "d32f688c-444f-4a3d-9a12-41640201b906",
+   "819f2777-02d8-4c01-8b62-b4d0dccb3d20",
+   "6ce816d9-d941-45a1-b072-a675b1cfdde8",
+   "feee1c85-1360-4774-87b1-ad070d18288e",
+   "2f3cbe42-60ee-4399-9e86-7e725eee2da2"
+  ],
+  "canaryIds": [
+   "d39991de-d9f7-4ead-851c-b9ecc47b6e19",
+   "94e587f6-2c56-4c34-a6d5-61f4bfdbb406",
+   "1be8b63f-4db8-46bb-b20f-60a596270e13",
+   "d89c0d22-ec7d-4bb3-b51f-126a6130bec9",
+   "a8d00b16-fa5c-490d-ad7f-80a816e5a7d6",
+   "799c0673-596e-4c1f-bbaa-96f0b738d8ae",
+   "d76918a0-1f58-483a-8770-c9d1215066bc",
+   "ef3552c3-ff6e-4b42-b36c-ab7d07ceba05",
+   "abda433a-a584-4ab8-aa09-dbf3190788c3",
+   "cdb22a80-2ff3-4cca-9fb5-f01b73ba7eba",
+   "c5ff5f87-e34a-4cde-aa95-57a7869a13a9",
+   "fffb72d2-3c40-4dd7-94d0-a9346510ac3e",
+   "20109b5a-538a-4aba-8986-7348fbf01f0f",
+   "f8421132-6698-4477-9f1e-39a83c25e8ec",
+   "62cb0e51-86c2-4258-9603-22ac4c349f01",
+   "be199e5e-f8d8-488d-b61e-31506433b7ba",
+   "050facab-8155-4ddb-ac46-6faf16436efa",
+   "1cf20be2-a0c4-49fb-9166-daf87c5ba3f1",
+   "4632c1b8-ae12-4827-ad5d-65113ba60f54",
+   "c56e24a3-2351-4ccd-94c3-09051801c9c1",
+   "d89a82ce-7d8c-4aad-a9f7-adde61389d58",
+   "7e462df9-4227-4d50-b765-d4b10aaebd99",
+   "7b92a1f7-3ffb-4bfd-af34-00c8c8fdf4de",
+   "85f4525c-a481-460a-b9e5-43b8c6fdb5cb",
+   "cba78ab7-fb81-48fe-9f65-62d459ebe624"
+  ],
+  "restIds": [
+   "5e32dc99-82f7-4efa-89c7-fb566f2b264d",
+   "8fda0e32-9c32-4689-bb8a-8385726a018a",
+   "dc67a304-16af-4b97-bbf6-27988b1b8e9d",
+   "f85ea7ce-7a1d-411e-ab56-d36205347766",
+   "1dc0cd1a-4174-436c-a78c-1ecfd1a0079e",
+   "e63718a0-a11b-40e4-8319-22162711e0b9",
+   "06e3bf4c-bc6b-48ce-ad9b-75a634187c5f",
+   "bab49122-6464-4515-a031-0fdcd07859fb",
+   "6cb3849d-8daf-4632-9dda-a15cb6a25d9e",
+   "55ae8586-d59f-41ec-8ea5-48448a9cc41d",
+   "8be6a197-8a47-4566-90a4-a5ce404bfa06",
+   "2114d3d0-7ec6-44b5-8a62-5d0022d5768a",
+   "544d1d6b-6130-4903-8803-28a645e46051",
+   "edf4249e-87a1-4425-b729-4c255aa15390",
+   "62d05bc9-0739-4064-b461-a22eb65eff77",
+   "062cec18-6888-4335-89b6-b6036b055774",
+   "e29ed750-3e3c-4a2c-86fe-fd30ee7ad2c3",
+   "de9893be-16af-4189-a9bf-8654e465cf76",
+   "a20b6f21-42fa-4a47-b193-73f14ea16f3c",
+   "f56ea683-34c9-491b-879f-58829b83ef0f",
+   "16fd8d87-1065-41fc-9a2f-7a81b8892597",
+   "482a0214-6453-4b3a-bf99-c5c322fa69ba",
+   "3130d619-b6ff-403d-b19b-ddef2c977f79",
+   "b79203b7-8117-4461-9fe1-de650a015463",
+   "ebba0583-8166-49f7-ae42-785426b13e43",
+   "923288f2-6e8b-48ad-b656-de372705bedc",
+   "2d56d363-a850-466e-b411-32c41684fd33",
+   "9f7c79fe-d371-4e4f-9b00-02e18fac3b99",
+   "a2ccaba3-162b-4c1f-bac9-d0a51bc3ba5f",
+   "674c314d-f65f-4b0c-8cde-3b1afd96c84e",
+   "9a0f39a8-88bf-42ee-8e07-92e27b41f058",
+   "10029ea5-8d25-4423-bec5-e48d9b539529",
+   "d167645b-1ff4-451a-808f-4e30b7c48ecc",
+   "c63342a3-03bd-4237-9fd8-d6c30458719b",
+   "0109842d-ed9d-478a-966c-4fcd63780a1b",
+   "edad79c7-a7ca-45b8-80f9-1a258f37869a",
+   "4d6df12b-aca0-4a89-91a1-cc8c3bb21028",
+   "8e46ada3-1080-4a3d-8bf4-527d6e631db9",
+   "307bb200-5327-4caf-924b-d2c6e5e5f5f1",
+   "874cff73-56bd-4b6c-9898-39c542f154f3",
+   "34819871-766a-4d35-8756-39ff170c31d5",
+   "ff3fecaa-ca16-4593-8f3b-4db33c1a338a",
+   "e3505f4a-10b3-48cc-8f44-cf68e5811f6e",
+   "1a39e409-e309-4af2-ad7c-61e5551f1635",
+   "031e3b62-a901-45e9-a5b6-d681841fd304",
+   "6ce9937f-b1cb-4d02-8eeb-af3612c9164a",
+   "017bf59d-41ba-4389-b668-0bf8a1583cef",
+   "3850a634-3dd0-4ebe-9cb3-f0ddc5fc17e0",
+   "6642ae3b-ca66-44c6-9b96-e22b75d03a23",
+   "ddabc55f-39f2-46bd-9da0-1e9c33d4eb1e",
+   "69c93dce-fa96-4fb5-b5bd-4949db1c0aa8",
+   "0df5e22a-4979-4729-b1e7-d16d847c46a3",
+   "df4d10dc-179c-4882-9a2c-e67d0c9c54b2",
+   "13296bc2-8986-4357-a585-2a3a8c19a7e1",
+   "9ab384da-1c7b-4a9d-b768-58b2f5161dae",
+   "1d61df15-ac8c-489e-95f8-2b2352836a8f",
+   "7fe468dc-482c-4d1b-ab46-8bf9315a9a22",
+   "5a462e0e-455f-41b1-8df4-372ca3ef36a3",
+   "eccd9181-9cdb-4d15-98c1-0b7c9b61b7fb",
+   "0e165603-9ff9-4a4f-8569-f2e9bb4fa444",
+   "7bd45b49-db8a-47e7-a05c-fbc0283d7bc5",
+   "b6d60c50-f677-4ed8-8acd-d1f952460ba4",
+   "23ecb434-11ea-4ebd-8e96-e70538c597c8",
+   "20f4b99f-0e99-47c2-bc6c-80bf9bd97b54",
+   "06a44ca0-5b84-4321-a9a3-32f1a2838285",
+   "1f3a60cf-e5b0-446d-a130-f19e6d1d6aeb",
+   "e6d30af2-99c4-4b3d-82ad-e2ca4c09ffd3",
+   "bf1c9e98-4aac-42a9-97f5-177e406d25ad",
+   "7d9f814a-0d20-47d3-bbe9-f58be894df45",
+   "c4423642-e96a-4496-a4ed-bf7f486c10f4",
+   "7971dae6-eefc-4da5-b4de-4c9aafde2bcb",
+   "56b9e6ae-31e4-48fd-9bff-2ac3729e0ca9",
+   "0ab70837-ed11-4e23-902e-af3cd6d2b728",
+   "803b30c5-145f-4db1-bd78-4dcc3aa0bf0a",
+   "70c55d3d-8896-4a99-a811-d0f0afc819f8",
+   "2ce3f3cc-64cd-449f-9126-0f184fdf5e56",
+   "cb6cb6f1-2813-48f5-8263-2bc2aedbbdef",
+   "32417070-00b6-4c64-8235-fb2f966e7635",
+   "cd55d569-e5c4-4453-9319-3b4655268583",
+   "7ee6a87b-8cfd-470a-a132-2ab7d0db4850",
+   "62ac4a1e-a1a0-4496-83e6-6079a582ca87",
+   "1b08a385-6a1c-49ec-a41f-60b95db990f5",
+   "3c3fedc4-f435-4f29-bee7-0206651209a0",
+   "f9973ba9-d954-4cc7-ac89-5b5a0acaea45",
+   "2c97e3bf-6cae-4d58-a5b0-2c3a08c4277d",
+   "6b0ca3eb-b566-4e1b-8779-6f8a82b00d48",
+   "079dec24-d359-4f36-b3ed-5b1cbf60edb1",
+   "da0a2ea7-6948-4049-81c8-e80a9f65fc2b",
+   "aa27d613-b445-43bf-a7aa-f4e4cc3ca508",
+   "2a556629-6d6e-4099-a4f7-4be4ee11c69b",
+   "cae37467-e361-47ec-abd8-3c7233c689e7",
+   "0ae852db-d7a1-4eb9-a6d2-9de48b2a2d1d",
+   "21eb7e75-a420-46d5-b494-0502a39ee18a",
+   "dd855de0-e6e2-450c-8966-20e985c06993",
+   "dc272dbd-4bd5-4cca-b3a3-c066441d32cd",
+   "13a473c5-ce06-4030-9f1a-21e0df7666e7",
+   "cebac6a9-e9df-47bf-8ed4-32521df22702",
+   "684e2ae7-f447-46fd-81bf-6158688952b9",
+   "d8066a04-24fa-46e5-9ad9-733ac2544b75",
+   "d51cb2a4-68d6-4d7a-8236-9fc71f559e7f",
+   "c6b0bcaa-b153-41d6-982e-79b73c0e2a4b",
+   "dc99e19c-27e9-4bd8-903d-25591a52f8d1",
+   "0d361ade-d651-42f1-9a34-47fd7fc777b6",
+   "a6919e92-b318-4470-b39e-8c6a2d010fcd",
+   "e939e194-1598-4d8d-8f01-643d14d7e69a",
+   "eb0280d7-7e4e-43da-9e04-3455eacbcfaa",
+   "5e552ffc-c69f-4396-b268-9c30b19bd61c",
+   "81df4564-dc2a-4aa7-afbd-f46573142ea3",
+   "eb16be9b-b417-4c09-a961-4cd0e225a42c",
+   "0213202a-2b74-4a56-8ac3-0f3b24f05269",
+   "c4066b59-3f3a-49f4-aa25-b0ded32aaaa5",
+   "a084ce23-4d8d-4603-b764-134ff532262d",
+   "b46eb948-69d5-4e1b-b24d-8a9b6100bd11",
+   "c8cc0786-f642-495d-be71-77eea250dec8",
+   "0ec386b1-24a6-4cf4-9d30-79beed54e7f5",
+   "3de63860-be25-4c97-87bd-5854c6675c38",
+   "a234691b-8ada-48dc-8ddb-66d846d77917",
+   "6aeb4c93-73f0-453f-b3b4-a206113eddb3",
+   "19be35e5-0f2a-4c1e-b5d8-d80b14970c91",
+   "80bfc843-7962-4712-beb1-3e6dd008b7d2",
+   "54227f3c-181a-48f6-b767-e6cab23c21f5",
+   "de14bed4-1718-40b0-a7a1-b5d5b001cd17",
+   "586cf2c8-fb0f-4278-b73d-c2b27304029a",
+   "dda66f62-6c67-4cb6-a723-f460b353cb85",
+   "b2192e0d-d192-43a8-8b7a-f09e00eb9892",
+   "059fd5f6-5b69-43d9-84a7-a13659598e86",
+   "0c6baede-fb97-41cd-aed1-a162ae06f4b9",
+   "68e22dc3-b014-4913-ae7e-0ae322578b2e",
+   "eefe7410-9512-4094-bacf-f629e1c93e7f",
+   "09236da4-7725-4a13-9467-dc9c9a0b1e56",
+   "80c5f461-eb91-43ee-827f-732c126e8d9b",
+   "2997d3b7-1412-4123-80ec-39ae2191bf61",
+   "a68876e9-945a-4bae-ae09-b9de8809ead5",
+   "6bdb1067-bb89-40cc-9854-04915cf6fbd3",
+   "2e0bc613-9e65-415a-a89f-df5e05646734",
+   "d3b57d05-7e91-4869-8ca6-e7989bb9d7d3",
+   "190c64b2-54e8-4d2c-8780-196657e0caa4",
+   "592c5513-68c7-4a31-92f1-c6cbb1218f2e",
+   "e6ce674a-0bdc-42e9-b273-be6f77d91c49",
+   "7339a7b5-f8be-400b-b26e-dfd1e7f7da65",
+   "3920383a-f017-440a-b7ca-8736d91486ca",
+   "8e81ed09-c155-40ad-8a40-652ded5fdef6",
+   "6e887c1b-1f66-4aac-879e-68e4cf906c7b",
+   "985b3b4a-9884-451b-977c-41bf1f3df1a1",
+   "55f2c729-feb4-42c5-b7db-d2db301c224a",
+   "769c9114-fb1e-4125-a360-6a6d965a9827",
+   "30c57483-4861-43c1-b8a5-a9143ec0e766",
+   "164392c1-8c48-46d9-82e4-13ad22d489ee",
+   "456d408e-09bf-4f99-9c96-722efd1d2eec",
+   "634165b2-aa55-4c91-950a-d10b37245f3b",
+   "8ce3a1e2-9508-4d9c-8df9-852c22a30b72",
+   "7ee59058-e486-40d0-a017-2b7b5a58a22f",
+   "d29501a5-4767-4947-a23f-ee72f380404f",
+   "8e8afc4d-03c4-4532-8636-8a303e55010b",
+   "f2e39ced-6e5b-4e6d-8548-f968cf6b1eea",
+   "7f734c8c-cdf3-4c4d-86f2-b51d14d9456f",
+   "827dbe45-dba5-44a5-b95a-768093c6ce71",
+   "10325769-9a13-4131-95df-930358af7404",
+   "a9a9f196-76fc-4684-8b69-1f575b27bd17",
+   "25e799aa-59ec-4fc0-980c-52fc695ff501",
+   "951e0287-25ab-4e67-86aa-8c549674a71b",
+   "04d6925f-9eeb-427d-88ea-4e22176a0a69",
+   "8786380e-c7ca-49eb-ad73-aad59a137f4f",
+   "0abc98dc-be36-484f-84b8-3f53d857d73f",
+   "f1ec2f03-317d-44d7-85bd-328205a07cbb",
+   "6cf087e1-f263-40e2-a68c-34ce90ff0389",
+   "65254745-0a78-445e-ac35-50abb02e9a7d",
+   "3449d0cf-1a18-4600-9e94-d59bae770065",
+   "ca390ebc-d16d-4897-b134-150bafc9019e",
+   "0e692d37-0d8a-4ee5-98b5-b2fd3b11eb06",
+   "226994d4-8d56-4e34-966a-fecbe9414abc",
+   "ea76e8e6-54a1-499f-8844-73fa6e31d5d6",
+   "7dcaff50-8286-4abe-8ae3-37eb00968279",
+   "ff60f03e-f416-4c6f-b9e3-5089da6bdaad",
+   "29bbb7e9-6de2-4d31-bdde-06702e2714e6",
+   "21b48145-5a86-48ca-8dae-ddb779b2bead",
+   "2ba4500b-e8d8-4549-a09e-e3ecbca9f14c",
+   "666da455-4e1f-429a-9f9f-f9a66297474b",
+   "30c46c9e-00c3-4ab6-8d00-6375ce84d37e",
+   "8a72dad1-ac5d-41b6-92a5-35160d3cae94",
+   "cddd20a8-690a-494d-b38c-962e74e5ae6f",
+   "c6937363-fdd3-440e-b307-fa4af41e2e5d",
+   "6395a254-a702-44f3-8176-ec5502910ed6",
+   "c0084b00-99c7-4360-8b34-1d852d0ae8d9",
+   "231f47fa-cf9c-4ea9-a60d-53c8459f4779",
+   "30755456-9c5b-4a37-9069-df43e2218076",
+   "a029d62f-75df-4a58-9e44-95db43763c5c",
+   "92d224ce-5b2b-474e-a43b-bde68e8435cd",
+   "35adef1d-063e-4da9-88e3-e4c562fc40fe",
+   "cc2e8dfe-3b34-4850-a386-21fe6c85e603",
+   "52f03583-2dad-49fe-9cba-add44632309b",
+   "9cae2839-7ba7-4844-a4f6-b13b4bdbb723",
+   "c1a05c71-feae-4865-a30a-f6078c1ffac9",
+   "a448f3cd-9150-4a8a-b4ef-04f233e0c8a8",
+   "9ef9ff0b-4bab-499b-9fa9-d059fec68c86",
+   "6b716861-c3ba-4e9d-a89b-3a8357a31924",
+   "bcd0ea8f-12b9-4123-a345-6c89404c3848",
+   "71b2f71b-c2b9-42d3-9627-2f9ab0ef297a",
+   "7284d8b9-830f-4266-9fae-c9a2cd8cd825",
+   "cc822471-95c0-4854-90f0-ec6036923801",
+   "c94b907d-6b7e-4b55-a723-676c6cc31900",
+   "d32f688c-444f-4a3d-9a12-41640201b906",
+   "819f2777-02d8-4c01-8b62-b4d0dccb3d20",
+   "6ce816d9-d941-45a1-b072-a675b1cfdde8",
+   "feee1c85-1360-4774-87b1-ad070d18288e",
+   "2f3cbe42-60ee-4399-9e86-7e725eee2da2"
+  ],
+  "rows": [
+   {
+    "id": "d39991de-d9f7-4ead-851c-b9ecc47b6e19",
+    "issn": "1307-2080",
+    "eissn": "2636-8552",
+    "title": "ACTA Pharmaceutica Sciencia",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210233185|OpenAlex:https://openalex.org/S4210233185|OpenAlex:https://openalex.org/S4210233185|OpenAlex:https://openalex.org/S4210233185"
+   },
+   {
+    "id": "94e587f6-2c56-4c34-a6d5-61f4bfdbb406",
+    "issn": "2502-4922",
+    "eissn": "2615-0867",
+    "title": "AL-JAZARI JURNAL ILMIAH TEKNIK MESIN",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210221227|OpenAlex:https://openalex.org/S4210221227|OpenAlex:https://openalex.org/S4210221227"
+   },
+   {
+    "id": "1be8b63f-4db8-46bb-b20f-60a596270e13",
+    "issn": "2575-5951",
+    "eissn": "2575-596X",
+    "title": "Advances in Wireless Communications and Networks",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210198937|OpenAlex:https://openalex.org/S4210198937"
+   },
+   {
+    "id": "d89c0d22-ec7d-4bb3-b51f-126a6130bec9",
+    "issn": "3048-9822",
+    "eissn": null,
+    "title": "Aathiyoga Indian Journal of Ancient Medicine and Yoga",
+    "department": "Ayurveda",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S5407047186|OpenAlex:https://openalex.org/S5407047186|OpenAlex:https://openalex.org/S5407047186"
+   },
+   {
+    "id": "a8d00b16-fa5c-490d-ad7f-80a816e5a7d6",
+    "issn": "2218-3116",
+    "eissn": null,
+    "title": "Electric Power Transmission and Distribution",
+    "department": "Electrical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S5407053626"
+   },
+   {
+    "id": "799c0673-596e-4c1f-bbaa-96f0b738d8ae",
+    "issn": "2710-4001",
+    "eissn": null,
+    "title": "Advances in Applied NanoBio-Technologies",
+    "department": "Nano Technology",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S5407023214|OpenAlex:https://openalex.org/S5407023214|OpenAlex:https://openalex.org/S5407023214"
+   },
+   {
+    "id": "d76918a0-1f58-483a-8770-c9d1215066bc",
+    "issn": "2190-572X",
+    "eissn": "2190-5738",
+    "title": "3 Biotech",
+    "department": "Bio Technology",
+    "basisSource": "NLM Catalog",
+    "route": "nlm-subject",
+    "sourceId": "OpenAlex:https://openalex.org/S4210190239|OpenAlex:https://openalex.org/S4210190239|NLM Catalog:nlmcatalog:101565857"
+   },
+   {
+    "id": "ef3552c3-ff6e-4b42-b36c-ab7d07ceba05",
+    "issn": "0211-5638",
+    "eissn": "1578-2107",
+    "title": "Fisioterapia",
+    "department": "Physiotherapy",
+    "basisSource": "NLM Catalog",
+    "route": "nlm-subject",
+    "sourceId": "OpenAlex:https://openalex.org/S79831086|OpenAlex:https://openalex.org/S79831086|OpenAlex:https://openalex.org/S79831086|NLM Catalog:nlmcatalog:9518003"
+   },
+   {
+    "id": "abda433a-a584-4ab8-aa09-dbf3190788c3",
+    "issn": "1898-4088",
+    "eissn": "2300-5319",
+    "title": "Acta Mechanica et Automatica",
+    "department": "Applied Mechanics",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S2738513642|OpenAlex:https://openalex.org/S2738513642"
+   },
+   {
+    "id": "cdb22a80-2ff3-4cca-9fb5-f01b73ba7eba",
+    "issn": "0041-0020",
+    "eissn": "1478-341X",
+    "title": "Town Planning Review",
+    "department": "Architecture",
+    "basisSource": "NLM Catalog",
+    "route": "nlm-subject",
+    "sourceId": "OpenAlex:https://openalex.org/S127305097|NLM Catalog:nlmcatalog:101085245"
+   },
+   {
+    "id": "c5ff5f87-e34a-4cde-aa95-57a7869a13a9",
+    "issn": "0001-1541",
+    "eissn": "1547-5905",
+    "title": "AIChE Journal",
+    "department": "Chemical Engineering",
+    "basisSource": "NLM Catalog",
+    "route": "nlm-subject",
+    "sourceId": "OpenAlex:https://openalex.org/S147177414|OpenAlex:https://openalex.org/S147177414|OpenAlex:https://openalex.org/S147177414|NLM Catalog:nlmcatalog:9879346"
+   },
+   {
+    "id": "fffb72d2-3c40-4dd7-94d0-a9346510ac3e",
+    "issn": "2689-0259",
+    "eissn": null,
+    "title": "American Journal of Pharmaceutics",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S7407056560"
+   },
+   {
+    "id": "20109b5a-538a-4aba-8986-7348fbf01f0f",
+    "issn": "2460-3988",
+    "eissn": "2581-0979",
+    "title": "AME (Aplikasi Mekanika dan Energi) Jurnal Ilmiah Teknik Mesin",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210201226|OpenAlex:https://openalex.org/S4210201226|OpenAlex:https://openalex.org/S4210201226"
+   },
+   {
+    "id": "f8421132-6698-4477-9f1e-39a83c25e8ec",
+    "issn": "2411-4367",
+    "eissn": "2411-4375",
+    "title": "Applied photonics",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210178219|OpenAlex:https://openalex.org/S4210178219"
+   },
+   {
+    "id": "62cb0e51-86c2-4258-9603-22ac4c349f01",
+    "issn": "2456-3668",
+    "eissn": "2583-5661",
+    "title": "Advancements in Homeopathic Research",
+    "department": "Ayurveda",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4306500771|OpenAlex:https://openalex.org/S4306500771|OpenAlex:https://openalex.org/S4306500771"
+   },
+   {
+    "id": "be199e5e-f8d8-488d-b61e-31506433b7ba",
+    "issn": "3070-2607",
+    "eissn": null,
+    "title": "ICCK Transactions on Electric Power Networks and Systems",
+    "department": "Electrical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S5407055216|OpenAlex:https://openalex.org/S5407055216"
+   },
+   {
+    "id": "050facab-8155-4ddb-ac46-6faf16436efa",
+    "issn": "2688-1047",
+    "eissn": null,
+    "title": "American Journal Of Nano Science And Technology",
+    "department": "Nano Technology",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S7407056351|OpenAlex:https://openalex.org/S7407056351|OpenAlex:https://openalex.org/S7407056351|OpenAlex:https://openalex.org/S7407056351|OpenAlex:https://openalex.org/S7407056351"
+   },
+   {
+    "id": "1cf20be2-a0c4-49fb-9166-daf87c5ba3f1",
+    "issn": "1024-2422",
+    "eissn": "1026-5503",
+    "title": "Biocatalysis and Biotransformation",
+    "department": "Bio Technology",
+    "basisSource": "NLM Catalog",
+    "route": "nlm-subject",
+    "sourceId": "OpenAlex:https://openalex.org/S946611601|OpenAlex:https://openalex.org/S946611601|NLM Catalog:nlmcatalog:9602086"
+   },
+   {
+    "id": "4632c1b8-ae12-4827-ad5d-65113ba60f54",
+    "issn": "1518-9740",
+    "eissn": "2526-9747",
+    "title": "Fisioterapia Brasil",
+    "department": "Physiotherapy",
+    "basisSource": "NLM Catalog",
+    "route": "nlm-subject",
+    "sourceId": "OpenAlex:https://openalex.org/S4210180064|OpenAlex:https://openalex.org/S4210180064|OpenAlex:https://openalex.org/S4210180064|NLM Catalog:nlmcatalog:101137551"
+   },
+   {
+    "id": "c56e24a3-2351-4ccd-94c3-09051801c9c1",
+    "issn": "1555-1415",
+    "eissn": "1555-1423",
+    "title": "Journal of Computational and Nonlinear Dynamics",
+    "department": "Applied Mechanics",
+    "basisSource": "Crossref",
+    "route": "official-list",
+    "sourceId": "OpenAlex:https://openalex.org/S73930687|OpenAlex:https://openalex.org/S73930687|Crossref member:member:33|Crossref member:member:33"
+   },
+   {
+    "id": "d89a82ce-7d8c-4aad-a9f7-adde61389d58",
+    "issn": "2435-6891",
+    "eissn": null,
+    "title": "traverse kyoto university architectural journal",
+    "department": "Architecture",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S7407057331|OpenAlex:https://openalex.org/S7407057331"
+   },
+   {
+    "id": "7e462df9-4227-4d50-b765-d4b10aaebd99",
+    "issn": "0003-4509",
+    "eissn": "2772-803X",
+    "title": "Annales Pharmaceutiques Françaises",
+    "department": "Pharmacy",
+    "basisSource": "NLM Catalog",
+    "route": "nlm-subject",
+    "sourceId": "OpenAlex:https://openalex.org/S193932567|OpenAlex:https://openalex.org/S193932567|NLM Catalog:nlmcatalog:446043"
+   },
+   {
+    "id": "7b92a1f7-3ffb-4bfd-af34-00c8c8fdf4de",
+    "issn": "2722-0796",
+    "eissn": "2722-080X",
+    "title": "ARMATUR Artikel Teknik Mesin & Manufaktur",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210208226|OpenAlex:https://openalex.org/S4210208226"
+   },
+   {
+    "id": "85f4525c-a481-460a-b9e5-43b8c6fdb5cb",
+    "issn": "0278-081X",
+    "eissn": "1531-5878",
+    "title": "Circuits Systems and Signal Processing",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S20109229|OpenAlex:https://openalex.org/S20109229"
+   },
+   {
+    "id": "cba78ab7-fb81-48fe-9f65-62d459ebe624",
+    "issn": "0974-6986",
+    "eissn": "0974-6994",
+    "title": "Indian Journal of Ancient Medicine and Yoga",
+    "department": "Ayurveda",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210224779|OpenAlex:https://openalex.org/S4210224779|OpenAlex:https://openalex.org/S4210224779|OpenAlex:https://openalex.org/S4210224779"
+   },
+   {
+    "id": "5e32dc99-82f7-4efa-89c7-fb566f2b264d",
+    "issn": "2156-3381",
+    "eissn": "2156-3403",
+    "title": "IEEE Journal of Photovoltaics",
+    "department": "Electrical Engineering",
+    "basisSource": "Crossref",
+    "route": "official-list",
+    "sourceId": "OpenAlex:https://openalex.org/S137728576|OpenAlex:https://openalex.org/S137728576|Crossref member:member:263"
+   },
+   {
+    "id": "8fda0e32-9c32-4689-bb8a-8385726a018a",
+    "issn": "1877-9123",
+    "eissn": "1877-9131",
+    "title": "Current Nanomedicine",
+    "department": "Nano Technology",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210236171|OpenAlex:https://openalex.org/S4210236171"
+   },
+   {
+    "id": "dc67a304-16af-4b97-bbf6-27988b1b8e9d",
+    "issn": "1985-5133",
+    "eissn": "2180-1983",
+    "title": "Journal Of Agrobiotechnology",
+    "department": "Bio Technology",
+    "basisSource": "NLM Catalog",
+    "route": "nlm-subject",
+    "sourceId": "OpenAlex:https://openalex.org/S4210238497|OpenAlex:https://openalex.org/S4210238497|NLM Catalog:nlmcatalog:101566057"
+   },
+   {
+    "id": "f85ea7ce-7a1d-411e-ab56-d36205347766",
+    "issn": "0270-3181",
+    "eissn": "1541-3152",
+    "title": "Physical & Occupational Therapy In Geriatrics",
+    "department": "Physiotherapy",
+    "basisSource": "NLM Catalog",
+    "route": "nlm-subject",
+    "sourceId": "OpenAlex:https://openalex.org/S4335093|OpenAlex:https://openalex.org/S4335093|NLM Catalog:nlmcatalog:8102920"
+   },
+   {
+    "id": "1dc0cd1a-4174-436c-a78c-1ecfd1a0079e",
+    "issn": "0739-3717",
+    "eissn": "1048-9002",
+    "title": "Journal of vibration and acoustics",
+    "department": "Applied Mechanics",
+    "basisSource": "OpenAlex",
+    "route": "official-list",
+    "sourceId": "OpenAlex:https://openalex.org/S31534900|OpenAlex:https://openalex.org/S31534900"
+   },
+   {
+    "id": "e63718a0-a11b-40e4-8319-22162711e0b9",
+    "issn": "2320-4850",
+    "eissn": null,
+    "title": "Asian Journal of Pharmaceutical Research and Development",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210218350|OpenAlex:https://openalex.org/S4210218350|OpenAlex:https://openalex.org/S4210218350"
+   },
+   {
+    "id": "06e3bf4c-bc6b-48ce-ad9b-75a634187c5f",
+    "issn": "2809-9397",
+    "eissn": null,
+    "title": "AutoMech Jurnal Teknik Mesin",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S5407033705|OpenAlex:https://openalex.org/S5407033705|OpenAlex:https://openalex.org/S5407033705"
+   },
+   {
+    "id": "bab49122-6464-4515-a031-0fdcd07859fb",
+    "issn": "2163-3983",
+    "eissn": "2163-3991",
+    "title": "Hans Journal of Wireless Communications",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S2764539530|OpenAlex:https://openalex.org/S2764539530"
+   },
+   {
+    "id": "6cb3849d-8daf-4632-9dda-a15cb6a25d9e",
+    "issn": "2320-5091",
+    "eissn": null,
+    "title": "International Ayurvedic Medical Journal",
+    "department": "Ayurveda",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210240564|OpenAlex:https://openalex.org/S4210240564|OpenAlex:https://openalex.org/S4210240564|OpenAlex:https://openalex.org/S4210240564"
+   },
+   {
+    "id": "55ae8586-d59f-41ec-8ea5-48448a9cc41d",
+    "issn": "1949-307X",
+    "eissn": "1949-3088",
+    "title": "IEEE Magnetics Letters",
+    "department": "Electrical Engineering",
+    "basisSource": "Crossref",
+    "route": "official-list",
+    "sourceId": "OpenAlex:https://openalex.org/S115902931|OpenAlex:https://openalex.org/S115902931|Crossref member:member:263"
+   },
+   {
+    "id": "8be6a197-8a47-4566-90a4-a5ce404bfa06",
+    "issn": "2816-573X",
+    "eissn": null,
+    "title": "International Journal of Advanced Nano Computing and Analytics",
+    "department": "Nano Technology",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4389157969|OpenAlex:https://openalex.org/S4389157969|OpenAlex:https://openalex.org/S4389157969|OpenAlex:https://openalex.org/S4389157969"
+   },
+   {
+    "id": "2114d3d0-7ec6-44b5-8a62-5d0022d5768a",
+    "issn": "1932-6254",
+    "eissn": "1932-7005",
+    "title": "Journal of Tissue Engineering and Regenerative Medicine",
+    "department": "Bio Technology",
+    "basisSource": "NLM Catalog",
+    "route": "nlm-subject",
+    "sourceId": "OpenAlex:https://openalex.org/S68700368|NLM Catalog:nlmcatalog:101308490"
+   },
+   {
+    "id": "544d1d6b-6130-4903-8803-28a645e46051",
+    "issn": "0194-2638",
+    "eissn": "1541-3144",
+    "title": "Physical & Occupational Therapy In Pediatrics",
+    "department": "Physiotherapy",
+    "basisSource": "NLM Catalog",
+    "route": "nlm-subject",
+    "sourceId": "OpenAlex:https://openalex.org/S102185553|NLM Catalog:nlmcatalog:8109120"
+   },
+   {
+    "id": "edf4249e-87a1-4425-b729-4c255aa15390",
+    "issn": "2250-1444",
+    "eissn": "2250-1460",
+    "title": "Asian Journal of Pharmaceutical Research and Health Care",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S2765029502|OpenAlex:https://openalex.org/S2765029502|OpenAlex:https://openalex.org/S2765029502"
+   },
+   {
+    "id": "62d05bc9-0739-4064-b461-a22eb65eff77",
+    "issn": "2720-9520",
+    "eissn": "2354-8584",
+    "title": "Dinamika Jurnal Teknik Mesin",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4387288635|OpenAlex:https://openalex.org/S4387288635|OpenAlex:https://openalex.org/S4387288635"
+   },
+   {
+    "id": "062cec18-6888-4335-89b6-b6036b055774",
+    "issn": "1536-1225",
+    "eissn": "1548-5757",
+    "title": "IEEE Antennas and Wireless Propagation Letters",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "Crossref",
+    "route": "official-list(topics said Mechanical Engineering)",
+    "sourceId": "OpenAlex:https://openalex.org/S189798733|OpenAlex:https://openalex.org/S189798733|Crossref member:member:263"
+   },
+   {
+    "id": "e29ed750-3e3c-4a2c-86fe-fd30ee7ad2c3",
+    "issn": "0976-5921",
+    "eissn": null,
+    "title": "International Journal of Ayurvedic Medicine",
+    "department": "Ayurveda",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S2764371585|OpenAlex:https://openalex.org/S2764371585|OpenAlex:https://openalex.org/S2764371585|OpenAlex:https://openalex.org/S2764371585"
+   },
+   {
+    "id": "de9893be-16af-4189-a9bf-8654e465cf76",
+    "issn": "1051-8223",
+    "eissn": "1558-2515",
+    "title": "IEEE Transactions on Applied Superconductivity",
+    "department": "Electrical Engineering",
+    "basisSource": "Crossref",
+    "route": "official-list",
+    "sourceId": "OpenAlex:https://openalex.org/S119074828|OpenAlex:https://openalex.org/S119074828|Crossref member:member:263"
+   },
+   {
+    "id": "a20b6f21-42fa-4a47-b193-73f14ea16f3c",
+    "issn": "1753-2507",
+    "eissn": "1753-2515",
+    "title": "International Journal of Nanoparticles",
+    "department": "Nano Technology",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S158809845|OpenAlex:https://openalex.org/S158809845|OpenAlex:https://openalex.org/S158809845"
+   },
+   {
+    "id": "f56ea683-34c9-491b-879f-58829b83ef0f",
+    "issn": "1224-5984",
+    "eissn": "2248-3942",
+    "title": "ROMANIAN BIOTECHNOLOGICAL LETTERS",
+    "department": "Bio Technology",
+    "basisSource": "NLM Catalog",
+    "route": "nlm-subject",
+    "sourceId": "OpenAlex:https://openalex.org/S39127591|OpenAlex:https://openalex.org/S39127591|NLM Catalog:nlmcatalog:101537003"
+   },
+   {
+    "id": "16fd8d87-1065-41fc-9a2f-7a81b8892597",
+    "issn": "2231-2331",
+    "eissn": "2231-234X",
+    "title": "Asian Journal of Pharmaceutical and Health Sciences",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210195007|OpenAlex:https://openalex.org/S4210195007|OpenAlex:https://openalex.org/S4210195007"
+   },
+   {
+    "id": "482a0214-6453-4b3a-bf99-c5c322fa69ba",
+    "issn": "2088-088X",
+    "eissn": "2502-1729",
+    "title": "Dinamika Teknik Mesin",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210170303|OpenAlex:https://openalex.org/S4210170303"
+   },
+   {
+    "id": "3130d619-b6ff-403d-b19b-ddef2c977f79",
+    "issn": "0741-3106",
+    "eissn": "1558-0563",
+    "title": "IEEE Electron Device Letters",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "Crossref",
+    "route": "official-list",
+    "sourceId": "OpenAlex:https://openalex.org/S19887683|OpenAlex:https://openalex.org/S19887683|Crossref member:member:263"
+   },
+   {
+    "id": "b79203b7-8117-4461-9fe1-de650a015463",
+    "issn": "2616-4485",
+    "eissn": "2616-4493",
+    "title": "International Journal of Homoeopathic Sciences",
+    "department": "Ayurveda",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4306513978|OpenAlex:https://openalex.org/S4306513978|OpenAlex:https://openalex.org/S4306513978"
+   },
+   {
+    "id": "ebba0583-8166-49f7-ae42-785426b13e43",
+    "issn": "1070-9878",
+    "eissn": "1558-4135",
+    "title": "IEEE Transactions on Dielectrics and Electrical Insulation",
+    "department": "Electrical Engineering",
+    "basisSource": "Crossref",
+    "route": "official-list",
+    "sourceId": "OpenAlex:https://openalex.org/S19003042|OpenAlex:https://openalex.org/S19003042|Crossref member:member:263"
+   },
+   {
+    "id": "923288f2-6e8b-48ad-b656-de372705bedc",
+    "issn": "2578-8760",
+    "eissn": null,
+    "title": "Journal of Nanomedicine",
+    "department": "Nano Technology",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210231627|OpenAlex:https://openalex.org/S4210231627|OpenAlex:https://openalex.org/S4210231627|OpenAlex:https://openalex.org/S4210231627"
+   },
+   {
+    "id": "2d56d363-a850-466e-b411-32c41684fd33",
+    "issn": "1134-7198",
+    "eissn": "2605-1230",
+    "title": "Revista de derecho y genoma humano: genética, biotecnología y medicina avanzada = Law and the human genome review: genetics, biotechnology and advanced medicine",
+    "department": "Bio Technology",
+    "basisSource": "NLM Catalog",
+    "route": "nlm-subject",
+    "sourceId": "OpenAlex:https://openalex.org/S4306526653|NLM Catalog:nlmcatalog:101558644"
+   },
+   {
+    "id": "9f7c79fe-d371-4e4f-9b00-02e18fac3b99",
+    "issn": "0973-8398",
+    "eissn": "1998-409X",
+    "title": "Asian Journal of Pharmaceutics",
+    "department": "Pharmacy",
+    "basisSource": "NLM Catalog",
+    "route": "topics+nlm-subject+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S66408587|OpenAlex:https://openalex.org/S66408587|OpenAlex:https://openalex.org/S66408587|NLM Catalog:nlmcatalog:101498921"
+   },
+   {
+    "id": "a2ccaba3-162b-4c1f-bac9-d0a51bc3ba5f",
+    "issn": "2407-7852",
+    "eissn": "2597-7083",
+    "title": "FLYWHEEL Jurnal Teknik Mesin Untirta",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210238169|OpenAlex:https://openalex.org/S4210238169"
+   },
+   {
+    "id": "674c314d-f65f-4b0c-8cde-3b1afd96c84e",
+    "issn": "2469-7249",
+    "eissn": "2469-7257",
+    "title": "IEEE Journal of Electromagnetics RF and Microwaves in Medicine and Biology",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "Crossref",
+    "route": "official-list+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210194209|OpenAlex:https://openalex.org/S4210194209|OpenAlex:https://openalex.org/S4210194209|Crossref member:member:263"
+   },
+   {
+    "id": "9a0f39a8-88bf-42ee-8e07-92e27b41f058",
+    "issn": "3117-4051",
+    "eissn": "3117-406X",
+    "title": "International Journal of Research in AYUSH",
+    "department": "Ayurveda",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S7407055898|OpenAlex:https://openalex.org/S7407055898|OpenAlex:https://openalex.org/S7407055898"
+   },
+   {
+    "id": "10029ea5-8d25-4423-bec5-e48d9b539529",
+    "issn": "0018-9456",
+    "eissn": "1557-9662",
+    "title": "IEEE Transactions on Instrumentation and Measurement",
+    "department": "Electrical Engineering",
+    "basisSource": "Crossref",
+    "route": "official-list",
+    "sourceId": "OpenAlex:https://openalex.org/S10892749|OpenAlex:https://openalex.org/S10892749|Crossref member:member:263"
+   },
+   {
+    "id": "d167645b-1ff4-451a-808f-4e30b7c48ecc",
+    "issn": "3029-2824",
+    "eissn": null,
+    "title": "Nano Carbons",
+    "department": "Nano Technology",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S5407045084|OpenAlex:https://openalex.org/S5407045084|OpenAlex:https://openalex.org/S5407045084|OpenAlex:https://openalex.org/S5407045084"
+   },
+   {
+    "id": "c63342a3-03bd-4237-9fd8-d6c30458719b",
+    "issn": "1937-3341",
+    "eissn": "1937-335X",
+    "title": "Tissue Engineering Part A",
+    "department": "Bio Technology",
+    "basisSource": "NLM Catalog",
+    "route": "nlm-subject",
+    "sourceId": "OpenAlex:https://openalex.org/S19081469|NLM Catalog:nlmcatalog:101466659"
+   },
+   {
+    "id": "0109842d-ed9d-478a-966c-4fcd63780a1b",
+    "issn": "0301-4606",
+    "eissn": "2408-8463",
+    "title": "Bangladesh Pharmaceutical Journal",
+    "department": "Pharmacy",
+    "basisSource": "NLM Catalog",
+    "route": "nlm-subject",
+    "sourceId": "OpenAlex:https://openalex.org/S2764489654|OpenAlex:https://openalex.org/S2764489654|OpenAlex:https://openalex.org/S2764489654|NLM Catalog:nlmcatalog:402036"
+   },
+   {
+    "id": "edad79c7-a7ca-45b8-80f9-1a258f37869a",
+    "issn": "2151-8629",
+    "eissn": null,
+    "title": "Frontiers in Heat and Mass Transfer",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S194389430|OpenAlex:https://openalex.org/S194389430"
+   },
+   {
+    "id": "4d6df12b-aca0-4a89-91a1-cc8c3bb21028",
+    "issn": "2469-7281",
+    "eissn": "2469-729X",
+    "title": "IEEE Journal of Radio Frequency Identification",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "Crossref",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210234470|OpenAlex:https://openalex.org/S4210234470|OpenAlex:https://openalex.org/S4210234470|Crossref member:member:263"
+   },
+   {
+    "id": "8e46ada3-1080-4a3d-8bf4-527d6e631db9",
+    "issn": "1531-2054",
+    "eissn": "2168-5835",
+    "title": "International Journal of Yoga Therapy",
+    "department": "Ayurveda",
+    "basisSource": "NLM Catalog",
+    "route": "nlm-subject",
+    "sourceId": "OpenAlex:https://openalex.org/S2764662227|OpenAlex:https://openalex.org/S2764662227|OpenAlex:https://openalex.org/S2764662227|OpenAlex:https://openalex.org/S2764662227|NLM Catalog:nlmcatalog:100965420"
+   },
+   {
+    "id": "307bb200-5327-4caf-924b-d2c6e5e5f5f1",
+    "issn": "0018-9464",
+    "eissn": "1941-0069",
+    "title": "IEEE Transactions on Magnetics",
+    "department": "Electrical Engineering",
+    "basisSource": "Crossref",
+    "route": "official-list",
+    "sourceId": "OpenAlex:https://openalex.org/S50523690|OpenAlex:https://openalex.org/S50523690|Crossref member:member:263"
+   },
+   {
+    "id": "874cff73-56bd-4b6c-9898-39c542f154f3",
+    "issn": "2399-1984",
+    "eissn": null,
+    "title": "Nano Futures",
+    "department": "Nano Technology",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210169526|OpenAlex:https://openalex.org/S4210169526|OpenAlex:https://openalex.org/S4210169526"
+   },
+   {
+    "id": "34819871-766a-4d35-8756-39ff170c31d5",
+    "issn": "1937-3368",
+    "eissn": "1937-3376",
+    "title": "Tissue Engineering Part B Reviews",
+    "department": "Bio Technology",
+    "basisSource": "NLM Catalog",
+    "route": "nlm-subject",
+    "sourceId": "OpenAlex:https://openalex.org/S13647896|NLM Catalog:nlmcatalog:101466660"
+   },
+   {
+    "id": "ff3fecaa-ca16-4593-8f3b-4db33c1a338a",
+    "issn": "0009-9236",
+    "eissn": "1085-8733",
+    "title": "Clinical Pharmacology & Therapeutics",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S159852663"
+   },
+   {
+    "id": "e3505f4a-10b3-48cc-8f44-cf68e5811f6e",
+    "issn": "1672-2620",
+    "eissn": null,
+    "title": "Gas Turbine Experiment and Research",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S2764921571|OpenAlex:https://openalex.org/S2764921571|OpenAlex:https://openalex.org/S2764921571"
+   },
+   {
+    "id": "1a39e409-e309-4af2-ad7c-61e5551f1635",
+    "issn": "3066-2494",
+    "eissn": null,
+    "title": "IEEE Journal of Selected Topics in Electromagnetics Antennas and Propagation",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "Crossref",
+    "route": "official-list",
+    "sourceId": "OpenAlex:https://openalex.org/S5407048732|OpenAlex:https://openalex.org/S5407048732|Crossref member:member:263"
+   },
+   {
+    "id": "031e3b62-a901-45e9-a5b6-d681841fd304",
+    "issn": "2347-6362",
+    "eissn": null,
+    "title": "International journal of applied ayurved research.",
+    "department": "Ayurveda",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4404662304|OpenAlex:https://openalex.org/S4404662304|OpenAlex:https://openalex.org/S4404662304|OpenAlex:https://openalex.org/S4404662304|OpenAlex:https://openalex.org/S4404662304"
+   },
+   {
+    "id": "6ce9937f-b1cb-4d02-8eeb-af3612c9164a",
+    "issn": "0093-3813",
+    "eissn": "1939-9375",
+    "title": "IEEE Transactions on Plasma Science",
+    "department": "Electrical Engineering",
+    "basisSource": "Crossref",
+    "route": "official-list",
+    "sourceId": "OpenAlex:https://openalex.org/S164692974|OpenAlex:https://openalex.org/S164692974|OpenAlex:https://openalex.org/S164692974|Crossref member:member:263"
+   },
+   {
+    "id": "017bf59d-41ba-4389-b668-0bf8a1583cef",
+    "issn": "2767-0171",
+    "eissn": null,
+    "title": "Nano Particle",
+    "department": "Nano Technology",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210233527|OpenAlex:https://openalex.org/S4210233527|OpenAlex:https://openalex.org/S4210233527|OpenAlex:https://openalex.org/S4210233527|OpenAlex:https://openalex.org/S4210233527|OpenAlex:https://openalex.org/S4210233527|OpenAlex:https://openalex.org/S4210233527"
+   },
+   {
+    "id": "3850a634-3dd0-4ebe-9cb3-f0ddc5fc17e0",
+    "issn": "1937-3384",
+    "eissn": "1937-3392",
+    "title": "Tissue Engineering Part C Methods",
+    "department": "Bio Technology",
+    "basisSource": "NLM Catalog",
+    "route": "nlm-subject",
+    "sourceId": "OpenAlex:https://openalex.org/S190192123|NLM Catalog:nlmcatalog:101466663"
+   },
+   {
+    "id": "6642ae3b-ca66-44c6-9b96-e22b75d03a23",
+    "issn": "1389-2002",
+    "eissn": "1875-5453",
+    "title": "Current Drug Metabolism",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S195680726|OpenAlex:https://openalex.org/S195680726|OpenAlex:https://openalex.org/S195680726"
+   },
+   {
+    "id": "ddabc55f-39f2-46bd-9da0-1e9c33d4eb1e",
+    "issn": "1064-2285",
+    "eissn": "2162-6561",
+    "title": "Heat Transfer Research",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210198580|OpenAlex:https://openalex.org/S4210198580"
+   },
+   {
+    "id": "69c93dce-fa96-4fb5-b5bd-4949db1c0aa8",
+    "issn": "0733-8716",
+    "eissn": "1558-0008",
+    "title": "IEEE Journal on Selected Areas in Communications",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "Crossref",
+    "route": "official-list",
+    "sourceId": "OpenAlex:https://openalex.org/S90422530|OpenAlex:https://openalex.org/S90422530|Crossref member:member:263"
+   },
+   {
+    "id": "0df5e22a-4979-4729-b1e7-d16d847c46a3",
+    "issn": "2581-947X",
+    "eissn": null,
+    "title": "Journal of Integrated Standardized Homoeopathy",
+    "department": "Ayurveda",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210224362|OpenAlex:https://openalex.org/S4210224362"
+   },
+   {
+    "id": "df4d10dc-179c-4882-9a2c-e67d0c9c54b2",
+    "issn": "2768-1866",
+    "eissn": null,
+    "title": "IEEE Transactions on Signal and Power Integrity",
+    "department": "Electrical Engineering",
+    "basisSource": "Crossref",
+    "route": "official-list",
+    "sourceId": "OpenAlex:https://openalex.org/S4387282875|OpenAlex:https://openalex.org/S4387282875|Crossref member:member:263"
+   },
+   {
+    "id": "13296bc2-8986-4357-a585-2a3a8c19a7e1",
+    "issn": "2234-9871",
+    "eissn": "2235-8129",
+    "title": "Nano hybrids and composites",
+    "department": "Nano Technology",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210222556|OpenAlex:https://openalex.org/S4210222556|OpenAlex:https://openalex.org/S4210222556|OpenAlex:https://openalex.org/S4210222556"
+   },
+   {
+    "id": "9ab384da-1c7b-4a9d-b768-58b2f5161dae",
+    "issn": "2096-6326",
+    "eissn": "2662-1738",
+    "title": "aBIOTECH",
+    "department": "Bio Technology",
+    "basisSource": "NLM Catalog",
+    "route": "nlm-subject",
+    "sourceId": "OpenAlex:https://openalex.org/S4210188184|NLM Catalog:nlmcatalog:381280"
+   },
+   {
+    "id": "1d61df15-ac8c-489e-95f8-2b2352836a8f",
+    "issn": "1816-1820",
+    "eissn": "1816-1839",
+    "title": "Dhaka University Journal of Pharmaceutical Sciences",
+    "department": "Pharmacy",
+    "basisSource": "NLM Catalog",
+    "route": "nlm-subject",
+    "sourceId": "OpenAlex:https://openalex.org/S195682263|OpenAlex:https://openalex.org/S195682263|OpenAlex:https://openalex.org/S195682263|NLM Catalog:nlmcatalog:101262443"
+   },
+   {
+    "id": "7fe468dc-482c-4d1b-ab46-8bf9315a9a22",
+    "issn": "2962-4290",
+    "eissn": null,
+    "title": "IRA Jurnal Teknik Mesin dan Aplikasinya (IRAJTMA)",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4387285944|OpenAlex:https://openalex.org/S4387285944|OpenAlex:https://openalex.org/S4387285944"
+   },
+   {
+    "id": "5a462e0e-455f-41b1-8df4-372ca3ef36a3",
+    "issn": "3066-5736",
+    "eissn": null,
+    "title": "IEEE Journal on Wireless Power Technologies",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "Crossref",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S5407048801|OpenAlex:https://openalex.org/S5407048801|Crossref member:member:263"
+   },
+   {
+    "id": "eccd9181-9cdb-4d15-98c1-0b7c9b61b7fb",
+    "issn": "2578-4986",
+    "eissn": null,
+    "title": "Journal of Natural & Ayurvedic Medicine",
+    "department": "Ayurveda",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210227581|OpenAlex:https://openalex.org/S4210227581|OpenAlex:https://openalex.org/S4210227581"
+   },
+   {
+    "id": "0e165603-9ff9-4a4f-8569-f2e9bb4fa444",
+    "issn": "2332-7782",
+    "eissn": "2372-2088",
+    "title": "IEEE Transactions on Transportation Electrification",
+    "department": "Electrical Engineering",
+    "basisSource": "Crossref",
+    "route": "official-list+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4306422867|OpenAlex:https://openalex.org/S4306422867|Crossref member:member:263"
+   },
+   {
+    "id": "7bd45b49-db8a-47e7-a05c-fbc0283d7bc5",
+    "issn": "2352-507X",
+    "eissn": "2352-5088",
+    "title": "Nano-Structures & Nano-Objects",
+    "department": "Nano Technology",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S2764574320|OpenAlex:https://openalex.org/S2764574320|OpenAlex:https://openalex.org/S2764574320"
+   },
+   {
+    "id": "b6d60c50-f677-4ed8-8acd-d1f952460ba4",
+    "issn": "0913-5006",
+    "eissn": "1881-2732",
+    "title": "Drug Delivery System",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S69402063"
+   },
+   {
+    "id": "23ecb434-11ea-4ebd-8e96-e70538c597c8",
+    "issn": "2582-8029",
+    "eissn": null,
+    "title": "Indian Journal of Production and Thermal Engineering",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210171935|OpenAlex:https://openalex.org/S4210171935"
+   },
+   {
+    "id": "20f4b99f-0e99-47c2-bc6c-80bf9bd97b54",
+    "issn": "2637-6423",
+    "eissn": null,
+    "title": "IEEE Letters on Electromagnetic Compatibility Practice and Applications",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "Crossref",
+    "route": "official-list",
+    "sourceId": "OpenAlex:https://openalex.org/S4210205027|OpenAlex:https://openalex.org/S4210205027|Crossref member:member:263"
+   },
+   {
+    "id": "06a44ca0-5b84-4321-a9a3-32f1a2838285",
+    "issn": "2287-5417",
+    "eissn": "2799-6182",
+    "title": "Journal of Naturopathy",
+    "department": "Ayurveda",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210191146|OpenAlex:https://openalex.org/S4210191146|OpenAlex:https://openalex.org/S4210191146"
+   },
+   {
+    "id": "1f3a60cf-e5b0-446d-a130-f19e6d1d6aeb",
+    "issn": "3124-9434",
+    "eissn": null,
+    "title": "Innovative Journal of Intelligent Control and Optimization for Electrical Systems",
+    "department": "Electrical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S7407063589|OpenAlex:https://openalex.org/S7407063589"
+   },
+   {
+    "id": "e6d30af2-99c4-4b3d-82ad-e2ca4c09ffd3",
+    "issn": "2582-8622",
+    "eissn": null,
+    "title": "NanoNEXT",
+    "department": "Nano Technology",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210237033|OpenAlex:https://openalex.org/S4210237033"
+   },
+   {
+    "id": "bf1c9e98-4aac-42a9-97f5-177e406d25ad",
+    "issn": "3117-3853",
+    "eissn": null,
+    "title": "Drug Metabolism and Bioanalysis",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S5407053664|OpenAlex:https://openalex.org/S5407053664|OpenAlex:https://openalex.org/S5407053664"
+   },
+   {
+    "id": "7d9f814a-0d20-47d3-bbe9-f58be894df45",
+    "issn": "3089-5022",
+    "eissn": "3089-5170",
+    "title": "Inovasi Mekanikal dan Aplikasi Teknik Mesin",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S5407049883|OpenAlex:https://openalex.org/S5407049883|OpenAlex:https://openalex.org/S5407049883"
+   },
+   {
+    "id": "c4423642-e96a-4496-a4ed-bf7f486c10f4",
+    "issn": "1932-4545",
+    "eissn": "1940-9990",
+    "title": "IEEE Transactions on Biomedical Circuits and Systems",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "Crossref",
+    "route": "official-list",
+    "sourceId": "OpenAlex:https://openalex.org/S80299757|OpenAlex:https://openalex.org/S80299757|OpenAlex:https://openalex.org/S80299757|Crossref member:member:263|NLM Catalog:nlmcatalog:101312520"
+   },
+   {
+    "id": "7971dae6-eefc-4da5-b4de-4c9aafde2bcb",
+    "issn": "3078-7157",
+    "eissn": "3078-7165",
+    "title": "Journal of Swasthavritta and Yoga",
+    "department": "Ayurveda",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S5407049233|OpenAlex:https://openalex.org/S5407049233|OpenAlex:https://openalex.org/S5407049233|OpenAlex:https://openalex.org/S5407049233"
+   },
+   {
+    "id": "56b9e6ae-31e4-48fd-9bff-2ac3729e0ca9",
+    "issn": "2052-2002",
+    "eissn": "2052-2010",
+    "title": "International Journal of Smart Grid and Green Communications",
+    "department": "Electrical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210224015"
+   },
+   {
+    "id": "0ab70837-ed11-4e23-902e-af3cd6d2b728",
+    "issn": "3109-9939",
+    "eissn": null,
+    "title": "Plant Nanomaterial Journal",
+    "department": "Nano Technology",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S5407052974|OpenAlex:https://openalex.org/S5407052974|OpenAlex:https://openalex.org/S5407052974|OpenAlex:https://openalex.org/S5407052974|OpenAlex:https://openalex.org/S5407052974"
+   },
+   {
+    "id": "803b30c5-145f-4db1-bd78-4dcc3aa0bf0a",
+    "issn": "1347-4367",
+    "eissn": "1880-0920",
+    "title": "Drug Metabolism and Pharmacokinetics",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S185835163"
+   },
+   {
+    "id": "70c55d3d-8896-4a99-a811-d0f0afc819f8",
+    "issn": "2146-9067",
+    "eissn": null,
+    "title": "International Journal of Automotive Engineering and Technologies",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S2764913414|OpenAlex:https://openalex.org/S2764913414|OpenAlex:https://openalex.org/S2764913414"
+   },
+   {
+    "id": "2ce3f3cc-64cd-449f-9126-0f184fdf5e56",
+    "issn": "0018-9316",
+    "eissn": "1557-9611",
+    "title": "IEEE Transactions on Broadcasting",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "Crossref",
+    "route": "official-list",
+    "sourceId": "OpenAlex:https://openalex.org/S100142436|OpenAlex:https://openalex.org/S100142436|Crossref member:member:263"
+   },
+   {
+    "id": "cb6cb6f1-2813-48f5-8263-2bc2aedbbdef",
+    "issn": "3107-4057",
+    "eissn": null,
+    "title": "Kottakkal Journal of Ayurvedic Medicine And Research",
+    "department": "Ayurveda",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S5407050545|OpenAlex:https://openalex.org/S5407050545"
+   },
+   {
+    "id": "32417070-00b6-4c64-8235-fb2f966e7635",
+    "issn": "2602-439X",
+    "eissn": null,
+    "title": "International Journal of Smart grid",
+    "department": "Electrical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4220651408"
+   },
+   {
+    "id": "cd55d569-e5c4-4453-9319-3b4655268583",
+    "issn": "2194-9379",
+    "eissn": "2194-9387",
+    "title": "Drug Research",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210226141|OpenAlex:https://openalex.org/S4210226141|OpenAlex:https://openalex.org/S4210226141"
+   },
+   {
+    "id": "7ee6a87b-8cfd-470a-a132-2ab7d0db4850",
+    "issn": "2515-0464",
+    "eissn": "2515-0472",
+    "title": "International Journal of Hydromechatronics",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210207026|OpenAlex:https://openalex.org/S4210207026|OpenAlex:https://openalex.org/S4210207026"
+   },
+   {
+    "id": "62ac4a1e-a1a0-4496-83e6-6079a582ca87",
+    "issn": "0278-0070",
+    "eissn": "1937-4151",
+    "title": "IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "Crossref",
+    "route": "official-list",
+    "sourceId": "OpenAlex:https://openalex.org/S100835903|Crossref member:member:263"
+   },
+   {
+    "id": "1b08a385-6a1c-49ec-a41f-60b95db990f5",
+    "issn": "2320-7329",
+    "eissn": null,
+    "title": "National Journal of Research in Ayurved Science",
+    "department": "Ayurveda",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210170823|OpenAlex:https://openalex.org/S4210170823|OpenAlex:https://openalex.org/S4210170823|OpenAlex:https://openalex.org/S4210170823|OpenAlex:https://openalex.org/S4210170823"
+   },
+   {
+    "id": "3c3fedc4-f435-4f29-bee7-0206651209a0",
+    "issn": "2621-556X",
+    "eissn": null,
+    "title": "Journal of Electrical Power Control and Automation (JEPCA)",
+    "department": "Electrical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210184974|OpenAlex:https://openalex.org/S4210184974"
+   },
+   {
+    "id": "f9973ba9-d954-4cc7-ac89-5b5a0acaea45",
+    "issn": "2385-409X",
+    "eissn": null,
+    "title": "European journal of clinical pharmacy",
+    "department": "Pharmacy",
+    "basisSource": "NLM Catalog",
+    "route": "nlm-subject",
+    "sourceId": "OpenAlex:https://openalex.org/S2764767441|NLM Catalog:nlmcatalog:101658463"
+   },
+   {
+    "id": "2c97e3bf-6cae-4d58-a5b0-2c3a08c4277d",
+    "issn": "1753-1039",
+    "eissn": "1753-1047",
+    "title": "International Journal of Mechatronics and Manufacturing Systems",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S171861169|OpenAlex:https://openalex.org/S171861169"
+   },
+   {
+    "id": "6b0ca3eb-b566-4e1b-8779-6f8a82b00d48",
+    "issn": "0018-9375",
+    "eissn": "1558-187X",
+    "title": "IEEE Transactions on Electromagnetic Compatibility",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "Crossref",
+    "route": "official-list",
+    "sourceId": "OpenAlex:https://openalex.org/S163644703|OpenAlex:https://openalex.org/S163644703|Crossref member:member:263"
+   },
+   {
+    "id": "079dec24-d359-4f36-b3ed-5b1cbf60edb1",
+    "issn": "2583-2018",
+    "eissn": null,
+    "title": "PDEAS International Journal of Research in Ayurved and Allied Sciences",
+    "department": "Ayurveda",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S5407010272|OpenAlex:https://openalex.org/S5407010272|OpenAlex:https://openalex.org/S5407010272|OpenAlex:https://openalex.org/S5407010272|OpenAlex:https://openalex.org/S5407010272"
+   },
+   {
+    "id": "da0a2ea7-6948-4049-81c8-e80a9f65fc2b",
+    "issn": "2808-4306",
+    "eissn": "2829-2898",
+    "title": "Journal of Electronic and Electrical Power Applications",
+    "department": "Electrical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S5407033131|OpenAlex:https://openalex.org/S5407033131"
+   },
+   {
+    "id": "aa27d613-b445-43bf-a7aa-f4e4cc3ca508",
+    "issn": "1742-5247",
+    "eissn": "1744-7593",
+    "title": "Expert Opinion on Drug Delivery",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S51663496"
+   },
+   {
+    "id": "2a556629-6d6e-4099-a4f7-4be4ee11c69b",
+    "issn": "2528-6382",
+    "eissn": "2541-3562",
+    "title": "J-Proteksion Jurnal Kajian Ilmiah dan Teknologi Teknik Mesin",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210182293|OpenAlex:https://openalex.org/S4210182293"
+   },
+   {
+    "id": "cae37467-e361-47ec-abd8-3c7233c689e7",
+    "issn": "2156-342X",
+    "eissn": "2156-3446",
+    "title": "IEEE Transactions on Terahertz Science and Technology",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "Crossref",
+    "route": "official-list",
+    "sourceId": "OpenAlex:https://openalex.org/S202289667|OpenAlex:https://openalex.org/S202289667|Crossref member:member:263"
+   },
+   {
+    "id": "0ae852db-d7a1-4eb9-a6d2-9de48b2a2d1d",
+    "issn": "3108-2297",
+    "eissn": null,
+    "title": "Rohilkhand Journal of AYUSH Research",
+    "department": "Ayurveda",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S7407062570|OpenAlex:https://openalex.org/S7407062570|OpenAlex:https://openalex.org/S7407062570"
+   },
+   {
+    "id": "21eb7e75-a420-46d5-b494-0502a39ee18a",
+    "issn": "2161-8763",
+    "eissn": "2161-8771",
+    "title": "Smart Grid",
+    "department": "Electrical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210193291"
+   },
+   {
+    "id": "dd855de0-e6e2-450c-8966-20e985c06993",
+    "issn": "1474-0338",
+    "eissn": "1744-764X",
+    "title": "Expert Opinion on Drug Safety",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S20709540|OpenAlex:https://openalex.org/S20709540"
+   },
+   {
+    "id": "dc272dbd-4bd5-4cca-b3a3-c066441d32cd",
+    "issn": "3123-5425",
+    "eissn": null,
+    "title": "JTM JURNAL TEKNIK MESIN",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S5407054971|OpenAlex:https://openalex.org/S5407054971"
+   },
+   {
+    "id": "13a473c5-ce06-4030-9f1a-21e0df7666e7",
+    "issn": "0018-9545",
+    "eissn": "1939-9359",
+    "title": "IEEE Transactions on Vehicular Technology",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "Crossref",
+    "route": "official-list",
+    "sourceId": "OpenAlex:https://openalex.org/S10936095|OpenAlex:https://openalex.org/S10936095|Crossref member:member:263"
+   },
+   {
+    "id": "cebac6a9-e9df-47bf-8ed4-32521df22702",
+    "issn": "0973-3507",
+    "eissn": null,
+    "title": "Universities Journal of Phytochemistry and Ayurvedic Heights",
+    "department": "Ayurveda",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210209715|OpenAlex:https://openalex.org/S4210209715"
+   },
+   {
+    "id": "684e2ae7-f447-46fd-81bf-6158688952b9",
+    "issn": "0014-8237",
+    "eissn": "2065-0019",
+    "title": "FARMACIA",
+    "department": "Pharmacy",
+    "basisSource": "NLM Catalog",
+    "route": "nlm-subject",
+    "sourceId": "OpenAlex:https://openalex.org/S77753237|OpenAlex:https://openalex.org/S77753237|OpenAlex:https://openalex.org/S77753237|NLM Catalog:nlmcatalog:9427240"
+   },
+   {
+    "id": "d8066a04-24fa-46e5-9ad9-733ac2544b75",
+    "issn": "2721-5377",
+    "eissn": "2721-7825",
+    "title": "JTTM Jurnal Terapan Teknik Mesin",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210194947|OpenAlex:https://openalex.org/S4210194947|OpenAlex:https://openalex.org/S4210194947"
+   },
+   {
+    "id": "d51cb2a4-68d6-4d7a-8236-9fc71f559e7f",
+    "issn": "2996-6647",
+    "eissn": null,
+    "title": "IEEE transactions on circuits and systems for artificial intelligence.",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "Crossref",
+    "route": "official-list",
+    "sourceId": "OpenAlex:https://openalex.org/S4404675360|Crossref member:member:263"
+   },
+   {
+    "id": "c6b0bcaa-b153-41d6-982e-79b73c0e2a4b",
+    "issn": "2746-6418",
+    "eissn": null,
+    "title": "FARMASIS Jurnal Sains Farmasi",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210235596|OpenAlex:https://openalex.org/S4210235596|OpenAlex:https://openalex.org/S4210235596|OpenAlex:https://openalex.org/S4210235596"
+   },
+   {
+    "id": "dc99e19c-27e9-4bd8-903d-25591a52f8d1",
+    "issn": "1606-4313",
+    "eissn": "2618-8937",
+    "title": "Journal International Academy of Refrigeration",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210222106"
+   },
+   {
+    "id": "0d361ade-d651-42f1-9a34-47fd7fc777b6",
+    "issn": "0916-8516",
+    "eissn": "1745-1345",
+    "title": "IEICE Transactions on Communications",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "Crossref",
+    "route": "official-list",
+    "sourceId": "OpenAlex:https://openalex.org/S2493627025|OpenAlex:https://openalex.org/S2493627025|Crossref member:member:263"
+   },
+   {
+    "id": "a6919e92-b318-4470-b39e-8c6a2d010fcd",
+    "issn": "1300-4182",
+    "eissn": null,
+    "title": "Fabad Journal of Pharmaceutical Sciences",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4220650949|OpenAlex:https://openalex.org/S4220650949|OpenAlex:https://openalex.org/S4220650949"
+   },
+   {
+    "id": "e939e194-1598-4d8d-8f01-643d14d7e69a",
+    "issn": "2709-2135",
+    "eissn": "3008-0991",
+    "title": "Journal of Advanced Manufacturing Science and Technology",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210212042|OpenAlex:https://openalex.org/S4210212042"
+   },
+   {
+    "id": "eb0280d7-7e4e-43da-9e04-3455eacbcfaa",
+    "issn": "2319-4197",
+    "eissn": "2319-4200",
+    "title": "IOSR Journal of VLSI and Signal processing",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S2765052338|OpenAlex:https://openalex.org/S2765052338"
+   },
+   {
+    "id": "5e552ffc-c69f-4396-b268-9c30b19bd61c",
+    "issn": "1413-9626",
+    "eissn": "2763-7654",
+    "title": "Farmacoterapêutica",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210227963|OpenAlex:https://openalex.org/S4210227963"
+   },
+   {
+    "id": "81df4564-dc2a-4aa7-afbd-f46573142ea3",
+    "issn": "0219-6867",
+    "eissn": "1793-6896",
+    "title": "Journal of Advanced Manufacturing Systems",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S105779745|OpenAlex:https://openalex.org/S105779745"
+   },
+   {
+    "id": "eb16be9b-b417-4c09-a961-4cd0e225a42c",
+    "issn": "2582-8320",
+    "eissn": null,
+    "title": "Indian Journal of Signal Processing",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210213650|OpenAlex:https://openalex.org/S4210213650"
+   },
+   {
+    "id": "0213202a-2b74-4a56-8ac3-0f3b24f05269",
+    "issn": "2583-116X",
+    "eissn": null,
+    "title": "Future Journal of Pharmaceuticals and Health Sciences",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4220651961|OpenAlex:https://openalex.org/S4220651961|OpenAlex:https://openalex.org/S4220651961"
+   },
+   {
+    "id": "c4066b59-3f3a-49f4-aa25-b0ded32aaaa5",
+    "issn": "2409-5826",
+    "eissn": null,
+    "title": "Journal of Advanced Thermal Science Research",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210217660|OpenAlex:https://openalex.org/S4210217660"
+   },
+   {
+    "id": "a084ce23-4d8d-4603-b764-134ff532262d",
+    "issn": "2582-8843",
+    "eissn": null,
+    "title": "Indian Journal of VLSI Design",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210229742|OpenAlex:https://openalex.org/S4210229742"
+   },
+   {
+    "id": "b46eb948-69d5-4e1b-b24d-8a9b6100bd11",
+    "issn": "0250-474X",
+    "eissn": "1998-3743",
+    "title": "Indian Journal of Pharmaceutical Sciences",
+    "department": "Pharmacy",
+    "basisSource": "NLM Catalog",
+    "route": "nlm-subject",
+    "sourceId": "OpenAlex:https://openalex.org/S87963693|OpenAlex:https://openalex.org/S87963693|OpenAlex:https://openalex.org/S87963693|NLM Catalog:nlmcatalog:7809431"
+   },
+   {
+    "id": "c8cc0786-f642-495d-be71-77eea250dec8",
+    "issn": "0742-4795",
+    "eissn": "1528-8919",
+    "title": "Journal of Engineering for Gas Turbines and Power",
+    "department": "Mechanical Engineering",
+    "basisSource": "Crossref",
+    "route": "official-list+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210208105|OpenAlex:https://openalex.org/S4210208105|OpenAlex:https://openalex.org/S4210208105|Crossref member:member:33"
+   },
+   {
+    "id": "0ec386b1-24a6-4cf4-9d30-79beed54e7f5",
+    "issn": "2708-4477",
+    "eissn": "2708-4485",
+    "title": "International Journal of Electronic Devices and Networking",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4220651791|OpenAlex:https://openalex.org/S4220651791"
+   },
+   {
+    "id": "3de63860-be25-4c97-87bd-5854c6675c38",
+    "issn": "0253-7613",
+    "eissn": "1998-3751",
+    "title": "Indian Journal of Pharmacology",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S112348374|OpenAlex:https://openalex.org/S112348374|OpenAlex:https://openalex.org/S112348374"
+   },
+   {
+    "id": "a234691b-8ada-48dc-8ddb-66d846d77917",
+    "issn": "2368-6111",
+    "eissn": null,
+    "title": "Journal of Fluid Flow Heat and Mass Transfer",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210180793|OpenAlex:https://openalex.org/S4210180793"
+   },
+   {
+    "id": "6aeb4c93-73f0-453f-b3b4-a206113eddb3",
+    "issn": "2455-2925",
+    "eissn": null,
+    "title": "International Journal of Microelectronics Engineering",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210239092"
+   },
+   {
+    "id": "19be35e5-0f2a-4c1e-b5d8-d80b14970c91",
+    "issn": "2320-4923",
+    "eissn": "2320-4931",
+    "title": "International Journal Advances in Pharmaceutics",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210175143|OpenAlex:https://openalex.org/S4210175143|OpenAlex:https://openalex.org/S4210175143|OpenAlex:https://openalex.org/S4210175143"
+   },
+   {
+    "id": "80bfc843-7962-4712-beb1-3e6dd008b7d2",
+    "issn": "0161-8458",
+    "eissn": "1050-0472",
+    "title": "Journal of Mechanical Design",
+    "department": "Mechanical Engineering",
+    "basisSource": "Crossref",
+    "route": "official-list",
+    "sourceId": "OpenAlex:https://openalex.org/S88457320|OpenAlex:https://openalex.org/S88457320|OpenAlex:https://openalex.org/S88457320|Crossref member:member:33"
+   },
+   {
+    "id": "54227f3c-181a-48f6-b767-e6cab23c21f5",
+    "issn": "2394-2584",
+    "eissn": null,
+    "title": "International Journal of VLSI & Signal Processing",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210233280|OpenAlex:https://openalex.org/S4210233280"
+   },
+   {
+    "id": "de14bed4-1718-40b0-a7a1-b5d5b001cd17",
+    "issn": "0975-7058",
+    "eissn": null,
+    "title": "International Journal of Applied Pharmaceutics",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S2764477652|OpenAlex:https://openalex.org/S2764477652|OpenAlex:https://openalex.org/S2764477652"
+   },
+   {
+    "id": "586cf2c8-fb0f-4278-b73d-c2b27304029a",
+    "issn": "1738-494X",
+    "eissn": "1976-3824",
+    "title": "Journal of Mechanical Science and Technology",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "official-list+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S11422300|OpenAlex:https://openalex.org/S11422300|OpenAlex:https://openalex.org/S11422300"
+   },
+   {
+    "id": "dda66f62-6c67-4cb6-a723-f460b353cb85",
+    "issn": "0976-1357",
+    "eissn": "0976-1527",
+    "title": "International Journal of VLSI Design & Communication Systems",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210196922"
+   },
+   {
+    "id": "b2192e0d-d192-43a8-8b7a-f09e00eb9892",
+    "issn": "2321-3760",
+    "eissn": null,
+    "title": "International Journal of Current Trends in Pharmaceutical Research",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S5406990727|OpenAlex:https://openalex.org/S5406990727"
+   },
+   {
+    "id": "059fd5f6-5b69-43d9-84a7-a13659598e86",
+    "issn": "1942-4302",
+    "eissn": "1942-4310",
+    "title": "Journal of Mechanisms and Robotics",
+    "department": "Mechanical Engineering",
+    "basisSource": "Crossref",
+    "route": "official-list",
+    "sourceId": "OpenAlex:https://openalex.org/S198805599|OpenAlex:https://openalex.org/S198805599|Crossref member:member:33"
+   },
+   {
+    "id": "0c6baede-fb97-41cd-aed1-a162ae06f4b9",
+    "issn": "0733-8724",
+    "eissn": "1558-2213",
+    "title": "Journal of Lightwave Technology",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "Crossref",
+    "route": "official-list",
+    "sourceId": "OpenAlex:https://openalex.org/S2307745|OpenAlex:https://openalex.org/S2307745|Crossref member:member:263"
+   },
+   {
+    "id": "68e22dc3-b014-4913-ae7e-0ae322578b2e",
+    "issn": "0975-4415",
+    "eissn": null,
+    "title": "International Journal of Drug Delivery Technology",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210211336|OpenAlex:https://openalex.org/S4210211336|OpenAlex:https://openalex.org/S4210211336|OpenAlex:https://openalex.org/S4210211336"
+   },
+   {
+    "id": "eefe7410-9512-4094-bacf-f629e1c93e7f",
+    "issn": "2669-1116",
+    "eissn": null,
+    "title": "Journal of Mechatronics and Artificial Intelligence in Engineering",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210225849|OpenAlex:https://openalex.org/S4210225849"
+   },
+   {
+    "id": "09236da4-7725-4a13-9467-dc9c9a0b1e56",
+    "issn": "3029-1348",
+    "eissn": null,
+    "title": "Journal of Optics and Photonics Research",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S5407045033"
+   },
+   {
+    "id": "80c5f461-eb91-43ee-827f-732c126e8d9b",
+    "issn": "3107-393X",
+    "eissn": null,
+    "title": "International Journal of Pharma Insight Studies",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S5407051804|OpenAlex:https://openalex.org/S5407051804|OpenAlex:https://openalex.org/S5407051804"
+   },
+   {
+    "id": "2997d3b7-1412-4123-80ec-39ae2191bf61",
+    "issn": "1821-4932",
+    "eissn": "2956-2252",
+    "title": "Journal of Production Engineering",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210183851|OpenAlex:https://openalex.org/S4210183851"
+   },
+   {
+    "id": "a68876e9-945a-4bae-ae09-b9de8809ead5",
+    "issn": "2582-1458",
+    "eissn": null,
+    "title": "Journal of VLSI Circuits and Systems",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210180210"
+   },
+   {
+    "id": "6bdb1067-bb89-40cc-9854-04915cf6fbd3",
+    "issn": "0976-6723",
+    "eissn": "2249-3948",
+    "title": "International Journal of Pharma Professional’s Research (IJPPR)",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S5406942771|OpenAlex:https://openalex.org/S5406942771|OpenAlex:https://openalex.org/S5406942771"
+   },
+   {
+    "id": "2e0bc613-9e65-415a-a89f-df5e05646734",
+    "issn": "1003-2169",
+    "eissn": "1993-033X",
+    "title": "Journal of Thermal Science",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S159320098|OpenAlex:https://openalex.org/S159320098|OpenAlex:https://openalex.org/S159320098"
+   },
+   {
+    "id": "d3b57d05-7e91-4869-8ca6-e7989bb9d7d3",
+    "issn": "2581-8449",
+    "eissn": null,
+    "title": "Journal of VLSI Design and Signal Processing",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210240679"
+   },
+   {
+    "id": "190c64b2-54e8-4d2c-8780-196657e0caa4",
+    "issn": "2996-8968",
+    "eissn": null,
+    "title": "International Journal of Pharmaceutical Excipients",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S7407056795|OpenAlex:https://openalex.org/S7407056795|OpenAlex:https://openalex.org/S7407056795"
+   },
+   {
+    "id": "592c5513-68c7-4a31-92f1-c6cbb1218f2e",
+    "issn": "0889-504X",
+    "eissn": "1528-8900",
+    "title": "Journal of Turbomachinery",
+    "department": "Mechanical Engineering",
+    "basisSource": "Crossref",
+    "route": "official-list+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210171160|OpenAlex:https://openalex.org/S4210171160|Crossref member:member:33"
+   },
+   {
+    "id": "e6ce674a-0bdc-42e9-b273-be6f77d91c49",
+    "issn": "3091-4531",
+    "eissn": null,
+    "title": "Journal on Wireless Communications and Networking",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S5407055382|OpenAlex:https://openalex.org/S5407055382"
+   },
+   {
+    "id": "7339a7b5-f8be-400b-b26e-dfd1e7f7da65",
+    "issn": "2664-6862",
+    "eissn": "2664-6870",
+    "title": "International Journal of Pharmaceutical Research and Development",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4387287749|OpenAlex:https://openalex.org/S4387287749|OpenAlex:https://openalex.org/S4387287749"
+   },
+   {
+    "id": "3920383a-f017-440a-b7ca-8736d91486ca",
+    "issn": "2476-583X",
+    "eissn": "2676-6787",
+    "title": "Journal of Welding Science and Technology of Iran",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4306516400|OpenAlex:https://openalex.org/S4306516400"
+   },
+   {
+    "id": "8e81ed09-c155-40ad-8a40-652ded5fdef6",
+    "issn": "3042-5344",
+    "eissn": null,
+    "title": "Microelectronics",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S5407046235"
+   },
+   {
+    "id": "6e887c1b-1f66-4aac-879e-68e4cf906c7b",
+    "issn": "2319-670X",
+    "eissn": "2319-6718",
+    "title": "International Journal of Pharmaceutical Science Invention",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210240504|OpenAlex:https://openalex.org/S4210240504|OpenAlex:https://openalex.org/S4210240504"
+   },
+   {
+    "id": "985b3b4a-9884-451b-977c-41bf1f3df1a1",
+    "issn": "1225-6153",
+    "eissn": "2287-8955",
+    "title": "Journal of Welding and Joining",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210223004|OpenAlex:https://openalex.org/S4210223004"
+   },
+   {
+    "id": "55f2c729-feb4-42c5-b7db-d2db301c224a",
+    "issn": "3042-5697",
+    "eissn": null,
+    "title": "Microwave",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S5407046237|OpenAlex:https://openalex.org/S5407046237"
+   },
+   {
+    "id": "769c9114-fb1e-4125-a360-6a6d965a9827",
+    "issn": "2788-9246",
+    "eissn": "2788-9254",
+    "title": "International Journal of Pharmaceutical Sciences and Drug Analysis",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4387287093|OpenAlex:https://openalex.org/S4387287093|OpenAlex:https://openalex.org/S4387287093"
+   },
+   {
+    "id": "30c57483-4861-43c1-b8a5-a9143ec0e766",
+    "issn": "2233-6036",
+    "eissn": "2383-4846",
+    "title": "Journal of the korean society of manufacturing technology engineers",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210193880|OpenAlex:https://openalex.org/S4210193880"
+   },
+   {
+    "id": "164392c1-8c48-46d9-82e4-13ad22d489ee",
+    "issn": "2164-5450",
+    "eissn": "2164-5469",
+    "title": "Optoelectronics",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210210311|OpenAlex:https://openalex.org/S4210210311"
+   },
+   {
+    "id": "456d408e-09bf-4f99-9c96-722efd1d2eec",
+    "issn": "0976-3333",
+    "eissn": "2582-6050",
+    "title": "International Journal of Pharmaceutical and Biological Archive",
+    "department": "Pharmacy",
+    "basisSource": "NLM Catalog",
+    "route": "nlm-subject",
+    "sourceId": "OpenAlex:https://openalex.org/S4210209180|OpenAlex:https://openalex.org/S4210209180|OpenAlex:https://openalex.org/S4210209180|NLM Catalog:nlmcatalog:101595874"
+   },
+   {
+    "id": "634165b2-aa55-4c91-950a-d10b37245f3b",
+    "issn": "2620-6706",
+    "eissn": "2686-0597",
+    "title": "Jurnal Teknik Mesin Cakram",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210223597"
+   },
+   {
+    "id": "8ce3a1e2-9508-4d9c-8df9-852c22a30b72",
+    "issn": "0735-2727",
+    "eissn": "1934-8061",
+    "title": "Radioelectronics and Communications Systems",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210186357|OpenAlex:https://openalex.org/S4210186357"
+   },
+   {
+    "id": "7ee59058-e486-40d0-a017-2b7b5a58a22f",
+    "issn": "2664-7591",
+    "eissn": "2664-7605",
+    "title": "International Journal of Pharmaceutical and Clinical Research",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4387285458|OpenAlex:https://openalex.org/S4387285458|OpenAlex:https://openalex.org/S4387285458"
+   },
+   {
+    "id": "d29501a5-4767-4947-a23f-ee72f380404f",
+    "issn": "1907-350X",
+    "eissn": "2597-7563",
+    "title": "Jurnal Teknik Mesin Indonesia",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210193356|OpenAlex:https://openalex.org/S4210193356|OpenAlex:https://openalex.org/S4210193356"
+   },
+   {
+    "id": "8e8afc4d-03c4-4532-8636-8a303e55010b",
+    "issn": "2326-9065",
+    "eissn": "2326-9073",
+    "title": "Science Journal of Circuits Systems and Signal Processing",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210187317|OpenAlex:https://openalex.org/S4210187317"
+   },
+   {
+    "id": "f2e39ced-6e5b-4e6d-8548-f968cf6b1eea",
+    "issn": "1726-6882",
+    "eissn": "1726-6890",
+    "title": "Iranian journal of pharmaceutical research",
+    "department": "Pharmacy",
+    "basisSource": "NLM Catalog",
+    "route": "nlm-subject",
+    "sourceId": "OpenAlex:https://openalex.org/S54803862|OpenAlex:https://openalex.org/S54803862|OpenAlex:https://openalex.org/S54803862|NLM Catalog:nlmcatalog:101208407"
+   },
+   {
+    "id": "7f734c8c-cdf3-4c4d-86f2-b51d14d9456f",
+    "issn": "2407-3555",
+    "eissn": "2356-3222",
+    "title": "LONTAR Jurnal Teknik Mesin Undana (LJTMU )",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4306518871|OpenAlex:https://openalex.org/S4306518871|OpenAlex:https://openalex.org/S4306518871"
+   },
+   {
+    "id": "827dbe45-dba5-44a5-b95a-768093c6ce71",
+    "issn": "1995-4565",
+    "eissn": null,
+    "title": "Vestnik of Ryazan State Radio Engineering University",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210181979|OpenAlex:https://openalex.org/S4210181979"
+   },
+   {
+    "id": "10325769-9a13-4131-95df-930358af7404",
+    "issn": "0291-1981",
+    "eissn": "1952-4064",
+    "title": "Journal de Pharmacie Clinique",
+    "department": "Pharmacy",
+    "basisSource": "NLM Catalog",
+    "route": "nlm-subject",
+    "sourceId": "OpenAlex:https://openalex.org/S4306515216|NLM Catalog:nlmcatalog:8709198"
+   },
+   {
+    "id": "a9a9f196-76fc-4684-8b69-1f575b27bd17",
+    "issn": "3025-8766",
+    "eissn": null,
+    "title": "MEKANISASI Jurnal Teknik Mesin Pertanian",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4387998040|OpenAlex:https://openalex.org/S4387998040"
+   },
+   {
+    "id": "25e799aa-59ec-4fc0-980c-52fc695ff501",
+    "issn": "2306-2819",
+    "eissn": null,
+    "title": "Vestnik of Volga State University of Technology Ser Radio Engineering and Infocommunication Systems",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210221414|OpenAlex:https://openalex.org/S4210221414"
+   },
+   {
+    "id": "951e0287-25ab-4e67-86aa-8c549674a71b",
+    "issn": "1773-2247",
+    "eissn": "2588-8943",
+    "title": "Journal of Drug Delivery Science and Technology",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S97205441|OpenAlex:https://openalex.org/S97205441|OpenAlex:https://openalex.org/S97205441|OpenAlex:https://openalex.org/S97205441"
+   },
+   {
+    "id": "04d6925f-9eeb-427d-88ea-4e22176a0a69",
+    "issn": "1091-0344",
+    "eissn": "1532-2483",
+    "title": "Machining Science and Technology",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S128799162|OpenAlex:https://openalex.org/S128799162"
+   },
+   {
+    "id": "8786380e-c7ca-49eb-ad73-aad59a137f4f",
+    "issn": "2321-7480",
+    "eissn": "2322-0368",
+    "title": "i-manager s Journal on Digital Signal Processing",
+    "department": "Electronics & Telecommunication Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210187833|OpenAlex:https://openalex.org/S4210187833"
+   },
+   {
+    "id": "0abc98dc-be36-484f-84b8-3f53d857d73f",
+    "issn": "3048-8842",
+    "eissn": null,
+    "title": "Journal of Drug Discovery and Health Sciences",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S5407047157|OpenAlex:https://openalex.org/S5407047157|OpenAlex:https://openalex.org/S5407047157|OpenAlex:https://openalex.org/S5407047157"
+   },
+   {
+    "id": "f1ec2f03-317d-44d7-85bd-328205a07cbb",
+    "issn": "0972-7396",
+    "eissn": null,
+    "title": "Manufacturing Technology Today (MTT)",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4387287882|OpenAlex:https://openalex.org/S4387287882"
+   },
+   {
+    "id": "6cf087e1-f263-40e2-a68c-34ce90ff0389",
+    "issn": "2320-4230",
+    "eissn": null,
+    "title": "Journal of Drug Discovery and Therapeutics",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S2764587262|OpenAlex:https://openalex.org/S2764587262|OpenAlex:https://openalex.org/S2764587262"
+   },
+   {
+    "id": "65254745-0a78-445e-ac35-50abb02e9a7d",
+    "issn": "2958-020X",
+    "eissn": "2958-0218",
+    "title": "Mechatronics and intelligent transportation systems",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4393920039|OpenAlex:https://openalex.org/S4393920039"
+   },
+   {
+    "id": "3449d0cf-1a18-4600-9e94-d59bae770065",
+    "issn": "2455-5177",
+    "eissn": null,
+    "title": "Journal of Innovations in Applied Pharmaceutical Science (JIAPS)",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210223050|OpenAlex:https://openalex.org/S4210223050|OpenAlex:https://openalex.org/S4210223050"
+   },
+   {
+    "id": "ca390ebc-d16d-4897-b134-150bafc9019e",
+    "issn": "0944-6524",
+    "eissn": "1863-7353",
+    "title": "Production Engineering",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S43349511|OpenAlex:https://openalex.org/S43349511"
+   },
+   {
+    "id": "0e692d37-0d8a-4ee5-98b5-b2fd3b11eb06",
+    "issn": "0265-2048",
+    "eissn": "1464-5246",
+    "title": "Journal of Microencapsulation",
+    "department": "Pharmacy",
+    "basisSource": "NLM Catalog",
+    "route": "nlm-subject",
+    "sourceId": "OpenAlex:https://openalex.org/S160681128|OpenAlex:https://openalex.org/S160681128|NLM Catalog:nlmcatalog:8500513"
+   },
+   {
+    "id": "226994d4-8d56-4e34-966a-fecbe9414abc",
+    "issn": "2597-4254",
+    "eissn": "2829-2855",
+    "title": "Rekayasa Mekanika/Rekayasa mekanik : jurnal ilmiah teknik mesin",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4393918877|OpenAlex:https://openalex.org/S4393918877"
+   },
+   {
+    "id": "ea76e8e6-54a1-499f-8844-73fa6e31d5d6",
+    "issn": "3048-5428",
+    "eissn": null,
+    "title": "Journal of Pharma Insights and Research.",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4404664124|OpenAlex:https://openalex.org/S4404664124|OpenAlex:https://openalex.org/S4404664124|OpenAlex:https://openalex.org/S4404664124"
+   },
+   {
+    "id": "7dcaff50-8286-4abe-8ae3-37eb00968279",
+    "issn": "1137-2729",
+    "eissn": "2255-3509",
+    "title": "Revista iberoamericana de ingeniería mecánica.",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4404676604|OpenAlex:https://openalex.org/S4404676604"
+   },
+   {
+    "id": "ff60f03e-f416-4c6f-b9e3-5089da6bdaad",
+    "issn": "2347-8330",
+    "eissn": null,
+    "title": "Journal of Pharmaceutical and Biological Research",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S5407051125|OpenAlex:https://openalex.org/S5407051125|OpenAlex:https://openalex.org/S5407051125|OpenAlex:https://openalex.org/S5407051125"
+   },
+   {
+    "id": "29bbb7e9-6de2-4d31-bdde-06702e2714e6",
+    "issn": "2088-9038",
+    "eissn": "2549-9645",
+    "title": "SINTEK JURNAL Jurnal Ilmiah Teknik Mesin",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210216454|OpenAlex:https://openalex.org/S4210216454|OpenAlex:https://openalex.org/S4210216454"
+   },
+   {
+    "id": "21b48145-5a86-48ca-8dae-ddb779b2bead",
+    "issn": "2630-533X",
+    "eissn": null,
+    "title": "Journal of Pharmaceutical and Biopharmaceutical Research",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210202275|OpenAlex:https://openalex.org/S4210202275|OpenAlex:https://openalex.org/S4210202275"
+   },
+   {
+    "id": "2ba4500b-e8d8-4549-a09e-e3ecbca9f14c",
+    "issn": "0138-0346",
+    "eissn": "2300-9896",
+    "title": "Silniki Spalinowe/Combustion Engines",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S2764484758|OpenAlex:https://openalex.org/S2764484758|OpenAlex:https://openalex.org/S2764484758"
+   },
+   {
+    "id": "666da455-4e1f-429a-9f9f-f9a66297474b",
+    "issn": "3047-4469",
+    "eissn": null,
+    "title": "Journal of Pharmacopoeia",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4404676479|OpenAlex:https://openalex.org/S4404676479|OpenAlex:https://openalex.org/S4404676479|OpenAlex:https://openalex.org/S4404676479"
+   },
+   {
+    "id": "30c46c9e-00c3-4ab6-8d00-6375ce84d37e",
+    "issn": "2088-5784",
+    "eissn": "2620-9675",
+    "title": "Teknobiz Jurnal Ilmiah Program Studi Magister Teknik Mesin",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210196488|OpenAlex:https://openalex.org/S4210196488|OpenAlex:https://openalex.org/S4210196488"
+   },
+   {
+    "id": "8a72dad1-ac5d-41b6-92a5-35160d3cae94",
+    "issn": "0972-8899",
+    "eissn": null,
+    "title": "Journal of Pharmacovigilance & Drug Safety",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210224890|OpenAlex:https://openalex.org/S4210224890|OpenAlex:https://openalex.org/S4210224890"
+   },
+   {
+    "id": "cddd20a8-690a-494d-b38c-962e74e5ae6f",
+    "issn": "0957-798X",
+    "eissn": "3041-2293",
+    "title": "The Paton Welding Journal",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210208990|OpenAlex:https://openalex.org/S4210208990"
+   },
+   {
+    "id": "c6937363-fdd3-440e-b307-fa4af41e2e5d",
+    "issn": "2582-7235",
+    "eissn": null,
+    "title": "Journal of Pharmacovigilance and Drug Research",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210218019|OpenAlex:https://openalex.org/S4210218019|OpenAlex:https://openalex.org/S4210218019"
+   },
+   {
+    "id": "6395a254-a702-44f3-8176-ec5502910ed6",
+    "issn": "0354-9836",
+    "eissn": "2334-7163",
+    "title": "Thermal Science",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S177423656|OpenAlex:https://openalex.org/S177423656|OpenAlex:https://openalex.org/S177423656"
+   },
+   {
+    "id": "c0084b00-99c7-4360-8b34-1d852d0ae8d9",
+    "issn": "0975-1483",
+    "eissn": "0975-1505",
+    "title": "Journal of Young Pharmacists",
+    "department": "Pharmacy",
+    "basisSource": "NLM Catalog",
+    "route": "nlm-subject+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S172241011|OpenAlex:https://openalex.org/S172241011|OpenAlex:https://openalex.org/S172241011|NLM Catalog:nlmcatalog:101537066"
+   },
+   {
+    "id": "231f47fa-cf9c-4ea9-a60d-53c8459f4779",
+    "issn": "3083-2845",
+    "eissn": null,
+    "title": "Thermal Science and Applications",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S7407055932|OpenAlex:https://openalex.org/S7407055932|OpenAlex:https://openalex.org/S7407055932"
+   },
+   {
+    "id": "30755456-9c5b-4a37-9069-df43e2218076",
+    "issn": "1735-7780",
+    "eissn": "2228-7876",
+    "title": "Jundishapur Journal of Natural Pharmaceutical Products",
+    "department": "Pharmacy",
+    "basisSource": "NLM Catalog",
+    "route": "nlm-subject",
+    "sourceId": "OpenAlex:https://openalex.org/S2764551330|OpenAlex:https://openalex.org/S2764551330|OpenAlex:https://openalex.org/S2764551330|OpenAlex:https://openalex.org/S2764551330|NLM Catalog:nlmcatalog:101585019"
+   },
+   {
+    "id": "a029d62f-75df-4a58-9e44-95db43763c5c",
+    "issn": "2301-6663",
+    "eissn": "2477-250X",
+    "title": "Turbo Jurnal Program Studi Teknik Mesin",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210233436|OpenAlex:https://openalex.org/S4210233436|OpenAlex:https://openalex.org/S4210233436"
+   },
+   {
+    "id": "92d224ce-5b2b-474e-a43b-bde68e8435cd",
+    "issn": "3063-2226",
+    "eissn": null,
+    "title": "Jurnal Farmasi Teknologi Sediaan dan Kosmetika.",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4404660628|OpenAlex:https://openalex.org/S4404660628|OpenAlex:https://openalex.org/S4404660628|OpenAlex:https://openalex.org/S4404660628|OpenAlex:https://openalex.org/S4404660628"
+   },
+   {
+    "id": "35adef1d-063e-4da9-88e3-e4c562fc40fe",
+    "issn": "2087-698X",
+    "eissn": "2721-5857",
+    "title": "Zona Mesin Program Studi Teknik Mesin Universitas Batam",
+    "department": "Mechanical Engineering",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210199848|OpenAlex:https://openalex.org/S4210199848"
+   },
+   {
+    "id": "cc2e8dfe-3b34-4850-a386-21fe6c85e603",
+    "issn": "3109-0613",
+    "eissn": "3109-2365",
+    "title": "Jurnal Kesehatan Farmasi Nusantara",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S5407050404|OpenAlex:https://openalex.org/S5407050404|OpenAlex:https://openalex.org/S5407050404"
+   },
+   {
+    "id": "52f03583-2dad-49fe-9cba-add44632309b",
+    "issn": "2407-7062",
+    "eissn": "2442-5435",
+    "title": "Jurnal Sains Farmasi & Klinis",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210196544|OpenAlex:https://openalex.org/S4210196544"
+   },
+   {
+    "id": "9cae2839-7ba7-4844-a4f6-b13b4bdbb723",
+    "issn": "2474-753X",
+    "eissn": null,
+    "title": "Mathews Journal of Pharmaceutical Science",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210223221|OpenAlex:https://openalex.org/S4210223221|OpenAlex:https://openalex.org/S4210223221"
+   },
+   {
+    "id": "c1a05c71-feae-4865-a30a-f6078c1ffac9",
+    "issn": "2348-4012",
+    "eissn": null,
+    "title": "Nirma University Journal of Pharmaceutical Sciences",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S7407076519|OpenAlex:https://openalex.org/S7407076519|OpenAlex:https://openalex.org/S7407076519"
+   },
+   {
+    "id": "a448f3cd-9150-4a8a-b4ef-04f233e0c8a8",
+    "issn": "2574-7797",
+    "eissn": null,
+    "title": "Open Access Journal of Pharmaceutical Research",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210229879|OpenAlex:https://openalex.org/S4210229879|OpenAlex:https://openalex.org/S4210229879"
+   },
+   {
+    "id": "9ef9ff0b-4bab-499b-9fa9-d059fec68c86",
+    "issn": "2692-4757",
+    "eissn": null,
+    "title": "Open Journal of Pharmacology and Pharmacotherapeutics",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210223598|OpenAlex:https://openalex.org/S4210223598|OpenAlex:https://openalex.org/S4210223598"
+   },
+   {
+    "id": "6b716861-c3ba-4e9d-a89b-3a8357a31924",
+    "issn": "3066-2583",
+    "eissn": null,
+    "title": "Pharma Scope and Advances in Drug Sciences",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S5407048734"
+   },
+   {
+    "id": "bcd0ea8f-12b9-4123-a345-6c89404c3848",
+    "issn": "2640-4532",
+    "eissn": "2640-4540",
+    "title": "Pharmaceutical Science and Technology",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210184155|OpenAlex:https://openalex.org/S4210184155|OpenAlex:https://openalex.org/S4210184155|OpenAlex:https://openalex.org/S4210184155"
+   },
+   {
+    "id": "71b2f71b-c2b9-42d3-9627-2f9ab0ef297a",
+    "issn": "2693-7247",
+    "eissn": null,
+    "title": "Pharmaceutics and Pharmacology Research",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210178491|OpenAlex:https://openalex.org/S4210178491"
+   },
+   {
+    "id": "7284d8b9-830f-4266-9fae-c9a2cd8cd825",
+    "issn": "0277-0008",
+    "eissn": "1875-9114",
+    "title": "Pharmacotherapy The Journal of Human Pharmacology and Drug Therapy",
+    "department": "Pharmacy",
+    "basisSource": "NLM Catalog",
+    "route": "nlm-subject",
+    "sourceId": "OpenAlex:https://openalex.org/S122731057|NLM Catalog:nlmcatalog:8111305"
+   },
+   {
+    "id": "cc822471-95c0-4854-90f0-ec6036923801",
+    "issn": "0975-234X",
+    "eissn": "0975-4377",
+    "title": "Research Journal of Pharmaceutical Dosage Forms and Technology",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "topics+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S2765058431|OpenAlex:https://openalex.org/S2765058431|OpenAlex:https://openalex.org/S2765058431|OpenAlex:https://openalex.org/S2765058431"
+   },
+   {
+    "id": "c94b907d-6b7e-4b55-a723-676c6cc31900",
+    "issn": "1026-552X",
+    "eissn": null,
+    "title": "The East and Central African Journal of Pharmaceutical Sciences",
+    "department": "Pharmacy",
+    "basisSource": "NLM Catalog",
+    "route": "nlm-subject",
+    "sourceId": "OpenAlex:https://openalex.org/S2764444506|OpenAlex:https://openalex.org/S2764444506|OpenAlex:https://openalex.org/S2764444506|NLM Catalog:nlmcatalog:101261968"
+   },
+   {
+    "id": "d32f688c-444f-4a3d-9a12-41640201b906",
+    "issn": "0973-8045",
+    "eissn": null,
+    "title": "The Pharmacist",
+    "department": "Pharmacy",
+    "basisSource": "NLM Catalog",
+    "route": "nlm-subject",
+    "sourceId": "OpenAlex:https://openalex.org/S5407052223|OpenAlex:https://openalex.org/S5407052223|OpenAlex:https://openalex.org/S5407052223|NLM Catalog:nlmcatalog:101492614"
+   },
+   {
+    "id": "819f2777-02d8-4c01-8b62-b4d0dccb3d20",
+    "issn": "2639-9636",
+    "eissn": "2639-9644",
+    "title": "The Senior Care Pharmacist",
+    "department": "Pharmacy",
+    "basisSource": "NLM Catalog",
+    "route": "nlm-subject",
+    "sourceId": "OpenAlex:https://openalex.org/S4210183711|OpenAlex:https://openalex.org/S4210183711|OpenAlex:https://openalex.org/S4210183711|NLM Catalog:nlmcatalog:101737969"
+   },
+   {
+    "id": "6ce816d9-d941-45a1-b072-a675b1cfdde8",
+    "issn": "3027-7922",
+    "eissn": null,
+    "title": "The Thai Journal of Pharmaceutical Sciences",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4404668928|OpenAlex:https://openalex.org/S4404668928|OpenAlex:https://openalex.org/S4404668928"
+   },
+   {
+    "id": "feee1c85-1360-4774-87b1-ad070d18288e",
+    "issn": "1304-530X",
+    "eissn": "2148-6247",
+    "title": "Turkish Journal of Pharmaceutical Sciences",
+    "department": "Pharmacy",
+    "basisSource": "OpenAlex",
+    "route": "title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210180858|OpenAlex:https://openalex.org/S4210180858"
+   },
+   {
+    "id": "2f3cbe42-60ee-4399-9e86-7e725eee2da2",
+    "issn": "2074-9457",
+    "eissn": null,
+    "title": "Vestnik Farmacii",
+    "department": "Pharmacy",
+    "basisSource": "NLM Catalog",
+    "route": "nlm-subject+title+topics",
+    "sourceId": "OpenAlex:https://openalex.org/S4210203313|OpenAlex:https://openalex.org/S4210203313|OpenAlex:https://openalex.org/S4210203313|NLM Catalog:nlmcatalog:101285988"
+   }
+  ]
+ },
+ "auditLocation": "Production table \"IngestionAudit\", action JOURNAL_SOURCE_IMPORT, meta.runId = this run id: one entry per batch, each listing inserted id, issn, dept, sourceId and evidence.",
+ "rollback": {
+  "sql": "DELETE FROM \"Journal\" j WHERE j.id = ANY($1::text[]) AND NOT EXISTS (SELECT 1 FROM \"Article\" a WHERE a.\"journalId\" = j.id) RETURNING j.id, j.issn",
+  "scope": "the exact inserted ids of this run; the rightsBasis label is shared with other runs and is NOT a safe scope",
+  "reviewed": {
+   "at": "2026-10-29T05:16:22.837Z",
+   "journals": 231,
+   "issnCount": 374,
+   "fks": [
+    {
+     "conname": "Article_journalId_fkey",
+     "tbl": "\"Article\"",
+     "def": "FOREIGN KEY (\"journalId\") REFERENCES \"Journal\"(id) ON UPDATE CASCADE ON DELETE SET NULL"
+    }
+   ],
+   "soft": {
+    "articleByJournalId": 0,
+    "articleByIssn": 0,
+    "ingestionRun": 0,
+    "libraryEventById": 0,
+    "libraryEventByIssn": 0
+   },
+   "labelCounts": [
+    {
+     "rb": "Crossref listing — OA unverified",
+     "total": 24048,
+     "in_run": 31
+    },
+    {
+     "rb": "NLM Catalog listing — OA unverified",
+     "total": 153,
+     "in_run": 35
+    },
+    {
+     "rb": "OpenAlex listing — OA unverified",
+     "total": 6435,
+     "in_run": 165
+    }
+   ],
+   "wouldDelete": 231,
+   "audit": [
+    {
+     "id": "fa79ec57-62aa-4b32-bfea-8fbaa58e9cc6",
+     "adminId": null,
+     "batch": "1",
+     "n": 25
+    },
+    {
+     "id": "870458d1-03bc-46ef-973f-c38b059e4526",
+     "adminId": null,
+     "batch": "1",
+     "n": 100
+    },
+    {
+     "id": "71173ecd-d401-4c46-bfe0-d8294a123211",
+     "adminId": null,
+     "batch": "1",
+     "n": 100
+    },
+    {
+     "id": "c5442494-04db-4923-a2e4-ed38071a7820",
+     "adminId": null,
+     "batch": "1",
+     "n": 6
+    }
+   ]
+  },
+  "executed": false,
+  "note": "Article.journalId is ON DELETE SET NULL, so the NOT EXISTS guard is essential. Re-count articles, ingestion runs and library events for these ids before any use. Audit rows have no foreign key and are never deleted."
+ }
+}

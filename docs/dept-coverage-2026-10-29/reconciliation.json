@@ -1,0 +1,178 @@
+{
+ "pool": {
+  "distinctJournals": 84757,
+  "net-new": 44969,
+  "held-identifier": 38751,
+  "title-conflict": 1037
+ },
+ "bySourceClass": {
+  "OpenAlex": {
+   "net-new": 43221,
+   "held-identifier": 24415,
+   "title-conflict": 992
+  },
+  "DOAJ": {
+   "held-identifier": 23496,
+   "title-conflict": 21,
+   "net-new": 3
+  },
+  "Crossref member jsme": {
+   "held-identifier": 21,
+   "net-new": 18
+  },
+  "Crossref member ieee": {
+   "title-conflict": 7,
+   "net-new": 146,
+   "held-identifier": 121
+  },
+  "Crossref member iet": {
+   "title-conflict": 1,
+   "held-identifier": 47,
+   "net-new": 3
+  },
+  "Crossref member asme": {
+   "net-new": 13,
+   "held-identifier": 16,
+   "title-conflict": 1
+  },
+  "NLM Catalog": {
+   "net-new": 2031,
+   "held-identifier": 828,
+   "title-conflict": 41
+  },
+  "Crossref member ieice": {
+   "net-new": 2,
+   "held-identifier": 6
+  }
+ },
+ "primaryOutcomeNetNew": {
+  "out-of-scope (no target department)": 38855,
+  "held@1: department evidence below the bar": 4181,
+  "held@1: catalogue subject only (title names no department term and topics give it under 25%)": 938,
+  "held@1: topic evidence only (a single kind of evidence)": 456,
+  "eligible": 235,
+  "held@1: fewer than 3 works in 2024-2026 or none in 2025-2026 (OpenAlex/Crossref counts)": 197,
+  "held@1: reads as a magazine, newsletter, proceedings, directory or other non-journal serial": 25,
+  "held@2: near-identical title already in the catalogue (possible rename, edition or same-title conflict)": 21,
+  "held@2: no publisher recorded (also none in Crossref/OpenAlex with a matching title)": 20,
+  "held@2: publication evidence P-B": 12,
+  "held@1: records sharing an ISSN carry different titles (identity unconfirmed)": 8,
+  "held@1: non-Latin title": 8,
+  "held@1: the journal classifier says Energy (medium)": 5,
+  "held@2: rename/continuation": 3,
+  "held@1: Physiotherapy: the title does not name the field (general rehabilitation is not Physiotherapy)": 2,
+  "held@1: an identifier fails the ISSN check digit": 2,
+  "held@1: the journal classifier says Management (medium)": 1
+ },
+ "sumCheck": 44969,
+ "byDepartment": {
+  "Architecture": {
+   "held@1: department evidence below the bar": 165,
+   "eligible": 2,
+   "held@1: catalogue subject only (title names no department term and topics give it under 25%)": 6,
+   "held@1: fewer than 3 works in 2024-2026 or none in 2025-2026 (OpenAlex/Crossref counts)": 3
+  },
+  "Mechanical Engineering": {
+   "held@1: department evidence below the bar": 1277,
+   "eligible": 54,
+   "held@2: no publisher recorded (also none in Crossref/OpenAlex with a matching title)": 3,
+   "held@1: topic evidence only (a single kind of evidence)": 198,
+   "held@2: publication evidence P-B": 5,
+   "held@1: reads as a magazine, newsletter, proceedings, directory or other non-journal serial": 2,
+   "held@1: an identifier fails the ISSN check digit": 1,
+   "held@1: fewer than 3 works in 2024-2026 or none in 2025-2026 (OpenAlex/Crossref counts)": 30,
+   "held@2: near-identical title already in the catalogue (possible rename, edition or same-title conflict)": 4,
+   "held@1: non-Latin title": 1
+  },
+  "Electrical Engineering": {
+   "held@1: department evidence below the bar": 257,
+   "held@1: topic evidence only (a single kind of evidence)": 58,
+   "held@1: fewer than 3 works in 2024-2026 or none in 2025-2026 (OpenAlex/Crossref counts)": 16,
+   "held@1: the journal classifier says Energy (medium)": 5,
+   "eligible": 17,
+   "held@2: near-identical title already in the catalogue (possible rename, edition or same-title conflict)": 1,
+   "held@1: reads as a magazine, newsletter, proceedings, directory or other non-journal serial": 4,
+   "held@2: no publisher recorded (also none in Crossref/OpenAlex with a matching title)": 4,
+   "held@1: non-Latin title": 4,
+   "held@2: publication evidence P-B": 1
+  },
+  "Electronics & Telecommunication Engineering": {
+   "held@1: department evidence below the bar": 259,
+   "held@1: topic evidence only (a single kind of evidence)": 17,
+   "held@2: publication evidence P-B": 2,
+   "held@1: fewer than 3 works in 2024-2026 or none in 2025-2026 (OpenAlex/Crossref counts)": 41,
+   "held@2: near-identical title already in the catalogue (possible rename, edition or same-title conflict)": 8,
+   "eligible": 41,
+   "held@1: reads as a magazine, newsletter, proceedings, directory or other non-journal serial": 13,
+   "held@2: no publisher recorded (also none in Crossref/OpenAlex with a matching title)": 2,
+   "held@1: an identifier fails the ISSN check digit": 1
+  },
+  "Ayurveda": {
+   "held@1: department evidence below the bar": 597,
+   "held@1: topic evidence only (a single kind of evidence)": 131,
+   "eligible": 18,
+   "held@2: no publisher recorded (also none in Crossref/OpenAlex with a matching title)": 3,
+   "held@2: near-identical title already in the catalogue (possible rename, edition or same-title conflict)": 1,
+   "held@1: fewer than 3 works in 2024-2026 or none in 2025-2026 (OpenAlex/Crossref counts)": 2,
+   "held@2: publication evidence P-B": 1,
+   "held@1: catalogue subject only (title names no department term and topics give it under 25%)": 2
+  },
+  "Applied Mechanics": {
+   "held@1: department evidence below the bar": 373,
+   "held@2: near-identical title already in the catalogue (possible rename, edition or same-title conflict)": 1,
+   "held@1: topic evidence only (a single kind of evidence)": 42,
+   "eligible": 3,
+   "held@2: no publisher recorded (also none in Crossref/OpenAlex with a matching title)": 1,
+   "held@1: fewer than 3 works in 2024-2026 or none in 2025-2026 (OpenAlex/Crossref counts)": 2
+  },
+  "Pharmacy": {
+   "held@1: catalogue subject only (title names no department term and topics give it under 25%)": 600,
+   "eligible": 72,
+   "held@1: department evidence below the bar": 584,
+   "held@1: topic evidence only (a single kind of evidence)": 8,
+   "held@1: records sharing an ISSN carry different titles (identity unconfirmed)": 4,
+   "held@1: fewer than 3 works in 2024-2026 or none in 2025-2026 (OpenAlex/Crossref counts)": 68,
+   "held@1: non-Latin title": 3,
+   "held@1: the journal classifier says Management (medium)": 1,
+   "held@2: near-identical title already in the catalogue (possible rename, edition or same-title conflict)": 4,
+   "held@2: no publisher recorded (also none in Crossref/OpenAlex with a matching title)": 5,
+   "held@2: rename/continuation": 3,
+   "held@1: reads as a magazine, newsletter, proceedings, directory or other non-journal serial": 2,
+   "held@2: publication evidence P-B": 2
+  },
+  "Physiotherapy": {
+   "held@1: department evidence below the bar": 358,
+   "eligible": 4,
+   "held@1: catalogue subject only (title names no department term and topics give it under 25%)": 56,
+   "held@1: fewer than 3 works in 2024-2026 or none in 2025-2026 (OpenAlex/Crossref counts)": 4,
+   "held@1: Physiotherapy: the title does not name the field (general rehabilitation is not Physiotherapy)": 2,
+   "held@1: topic evidence only (a single kind of evidence)": 1,
+   "held@1: records sharing an ISSN carry different titles (identity unconfirmed)": 2
+  },
+  "Bio Technology": {
+   "held@1: reads as a magazine, newsletter, proceedings, directory or other non-journal serial": 2,
+   "held@1: catalogue subject only (title names no department term and topics give it under 25%)": 265,
+   "held@1: records sharing an ISSN carry different titles (identity unconfirmed)": 2,
+   "held@1: department evidence below the bar": 121,
+   "eligible": 10,
+   "held@1: fewer than 3 works in 2024-2026 or none in 2025-2026 (OpenAlex/Crossref counts)": 11
+  },
+  "Nano Technology": {
+   "held@1: department evidence below the bar": 139,
+   "held@1: reads as a magazine, newsletter, proceedings, directory or other non-journal serial": 2,
+   "held@1: fewer than 3 works in 2024-2026 or none in 2025-2026 (OpenAlex/Crossref counts)": 18,
+   "eligible": 13,
+   "held@2: near-identical title already in the catalogue (possible rename, edition or same-title conflict)": 2,
+   "held@2: no publisher recorded (also none in Crossref/OpenAlex with a matching title)": 2,
+   "held@2: publication evidence P-B": 1,
+   "held@1: catalogue subject only (title names no department term and topics give it under 25%)": 5,
+   "held@1: topic evidence only (a single kind of evidence)": 1
+  },
+  "Chemical Engineering": {
+   "held@1: department evidence below the bar": 51,
+   "eligible": 1,
+   "held@1: fewer than 3 works in 2024-2026 or none in 2025-2026 (OpenAlex/Crossref counts)": 2,
+   "held@1: catalogue subject only (title names no department term and topics give it under 25%)": 4
+  }
+ }
+}
