@@ -343,7 +343,7 @@ export function DomainLandingPage() {
                     return bk ? bk.count.toLocaleString("en-IN") : "0";
                   })()}
                 </div>
-                <div className="text-xs font-semibold uppercase tracking-wider text-muted">E-Books</div>
+                <div className="text-xs font-semibold uppercase tracking-wider text-muted">Books Listed</div>
               </div>
             </div>
           </div>

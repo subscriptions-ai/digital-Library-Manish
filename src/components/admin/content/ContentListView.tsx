@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import Papa from 'papaparse';
 
 import { DOMAINS } from '../../../constants';
+import { BooksDepartmentPanel, BooksSummary, NONE, useBooksOverview } from './BooksOverview';
 
 interface ContentListViewProps {
   contentType: string;
@@ -21,6 +22,9 @@ export function ContentListView({ contentType }: ContentListViewProps) {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [domainFilter, setDomainFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  // Books only: 'public' counts and lists only what the public site lists. 'all' is every record.
+  const [visibility, setVisibility] = useState<'all' | 'public'>('all');
+  const [loadFailed, setLoadFailed] = useState(false);
   const [page, setPage] = useState(1);
   const limit = 15;
 
@@ -30,7 +34,14 @@ export function ContentListView({ contentType }: ContentListViewProps) {
   // 'new' = structured Article/Book dataset · 'archived' = legacy scraped Content
   const [dataset, setDataset] = useState<'new' | 'archived'>(() => (sessionStorage.getItem(`clv_ds_${slug}`) as any) || 'new');
   const [counts, setCounts] = useState<{ new: number; archived: number }>({ new: 0, archived: 0 });
+  const isBooks = contentType === 'Books';
+  // The department counts follow search and status, not the department chosen (so choosing one never empties the others).
+  const overview = useBooksOverview(isBooks, dataset, debouncedSearch, statusFilter);
   useEffect(() => { sessionStorage.setItem(`clv_ds_${slug}`, dataset); setPage(1); setSelectedItems([]); }, [dataset, slug]);
+  const pickDomain = (d: string) => { setDomainFilter(d); setPage(1); };
+  const pickVisibility = (v: 'all' | 'public') => { setVisibility(v); if (v === 'public') setStatusFilter(''); setPage(1); };
+  const filtersSet = !!(search || domainFilter || statusFilter || visibility === 'public');
+  const clearFilters = () => { setSearch(''); setDebouncedSearch(''); setDomainFilter(''); setStatusFilter(''); setVisibility('all'); setPage(1); };
 
   const authHdr = { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } };
 
@@ -41,13 +52,18 @@ export function ContentListView({ contentType }: ContentListViewProps) {
 
   // counts for both datasets (for the New/Archived toggle badges)
   useEffect(() => {
+    if (isBooks) return; // the Books overview carries both collections
     const q = `contentType=${encodeURIComponent(contentType)}&limit=1`;
     Promise.all([
       fetch(`/api/admin/library/items?${q}`, authHdr).then(r => r.json()).then(d => d.total || 0).catch(() => 0),
       fetch(`/api/admin/content?${q}`, authHdr).then(r => r.json()).then(d => d.total || 0).catch(() => 0),
     ]).then(([n, a]) => setCounts({ new: n, archived: a }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contentType]);
+  }, [contentType, isBooks]);
+  useEffect(() => {
+    const c = overview.data?.collections;
+    if (isBooks && c) setCounts({ new: c.new?.total ?? 0, archived: c.archived?.total ?? 0 });
+  }, [isBooks, overview.data]);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
@@ -59,6 +75,7 @@ export function ContentListView({ contentType }: ContentListViewProps) {
         ...(debouncedSearch && { search: debouncedSearch }),
         ...(domainFilter && { domain: domainFilter }),
         ...(statusFilter && { status: statusFilter }),
+        ...(isBooks && visibility === 'public' && { visibility }),
       });
       const base = dataset === 'archived' ? '/api/admin/content' : '/api/admin/library/items';
       const res = await fetch(`${base}?${query}`, {
@@ -69,12 +86,14 @@ export function ContentListView({ contentType }: ContentListViewProps) {
       setItems(data);
       setTotal(total);
       setSelectedItems([]);
+      setLoadFailed(false);
     } catch {
+      setLoadFailed(true);
       toast.error('Failed to load content');
     } finally {
       setLoading(false);
     }
-  }, [contentType, debouncedSearch, domainFilter, statusFilter, page, dataset]);
+  }, [contentType, debouncedSearch, domainFilter, statusFilter, visibility, isBooks, page, dataset]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
@@ -87,7 +106,7 @@ export function ContentListView({ contentType }: ContentListViewProps) {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
       toast.success('Item deleted');
-      fetchItems();
+      fetchItems(); overview.retry();
     } catch {
       toast.error('Delete failed');
     }
@@ -103,7 +122,7 @@ export function ContentListView({ contentType }: ContentListViewProps) {
         body: JSON.stringify({ status: newStatus })
       });
       toast.success(`Item ${newStatus === 'Published' ? 'published' : 'unpublished'}`);
-      fetchItems();
+      fetchItems(); overview.retry();
     } catch {
       toast.error('Status update failed');
     }
@@ -136,7 +155,7 @@ export function ContentListView({ contentType }: ContentListViewProps) {
       if (!res.ok) throw new Error(result.error);
       toast.success(result.message);
       setSelectedItems([]);
-      fetchItems();
+      fetchItems(); overview.retry();
     } catch (err: any) {
       toast.error(err.message || 'Bulk action failed');
     }
@@ -152,6 +171,7 @@ export function ContentListView({ contentType }: ContentListViewProps) {
         ...(debouncedSearch && { search: debouncedSearch }),
         ...(domainFilter && { domain: domainFilter }),
         ...(statusFilter && { status: statusFilter }),
+        ...(isBooks && visibility === 'public' && { visibility }),
       });
       const base = dataset === 'archived' ? '/api/admin/content' : '/api/admin/library/items';
       const res = await fetch(`${base}?${query}`, {
@@ -200,27 +220,34 @@ export function ContentListView({ contentType }: ContentListViewProps) {
     <div className="space-y-4">
       {/* Dataset toggle: New (structured) vs Archived (legacy scraped) */}
       <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1 w-fit">
-        <button onClick={() => setDataset('new')}
+        <button onClick={() => setDataset('new')} title="The structured catalogue collection"
           className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${dataset === 'new' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-          New <span className="ml-1 text-[10px] font-bold text-slate-400">{counts.new}</span>
+          New <span className="ml-1 text-[10px] font-bold text-slate-400">{isBooks && !overview.data ? '—' : counts.new}</span>
         </button>
-        <button onClick={() => setDataset('archived')}
+        <button onClick={() => setDataset('archived')} title="The older imported collection. Published archived items are listed publicly too."
           className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${dataset === 'archived' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-          Archived <span className="ml-1 text-[10px] font-bold text-slate-400">{counts.archived}</span>
+          Archived <span className="ml-1 text-[10px] font-bold text-slate-400">{isBooks && !overview.data ? '—' : counts.archived}</span>
         </button>
       </div>
 
+      {isBooks && <BooksSummary state={overview} dataset={dataset} />}
+
+      <div className={isBooks ? 'grid grid-cols-1 gap-6 lg:grid-cols-[300px_minmax(0,1fr)]' : undefined}>
+      {isBooks && (
+        <BooksDepartmentPanel state={overview} domain={domainFilter} onPick={pickDomain} visibility={visibility} onVisibility={pickVisibility} dataset={dataset} />
+      )}
+      <div className="min-w-0 space-y-4">
       {/* Controls */}
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 items-start sm:items-center justify-between">
         <div className="flex flex-wrap gap-2 flex-1">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
             <input
               type="text"
-              placeholder={`Search title or author...`}
+              placeholder={isBooks ? 'Search title, author, ISBN or publisher...' : `Search title or author...`}
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-xl bg-white outline-none focus:border-blue-500 w-64"
+              className={`pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-xl bg-white outline-none focus:border-blue-500 ${isBooks ? 'w-72' : 'w-64'}`}
             />
           </div>
           <div className="relative">
@@ -229,16 +256,18 @@ export function ContentListView({ contentType }: ContentListViewProps) {
             >
               <option value="">All Domains</option>
               {DOMAINS.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+              {isBooks && <option value={NONE}>Unassigned / unclassified</option>}
             </select>
             <Filter size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           </div>
           <div className="relative">
-            <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
+            <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); if (e.target.value && visibility === 'public') setVisibility('all'); setPage(1); }}
               className="appearance-none pl-3 pr-8 py-2 text-sm border border-slate-200 rounded-xl bg-white outline-none focus:border-blue-500"
             >
               <option value="">All Status</option>
               <option value="Published">Published</option>
               <option value="Draft">Draft</option>
+              {isBooks && dataset === 'new' && <option value="Rejected">Rejected</option>}
             </select>
             <Filter size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           </div>
@@ -259,6 +288,21 @@ export function ContentListView({ contentType }: ContentListViewProps) {
         </div>
       </div>
 
+      {isBooks && (
+        <div className="flex flex-wrap items-center justify-between gap-2 text-sm" aria-live="polite">
+          <p className="text-slate-600">
+            <span className="font-bold tabular-nums text-slate-900">{loading && !items.length ? '…' : total.toLocaleString('en-IN')}</span> book{total === 1 ? '' : 's'} match
+            {domainFilter ? <> in <span className="font-semibold">{domainFilter === NONE ? 'Unassigned' : domainFilter}</span></> : null}
+            {visibility === 'public' ? ', public only' : ''}
+          </p>
+          {filtersSet && (
+            <button type="button" onClick={clearFilters} className="rounded-lg px-3 py-1 text-xs font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-100">
+              Clear filters
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Bulk Action Bar */}
       {selectedItems.length > 0 && (
         <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-xl text-sm font-medium animate-in fade-in slide-in-from-top-2">
@@ -275,6 +319,7 @@ export function ContentListView({ contentType }: ContentListViewProps) {
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm text-left">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
@@ -297,10 +342,15 @@ export function ContentListView({ contentType }: ContentListViewProps) {
                   Loading...
                 </div>
               </td></tr>
+            ) : loadFailed ? (
+              <tr><td colSpan={7} className="py-16 text-center text-slate-500" role="alert">
+                Could not load {contentType}.{' '}
+                <button type="button" onClick={() => fetchItems()} className="text-blue-600 font-bold hover:underline">Retry</button>
+              </td></tr>
             ) : items.length === 0 ? (
               <tr><td colSpan={7} className="py-16 text-center text-slate-400">
-                No {contentType} in the {dataset === 'archived' ? 'archived library' : 'new collection'}.
-                {dataset === 'new' && counts.archived > 0 && (
+                {filtersSet ? <>No {contentType} match these filters. <button type="button" onClick={clearFilters} className="text-blue-600 font-bold hover:underline">Clear filters</button></> : <>No {contentType} in the {dataset === 'archived' ? 'archived library' : 'new collection'}.</>}
+                {!filtersSet && dataset === 'new' && counts.archived > 0 && (
                   <button onClick={() => setDataset('archived')} className="text-blue-600 font-bold ml-1 hover:underline">
                     View {counts.archived} archived {contentType} →
                   </button>
@@ -358,6 +408,7 @@ export function ContentListView({ contentType }: ContentListViewProps) {
             ))}
           </tbody>
         </table>
+        </div>
         {/* Pagination */}
         {total > 0 && (
           <div className="p-4 border-t border-slate-100 flex items-center justify-between">
@@ -377,6 +428,8 @@ export function ContentListView({ contentType }: ContentListViewProps) {
             </div>
           </div>
         )}
+      </div>
+      </div>
       </div>
     </div>
   );
