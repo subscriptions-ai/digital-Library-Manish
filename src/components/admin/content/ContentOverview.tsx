@@ -160,7 +160,7 @@ export function DepartmentFacet({ state, domain, onPick, visibility, section, co
             <span>All departments</span><span className="tabular-nums">{n(allCount)}</span>
           </button>
           {departments.map(d => row(d.name, d.name, count(d)))}
-          {un && row(NO_DEPARTMENT, 'Unassigned / unclassified', count(un), {
+          {un && row(NO_DEPARTMENT, 'Unassigned or unrecognised department', count(un), {
             italic: true,
             title: un.unrecognised ? `${n(un.blank)} with no department, ${n(un.unrecognised)} filed under a name that is not in the department list` : `${L.plural} with no department`,
           })}

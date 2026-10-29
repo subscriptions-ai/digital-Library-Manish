@@ -140,8 +140,11 @@ export function ContentListView({ contentType }: ContentListViewProps) {
       toast.loading('Exporting data...', { id: 'export' });
       const res = await fetch(`${base}?${query({ page: '1', limit: '100000' })}`, authHdr());
       if (!res.ok) throw new Error('Export failed');
-      const { data } = await res.json();
+      const { data, total: matching } = await res.json();
       if (!data || data.length === 0) { toast.error('No data to export', { id: 'export' }); return; }
+      // The server returns at most 100,000 rows to one request. A file that quietly holds the first 100,000 of 1,197,102 records is worse than no file,
+      // so a partial export says so, in the message and in the file name.
+      const partial = typeof matching === 'number' && matching > data.length;
       const csv = Papa.unparse(data.map((item: any) => ({
         Title: item.title, Authors: item.authors, Domain: item.domain, SubjectArea: item.subjectArea, ContentType: item.contentType, AccessType: item.accessType, Status: item.status,
         PublishedAt: item.publishedAt ? format(new Date(item.publishedAt), 'yyyy-MM-dd HH:mm:ss') : '', URL: item.fileUrl,
@@ -149,9 +152,10 @@ export function ContentListView({ contentType }: ContentListViewProps) {
       const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `${contentType.replace(/\s+/g, '_')}_Export_${format(new Date(), 'yyyyMMdd')}.csv`);
+      link.setAttribute('download', `${contentType.replace(/\s+/g, '_')}_Export_${format(new Date(), 'yyyyMMdd')}${partial ? `_first_${data.length}_of_${matching}` : ''}.csv`);
       document.body.appendChild(link); link.click(); document.body.removeChild(link);
-      toast.success('Export successful', { id: 'export' });
+      if (partial) toast(`Exported the first ${data.length.toLocaleString('en-IN')} of ${matching.toLocaleString('en-IN')} matching records. Narrow the filters (a department, a status) to export the rest.`, { id: 'export', duration: 9000, icon: '⚠️' });
+      else toast.success('Export successful', { id: 'export' });
     } catch { toast.error('Export failed', { id: 'export' }); }
   };
 

@@ -4810,7 +4810,7 @@ async function startServer() {
   app.get("/api/content/filters", async (req: any, res) => {
     try {
       const { domain, subjectArea, contentType, search } = req.query;
-      const where: any = { status: "Published" };
+      const where: any = { ...legacyPublicWhere };
       if (domain) {
         const domainList = String(domain).split(',').map(d => d.trim()).filter(Boolean);
         // A department is every spelling of it the catalogue holds.
