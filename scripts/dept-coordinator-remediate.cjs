@@ -19,7 +19,7 @@ const DEPTS = new Set(['Paramedical Sciences', 'Radiology', 'Medical Laboratory 
   const p = new PrismaClient(); const db = (await p.$queryRawUnsafe('select current_database() d'))[0].d;
   if (!DRY && arg('expect-db', '') !== db) { console.error('REFUSED: --expect-db does not match'); process.exit(2); }
   if (!/^dept-remediate-\d{4}-\d{2}-\d{2}-[0-9a-f]{8}$/.test(__RUN__)) { console.error('bad run id'); process.exit(3); }
-  if (BOOKS && __ROWS__.some(r => !DEPTS.has(r.domain))) { console.error('REFUSED: department outside the four'); process.exit(3); }
+  if (__ROWS__.some(r => !DEPTS.has(r.domain || (BOOKS ? '' : 'Medical Laboratory Technology')))) { console.error('REFUSED: department outside the four'); process.exit(3); }
   const prior = await p.$queryRawUnsafe(`select meta from "IngestionAudit" where action = $1 and meta->>'runId' = $2`, ACTION, __RUN__);
   const doneIds = new Set(prior.flatMap(a => a.meta.applied || []));
   const out = { database: db, kind: __KIND__, mode: __MODE__, runId: __RUN__, dry: DRY, requested: __ROWS__.length, attempted: 0, changed: 0, skipped: [], changedIds: [], stopped: null };
@@ -44,7 +44,7 @@ const DEPTS = new Set(['Paramedical Sciences', 'Radiology', 'Medical Laboratory 
         await p.$transaction(async (tx) => { if (!DRY) await locks(tx); const ok = [];
           for (const r of part) {
             out.attempted++;
-            if (DRY) { const m = BOOKS ? await tx.$queryRawUnsafe(`select id from "Book" where id=$1 and status='Published' and domain=$2`, r.id, r.domain) : await tx.$queryRawUnsafe(`select id from "Journal" j where id=$1 and status='MetadataOnly' and domain='Medical Laboratory Technology' and not exists (select 1 from "Article" a where a."journalId"=j.id)`, r.id); if (m.length) ok.push(r.id); else out.skipped.push({ id: r.id, why: 'no longer matches' }); continue; }
+            if (DRY) { const m = BOOKS ? await tx.$queryRawUnsafe(`select id from "Book" where id=$1 and status='Published' and domain=$2`, r.id, r.domain) : await tx.$queryRawUnsafe(`select id from "Journal" j where id=$1 and status='MetadataOnly' and domain=$2 and not exists (select 1 from "Article" a where a."journalId"=j.id)`, r.id, r.domain || 'Medical Laboratory Technology'); if (m.length) ok.push(r.id); else out.skipped.push({ id: r.id, why: 'no longer matches' }); continue; }
             let u;
             if (BOOKS) {
               const note = JSON.stringify({ runId: __RUN__, category: r.category, reason: r.reason, priorStatus: 'Published', performedBy: 'coordinator (user-authorised)', performedAt: new Date().toISOString() });
@@ -52,7 +52,7 @@ const DEPTS = new Set(['Paramedical Sciences', 'Radiology', 'Medical Laboratory 
                 where id=$1 and status='Published' and "ownershipSource"='Ingested' and "pdfUrl" is null and domain=$3 and licence is not distinct from $4::text and "rightsStatus" is not distinct from $5::text and "accessStatus" is not distinct from $6::text and year is not distinct from $7::int returning id`,
                 r.id, note, r.domain, r.licence, r.rightsStatus, r.accessStatus, r.year);
             } else {
-              u = await tx.$queryRawUnsafe(`update "Journal" j set status='NeedsReview', "updatedAt"=now() where id=$1 and status='MetadataOnly' and domain='Medical Laboratory Technology' and not exists (select 1 from "Article" a where a."journalId"=j.id) returning id`, r.id);
+              u = await tx.$queryRawUnsafe(`update "Journal" j set status='NeedsReview', "updatedAt"=now() where id=$1 and status='MetadataOnly' and domain=$2 and not exists (select 1 from "Article" a where a."journalId"=j.id) returning id`, r.id, r.domain || 'Medical Laboratory Technology');
             }
             if (u.length) ok.push(r.id); else out.skipped.push({ id: r.id, why: 'changed since it was judged' });
           }
