@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { DOMAINS } from '../constants';
+import { DepartmentCount } from './DepartmentCount';
 import { DEPARTMENTS_AZ, DepartmentExplorer } from './DepartmentExplorer';
 import { useDepartmentTotals } from './HomePreviewChrome';
 import { Eyebrow, Heading, n } from './HomePreview';
@@ -66,7 +67,7 @@ export function DepartmentsPage() {
                   className={`flex min-h-11 items-baseline justify-between gap-3 rounded-lg px-3 py-2.5 text-[14px] hover:bg-[color:var(--np-soft)] hover:text-accent ${focusRing} focus-visible:outline-offset-[-2px]`}
                   style={{ color: 'var(--np-ink)' }}>
                   <span className="min-w-0 break-words">{d.name}</span>
-                  {typeof count === 'number' && count > 0 && <span className="tnum shrink-0 text-[12px]" style={{ color: 'var(--np-body)' }}>{n(count)}</span>}
+                  <DepartmentCount count={count} loaded={totals !== null} className="text-[12px] text-[color:var(--np-body)]" />
                 </Link>
               </li>
             );
