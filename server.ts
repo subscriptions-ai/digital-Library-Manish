@@ -11871,7 +11871,13 @@ async function startServer() {
         // the librarian's chart quote, for anything that needs the whole picture.
         collectionByDepartment(),
       ]);
-      res.json({ ...counts, authors, departments: byDomain, departmentTotals });
+      // Journal TITLES per department, kept apart from the content-item total: a journal holds the articles that are already counted, so adding titles to
+      // `total` would count one shelf twice. Spellings of one department are one entry. Public = the same status rule every other journal figure uses.
+      const journalRows: { domain: string; n: number }[] = await (prisma as any).$queryRawUnsafe(
+        `select j."domain" as domain, count(*)::int as n from "Journal" j where ${publicJournalStatusSql('j')} and j."domain" is not null group by 1`);
+      const departmentJournalTitles: Record<string, number> = {};
+      for (const r of journalRows) { const name = canonicalOrSelf(String(r.domain)); departmentJournalTitles[name] = (departmentJournalTitles[name] || 0) + Number(r.n); }
+      res.json({ ...counts, authors, departments: byDomain, departmentTotals, departmentJournalTitles });
     } catch (e: any) {
       console.error('GET library/stats error:', e?.message);
       res.status(500).json({ error: "Failed to load stats" });
