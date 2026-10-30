@@ -16,6 +16,9 @@ import { EmptyState, ErrorState, Skeleton, buttonClass } from "./ui";
 import { useAuth } from "../contexts/AuthContext";
 import { AccessNotice, DepartmentContent, useDepartmentAccess } from "./library/DepartmentContent";
 import { getLibraryPaths, libraryUrl } from "../lib/libraryRoute";
+import { HERO_IMAGES, HERO_CREDITS, HERO_ALT } from "../lib/departmentHero";
+
+export { HERO_IMAGES } from "../lib/departmentHero";   // DigitalLibrary.tsx has always imported it from here
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface ContentSummaryItem { type: string; count: number; }
@@ -25,44 +28,6 @@ interface DomainData {
   /** Everything held in the department, counted as the library counts it. */
   total?: number;
 }
-
-// ─── Domain → Unsplash hero image map ────────────────────────────────────────
-export const HERO_IMAGES: Record<string, string> = {
-  "electrical-engineering":    "https://images.unsplash.com/photo-1517077304055-6e89abbf09b0?w=900&q=80",
-  "computer-it":               "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=900&q=80",
-  "medical-sciences":          "https://images.unsplash.com/photo-1584820927498-cfe5211fd8bf?w=900&q=80",
-  "management":                "https://images.unsplash.com/photo-1552664730-d307ca884978?w=900&q=80",
-  "chemistry":                 "https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?w=900&q=80",
-  "mechanical-engineering":    "https://images.unsplash.com/photo-1530124566582-a618bc2615dc?w=900&q=80",
-  "pharmacy":                  "https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=900&q=80",
-  "civil-construction":        "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=900&q=80",
-  "nano-technology":           "https://images.unsplash.com/photo-1628595351029-c2bf17511435?w=900&q=80",
-  "bio-technology":            "https://images.unsplash.com/photo-1576086213369-97a306d36557?w=900&q=80",
-  "energy":                    "https://images.unsplash.com/photo-1466611653911-95081537e5b7?w=900&q=80",
-  "life-sciences":             "https://images.unsplash.com/photo-1518152006812-edab29b069ac?w=900&q=80",
-  "law":                       "https://images.unsplash.com/photo-1505664194779-8beaceb93744?w=900&q=80",
-  "agriculture":               "https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=900&q=80",
-  "nursing":                   "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=900&q=80",
-  "education-social-sciences": "https://images.unsplash.com/photo-1427504494785-3a9ca7044f45?w=900&q=80",
-  "applied-sciences":          "https://images.unsplash.com/photo-1507413245164-6160d8298b31?w=900&q=80",
-  "multidisciplinary":         "https://images.unsplash.com/photo-1456406644174-8ddd4cd52a06?w=900&q=80",
-  "electronics-telecommunication": "https://images.unsplash.com/photo-1518770660439-4636190af475?w=900&q=80",
-  "chemical-engineering":      "https://images.unsplash.com/photo-1582719471384-894fbb16e074?w=900&q=80",
-  "ayurveda":                  "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=900&q=80",
-  "architecture":              "https://images.unsplash.com/photo-1487958449943-2429e8be8625?w=900&q=80",
-  "material-science":          "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=900&q=80",
-  "applied-mechanics":         "https://images.unsplash.com/photo-1537462715879-360eeb61a0ad?w=900&q=80",
-  "dental":                    "https://images.unsplash.com/photo-1606811841689-23dfddce3e95?w=900&q=80",
-  "physiotherapy":             "https://images.unsplash.com/photo-1576678927484-cc907957088c?w=900&q=80",
-  // The four below reuse the Medical Sciences photograph already served on this page; no new image was picked or fetched.
-  "paramedical-sciences":      "https://images.unsplash.com/photo-1584820927498-cfe5211fd8bf?w=900&q=80",
-  "radiology":                 "https://images.unsplash.com/photo-1584820927498-cfe5211fd8bf?w=900&q=80",
-  "medical-laboratory-technology": "https://images.unsplash.com/photo-1584820927498-cfe5211fd8bf?w=900&q=80",
-  "optometry-ophthalmology":   "https://images.unsplash.com/photo-1584820927498-cfe5211fd8bf?w=900&q=80",
-  "commerce":                  "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=900&q=80",
-  "arts":                      "https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?w=900&q=80",
-  "science":                   "https://images.unsplash.com/photo-1532094349884-543bc11b234d?w=900&q=80",
-};
 
 // ─── Content type icon + description map ─────────────────────────────────────
 const CT_META: Record<string, { icon: any; desc: string }> = {
@@ -138,7 +103,6 @@ export function DomainLandingPage() {
 
   useEffect(() => { fetchDomainData(); }, [fetchDomainData]);
 
-
   /* ---------- derive displayed data ---------- */
   // What this department actually holds, in the order a college asks about it.
   //
@@ -160,6 +124,7 @@ export function DomainLandingPage() {
         });
 
   const heroImg = HERO_IMAGES[domainId || ""] || "https://images.unsplash.com/photo-1456406644174-8ddd4cd52a06?w=900&q=80";
+  const heroCredit = HERO_CREDITS[domainId || ""];
 
   /* ---------- guard: domain not found ---------- */
   if (!domain) {
@@ -180,7 +145,6 @@ export function DomainLandingPage() {
   }
 
   const relatedDomains = DOMAINS.filter((d) => d.id !== domain.id).slice(0, 4);
-
 
   return (
     <div className="flex flex-col bg-surface">
@@ -251,9 +215,19 @@ export function DomainLandingPage() {
             >
               <img
                 src={heroImg}
-                alt={domain.name}
+                alt={HERO_ALT[domainId || ""] || domain.name}
+                width={1200}
+                height={900}
+                loading="lazy"
                 className="h-full w-full object-cover"
               />
+              {/* The photograph's own credit, kept on the image it belongs to. */}
+              {heroCredit && (
+                <a href={heroCredit.source} target="_blank" rel="noopener noreferrer"
+                  className="absolute right-2 top-2 rounded bg-navy/60 px-2 py-1 text-[10px] leading-none text-white/70 hover:text-white">
+                  {heroCredit.author} · {heroCredit.licence}
+                </a>
+              )}
               {/* Dark overlay gradient */}
               <div className="absolute inset-0 bg-gradient-to-t from-navy/80 via-navy/20 to-transparent" />
 
