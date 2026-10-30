@@ -9,11 +9,21 @@
  *
  * Run: npx tsx scripts/test-ai-assistant.ts
  */
+import './support/noRealAi';
 import { createServer } from 'node:http';
 import type { Server } from 'node:http';
 import assert from 'node:assert';
 import { setDefaultBaseUrls } from '@google/genai';
 import type { PrismaClient } from '@prisma/client';
+
+// The assistant reads its provider keys from the database too (Admin > AI Assistant), and the development database holds real ones. This
+// test runs against the throwaway database, which holds none, so a provider it did not mock cannot be reached with a real key.
+import { readFileSync } from 'node:fs';
+{
+  const real = /^DATABASE_URL=(.*)$/m.exec(readFileSync(new URL('../.env', import.meta.url), 'utf8'))?.[1]?.replace(/^["']|["']$/g, '');
+  if (!real) throw new Error('no DATABASE_URL in .env');
+  process.env.DATABASE_URL = real.replace(/\/[^/?]+(\?.*)?$/, '/stm_ingestion_test');
+}
 
 // The service builds its client at import time, so the mock base
 // URL and a dummy key must be in place before it loads.
