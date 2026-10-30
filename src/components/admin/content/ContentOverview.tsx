@@ -51,9 +51,11 @@ export function SectionSummary({ state, section, collection }: { state: Overview
   const both = state.data?.collections;
   const collName = collection === 'new' ? 'New' : 'Archived';
   const failed = state.error && !state.data;
+  // The two collections are the same library to a visitor, so the cards also say what both add up to. For Books that is the figure on the home page.
+  const sum = both?.archived ? { total: both.new.total + both.archived.total, public: both.new.public + both.archived.public } : null;
   const cards = [
-    { label: `All ${L.plural}`, value: s?.total, hint: `every record in the ${collName} collection${s?.rejected ? `, ${n(s.rejected)} rejected` : ''}` },
-    { label: 'Public', value: s?.public, hint: s ? `listed on the public site${s.readable !== null ? ` · ${n(s.readable)} with full text served here` : ''}` : 'listed on the public site' },
+    { label: `All ${L.plural}`, value: s?.total, hint: `every record in the ${collName} collection${s?.rejected ? `, ${n(s.rejected)} rejected` : ''}${sum ? ` · both collections ${n(sum.total)}` : ''}` },
+    { label: 'Public', value: s?.public, hint: s ? `listed on the public site${s.readable !== null ? ` · ${n(s.readable)} with full text served here` : ''}${sum ? ` · both collections ${n(sum.public)}${section === 'Books' ? ', the figure on the home page' : ''}` : ''}` : 'listed on the public site' },
     { label: 'Draft / needs review', value: s?.draft, hint: 'not public until reviewed and published' },
     { label: 'Unassigned', value: s?.unassigned, hint: 'no department, or one not in the department list' },
   ];
