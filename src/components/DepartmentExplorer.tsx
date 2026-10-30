@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { DOMAINS } from '../constants';
+import { DepartmentCount, departmentCountSuffix, isEmptyDepartment } from './DepartmentCount';
 import { Eyebrow, Heading, Figure, btnPrimary, n } from './HomePreview';
 
 /**
@@ -53,6 +54,7 @@ export function DepartmentExplorer({ totals, breakdown, selectedId, onSelect }: 
   const dept = DOMAINS.find(d => d.id === selectedId) ?? DEPARTMENTS_AZ[0];
   const d = cache[dept.id];
   const total = totals ? totals[dept.name] : undefined;
+  const empty = isEmptyDepartment(total, totals !== null);
   const range = publicationRange(d?.firstYear, d?.lastYear);
   const loading = !d && failed !== dept.id;
 
@@ -106,7 +108,7 @@ export function DepartmentExplorer({ totals, breakdown, selectedId, onSelect }: 
               style={{ borderColor: 'var(--np-line)', color: 'var(--np-ink)' }}>
               {DEPARTMENTS_AZ.map(x => (
                 <option key={x.id} value={x.id}>
-                  {x.name}{totals && typeof totals[x.name] === 'number' ? ` (${n(totals[x.name])})` : ''}
+                  {x.name}{departmentCountSuffix(totals ? totals[x.name] : undefined, totals !== null)}
                 </option>
               ))}
             </select>
@@ -126,7 +128,7 @@ export function DepartmentExplorer({ totals, breakdown, selectedId, onSelect }: 
                     <span className="flex items-baseline justify-between gap-3">
                       <span className="np-strong truncate text-[13.5px]"
                         style={{ color: active ? 'var(--t1-ink)' : 'var(--np-ink)' }}>{x.name}</span>
-                      {typeof count === 'number' && <span className="shrink-0 text-[11.5px]" style={{ color: 'var(--np-body)' }}>{n(count)}</span>}
+                      <DepartmentCount count={count} loaded={totals !== null} className="text-[11.5px] text-[color:var(--np-body)]" />
                     </span>
                   </button>
                 </li>
@@ -140,9 +142,11 @@ export function DepartmentExplorer({ totals, breakdown, selectedId, onSelect }: 
               <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/60">Department</p>
               <h3 className="np-display mt-2 break-words text-[26px] leading-tight text-white sm:text-[30px]">{dept.name}</h3>
               <p className="mt-2 text-[13.5px] text-white/70">
-                {typeof total === 'number' ? <>{n(total)} items held</> : totals ? null : 'Reading the catalogue…'}
-                {breakdown?.[dept.name] ? <>{typeof total === 'number' ? ' · ' : ''}{breakdownLine(breakdown[dept.name])}</> : null}
-                {range ? <>{typeof total === 'number' ? ' · ' : ''}articles published {range}</> : null}
+                {empty ? 'New department — nothing on the shelf yet'
+                  : typeof total === 'number' ? <>{n(total)} items held</>
+                  : totals ? null : 'Reading the catalogue…'}
+                {!empty && breakdown?.[dept.name] ? <>{typeof total === 'number' ? ' · ' : ''}{breakdownLine(breakdown[dept.name])}</> : null}
+                {range ? <>{empty || typeof total === 'number' ? ' · ' : ''}articles published {range}</> : null}
               </p>
             </div>
 

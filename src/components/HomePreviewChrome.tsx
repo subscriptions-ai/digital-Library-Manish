@@ -9,6 +9,7 @@ import { DOMAINS } from '../constants';
 // The departments menu lists them A to Z, so a visitor can find theirs at a glance.
 const DEPARTMENTS_AZ = [...DOMAINS].sort((a, b) => a.name.localeCompare(b.name));
 import { COMPANY_DETAILS } from '../config';
+import { DepartmentCount } from './DepartmentCount';
 import { useAuth } from '../contexts/AuthContext';
 import { getDashboardRoute } from '../lib/dashboardRoute';
 import { usePublisherSafeMode } from '../lib/publicSettings';
@@ -212,9 +213,7 @@ export function PreviewHeader() {
                         <Link key={d.id} to={`/domain/${d.id}`} onClick={() => closeDepts()}
                           className="flex cursor-pointer items-baseline justify-between gap-3 rounded-lg px-2.5 py-2 text-[13px] text-ink-2 hover:bg-surface-2 hover:text-accent focus-visible:bg-surface-2 focus-visible:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
                           <span className="truncate">{d.name}</span>
-                          {typeof count === 'number' && count > 0 && (
-                            <span className="tnum shrink-0 font-mono text-[11px] text-faint">{n(count)}</span>
-                          )}
+                          <DepartmentCount count={count} loaded={totals !== null} className="font-mono text-[11px] text-faint" />
                         </Link>
                       );
                     })}
@@ -300,7 +299,7 @@ export function PreviewHeader() {
                   <Link key={d.id} to={`/domain/${d.id}`} onClick={() => setMenuOpen(false)}
                     className="flex min-h-10 items-center justify-between gap-3 py-2 text-[14px] text-ink-2">
                     <span className="min-w-0 break-words">{d.name}</span>
-                    {totals?.byName[d.name] ? <span className="tnum font-mono text-[11px] text-faint">{n(totals.byName[d.name])}</span> : null}
+                    <DepartmentCount count={totals?.byName[d.name]} loaded={totals !== null} className="font-mono text-[11px] text-faint" />
                   </Link>
                 ))}
               </div>
