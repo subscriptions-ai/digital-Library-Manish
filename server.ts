@@ -7491,7 +7491,15 @@ async function startServer() {
       // the librarian's chart, so a department never quotes a number the rest of
       // the site disagrees with. Journals are not added in: they hold the
       // articles, and counting both would count every article twice.
-      const total = (await collectionByDepartment([domain]))[0]?.total ?? 0;
+      //
+      // One exception, because it cannot double count: a public journal that holds NO published article is an item of its own (a catalogue
+      // entry with a link to its publisher), and nothing else counts it. Without it a department made of such journals read "0 items of content"
+      // beside a Journals chip (Medical Laboratory Technology, 77 journals, 2026-10-30).
+      const [articleLess] = await (prisma as any).$queryRawUnsafe(
+        `select count(*)::int as n from "Journal" j
+          where ${publicJournalStatusSql('j')} and j.domain = any($1)
+            and not exists (select 1 from "Article" a where a."journalId" = j.id and a.status = 'Published')`, spelled);
+      const total = ((await collectionByDepartment([domain]))[0]?.total ?? 0) + Number(articleLess?.n || 0);
 
       // 2. Pricing modules — active modules for this domain, optionally filtered by userType
       const { userType } = req.query as { userType?: string };
