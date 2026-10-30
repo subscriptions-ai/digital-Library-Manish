@@ -12,6 +12,8 @@ import { type DeptRow } from './charts';
 import { SearchBox } from './GlobalSearch';
 import { COMPANY_DETAILS } from '../config';
 import { DOMAINS } from '../constants';
+import { DiwaliHeroDecor } from '../seasonal/diwali/HeroDecor';
+import { DiwaliCurated } from '../seasonal/diwali/Curated';
 
 /**
  * The home page.
@@ -313,6 +315,7 @@ function Hero({ stats, insights, institutions, depts }: {
       <HeroPhotos slide={i} />
       <div aria-hidden className="pointer-events-none absolute inset-0 opacity-60"
         style={{ background: 'radial-gradient(900px 420px at 15% 0%, rgba(245,179,1,0.10), transparent 60%), radial-gradient(700px 400px at 85% 100%, rgba(99,102,241,0.18), transparent 60%)' }} />
+      <DiwaliHeroDecor />
 
       <div className="relative container-public pb-10 pt-14 sm:pb-14 sm:pt-20">
         <div className="min-h-[330px] max-w-2xl" aria-live={running ? 'off' : 'polite'}>
@@ -1318,6 +1321,7 @@ export function HomePreview() {
       <Impact stats={stats} settled={statsSettled} depts={depts} inst={institutions} />
       <AcademicCommunity community={community} />
       <DepartmentsTeaser depts={depts} />
+      <DiwaliCurated depts={depts} loaded={!!stats} />
       <Principles />
       <TrustFoundation />
       <WhatIsNew books={books} articles={articles} settled={newSettled} />
