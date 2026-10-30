@@ -1,0 +1,185 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   The Diwali dressing.
+
+   Every rule here is keyed on html[data-seasonal="diwali"], which only
+   DiwaliSeasonal sets and only on the browsing pages, so this stylesheet is
+   inert the rest of the year and on a page somebody is reading.
+
+   No new brand colours: the palette is the two the public pages already use —
+   --navy and --amber — mixed into a warm band, a glow and a hairline. The cream
+   exists only as a light-mode surface; in dark mode the band is navy with a
+   warm ink, because a cream band on a dark page is a hole in it.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+html[data-seasonal="diwali"] {
+  --dw-band-bg: color-mix(in srgb, var(--amber) 10%, #ffffff);
+  --dw-band-ink: var(--navy);
+  --dw-band-ink-2: color-mix(in srgb, var(--navy) 72%, #ffffff);
+  --dw-band-edge: color-mix(in srgb, var(--amber) 55%, transparent);
+  --dw-band-hover: color-mix(in srgb, var(--amber) 22%, transparent);
+  /* Drawn on the hero, which is a dark field in both themes. */
+  --dw-glow: color-mix(in srgb, var(--amber) 26%, transparent);
+  --dw-ink-warm: color-mix(in srgb, var(--amber) 55%, #ffffff);
+  /* The rule under the header's active tab. The amber itself measures 1.85:1
+     on a white header — below the 3:1 a UI element that carries meaning needs,
+     and a long way below the 7:1 the teal rule it replaces manages. Deepened
+     with the navy it reaches 3.38:1 and still reads as gold. On the dark header
+     the amber is already 9:1, so it is left alone. */
+  --dw-rule: color-mix(in srgb, var(--amber) 70%, var(--navy));
+}
+
+html[data-seasonal="diwali"].dark {
+  --dw-band-bg: color-mix(in srgb, var(--navy) 78%, #0a1020);
+  --dw-band-ink: color-mix(in srgb, var(--amber) 42%, #ffffff);
+  --dw-band-ink-2: color-mix(in srgb, var(--amber) 22%, #ffffff);
+  --dw-band-edge: color-mix(in srgb, var(--amber) 38%, transparent);
+  --dw-band-hover: color-mix(in srgb, var(--amber) 18%, transparent);
+  --dw-glow: color-mix(in srgb, var(--amber) 18%, transparent);
+  --dw-rule: var(--amber);
+}
+
+/* ── The announcement band ──────────────────────────────────────────────────
+   One fixed height in the flow above the header, so it cannot reflow the page
+   after the first paint. It is in the flow rather than fixed on purpose: the
+   floating WhatsApp and assistant buttons own the bottom-right corner, and
+   nothing seasonal goes near them. */
+
+.dw-band {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--dw-band-bg);
+  border-bottom: 1px solid var(--dw-band-edge);
+  color: var(--dw-band-ink);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1;
+  overflow: hidden;
+}
+
+.dw-band-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dw-band-lead { color: var(--dw-band-ink-2); font-weight: 500; }
+
+/* A diya-shaped flame instead of an emoji: an emoji is a different typeface on
+   every platform and a picture we do not control. */
+.dw-band-mark { flex: 0 0 auto; width: 14px; height: 18px; }
+
+.dw-band-close {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin-inline-start: -4px;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.65;
+  transition: opacity 120ms ease, background-color 120ms ease;
+}
+.dw-band-close:hover { opacity: 1; background: var(--dw-band-hover); }
+.dw-band-close:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; opacity: 1; }
+
+/* The lead words are the first thing to go when there is no room for them. */
+@media (max-width: 639px) {
+  .dw-band-lead { display: none; }
+}
+
+/* ── The header's active tab ────────────────────────────────────────────────
+   The rule under the current tab, and under the one being pointed at, picks up
+   the festival's gold. Nothing moves: it is the same 2px rule the header
+   already draws, in another colour. */
+
+html[data-seasonal="diwali"] header nav a[aria-current="page"]::after,
+html[data-seasonal="diwali"] header nav a:hover::after,
+html[data-seasonal="diwali"] header nav button[aria-expanded="true"]::after {
+  background: var(--dw-rule);
+}
+
+/* ── The hero's decoration ──────────────────────────────────────────────────
+   A warm glow where the headline sits, two corner rangoli at a tenth of full
+   strength, and three diyas along the lower edge. All of it is behind the words
+   (z-index 0 against content that paints later), none of it takes a pointer,
+   and none of it is in the accessibility tree. */
+
+.dw-hero-decor {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.dw-hero-glow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(680px 340px at 14% 18%, var(--dw-glow), transparent 62%),
+    radial-gradient(420px 260px at 88% 86%, var(--dw-glow), transparent 68%);
+  animation: dw-breathe 9s ease-in-out infinite;
+}
+
+.dw-rangoli {
+  position: absolute;
+  color: var(--amber);
+  opacity: 0.1;
+}
+.dw-rangoli-tr { top: -56px; right: -56px; width: 260px; height: 260px; }
+.dw-rangoli-bl { bottom: -72px; left: -64px; width: 220px; height: 220px; opacity: 0.08; }
+
+.dw-diyas {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 10px;
+  display: flex;
+  justify-content: center;
+  gap: 28px;
+}
+.dw-diya { width: 30px; height: 38px; }
+
+/* Each flame keeps its own rhythm, so the three never pulse together and the
+   row reads as three lamps rather than one blinking light. */
+.dw-flame { transform-origin: 50% 100%; animation: dw-flicker 2.6s ease-in-out infinite; }
+.dw-diya:nth-child(2) .dw-flame { animation-duration: 3.3s; animation-delay: -0.7s; }
+.dw-diya:nth-child(3) .dw-flame { animation-duration: 2.1s; animation-delay: -1.4s; }
+
+@keyframes dw-flicker {
+  0%, 100% { opacity: 0.85; transform: scale(1, 1); }
+  35%      { opacity: 1;    transform: scale(1.06, 1.1); }
+  60%      { opacity: 0.78; transform: scale(0.96, 0.94); }
+  80%      { opacity: 0.95; transform: scale(1.02, 1.04); }
+}
+
+@keyframes dw-breathe {
+  0%, 100% { opacity: 0.85; }
+  50%      { opacity: 1; }
+}
+
+/* ── The festival section ───────────────────────────────────────────────── */
+
+.dw-card-edge {
+  border-color: color-mix(in srgb, var(--amber) 45%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--amber) 7%, transparent), transparent 60%),
+    var(--surface);
+}
+.dw-card-edge:hover { border-color: var(--amber); }
+
+/* ── Anyone who has asked for less motion gets none of it ───────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .dw-flame, .dw-hero-glow { animation: none; }
+  .dw-band-close { transition: none; }
+}
