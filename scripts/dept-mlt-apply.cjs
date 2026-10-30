@@ -88,7 +88,7 @@ function prepare(r) {
         await p.$transaction(async (tx) => {
           await tx.$executeRawUnsafe(`SET LOCAL lock_timeout = '${LOCK_TIMEOUT_S}s'`);
           const t0 = Date.now();
-          await tx.$executeRawUnsafe(`SELECT pg_advisory_xact_lock(hashtext('${LOCK_SQL_KEY}'))`);
+          await tx.$executeRawUnsafe(`SELECT pg_advisory_xact_lock(hashtext('${LOCK_SQL_KEY}'))`); /* shared lock protocol (coordinator 2026-10-30): all three department insert locks, same order everywhere */ await tx.$executeRawUnsafe(`select pg_advisory_xact_lock(2026103001::bigint)`); await tx.$executeRawUnsafe(`select pg_advisory_xact_lock(hashtext('dept-radiology-book-insert'))`);
           const lockWaitMs = Date.now() - t0; out.lockWaitMsMax = Math.max(out.lockWaitMsMax, lockWaitMs);
           // ---- inside the lock: the LIVE re-check ------------------------------------------------------------------------------------------------------
           const live = await tx.$queryRawUnsafe('select issn, eissn, title from "Journal"');

@@ -100,14 +100,23 @@ function OpenBook({ book }: { book: any }) {
         <Link to={`${paths.viewer}/${book.id}`} className={buttonClass('brand', 'lg')}>
           Read it in the library <ArrowRight size={16} aria-hidden="true" />
         </Link>
-      ) : book.originalUrl ? (
+      ) : book.originalUrl && book.accessStatus === 'LinkOnly' ? (
+        // A link is offered as "at source" only when the record says it leads to the book itself (accessStatus LinkOnly, set from a declared licence and a book address).
         <a href={book.originalUrl} target="_blank" rel="noopener noreferrer" className={buttonClass('brand', 'lg')}>
           Open at source <ArrowRight size={16} aria-hidden="true" />
         </a>
+      ) : book.originalUrl ? (
+        // Metadata only: the address is the catalogue record the entry was listed from (for example the NLM Catalog), not a copy of the book, so it is not presented as access.
+        <>
+          <p className="text-[14px] text-muted">Catalogue entry — metadata only. The book itself is not held here and no access link has been verified.</p>
+          <a href={book.originalUrl} target="_blank" rel="noopener noreferrer" className={buttonClass('outline')}>
+            View catalogue record <ArrowRight size={16} aria-hidden="true" />
+          </a>
+        </>
       ) : (
         <p className="text-[14px] text-muted">This is a catalogue entry: no file or source link is held for it.</p>
       )}
-      {!readable && book.originalUrl && <span className="text-[12.5px] text-muted">Opens on the publisher’s site.</span>}
+      {!readable && book.originalUrl && book.accessStatus === 'LinkOnly' && <span className="text-[12.5px] text-muted">Opens on the publisher’s site.</span>}
     </div>
   );
 }

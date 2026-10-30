@@ -86,7 +86,7 @@ const idFor = (runId, r) => {
       await p.$transaction(async (tx) => {
         await tx.$executeRawUnsafe(`SET LOCAL lock_timeout = '${LOCK_S}s'`);
         const t0 = Date.now();
-        await tx.$executeRawUnsafe(`SELECT pg_advisory_xact_lock(hashtext('stm.journal.insert'))`);
+        await tx.$executeRawUnsafe(`SELECT pg_advisory_xact_lock(hashtext('stm.journal.insert'))`); /* shared lock protocol (coordinator 2026-10-30): all three department insert locks, same order everywhere */ await tx.$executeRawUnsafe(`select pg_advisory_xact_lock(2026103001::bigint)`); await tx.$executeRawUnsafe(`select pg_advisory_xact_lock(hashtext('dept-radiology-book-insert'))`);
         const lockWaitMs = Date.now() - t0; out.lockWaitMsMax = Math.max(out.lockWaitMsMax, lockWaitMs);
         // ── live collision check, INSIDE the lock ───────────────────────────────────────────────────────────────────────────────
         const dois = [...new Set(slice.map(x => doiKey(x.r.doi)).filter(Boolean))];
