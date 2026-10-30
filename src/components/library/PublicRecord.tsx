@@ -7,6 +7,7 @@ import { buttonClass } from '../ui';
 import { NO_PUBLISHED_ARTICLES } from '../../lib/journalCopy';
 import { FullAbstractLink } from '../FullAbstractLink';
 import { getLibraryPaths } from '../../lib/libraryRoute';
+import { bookOpenMode } from "../../lib/bookOpenMode";
 
 /**
  * One article, or one book, on a page of its own.
@@ -93,21 +94,32 @@ function OpenBook({ book }: { book: any }) {
   const { profile } = useAuth();
   if (!profile) return <OpenIt to="" label="" />;
   const paths = getLibraryPaths(profile);
-  const readable = book.accessStatus === 'ViewableHere' && paths.reads;
+  const mode = bookOpenMode(book, !!paths.reads);
   return (
     <div className="card mt-8 flex flex-wrap items-center gap-3 p-5">
-      {readable ? (
+      {mode === 'read' ? (
         <Link to={`${paths.viewer}/${book.id}`} className={buttonClass('brand', 'lg')}>
           Read it in the library <ArrowRight size={16} aria-hidden="true" />
         </Link>
-      ) : book.originalUrl ? (
-        <a href={book.originalUrl} target="_blank" rel="noopener noreferrer" className={buttonClass('brand', 'lg')}>
-          Open at source <ArrowRight size={16} aria-hidden="true" />
-        </a>
+      ) : mode === 'source' ? (
+        // "Open at source" only when the record says its address leads to the book itself.
+        <>
+          <a href={book.originalUrl} target="_blank" rel="noopener noreferrer" className={buttonClass('brand', 'lg')}>
+            Open at source <ArrowRight size={16} aria-hidden="true" />
+          </a>
+          <span className="text-[12.5px] text-muted">Opens on the publisher’s site.</span>
+        </>
+      ) : mode === 'catalogue' ? (
+        // Metadata only: the address is the catalogue record the entry was listed from, not a copy of the book.
+        <>
+          <p className="text-[14px] text-muted">Catalogue entry — metadata only. The book itself is not held here and no access link has been verified.</p>
+          <a href={book.originalUrl} target="_blank" rel="noopener noreferrer" className={buttonClass('outline')}>
+            View catalogue record <ArrowRight size={16} aria-hidden="true" />
+          </a>
+        </>
       ) : (
         <p className="text-[14px] text-muted">This is a catalogue entry: no file or source link is held for it.</p>
       )}
-      {!readable && book.originalUrl && <span className="text-[12.5px] text-muted">Opens on the publisher’s site.</span>}
     </div>
   );
 }
