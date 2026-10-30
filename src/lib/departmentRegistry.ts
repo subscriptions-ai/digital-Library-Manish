@@ -23,6 +23,12 @@ export type CanonicalDepartment = {
   name: string;
   /** Other spellings known to mean exactly this department. */
   aliases: string[];
+  /**
+   * `false` = the ingestion engines do not search for or place content in this department on their own: it has no classification
+   * rules yet, so an automatic run could only guess. Everything else works as for any department (pages, filters, counts, access,
+   * quotations, manual assignment). Absent means the engines treat it like every other department.
+   */
+  autoIngestion?: false;
 };
 
 export const CANONICAL_DEPARTMENTS: CanonicalDepartment[] = [
@@ -50,18 +56,29 @@ export const CANONICAL_DEPARTMENTS: CanonicalDepartment[] = [
   { id: 'management', name: 'Management', aliases: [] },
   { id: 'material-science', name: 'Material Science', aliases: [] },
   { id: 'mechanical-engineering', name: 'Mechanical Engineering', aliases: [] },
+  // Added 2026-10-30 with Optometry & Ophthalmology, Paramedical Sciences and Radiology. No content was moved into them, and the
+  // ingestion engines leave them alone until classification rules for them are approved.
+  { id: 'medical-laboratory-technology', name: 'Medical Laboratory Technology', aliases: ['Medical Lab Technology'], autoIngestion: false },
   // "Medical" alone was reported as a duplicate of this department (see the audit report).
   { id: 'medical-sciences', name: 'Medical Sciences', aliases: ['Medical'] },
   { id: 'multidisciplinary', name: 'Multidisciplinary', aliases: [] },
   { id: 'nano-technology', name: 'Nano Technology', aliases: ['Nanotechnology'] },
   { id: 'nursing', name: 'Nursing', aliases: [] },
+  { id: 'optometry-ophthalmology', name: 'Optometry & Ophthalmology', aliases: [], autoIngestion: false },
+  { id: 'paramedical-sciences', name: 'Paramedical Sciences', aliases: ['Paramedical'], autoIngestion: false },
   { id: 'pharmacy', name: 'Pharmacy', aliases: [] },
   { id: 'physiotherapy', name: 'Physiotherapy', aliases: ['Physiotheraphy', 'Physio Therapy'] },
+  { id: 'radiology', name: 'Radiology', aliases: [], autoIngestion: false },
   { id: 'science', name: 'Science', aliases: [] },
 ];
 
 /** The official names, in registry order. */
 export const CANONICAL_NAMES: string[] = CANONICAL_DEPARTMENTS.map((d) => d.name);
+
+/** The departments the ingestion engines may search for and fill on their own (see `autoIngestion`). */
+export const AUTO_INGEST_NAMES: string[] = CANONICAL_DEPARTMENTS.filter((d) => d.autoIngestion !== false).map((d) => d.name);
+const AUTO_INGEST = new Set(AUTO_INGEST_NAMES);
+export const isAutoIngested = (department: string): boolean => AUTO_INGEST.has(department);
 
 /** A name reduced to what must match: case, spacing, "&" and "and", and spaces around "/" are not differences. */
 export const departmentKey = (value: string): string =>

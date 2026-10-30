@@ -63,12 +63,12 @@ try {
 
   section('Book coverage: every canonical department, counted from the catalogue');
   const cov = await A('/api/admin/ingest/book-coverage');
-  check('returns 29 departments sorted lowest first, with the columns asked for', cov.status === 200 && cov.data.books.departments.length === 29
+  check('returns all 33 departments sorted lowest first, with the columns asked for', cov.status === 200 && cov.data.books.departments.length === 33
     && cov.data.books.departments.every((d: any, i: number, a: any[]) => i === 0 || a[i - 1].published <= d.published)
     && ['total', 'published', 'readable', 'external', 'metadataOnly', 'review', 'state', 'label'].every(k => k in cov.data.books.departments[0]), `${cov.status}`);
   const dbBooks = await db.book.count({ where: { status: 'Published' } });
   check('the public total is the catalogue\'s own count, not a target', cov.data.books.totals.published === dbBooks, `${cov.data.books.totals.published} vs ${dbBooks}`);
-  check('journal coverage by department is included, with the open-access distinctions', cov.data.journals.departments.length === 29 && ['verifiedOa', 'oaUnverified', 'metadataOnly', 'reviewRequired'].every(k => k in cov.data.journals.departments[0]));
+  check('journal coverage by department is included, with the open-access distinctions', cov.data.journals.departments.length === 33 && ['verifiedOa', 'oaUnverified', 'metadataOnly', 'reviewRequired'].every(k => k in cov.data.journals.departments[0]));
   check('the priority setting and what is next are included', typeof cov.data.targeting.config.enabled === 'boolean' && cov.data.targeting.config.share === 0.7 && cov.data.targeting.config.target === 100);
 
   section('The priority switch is validated on the server and audited');

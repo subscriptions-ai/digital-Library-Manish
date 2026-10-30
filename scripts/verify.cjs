@@ -618,10 +618,18 @@ const catalogueSize = async () => {
       // not know is a shelf no reader can reach.
       const depts = new Set((await p.$queryRawUnsafe(
         `select distinct domain from "Journal" where domain is not null`)).map(r => r.domain));
-      const orphans = (await p.$queryRawUnsafe(
+      let orphans = (await p.$queryRawUnsafe(
         `select domain, count(*)::int n from "Book"
          where status = 'Published' and domain is not null group by 1`))
         .filter(r => !depts.has(r.domain));
+      // A department can hold books before it holds a journal (the four added 2026-10-30 start that way). The catalogue knows it
+      // when its page opens, so ask the page instead of assuming a journal must exist.
+      const stillOrphans = [];
+      for (const r of orphans) {
+        const page = await get(`/api/library/department/${r.domain.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`, A);
+        if (page.status !== 200) stillOrphans.push(r);
+      }
+      orphans = stillOrphans;
       orphans.length === 0
         ? ok('every book sits in a department the catalogue knows')
         : bad('every book sits in a department the catalogue knows',
@@ -1134,6 +1142,12 @@ const catalogueSize = async () => {
   ]) {
     const r = await get(path, A);
     r.status === 404 ? ok(`${name} answers 404`) : bad(`${name} answers 404`, `HTTP ${r.status}`);
+  }
+
+  // A department the registry lists is a page even while it holds nothing (the four added 2026-10-30 start empty); it is never "not found".
+  for (const slug of ['paramedical-sciences', 'radiology', 'medical-laboratory-technology', 'optometry-ophthalmology']) {
+    const r = await get(`/api/library/department/${slug}`, A);
+    r.status === 200 ? ok(`department ${slug} opens (empty or not)`) : bad(`department ${slug} opens (empty or not)`, `HTTP ${r.status}`);
   }
 
   // ── verdict ───────────────────────────────────────────────────────────────

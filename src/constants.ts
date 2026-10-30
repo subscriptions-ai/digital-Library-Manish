@@ -363,6 +363,58 @@ export const DOMAINS: Domain[] = [
     themeColor: "blue"
   },
   {
+    id: "paramedical-sciences",
+    name: "Paramedical Sciences",
+    description: "Paramedical Sciences cover the allied health professions that support diagnosis, treatment and emergency care alongside doctors and nurses. It includes emergency and trauma care, operation theatre and anaesthesia technology, critical care, dialysis and cardiac care technology, and related clinical support disciplines.",
+    importance: "Paramedical professionals deliver a large share of day-to-day clinical care, from the ambulance to the operating theatre. Current research on emergency response, critical care practice and clinical technology helps training programmes and hospitals keep their protocols up to date.",
+    contentAvailable: ["Journals", "Articles", "Books"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whyAccess: "Follow research on emergency care, critical care and clinical support technologies. Use evidence from journals and reference books to prepare for practice and keep protocols current.",
+    whoShouldAccess: ["Paramedical Students", "Emergency and Trauma Care Technicians", "Operation Theatre and Anaesthesia Technicians", "Allied Health Colleges", "Hospitals and Training Centres"],
+    features: ["Journals and Articles", "Reference Books", "Subject-wise Browsing", "Searchable Abstracts"],
+    icon: "HeartPulse",
+    themeColor: "rose"
+  },
+  {
+    id: "radiology",
+    name: "Radiology",
+    description: "Radiology is the medical specialty that uses imaging to diagnose and guide the treatment of disease. It includes X-ray, CT, MRI, ultrasound and nuclear medicine, as well as interventional radiology, radiation safety and the physics of medical imaging.",
+    importance: "Imaging sits at the centre of modern diagnosis. Research on imaging techniques, image interpretation, radiation dose and AI-assisted reading directly shapes how quickly and how safely patients are diagnosed.",
+    contentAvailable: ["Journals", "Articles", "Books"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whyAccess: "Keep up with imaging techniques, reporting practice and radiation safety. Use journals and reference books to support study, reporting and teaching.",
+    whoShouldAccess: ["Radiology Residents and Students", "Radiographers and Imaging Technologists", "Medical Physicists", "Medical Colleges", "Hospitals and Diagnostic Centres"],
+    features: ["Journals and Articles", "Reference Books", "Subject-wise Browsing", "Searchable Abstracts"],
+    icon: "Scan",
+    themeColor: "slate"
+  },
+  {
+    id: "medical-laboratory-technology",
+    name: "Medical Laboratory Technology",
+    description: "Medical Laboratory Technology is the discipline behind diagnostic testing: clinical biochemistry, haematology, microbiology, pathology, immunology and blood banking. Laboratory professionals collect, process and analyse specimens to support diagnosis and monitoring.",
+    importance: "Most clinical decisions rely on laboratory results. Research on testing methods, quality control and laboratory safety helps laboratories report results that clinicians can trust.",
+    contentAvailable: ["Journals", "Articles", "Books"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whyAccess: "Find research on diagnostic methods, laboratory quality and specimen handling. Use journals and reference books to support coursework, bench practice and accreditation work.",
+    whoShouldAccess: ["Medical Laboratory Technology Students", "Laboratory Technologists and Technicians", "Pathology and Microbiology Teams", "Allied Health Colleges", "Hospital and Diagnostic Laboratories"],
+    features: ["Journals and Articles", "Reference Books", "Subject-wise Browsing", "Searchable Abstracts"],
+    icon: "Microscope",
+    themeColor: "teal"
+  },
+  {
+    id: "optometry-ophthalmology",
+    name: "Optometry & Ophthalmology",
+    description: "Optometry and Ophthalmology deal with vision and the health of the eye. The field spans refraction and vision correction, contact lenses, binocular vision, and the medical and surgical care of eye disease such as cataract, glaucoma and retinal disorders.",
+    importance: "Vision affects learning, work and independence. Research on eye disease, vision screening and correction informs both clinical care and public eye-health programmes.",
+    contentAvailable: ["Journals", "Articles", "Books"],
+    contentTypes: DEFAULT_CONTENT_TYPES,
+    whyAccess: "Follow research on vision correction, eye disease and eye-care delivery. Use journals and reference books to support study, clinical practice and teaching.",
+    whoShouldAccess: ["Optometry Students and Optometrists", "Ophthalmology Residents and Clinicians", "Orthoptists and Vision Therapists", "Eye Hospitals and Clinics", "Medical and Allied Health Colleges"],
+    features: ["Journals and Articles", "Reference Books", "Subject-wise Browsing", "Searchable Abstracts"],
+    icon: "Eye",
+    themeColor: "sky"
+  },
+  {
     id: "commerce",
     name: "Commerce",
     description: "Commerce covers the exchange of goods and services, including legal, economic, political, social, cultural, and technological systems.",

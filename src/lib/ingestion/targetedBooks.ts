@@ -7,7 +7,7 @@ import { bookCoverageByDepartment, belowTarget, TARGETS, type BookCoverage } fro
 import { sourceHealthState } from './sourceHealth.js';
 import { tryLockProvider, unlockProvider } from './providerLocks.js';
 import { bump, totals, createRunWithStats, runColumnsFromStats, type DeptStats } from './departmentStats.js';
-import { canonicalDepartmentName } from '../departmentRegistry.js';
+import { canonicalDepartmentName, isAutoIngested } from '../departmentRegistry.js';
 import { booksOai } from '../ingestionWorker.js';
 import type { TurnCtx, TurnOutcome } from './rotation.js';
 
@@ -96,6 +96,7 @@ export const restHours = (zeroRuns: number) => Math.min(24 * 7, 6 * 2 ** Math.ma
  */
 export function pickTargetDepartment(coverage: BookCoverage, state: TargetState, target: number, now = Date.now()): string | null {
   for (const d of belowTarget(coverage, target)) {
+    if (!isAutoIngested(d.department)) continue;   // no classification rules yet: the engine cannot place a book there
     const rest = state.depts[d.department]?.nextEligibleAt;
     if (rest && new Date(rest).getTime() > now) continue;
     return d.department;
@@ -150,6 +151,7 @@ export async function runTargeted(opts: {
 }): Promise<TargetedResult> {
   const department = canonicalDepartmentName(opts.department);
   if (!department) throw new PriorityError(`"${opts.department}" is not a canonical department`);
+  if (!isAutoIngested(department)) throw new PriorityError(`${department} has no automatic search or classification rules yet, so a targeted run cannot place books there. Assign its books by hand.`);
   const profile = profileOf(department)!;
   const now = (opts.now ?? (() => new Date()))();
   const state = await loadState();
@@ -250,7 +252,7 @@ export async function targetedTurn(ctx: TurnCtx): Promise<TurnOutcome> {
   const department = pickTargetDepartment(coverage, state, config.target);
   if (!department) return { kind: 'nothing-due', note: `Every department is at ${config.target}+ books or resting after a run that found nothing` };
 
-  const r = await runTargeted({ department, limit: ctx.batch, mode: 'continuous', accept: belowTarget(coverage, config.target).map(d => d.department) });
+  const r = await runTargeted({ department, limit: ctx.batch, mode: 'continuous', accept: belowTarget(coverage, config.target).map(d => d.department).filter(isAutoIngested) });
   await recordTargetedOutcome(department, r);
   if (!r.asked) return { kind: 'nothing-due', note: `${department}: no provider could be asked right now (${r.providers.map(p => `${p.label}: ${p.outcome}`).join('; ')})` };
 

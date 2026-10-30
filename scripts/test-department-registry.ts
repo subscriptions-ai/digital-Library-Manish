@@ -5,13 +5,26 @@ import assert from 'node:assert/strict';
 import { DOMAINS } from '../src/constants';
 import { GROUPED_DEPARTMENTS } from '../src/lib/institutionDepartmentGroups';
 import {
-  CANONICAL_DEPARTMENTS, CANONICAL_NAMES, canonicalDepartmentName, canonicalOrSelf, departmentFromSlug, departmentKey,
+  AUTO_INGEST_NAMES, CANONICAL_DEPARTMENTS, CANONICAL_NAMES, isAutoIngested, canonicalDepartmentName, canonicalOrSelf, departmentFromSlug, departmentKey,
   entitlementCovers, foldCounts, resolveCanonicalDepartment, resolvedNames, spellingsOf, spellingsOfAll,
 } from '../src/lib/departmentRegistry';
 
 // ── The registry is the taxonomy: same names, same ids, official names untouched. ──
 assert.deepEqual(CANONICAL_DEPARTMENTS.map((d) => [d.id, d.name]).sort(), DOMAINS.map((d) => [d.id, d.name]).sort());
-assert.equal(CANONICAL_NAMES.length, 29);
+assert.equal(CANONICAL_NAMES.length, 33);
+
+// ── The four departments added 2026-10-30: official names and ids, a few explicit aliases, and no guessing. ──
+const ADDED = ['Paramedical Sciences', 'Radiology', 'Medical Laboratory Technology', 'Optometry & Ophthalmology'];
+for (const name of ADDED) { assert(CANONICAL_NAMES.includes(name), `${name} is missing`); assert.equal(resolveCanonicalDepartment(name).changed, false); }
+assert.deepEqual(['paramedical-sciences', 'radiology', 'medical-laboratory-technology', 'optometry-ophthalmology'].map((id) => departmentFromSlug(id)?.name), ADDED);
+assert.equal(canonicalDepartmentName('optometry and ophthalmology'), 'Optometry & Ophthalmology');    // "&" and "and" are not a difference
+assert.equal(canonicalDepartmentName('Paramedical'), 'Paramedical Sciences');
+assert.equal(canonicalDepartmentName('Medical Lab Technology'), 'Medical Laboratory Technology');
+for (const v of ['Optometry', 'Ophthalmology', 'Paramedics', 'Radiography', 'Laboratory', 'MLT', 'Medical Lab']) assert.equal(canonicalDepartmentName(v), null, `${v} must not be guessed`);
+// The ingestion engines leave exactly these four alone; every other department keeps taking part.
+assert.deepEqual(CANONICAL_NAMES.filter((n) => !isAutoIngested(n)).sort(), [...ADDED].sort());
+assert.equal(AUTO_INGEST_NAMES.length, 29);
+assert(!AUTO_INGEST_NAMES.some((n) => ADDED.includes(n)));
 assert.deepEqual([...GROUPED_DEPARTMENTS].sort(), [...CANONICAL_NAMES].sort(), 'Subject Groups must use the registry names');
 // No alias is also an official name or another department's alias (the module would throw on load), and none is empty.
 for (const d of CANONICAL_DEPARTMENTS) for (const a of d.aliases) { assert(a.trim()); assert.equal(resolveCanonicalDepartment(a).name, d.name); }
@@ -108,6 +121,11 @@ import { normaliseBodyDepartments, requireOfficialDepartments, requireOfficialDe
   assert.equal(normaliseBodyDepartments(bad).problems.length, 1);
   assert.equal(bad.domain, 'Underwater Basketry', 'an unknown value is reported, not rewritten');
   const none: any = { domain: '' }; assert.equal(normaliseBodyDepartments(none).problems.length, 0);
+  // …and the four added 2026-10-30 are accepted by hand, by file and from a publisher, under their official names (an alias is rewritten).
+  const added: any = { items: [{ domain: 'Radiology' }, { domain: 'Paramedical' }, { department: 'optometry and ophthalmology' }, { domain: 'Medical Laboratory Technology' }] };
+  assert.deepEqual(normaliseBodyDepartments(added), { rewrites: 2, problems: [] });
+  assert.deepEqual(added.items.map((i: any) => i.domain ?? i.department), ['Radiology', 'Paramedical Sciences', 'Optometry & Ophthalmology', 'Medical Laboratory Technology']);
+  const notYet: any = { domain: 'Optometry' }; assert.equal(normaliseBodyDepartments(notYet).problems.length, 1, 'a half-name is refused, not guessed');
   const bulk: any = { items: [{ domain: 'Physiotheraphy' }, { department: 'Law' }, { domain: 'Zzz' }, { title: 'no dept' }] };
   const r = normaliseBodyDepartments(bulk);
   assert.deepEqual(r.problems, [{ where: 'row 3', value: 'Zzz' }]);

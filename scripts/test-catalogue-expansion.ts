@@ -19,7 +19,7 @@ if ((await db.$queryRawUnsafe('select current_database() d'))[0].d !== 'stm_inge
 
 const { __useFetchForTests, __useSleepForTests, sourceHealthState } = await import('../src/lib/ingestion/sourceHealth.js');
 const { DEPARTMENT_PROFILES, profileOf } = await import('../src/lib/ingestion/books/departmentProfiles.js');
-const { CANONICAL_NAMES } = await import('../src/lib/departmentRegistry.js');
+const { CANONICAL_NAMES, isAutoIngested } = await import('../src/lib/departmentRegistry.js');
 const Cov = await import('../src/lib/ingestion/bookCoverage.js');
 const T = await import('../src/lib/ingestion/targetedBooks.js');
 const B = await import('../src/lib/ingestion/bulkCatalogue.js');
@@ -128,7 +128,8 @@ try {
   section('1. Department query profiles: one for every canonical department, none for anything else');
   check('every canonical department has a profile', CANONICAL_NAMES.every(n => !!profileOf(n)), `${CANONICAL_NAMES.length} departments`);
   check('and there is no profile for a department the registry does not know', Object.keys(DEPARTMENT_PROFILES).every(n => CANONICAL_NAMES.includes(n)));
-  check('each profile has several phrases to ask for', CANONICAL_NAMES.every(n => profileOf(n)!.queries.length >= 5));
+  check('each department the engines work on has several phrases to ask for', CANONICAL_NAMES.filter(isAutoIngested).every(n => profileOf(n)!.queries.length >= 5));
+  check('the four departments added 2026-10-30 have no phrases, so nothing is searched for them automatically', CANONICAL_NAMES.filter(n => !isAutoIngested(n)).length === 4 && CANONICAL_NAMES.filter(n => !isAutoIngested(n)).every(n => profileOf(n)!.queries.length === 0));
   check('the examples from the brief are present (Architecture, Mechanical Engineering, Computer / IT, Medical Sciences)',
     profileOf('Architecture')!.queries.includes('urban planning') && profileOf('Mechanical Engineering')!.queries.includes('thermodynamics') && profileOf('Computer / IT')!.queries.includes('cybersecurity') && profileOf('Medical Sciences')!.queries.includes('clinical medicine'));
   check('Open Library call numbers are read as the classifier reads them', lccFromOpenLibrary('NA-2520.00000000.J4 1946') === 'NA2520' && lccFromOpenLibrary('QA-0076.00000000') === 'QA76' && lccFromOpenLibrary('TK-7885.50000000') === 'TK7885.5', `${lccFromOpenLibrary('NA-2520.00000000.J4 1946')} ${lccFromOpenLibrary('QA-0076.00000000')} ${lccFromOpenLibrary('TK-7885.50000000')}`);
@@ -150,7 +151,7 @@ try {
   await seedBooks(null, 1, { status: 'Draft', tag: 'draft-none' });
   const c0 = await cov();
   const arch = c0.departments.find((d: any) => d.department === 'Architecture')!;
-  check('all 29 canonical departments are listed, none missing', c0.departments.length === 29 && CANONICAL_NAMES.every(n => c0.departments.some((d: any) => d.department === n)));
+  check('all canonical departments are listed, none missing', c0.departments.length === CANONICAL_NAMES.length && CANONICAL_NAMES.every(n => c0.departments.some((d: any) => d.department === n)));
   check('Architecture holds ZERO published books, and says so', arch.published === 0 && arch.state === 'critical' && arch.label === 'Critical');
   check('its two review Drafts are counted as Review, not as public books', arch.review === 2 && arch.total === 2 && arch.published === 0, JSON.stringify(arch));
   check('sorted from lowest to highest', c0.departments.every((d: any, i: number, a: any[]) => i === 0 || a[i - 1].published <= d.published));
@@ -170,6 +171,9 @@ try {
   const zeros = c0.departments.filter((d: any) => d.published === 0).map((d: any) => d.department);
   check('every zero-book department comes before any department that has a book', c0.departments.slice(0, zeros.length).every((d: any) => d.published === 0));
   check('a department at the target is never chosen', (() => { const only = { ...c0, departments: c0.departments.filter((d: any) => d.published >= 100) }; return T.pickTargetDepartment(only as any, state0, 100) === null; })());
+  check('a department without classification rules (the four added 2026-10-30) is never chosen by the engine, however empty it is', (() => { const only = { ...c0, departments: c0.departments.filter((d: any) => !isAutoIngested(d.department)) }; return only.departments.length === 4 && T.pickTargetDepartment(only as any, state0, 100) === null; })());
+  { let msg = ''; try { await T.runTargeted({ department: 'Radiology', limit: 10, mode: 'manual' }); } catch (e: any) { msg = String(e?.message || e); }
+    check('a targeted run for such a department is refused with a plain reason, before any provider is asked', /no automatic search or classification rules/.test(msg), msg); }
   const resting = { turn: 0, depts: { Agriculture: { zeroRuns: 1, nextEligibleAt: new Date(Date.now() + 3_600_000).toISOString(), lastRunAt: null, lastChecked: 0, lastAdded: 0, lastReview: 0 } }, positions: {} };
   check('a department resting after a run that found nothing is skipped, so the next-lowest gets the turn', T.pickTargetDepartment(c0, resting as any, 100) === 'Applied Mechanics', String(T.pickTargetDepartment(c0, resting as any, 100)));
   check('the rest grows with each empty run: 6 h, 12 h, 24 h … capped at a week', T.restHours(1) === 6 && T.restHours(2) === 12 && T.restHours(3) === 24 && T.restHours(10) === 168);

@@ -42,8 +42,13 @@ export const DEPARTMENT_PROFILES: Record<string, DepartmentProfile> = {
   'Multidisciplinary': { queries: ['interdisciplinary studies', 'sustainability', 'science and society', 'research methods', 'science policy', 'complex systems'] },
   'Nano Technology': { queries: ['nanotechnology', 'nanomaterials', 'nanoscience', 'nanoelectronics', 'quantum dots', 'nanomedicine'] },
   'Nursing': { queries: ['nursing', 'nursing practice', 'midwifery', 'patient care', 'community health nursing', 'nursing education', 'clinical nursing'] },
+  // No automatic search profile yet (added 2026-10-30): the engines do not search for these until their classification rules are approved.
+  'Medical Laboratory Technology': { queries: [] },
+  'Optometry & Ophthalmology': { queries: [] },
+  'Paramedical Sciences': { queries: [] },
   'Pharmacy': { queries: ['pharmacy', 'pharmacology', 'pharmaceutical sciences', 'drug discovery', 'toxicology', 'clinical pharmacy', 'medicinal chemistry'] },
   'Physiotherapy': { queries: ['physiotherapy', 'physical therapy', 'rehabilitation', 'sports medicine', 'musculoskeletal', 'kinesiology', 'occupational therapy'] },
+  'Radiology': { queries: [] },
   'Science': { queries: ['science', 'physics', 'mathematics', 'astronomy', 'earth science', 'geology', 'statistics'] },
 };
 

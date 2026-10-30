@@ -17,13 +17,14 @@ const eng = INSTITUTION_DEPARTMENT_GROUPS.find((g) => g.id === 'engineering-tech
 const med = INSTITUTION_DEPARTMENT_GROUPS.find((g) => g.id === 'medical-health-sciences')!;
 
 // ── The groups cover the catalogue exactly: nothing missing, nothing invented, nothing twice. ──
-assert.equal(catalogue.length, 29);
+assert.equal(catalogue.length, 33);
 assert.deepEqual([...GROUPED_DEPARTMENTS].sort(), [...catalogue].sort());
 assert.equal(new Set(GROUPED_DEPARTMENTS).size, GROUPED_DEPARTMENTS.length, 'a department is in two groups');
 assert.deepEqual([...QUOTE_DEPARTMENTS].sort(), [...catalogue].sort(), 'quotation list drifted from the catalogue');
 assert.equal(INSTITUTION_DEPARTMENT_GROUPS.length, 9);
 assert.equal(eng.departments.length, 10);
-assert.equal(med.departments.length, 6);
+assert.equal(med.departments.length, 10);
+for (const n of ['Paramedical Sciences', 'Radiology', 'Medical Laboratory Technology', 'Optometry & Ophthalmology']) assert(med.departments.includes(n), `${n} belongs in Medical & Health Sciences`);
 assert.equal(groupsFor(catalogue).some((g) => g.id === OTHER_GROUP_ID), false, 'nothing should be unmapped');
 
 // ── A department the groups do not know still shows, under "Other departments". ──
@@ -78,8 +79,10 @@ const names = (q: string) => filterGroups(groupsFor(catalogue), q).map((r) => [r
 assert.deepEqual(names('mechanical'), [['engineering-technology', ['Mechanical Engineering']]]);
 const med2 = filterGroups(groupsFor(catalogue), 'medical');
 assert.deepEqual(med2.map((r) => r.group.id), ['medical-health-sciences']);
-assert.equal(med2[0].visible.length, 6);                      // the group's name matched: all of it
+assert.equal(med2[0].visible.length, 10);                      // the group's name matched: all of it
 assert.equal(med2[0].complete, true);
+assert.deepEqual(names('radiology'), [['medical-health-sciences', ['Radiology']]]);
+assert.deepEqual(names('optometry'), [['medical-health-sciences', ['Optometry & Ophthalmology']]]);
 const comp = filterGroups(groupsFor(catalogue), 'computer');
 assert.deepEqual(comp.map((r) => [r.group.name, r.visible, r.complete]), [['Engineering & Technology', ['Computer / IT'], false]]);
 assert.equal(filterGroups(groupsFor(catalogue), 'zzzz').length, 0);

@@ -134,6 +134,7 @@ async function main() {
   const expectedCounts = await contentTypeCounts(prisma);
   assert.deepEqual(overview.counts, expectedCounts, 'overview tool returns live counts');
   assert.ok(Array.isArray(overview.departments) && overview.departments.length > 0);
+  for (const d of ['Paramedical Sciences', 'Radiology', 'Medical Laboratory Technology', 'Optometry & Ophthalmology']) assert.ok(overview.departments.includes(d), `the assistant's department list must include ${d}`);
 
   // Round 2: the pricing tool computed the real solo rate card.
   const pricing = lastFunctionResponse(2, 'get_subscription_pricing');

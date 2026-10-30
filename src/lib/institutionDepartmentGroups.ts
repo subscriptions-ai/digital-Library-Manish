@@ -33,7 +33,10 @@ export const INSTITUTION_DEPARTMENT_GROUPS: DepartmentGroup[] = [
   {
     id: 'medical-health-sciences',
     name: 'Medical & Health Sciences',
-    departments: ['Ayurveda', 'Dental', 'Medical Sciences', 'Nursing', 'Pharmacy', 'Physiotherapy'],
+    departments: [
+      'Ayurveda', 'Dental', 'Medical Laboratory Technology', 'Medical Sciences', 'Nursing', 'Optometry & Ophthalmology',
+      'Paramedical Sciences', 'Pharmacy', 'Physiotherapy', 'Radiology',
+    ],
   },
   {
     id: 'life-sciences-biotechnology',

@@ -1,5 +1,6 @@
 import { ingestionDb as db } from './db.js';
 import { journalCoverageByDepartment, LOW_JOURNALS } from './bookCoverage.js';
+import { isAutoIngested } from '../departmentRegistry.js';
 import { sourceHealthState } from './sourceHealth.js';
 import { providerHolder, tryLockProvider, unlockProvider } from './providerLocks.js';
 import type { TurnCtx, TurnOutcome } from './rotation.js';
@@ -38,6 +39,7 @@ export function pickJournalDepartment(departments: { department: string; total: 
   const inScope = new Set(scope);
   for (const d of [...departments].sort((a, b) => a.total - b.total || a.department.localeCompare(b.department))) {
     if (d.total >= target) break;
+    if (!isAutoIngested(d.department)) continue;   // no classification rules yet: a search could only guess
     if (scope.length && !inScope.has(d.department)) continue;
     const rest = state.depts[d.department]?.nextEligibleAt;
     if (rest && Date.parse(rest) > now) continue;

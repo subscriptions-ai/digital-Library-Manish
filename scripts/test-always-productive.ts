@@ -173,6 +173,7 @@ section('TEST 7 / 8: department coverage priority, and the real held-books job')
 check('journal coverage picks the department with the fewest journal TITLES first', pickJournalDepartment([{ department: 'Law', total: 40 }, { department: 'Nursing', total: 3 }, { department: 'Physics', total: 500 }], { depts: {} }, [], 100) === 'Nursing');
 check('…skips one that is resting', pickJournalDepartment([{ department: 'Law', total: 40 }, { department: 'Nursing', total: 3 }], { depts: { Nursing: { zeroRuns: 1, nextEligibleAt: new Date(Date.now() + 3600_000).toISOString(), lastRunAt: null, lastAdded: 0 } } }, [], 100) === 'Law');
 check('…stays inside the engine\'s scope', pickJournalDepartment([{ department: 'Law', total: 40 }, { department: 'Nursing', total: 3 }], { depts: {} }, ['Law'], 100) === 'Law');
+check('…and never picks a department without classification rules, however few titles it holds', pickJournalDepartment([{ department: 'Radiology', total: 0 }, { department: 'Law', total: 40 }], { depts: {} }, [], 100) === 'Law');
 check('…and stops at the target: a department above it is never picked', pickJournalDepartment([{ department: 'Physics', total: 500 }], { depts: {} }, [], 100) === null);
 check('book coverage: a department with ZERO books goes first', pickTargetDepartment({ departments: [{ department: 'Law', published: 30 }, { department: 'Physiotherapy', published: 0 }] } as any, { turn: 0, depts: {}, positions: {} } as any, 100) !== null);
 

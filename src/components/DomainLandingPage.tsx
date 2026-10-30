@@ -54,6 +54,11 @@ export const HERO_IMAGES: Record<string, string> = {
   "applied-mechanics":         "https://images.unsplash.com/photo-1537462715879-360eeb61a0ad?w=900&q=80",
   "dental":                    "https://images.unsplash.com/photo-1606811841689-23dfddce3e95?w=900&q=80",
   "physiotherapy":             "https://images.unsplash.com/photo-1576678927484-cc907957088c?w=900&q=80",
+  // The four below reuse the Medical Sciences photograph already served on this page; no new image was picked or fetched.
+  "paramedical-sciences":      "https://images.unsplash.com/photo-1584820927498-cfe5211fd8bf?w=900&q=80",
+  "radiology":                 "https://images.unsplash.com/photo-1584820927498-cfe5211fd8bf?w=900&q=80",
+  "medical-laboratory-technology": "https://images.unsplash.com/photo-1584820927498-cfe5211fd8bf?w=900&q=80",
+  "optometry-ophthalmology":   "https://images.unsplash.com/photo-1584820927498-cfe5211fd8bf?w=900&q=80",
   "commerce":                  "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=900&q=80",
   "arts":                      "https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?w=900&q=80",
   "science":                   "https://images.unsplash.com/photo-1532094349884-543bc11b234d?w=900&q=80",

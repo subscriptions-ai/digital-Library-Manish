@@ -20,6 +20,7 @@ import { checkDoajCatalogue, importCheckedJournals, DOAJ_CSV_URL, type DoajBreak
 import { saveInspection } from './doajInspection.js';
 import { getState } from '../ingestionWorker.js';
 import { DOMAINS } from '../../constants.js';
+import { isAutoIngested } from '../departmentRegistry.js';
 
 /**
  * Quick Import: a bounded batch from one source, started by hand.
@@ -148,7 +149,7 @@ async function readPosition(id: QuickId): Promise<any | null> {
 
 const iso = (d: Date) => d.toISOString().replace(/\.\d{3}Z$/, 'Z');
 const thisYear = () => new Date().getFullYear();
-const ALL_DEPARTMENTS: string[] = (DOMAINS as any[]).map(d => d.name);
+const ALL_DEPARTMENTS: string[] = (DOMAINS as any[]).map(d => d.name).filter(isAutoIngested);
 const HEALTH_DEPARTMENTS = ['Medical Sciences', 'Life Sciences', 'Bio Technology', 'Pharmacy', 'Nursing', 'Dental', 'Physiotherapy', 'Ayurveda'];
 const ARXIV_DEPARTMENTS = [
   'Computer / IT', 'Electrical Engineering', 'Electronics & Telecommunication Engineering', 'Mechanical Engineering', 'Civil / Construction Engineering',

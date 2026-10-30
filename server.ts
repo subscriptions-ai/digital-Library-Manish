@@ -53,7 +53,7 @@ import { COMPANY_DETAILS, currentIssuer } from "./src/config.js";
 import { publicBookWhere, publicLegacyBookWhere, publicBookSql, publicLegacyBookSql, publicBookCounts } from "./src/lib/publicBooks.js";
 import { legacyPublicWhere, legacyPublicSql } from "./src/lib/publicStatus.js";
 import { contentWhere, contentOrderBy, sectionOverview, parseSort, isSection, type Collection } from "./src/lib/adminContent.js";
-import { canonicalOrSelf, canonicalOrSelfList, canonicalDepartmentName, resolveCanonicalDepartment, entitlementCovers, foldCounts, departmentFromSlug, spellingsOfAll } from "./src/lib/departmentRegistry.js";
+import { canonicalOrSelf, canonicalOrSelfList, canonicalDepartmentName, resolveCanonicalDepartment, entitlementCovers, foldCounts, departmentFromSlug, spellingsOfAll, isAutoIngested } from "./src/lib/departmentRegistry.js";
 import { createDepartmentSpellings } from "./src/server/departmentSpellings.js";
 import { requireOfficialDepartments, requireOfficialDepartmentsOnEdit } from "./src/server/departmentInput.js";
 import { docToRow, nextQuoteNo, quoteNoPrefix, stateCodeOf, QUOTE_DEPARTMENTS, QUOTE_KIND, buildInstitutionPlanSnapshot, buildSoloPlanSnapshot, planSnapshotToRow, type QuoteDoc, type PlanSnapshot } from "./src/lib/quotation/quotationModel.js";
@@ -9593,6 +9593,8 @@ async function startServer() {
   // ══════════════════════════════════════════════════════════════════════════
 
   const ALL_DEPARTMENTS = DOMAINS.map((d: any) => d.name);
+  // What the engines may search for and fill on their own: every department that has classification rules (see `autoIngestion`).
+  const ENGINE_DEPARTMENTS = ALL_DEPARTMENTS.filter(isAutoIngested);
   const adminOf = (req: any) => ({ uid: req.user?.uid, email: req.user?.email });
   const MAX_CANDIDATES = INGESTION_POLICY.preview.maxItems;
 
@@ -9704,7 +9706,7 @@ async function startServer() {
   app.post("/api/admin/ingest/state", authenticateJWT, requireSuperAdmin, async (req: any, res: any) => {
     try {
       const current = await getIngestionState();
-      const v: any = validateSettings(req.body, current, ALL_DEPARTMENTS);
+      const v: any = validateSettings(req.body, current, ENGINE_DEPARTMENTS);
       if (!v.ok) return res.status(v.status).json({ error: v.errors[0], errors: v.errors, needsConfirmation: v.needsConfirmation });
       if (Object.keys(v.data).length) await (prisma as any).ingestionState.update({ where: { id: 'singleton' }, data: v.data });
       // A change to how the engine is set (or switching it on) ends any sleep it was in: it looks again at its next tick.
@@ -9878,7 +9880,7 @@ async function startServer() {
       const state = await getIngestionState();
       await ingestionAudit(adminOf(req), 'MANUAL_PASS_REQUESTED', { engineEnabled: !!state.enabled });
       // A manual pass runs even while the engine is paused; that is the point of the button. The timer still respects the switch.
-      res.json(await runEnginePass(ALL_DEPARTMENTS, { force: true }));
+      res.json(await runEnginePass(ENGINE_DEPARTMENTS, { force: true }));
     } catch (e: any) { res.status(500).json({ error: String(e?.message || e) }); }
     finally { manualPassRunning = false; }
   });
@@ -9891,7 +9893,7 @@ async function startServer() {
     ingestTimer.lastTickAt = Date.now(); ingestTimer.nextTickAt = Date.now() + TICK_MS;
     if (ingestTimer.busy || manualPassRunning) return;
     ingestTimer.busy = true;
-    try { await runEnginePass(ALL_DEPARTMENTS); }
+    try { await runEnginePass(ENGINE_DEPARTMENTS); }
     catch (e) { console.error('[ingest] pass failed:', e); }
     finally { ingestTimer.busy = false; }
   }, TICK_MS);
@@ -9935,7 +9937,7 @@ async function startServer() {
       const isBook = BOOK_SOURCES.includes(source), isJournals = source === 'doaj-journals', isArticles = ARTICLE_SOURCES.includes(source);
       if (!isBook && !isJournals && !isArticles) return res.status(400).json({ error: "Unknown source." });
       if (!Array.isArray(departments) || departments.some((d: any) => typeof d !== 'string')) return res.status(400).json({ error: "Departments must be a list." });
-      const unknown = departments.filter((d: any) => !ALL_DEPARTMENTS.includes(d));
+      const unknown = departments.filter((d: any) => !ENGINE_DEPARTMENTS.includes(d));
       if (unknown.length) return res.status(400).json({ error: `Unknown department: ${unknown[0]}` });
       if (runningJob('dry-run')) return res.status(409).json({ error: 'A dry run is already in progress.' });
 
@@ -10825,7 +10827,7 @@ async function startServer() {
       const wanted = String(req.params.slug || '').toLowerCase();
 
       // Resolve the slug against the departments we actually hold journals in,
-      // so a renamed or unheld department 404s rather than showing an empty shelf.
+      // so a renamed or unknown department name 404s rather than showing an empty shelf.
       // Resolution is deliberately not gated on articleCount. That counter is
       // derived, and a stale one turned a department we hold into a 404 saying
       // we hold no journals under that name.
@@ -10838,8 +10840,10 @@ async function startServer() {
       // A stored department the registry does not know keeps the page it always had, found by its own slug.
       const known = departmentFromSlug(wanted);
       const held = known ? await deptSpellings.expand([known.name]) : null;
+      // A department the registry lists is always a page, even while it holds nothing yet (the four added 2026-10-30 start empty): it shows an
+      // empty shelf, never "not found". Only a name the registry does not know needs a stored journal to be found.
       const match = known
-        ? (domains.some(d => held!.includes(d.domain)) ? { domain: known.name } : undefined)
+        ? { domain: known.name }
         : domains.find(d => departmentSlug(d.domain) === wanted);
       if (!match) return res.status(404).json({ error: "Department not found" });
       const domain = match.domain;

@@ -2,11 +2,12 @@ import { useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { Search, Target } from 'lucide-react';
 import { Button, ConfirmDialog, Dialog } from '../../ui';
-import { DOMAINS } from '../../../constants';
+import { AUTO_INGEST_NAMES } from '../../../lib/departmentRegistry';
 import { api } from './api';
 import { scopeLabel } from './format';
 
-export const ALL_DEPARTMENTS: string[] = DOMAINS.map(d => d.name);
+/** Departments the engines may search for on their own; those still without classification rules are left out (see `autoIngestion`). */
+export const ALL_DEPARTMENTS: string[] = AUTO_INGEST_NAMES;
 
 /**
  * Department picker, used for the engine's scope and for the one-off import.
