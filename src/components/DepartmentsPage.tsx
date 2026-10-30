@@ -77,7 +77,7 @@ export function DepartmentsPage() {
         </p>
       </section>
 
-      <DepartmentExplorer totals={totals ? totals.byName : null} selectedId={selectedId} onSelect={select} />
+      <DepartmentExplorer totals={totals ? totals.byName : null} breakdown={totals ? totals.breakdown : null} selectedId={selectedId} onSelect={select} />
     </>
   );
 }

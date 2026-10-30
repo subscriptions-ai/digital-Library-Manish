@@ -1,3 +1,4 @@
+import { breakdownFor, type DepartmentBreakdown } from '../lib/departmentBreakdown';
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -30,7 +31,7 @@ const n = (x: number) => x.toLocaleString('en-IN');
 
 /** Department totals, counted the way the department pages count them. */
 export function useDepartmentTotals() {
-  const [totals, setTotals] = useState<{ byName: Record<string, number>; total: number; count: number } | null>(null);
+  const [totals, setTotals] = useState<{ byName: Record<string, number>; total: number; count: number; breakdown: Record<string, DepartmentBreakdown> } | null>(null);
   useEffect(() => {
     fetch('/api/library/stats')
       .then(r => (r.ok ? r.json() : null))
@@ -39,7 +40,9 @@ export function useDepartmentTotals() {
         if (!d.departmentTotals.every((row: any) => typeof row.name === "string" && typeof row.total === "number" && Number.isFinite(row.total) && row.total >= 0)) return;
         const byName: Record<string, number> = {};
         for (const row of d.departmentTotals) byName[row.name] = row.total;
-        setTotals({ byName, total: d.total, count: d.departmentTotals.length });
+        const breakdown: Record<string, DepartmentBreakdown> = {};
+        for (const row of d.departmentTotals) { const b = breakdownFor(row.name, d.departmentTotals, d.departmentJournalTitles); if (b) breakdown[row.name] = b; }
+        setTotals({ byName, total: d.total, count: d.departmentTotals.length, breakdown });
       })
       .catch(() => {});
   }, []);

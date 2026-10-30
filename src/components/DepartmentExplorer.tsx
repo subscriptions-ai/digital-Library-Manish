@@ -1,3 +1,4 @@
+import { breakdownLine, type DepartmentBreakdown } from '../lib/departmentBreakdown';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
@@ -37,9 +38,11 @@ export function publicationRange(first?: number | null, last?: number | null): s
 
 const focusRing = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
 
-export function DepartmentExplorer({ totals, selectedId, onSelect }: {
+export function DepartmentExplorer({ totals, breakdown, selectedId, onSelect }: {
   /** Items held per department name, from the catalogue's own count; null until it has arrived. */
   totals: Record<string, number> | null;
+  /** Books, articles and journal titles per department, shown beside (never added into) the item total. */
+  breakdown?: Record<string, DepartmentBreakdown> | null;
   selectedId: string;
   onSelect: (id: string) => void;
 }) {
@@ -138,6 +141,7 @@ export function DepartmentExplorer({ totals, selectedId, onSelect }: {
               <h3 className="np-display mt-2 break-words text-[26px] leading-tight text-white sm:text-[30px]">{dept.name}</h3>
               <p className="mt-2 text-[13.5px] text-white/70">
                 {typeof total === 'number' ? <>{n(total)} items held</> : totals ? null : 'Reading the catalogue…'}
+                {breakdown?.[dept.name] ? <>{typeof total === 'number' ? ' · ' : ''}{breakdownLine(breakdown[dept.name])}</> : null}
                 {range ? <>{typeof total === 'number' ? ' · ' : ''}articles published {range}</> : null}
               </p>
             </div>
