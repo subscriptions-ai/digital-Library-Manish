@@ -16,7 +16,8 @@ import {
   SOLO_TERM_MONTHS,
   calculateSoloSubscriptionPrice,
 } from '../lib/soloPricing.js';
-import { searchContent } from '../lib/catalogueSearch.js';
+import { discoverCatalogue } from '../lib/catalogueDiscovery.js';
+import { createDepartmentSpellings } from './departmentSpellings.js';
 import { contentTypeCounts } from '../lib/publicCounts.js';
 import { aiConfig } from './aiAssistantConfig.js';
 import { resolveProviders } from './aiProviderConfig.js';
@@ -157,6 +158,7 @@ function toolSubscriptionPricing(args: Record<string, unknown>): Record<string, 
   return result;
 }
 
+let spellingsFor: ReturnType<typeof createDepartmentSpellings> | null = null;
 async function toolSearchCatalogue(prisma: PrismaClient, args: Record<string, unknown>): Promise<Record<string, unknown>> {
   const query = typeof args.query === 'string' ? args.query.trim() : '';
   if (query.length < 2) {
@@ -165,18 +167,14 @@ async function toolSearchCatalogue(prisma: PrismaClient, args: Record<string, un
   const domain = typeof args.domain === 'string' && args.domain.trim() ? args.domain.trim() : undefined;
   const contentType = typeof args.contentType === 'string' && args.contentType.trim() ? args.contentType.trim() : undefined;
 
-  const found = await searchContent(prisma, { q: query, domain, contentType, limit: SEARCH_LIMIT });
+  spellingsFor ||= createDepartmentSpellings(prisma as any);
+  const found = await discoverCatalogue(prisma, { q: query, department: domain, contentType, limit: SEARCH_LIMIT, spellings: spellingsFor.expand });
   return {
-    total: found.total,
-    results: found.data.map(r => ({
-      id: r.id,
-      title: r.title,
-      authors: r.authors,
-      domain: r.domain,
-      contentType: r.contentType,
-      subjectArea: r.subjectArea,
-      accessType: r.accessType,
-    })),
+    returned: found.results.length,
+    matchesByShelf: found.matches,
+    department: found.department,
+    results: found.results,
+    note: found.note,
   };
 }
 
@@ -247,12 +245,12 @@ const TOOL_SPECS: ToolSpec[] = [
   },
   {
     name: 'search_catalogue',
-    description: 'Search the published catalogue (journals, articles, e-books, theses, proceedings, videos, newsletters). Returns titles, authors, domain, type.',
+    description: 'Search the published catalogue: books, journal titles, articles and the archive (theses, proceedings, videos, newsletters). Returns title, authors, department, type and availability. Only call a text readable here when availability is full_text_here; otherwise it is a catalogue record that points to the publisher.',
     parameters: {
       type: 'object',
       properties: {
         query: { type: 'string', description: 'Title, author, subject or domain.', minLength: 2 },
-        domain: { type: 'string', description: 'Department filter.' },
+        domain: { type: 'string', description: 'Department filter: an official name such as "Radiology" or "Optometry & Ophthalmology", or a common short form such as "Paramedical".' },
         contentType: { type: 'string', description: 'Type filter, e.g. "Journals" or "Books".' },
       },
       required: ['query'],

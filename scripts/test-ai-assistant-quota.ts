@@ -6,6 +6,7 @@
  *
  *   npx tsx scripts/test-ai-assistant-quota.ts
  */
+import './support/noRealAi';
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { Server } from 'node:http';

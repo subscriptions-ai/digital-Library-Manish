@@ -9,6 +9,7 @@
  * answers = one question, one answer); local replies; a refresh and a second session reuse the visitor; Get a quote links the
  * visitor to the lead without a second contact; the admin read functions report the same numbers; no contact reaches a provider.
  */
+import './support/noRealAi';
 import { readFileSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
 
