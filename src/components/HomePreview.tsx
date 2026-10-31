@@ -14,6 +14,7 @@ import { COMPANY_DETAILS } from '../config';
 import { DOMAINS } from '../constants';
 import { DiwaliHeroDecor } from '../seasonal/diwali/HeroDecor';
 import { DiwaliCurated } from '../seasonal/diwali/Curated';
+import { DiwaliGarland } from '../seasonal/diwali/Garland';
 
 /**
  * The home page.
@@ -1317,6 +1318,7 @@ export function HomePreview() {
       </Helmet>
 
       <Hero stats={stats} insights={insights} institutions={institutions} depts={depts} />
+      <DiwaliGarland />
       <InstitutionStrip inst={institutions} />
       <Impact stats={stats} settled={statsSettled} depts={depts} inst={institutions} />
       <AcademicCommunity community={community} />

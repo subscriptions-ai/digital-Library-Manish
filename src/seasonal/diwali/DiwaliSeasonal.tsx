@@ -1,6 +1,6 @@
 import { useLayoutEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { isDiwaliActive, isQuietPath } from './isDiwaliActive';
+import { diwaliLevel, isQuietPath } from './isDiwaliActive';
 import { DiwaliAnnouncementBand } from './AnnouncementBand';
 import './diwali.css';
 
@@ -8,10 +8,10 @@ import './diwali.css';
  * The one thing the public layout mounts.
  *
  * It decides whether the dressing applies to the page being shown, puts
- * data-seasonal="diwali" on the document while it does, and renders the
- * greeting band. Every rule in diwali.css hangs off that attribute, so the
- * stylesheet is inert until this component says otherwise, and the header's
- * gold rule needs no change in the header's own file.
+ * data-seasonal="diwali" and data-seasonal-level on the document while it
+ * does, and renders the greeting band. Every rule in diwali.css hangs off those
+ * attributes, so the stylesheet is inert until this component says otherwise,
+ * and the header's gold rule needs no change in the header's own file.
  *
  * The attribute is set in a layout effect rather than an ordinary one so it
  * lands before the browser paints: set after the paint, the active tab's rule
@@ -22,18 +22,23 @@ import './diwali.css';
  */
 export function DiwaliSeasonal() {
   const { pathname } = useLocation();
-  const active = isDiwaliActive() && !isQuietPath(pathname);
+  const level = isQuietPath(pathname) ? null : diwaliLevel();
 
   useLayoutEffect(() => {
     const root = document.documentElement;
-    if (!active) {
+    const clear = () => {
       root.removeAttribute('data-seasonal');
+      root.removeAttribute('data-seasonal-level');
+    };
+    if (!level) {
+      clear();
       return;
     }
     root.setAttribute('data-seasonal', 'diwali');
-    return () => root.removeAttribute('data-seasonal');
-  }, [active]);
+    root.setAttribute('data-seasonal-level', level);
+    return clear;
+  }, [level]);
 
-  if (!active) return null;
+  if (!level) return null;
   return <DiwaliAnnouncementBand />;
 }
