@@ -1,9 +1,11 @@
+import { useEffect, useRef, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { DOMAINS } from '../../constants';
 import { DepartmentCount } from '../../components/DepartmentCount';
 import { diwaliLevel } from './isDiwaliActive';
 import { BigDiya, CornerMandala, MarigoldGarland } from './art';
+import { usePauseOffscreen } from './pauseOffscreen';
 
 /**
  * "Light of Knowledge" — a short, hand-picked shelf for the festival, on a warm
@@ -24,6 +26,19 @@ import { BigDiya, CornerMandala, MarigoldGarland } from './art';
  * The eyebrow and heading repeat two small components from the home page rather
  * than importing them: the home page imports this section, and importing back
  * out of it would make the two modules depend on each other.
+ *
+ * The cards rise into place one after another the first time the row scrolls
+ * into view. They are visible by default, and stay that way unless every
+ * condition for the reveal holds: an IntersectionObserver to wake them, motion
+ * not turned down, a level that still moves (not fade), and the row starting
+ * below the fold — a row already on screen is never hidden to be shown again.
+ * Only then does the list get data-reveal="armed". That is decided in the
+ * observer's first report, which carries the row's position for free: asking
+ * for it during the first render instead forced a whole-page layout in the
+ * middle of it, on the home page's first paint. Being below the fold, the row
+ * is not on screen to be seen going from shown to hidden.
+ * It is a data attribute set on the node, not a class in the JSX, so a later
+ * render of this component cannot put the cards back to hidden.
  */
 
 const CURATED_IDS = [
@@ -35,6 +50,31 @@ type DeptTotal = { name: string; total: number };
 
 export function DiwaliCurated({ depts, loaded }: { depts: DeptTotal[]; loaded: boolean }) {
   const level = diwaliLevel();
+  const section = useRef<HTMLElement>(null);
+  const list = useRef<HTMLUListElement>(null);
+  usePauseOffscreen(section, level);
+
+  useEffect(() => {
+    const el = list.current;
+    if (!el || level === 'fade' || typeof IntersectionObserver === 'undefined') return;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    let first = true;
+    const io = new IntersectionObserver(([entry]) => {
+      if (first) {
+        first = false;
+        // Already on screen: leave it be. Below the fold: hide it to reveal later.
+        if (entry.boundingClientRect.top < window.innerHeight) { io.disconnect(); return; }
+        el.dataset.reveal = 'armed';
+        return;
+      }
+      if (!entry.isIntersecting) return;
+      el.dataset.reveal = 'in';
+      io.disconnect();
+    }, { rootMargin: '0px 0px -12% 0px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [level]);
+
   if (!level) return null;
 
   const picked = CURATED_IDS
@@ -46,7 +86,7 @@ export function DiwaliCurated({ depts, loaded }: { depts: DeptTotal[]; loaded: b
   for (const row of depts) byName[row.name] = row.total;
 
   return (
-    <section aria-labelledby="dw-curated-heading" className={`dw-curated dw-level-${level}`}>
+    <section ref={section} aria-labelledby="dw-curated-heading" className={`dw-curated dw-level-${level}`}>
       {level === 'peak' && <MarigoldGarland className="dw-garland dw-garland-top" />}
       <div className="dw-curated-glow" aria-hidden="true" />
 
@@ -64,9 +104,9 @@ export function DiwaliCurated({ depts, loaded }: { depts: DeptTotal[]; loaded: b
           </Link>
         </div>
 
-        <ul className="mt-8 grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2 lg:grid-cols-4">
-          {picked.map(d => (
-            <li key={d.id}>
+        <ul ref={list} className="dw-cards mt-8 grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2 lg:grid-cols-4">
+          {picked.map((d, i) => (
+            <li key={d.id} className="dw-card-item" style={{ '--dw-i': i } as CSSProperties}>
               <Link to={`/domain/${d.id}`} className="dw-card">
                 <CornerMandala className="dw-card-corner" />
                 <span className="np-strong min-w-0 break-words text-[14px]" style={{ color: 'var(--np-ink)' }}>{d.name}</span>

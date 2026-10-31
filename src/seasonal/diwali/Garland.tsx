@@ -1,6 +1,8 @@
+import { useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { diwaliLevel, isQuietPath } from './isDiwaliActive';
 import { Diya, MarigoldGarland } from './art';
+import { usePauseOffscreen } from './pauseOffscreen';
 
 /**
  * A marigold garland hung between two sections, and the row of lamps that sits
@@ -16,6 +18,9 @@ import { Diya, MarigoldGarland } from './art';
  * provider's quiet-path rule does not reach them, because they are a sibling of
  * it rather than a child.
  *
+ * Both sway at peak, and both hold still while they are off screen
+ * (pauseOffscreen.ts) — which, for the footer's, is nearly always.
+ *
  * They are in the flow rather than floating, which is deliberate: a divider
  * that overlaps its neighbours has to be positioned against them, and a fixed
  * 30px strip that is part of the page from the first paint cannot shift it.
@@ -28,9 +33,12 @@ function usePeakHere(): boolean {
 }
 
 export function DiwaliGarland({ className = '' }: { className?: string }) {
-  if (!usePeakHere()) return null;
+  const peak = usePeakHere();
+  const row = useRef<HTMLDivElement>(null);
+  usePauseOffscreen(row, peak);
+  if (!peak) return null;
   return (
-    <div className={`dw-garland-row ${className}`} aria-hidden="true">
+    <div ref={row} className={`dw-garland-row ${className}`} aria-hidden="true">
       <MarigoldGarland className="dw-garland" />
     </div>
   );
@@ -38,9 +46,12 @@ export function DiwaliGarland({ className = '' }: { className?: string }) {
 
 /** The garland and, under it, five lamps burning along the footer's edge. */
 export function DiwaliFooterLights() {
-  if (!usePeakHere()) return null;
+  const peak = usePeakHere();
+  const strip = useRef<HTMLDivElement>(null);
+  usePauseOffscreen(strip, peak);
+  if (!peak) return null;
   return (
-    <div className="dw-footer-lights" aria-hidden="true">
+    <div ref={strip} className="dw-footer-lights" aria-hidden="true">
       <MarigoldGarland className="dw-garland" />
       <div className="dw-footer-diyas">
         {Array.from({ length: 5 }, (_, i) => <Diya key={i} className="dw-diya dw-diya-glow" />)}
