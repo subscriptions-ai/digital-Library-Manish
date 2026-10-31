@@ -1,0 +1,271 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   The admin rail.
+
+   Two looks, each a set of --rail-* values, and nothing below the two blocks
+   reads a literal colour:
+     light — a white rail beside the light page, navy for the current page with
+             an amber edge;
+     ink   — a near-black rail, amber for the current page. The dark theme always
+             uses it, and the light theme can too (SIDEBAR_LIGHT_VARIANT).
+
+   Measured: light text 10.4:1, labels 4.8:1, active text 15:1, active edge
+   3.8:1 on white and 3.3:1 on its tint. Ink text 13:1, labels 7.6:1, active text
+   8.8:1, active edge 10:1. Pure amber is 1.9:1 on white, so in light the edge is
+   amber deepened with its own ink.
+
+   Unlayered on purpose — it has to beat the global focus ring and the
+   .app-type button rule — so it never sets a property the markup sets with a
+   utility (width, position, z-index).
+   ──────────────────────────────────────────────────────────────────────────── */
+
+.admin-rail {
+  --rail-bg: #ffffff;
+  --rail-border: #e2e8f0;          /* slate-200 */
+  --rail-text: #334155;            /* slate-700 */
+  --rail-text-strong: #0f172a;     /* slate-900 */
+  --rail-label: #64748b;           /* slate-500 */
+  --rail-hover: #f1f5f9;           /* slate-100 */
+  --rail-active-bg: color-mix(in srgb, var(--navy) 8%, var(--rail-bg));
+  --rail-active-text: var(--navy);
+  --rail-active-edge: color-mix(in srgb, var(--amber) 65%, var(--amber-ink));
+  --rail-focus: var(--navy);
+  --rail-guide: #e2e8f0;
+  --rail-scroll: #cbd5e1;          /* slate-300 */
+  --rail-avatar-bg: var(--navy);
+  --rail-avatar-ink: #ffffff;
+  --rail-danger: #a3302a;          /* = light --alarm */
+
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  background: var(--rail-bg);
+  border-right: 1px solid var(--rail-border);
+  color: var(--rail-text);
+  transition: width 200ms ease;
+}
+
+.admin-rail[data-variant="ink"],
+.dark .admin-rail {
+  --rail-bg: #080c16;
+  --rail-border: rgba(255, 255, 255, 0.06);
+  --rail-text: #cbd5e1;            /* slate-300 */
+  --rail-text-strong: #f1f5f9;     /* slate-100 */
+  --rail-label: #94a3b8;           /* slate-400: slate-500 is only 4.1:1 here */
+  --rail-hover: rgba(255, 255, 255, 0.05);
+  --rail-active-bg: color-mix(in srgb, var(--amber) 12%, var(--rail-bg));
+  --rail-active-text: var(--amber);
+  --rail-active-edge: var(--amber);
+  --rail-focus: var(--amber);
+  --rail-guide: rgba(255, 255, 255, 0.08);
+  --rail-scroll: rgba(255, 255, 255, 0.18);
+  --rail-avatar-bg: var(--amber);
+  --rail-avatar-ink: var(--amber-ink);
+  --rail-danger: #ef8a83;          /* = dark --alarm */
+}
+
+/* Brand row. Same height as the page header so the two bottom rules meet. */
+.admin-rail__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 56px;                    /* = the admin header's h-14 */
+  padding: 0 12px 0 16px;
+  border-bottom: 1px solid var(--rail-border);
+  flex-shrink: 0;
+}
+.admin-rail[data-collapsed] .admin-rail__head { justify-content: center; padding: 0; }
+.admin-rail__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  border-radius: 8px;
+  color: var(--rail-text-strong);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+/* The menu. The scrollbar stays out of sight until the pointer is over it. */
+.admin-rail__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px 12px 12px;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.admin-rail__scroll:hover,
+.admin-rail__scroll:has(:focus-visible) { scrollbar-color: var(--rail-scroll) transparent; }
+.admin-rail__scroll::-webkit-scrollbar { width: 6px; }
+.admin-rail__scroll::-webkit-scrollbar-thumb { background: transparent; border: 0; border-radius: 9999px; }
+.admin-rail__scroll:hover::-webkit-scrollbar-thumb { background: var(--rail-scroll); }
+
+.admin-rail__section + .admin-rail__section { margin-top: 8px; }
+.admin-rail .admin-rail__section-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: 6px;
+  color: var(--rail-label);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  transition: color 150ms ease;
+}
+.admin-rail .admin-rail__section-btn:hover { color: var(--rail-text-strong); }
+.admin-rail__divider { height: 1px; margin: 0 10px 10px; background: var(--rail-border); }
+
+/* A section or group opens by easing its row track from 0 to its height, and
+   hides its links from the tab order only once it has finished closing. */
+.admin-rail__collapse {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 180ms ease, visibility 0s;
+}
+.admin-rail__collapse[data-open="false"] {
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition: grid-template-rows 180ms ease, visibility 0s 180ms;
+}
+.admin-rail__list { min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 2px; }
+.admin-rail__sublist { margin-left: 19px; padding-left: 8px; border-left: 1px solid var(--rail-guide); }
+/* Spacing lives inside the clipped list, so a closed group takes no room at all. */
+.admin-rail__sublist > li:first-child { margin-top: 2px; }
+.admin-rail__sublist > li:last-child { margin-bottom: 4px; }
+
+.admin-rail__chev { flex-shrink: 0; transition: transform 150ms ease; }
+[aria-expanded="false"] > .admin-rail__chev { transform: rotate(-90deg); }
+
+/* One row. Icon and text share a colour; only a count is ever another colour. */
+.admin-rail__item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 32px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  color: var(--rail-text);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  text-align: left;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+.admin-rail__item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--rail-active-edge);
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+.admin-rail__item:hover { background: var(--rail-hover); color: var(--rail-text-strong); }
+.admin-rail__subitem { min-height: 30px; padding-block: 5px; font-size: 13px; }
+.admin-rail__subitem::before { top: 5px; bottom: 5px; }
+
+/* A group whose page is open says so in its colour; folded to icons, its
+   children are out of sight, so it takes the full current-page look. */
+.admin-rail__item[data-has-current] { color: var(--rail-active-text); font-weight: 600; }
+.admin-rail__item[aria-current="page"],
+.admin-rail__item[aria-current="page"]:hover,
+.admin-rail[data-collapsed] .admin-rail__item[data-has-current] {
+  background: var(--rail-active-bg);
+  color: var(--rail-active-text);
+  font-weight: 600;
+}
+.admin-rail__item[aria-current="page"]::before,
+.admin-rail[data-collapsed] .admin-rail__item[data-has-current]::before { opacity: 1; }
+
+.admin-rail[data-collapsed] .admin-rail__item { justify-content: center; padding-inline: 0; }
+.admin-rail__icon { position: relative; display: inline-flex; flex-shrink: 0; }
+.admin-rail__label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Counts. The one place a second colour is allowed. */
+.admin-rail__badge,
+.admin-rail__dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: var(--alarm-solid);
+  color: #ffffff;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.admin-rail__badge { min-width: 18px; height: 18px; padding: 0 5px; font-size: 10.5px; flex-shrink: 0; }
+.admin-rail__dot { position: absolute; top: -6px; right: -9px; min-width: 15px; height: 15px; padding: 0 3px; font-size: 9px; }
+
+/* The signed-in admin, in one row. */
+.admin-rail__foot { flex-shrink: 0; padding: 10px 12px; border-top: 1px solid var(--rail-border); }
+.admin-rail__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: var(--rail-avatar-bg);
+  color: var(--rail-avatar-ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+.admin-rail__name { color: var(--rail-text-strong); font-size: 13px; font-weight: 600; line-height: 18px; }
+.admin-rail__role { color: var(--rail-label); font-size: 11.5px; line-height: 16px; }
+.admin-rail__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  color: var(--rail-text);
+  transition: background-color 150ms ease, color 150ms ease;
+}
+.admin-rail__icon-btn:hover { background: var(--rail-hover); color: var(--rail-text-strong); }
+.admin-rail__icon-btn[aria-current="page"] { background: var(--rail-active-bg); color: var(--rail-active-text); }
+.admin-rail__icon-btn--danger:hover { color: var(--rail-danger); }
+
+.admin-rail :is(.admin-rail__item, .admin-rail__section-btn, .admin-rail__icon-btn, .admin-rail__brand):focus-visible {
+  outline: 2px solid var(--rail-focus);
+  outline-offset: -2px;
+}
+
+/* Folded to icons, a row's name appears beside it on hover or keyboard focus.
+   Fixed, so the menu's scroll box cannot clip it; drawn like the shared .tip. */
+.admin-rail__tip {
+  position: fixed;
+  z-index: 90;
+  transform: translateY(-50%);
+  padding: 5px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--ink);
+  color: var(--surface);
+  font-size: var(--fs-meta);
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-rail,
+  .admin-rail *,
+  .admin-rail *::before { transition: none !important; }
+}
