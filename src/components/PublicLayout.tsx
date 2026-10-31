@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { PreviewHeader, PreviewFooter } from './HomePreviewChrome';
 import { AIAssistantChat } from './AIAssistantChat';
 import { DiwaliSeasonal } from '../seasonal/diwali/DiwaliSeasonal';
+import { DiwaliFooterLights } from '../seasonal/diwali/Garland';
 
 /** Shared chrome and home-page typography for all visitor-facing routes. */
 export function PublicLayout({ children }: { children: ReactNode }) {
@@ -13,6 +14,8 @@ export function PublicLayout({ children }: { children: ReactNode }) {
       <main className="np public-content flex-1 bg-public" style={{ color: 'var(--np-body)' }}>
         {children}
       </main>
+      {/* Renders nothing outside the festival's brightest days. */}
+      <DiwaliFooterLights />
       <PreviewFooter />
       {/* Visitor-facing only: the assistant lives inside the public
           layout, so staff and subscriber tools never render it. */}
