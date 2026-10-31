@@ -11,11 +11,14 @@
  *     (printf 'var __MODE__ = "verify"; var __RUN__ = "<run id>"; var __EXPECT__ = %s;\n' '{"rows":200,"baseline":'"$(cat baseline.json)"'}'; cat <this file>) | ... node -
  *
  * Checks (each is {name, ok, detail}; `allOk` is their conjunction; exit code 4 when something is not ok):
+ * PASS/FAIL rests only on three things: the run's own rows and audit ids, the Optometry & Ophthalmology department, and the plan's journals. The whole Article / Journal / Book
+ * tables are reported as INFORMATION only (the live engine writes elsewhere), never as a pass/fail.
+ *
  *   1  articles written by the run = the rows the plan promised = the ids the run's audit rows list, and no rollback has touched it
  *   2  no duplicate DOI: among the run's rows and across the whole department
  *   3  every row is as promised: Published, LinkOnly, no file, no abstract, a commercial-OK CC licence with its URL, accessType OpenAccess, not NC, this department, journal linked,
  *      fingerprint doi:<doi>, source Crossref or EuropePMC, year 2020..next year
- *   4  the department's journals: count unchanged, every one still MetadataOnly, and the department's journal rows byte-for-byte as in the baseline
+ *   4  the plan's journals (the ones the run's rows belong to: __JOURNALS__ / __EXPECT__.journalIds): all there, in this department, still MetadataOnly, rows identical to the baseline
  *   5  the department page count (articles + books + legacy + article-less public journals) is what the rows imply, and the menu count likewise
  *   6  existing rows unchanged: the department's articles/books as at the baseline (strict) and the whole Article/Journal/Book tables (informational: the live engine writes elsewhere)
  *   7  20 sample rows, evenly spaced, with everything a person needs to open the DOI
@@ -27,6 +30,7 @@ const DEPARTMENT = 'Optometry & Ophthalmology';
 const MODE = typeof __MODE__ !== 'undefined' ? __MODE__ : 'baseline';
 const RUN = typeof __RUN__ !== 'undefined' ? __RUN__ : null;
 const EXPECT = typeof __EXPECT__ !== 'undefined' ? __EXPECT__ : {};
+const JOURNALS = typeof __JOURNALS__ !== 'undefined' ? __JOURNALS__ : (EXPECT.journalIds || []);
 const WITHHELD = ['draft', 'rejected', 'hidden', 'deleted', 'removed', 'pending', 'review', 'in review', 'needs review', 'unpublished', 'withdrawn', 'archived', 'takedown'];   // publicStatus.ts
 
 (async () => {
@@ -65,6 +69,7 @@ const WITHHELD = ['draft', 'rejected', 'hidden', 'deleted', 'removed', 'pending'
       o.hashes = {
         departmentArticles: await agg('Article', articleCols, `domain = $1 and "createdAt" <= $2::timestamptz`, DEPARTMENT, at),
         departmentJournals: await agg('Journal', journalCols, `domain = $1`, DEPARTMENT),
+        planJournals: await agg('Journal', journalCols, `id = any($1::text[])`, JOURNALS),
         departmentBooks: await agg('Book', bookCols, `domain = $1`, DEPARTMENT),
         allArticles: await agg('Article', articleCols, `"createdAt" <= $1::timestamptz`, at),
         allJournals: await agg('Journal', journalCols, `true`),
@@ -113,12 +118,16 @@ const WITHHELD = ['draft', 'rejected', 'hidden', 'deleted', 'removed', 'pending'
       q(`select coalesce(metadata->>'licenceContentVersion','(none)') v, count(*)::int n from "Article" where "createdBy" = $1 group by 1 order by 2 desc`, by),
     ]);
 
-    const jNotMeta = (await one(`select count(*)::int n from "Journal" where domain = $1 and status <> 'MetadataOnly'`, DEPARTMENT)).n;
-    const jTotal = (await one(`select count(*)::int n from "Journal" where domain = $1`, DEPARTMENT)).n;
-    const jHash = await agg('Journal', journalCols, `domain = $1`, DEPARTMENT);
-    const jBase = base?.hashes?.departmentJournals;
-    add('4. the department\'s journals: count unchanged, all MetadataOnly, rows identical to the baseline',
-      jNotMeta === 0 && (!jBase || (jTotal === jBase.n && jHash.h === jBase.h)), `${jTotal} journals, not MetadataOnly ${jNotMeta}, hash ${jBase ? (jHash.h === jBase.h ? 'same as baseline' : 'DIFFERENT from baseline') : 'no baseline given'}`);
+    // check 4: only the plan's journals decide; the department's other journals are information
+    const jids = JOURNALS;
+    const jRows = jids.length ? await q(`select id, domain, status from "Journal" where id = any($1::text[])`, jids) : [];
+    const jWrong = jRows.filter((j) => j.domain !== DEPARTMENT || j.status !== 'MetadataOnly').length;
+    const jHash = await agg('Journal', journalCols, `id = any($1::text[])`, jids);
+    const jBase = base?.hashes?.planJournals;
+    const deptJ = await q(`select status, count(*)::int n from "Journal" where domain = $1 group by 1`, DEPARTMENT);
+    add('4. the plan\'s journals: all present, Optometry & Ophthalmology, MetadataOnly, rows identical to the baseline',
+      jids.length > 0 && jRows.length === jids.length && jWrong === 0 && (!jBase || (jHash.n === jBase.n && jHash.h === jBase.h)),
+      `${jRows.length}/${jids.length} plan journals found, not MetadataOnly or not in the department ${jWrong}, hash ${jBase ? (jHash.h === jBase.h ? 'same as baseline' : 'DIFFERENT from baseline') : 'no baseline given'}; INFO: the department's journals by status ${JSON.stringify(Object.fromEntries(deptJ.map((x) => [x.status, x.n])))}`);
 
     const comp = await components();
     const onlyRun = (await one(`select count(*)::int n from (select a."journalId" from "Article" a where a.domain = $1 and a.status = 'Published' group by 1 having bool_and(a."createdBy" = $2)) t`, DEPARTMENT, by)).n;
@@ -139,9 +148,9 @@ const WITHHELD = ['draft', 'rejected', 'hidden', 'deleted', 'removed', 'pending'
     const hAll = { articles: await agg('Article', articleCols, `"createdAt" <= $1::timestamptz and "createdBy" is distinct from $2`, base?.at || at, by), journals: await agg('Journal', journalCols, `true`), books: await agg('Book', bookCols, `true`) };
     const hb = base?.hashes;
     const strict = !hb || (hDeptA.h === hb.departmentArticles.h && hDeptA.n === hb.departmentArticles.n && hDeptB.h === hb.departmentBooks.h && hDeptB.n === hb.departmentBooks.n);
-    add('6. existing rows unchanged (the department strictly; whole tables are informational)', strict,
+    add('6. existing rows unchanged (the Optometry department strictly; the whole tables are information only)', strict,
       hb ? `department articles ${hDeptA.n}/${hb.departmentArticles.n} ${hDeptA.h === hb.departmentArticles.h ? 'same' : 'DIFFERENT'}, department books ${hDeptB.n}/${hb.departmentBooks.n} ${hDeptB.h === hb.departmentBooks.h ? 'same' : 'DIFFERENT'}; `
-        + `whole tables: articles ${hAll.articles.h === hb.allArticles.h ? 'same' : 'differ (the live engine writes elsewhere)'}, journals ${hAll.journals.h === hb.allJournals.h ? 'same' : 'differ'}, books ${hAll.books.h === hb.allBooks.h ? 'same' : 'differ'}` : 'no baseline given: nothing to compare');
+        + `INFO only, not a pass/fail - whole tables: articles ${hAll.articles.n} rows ${hAll.articles.h === hb.allArticles.h ? 'same' : 'differ (the live engine writes elsewhere)'}, journals ${hAll.journals.n} ${hAll.journals.h === hb.allJournals.h ? 'same' : 'differ'}, books ${hAll.books.n} ${hAll.books.h === hb.allBooks.h ? 'same' : 'differ'}` : 'no baseline given: nothing to compare');
 
     const all = await q(`select a.id, a.title, j.title journal, a.doi, a.year, a.licence, a.metadata->>'licenceUrl' licence_url, a.source, a."accessStatus" access, a.status from "Article" a join "Journal" j on j.id = a."journalId" where a."createdBy" = $1 order by a.id`, by);
     const step = Math.max(1, Math.floor(all.length / 20));

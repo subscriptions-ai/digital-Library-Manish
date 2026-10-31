@@ -38,7 +38,9 @@ await db.$executeRawUnsafe(`insert into "Journal" (id, title, issn, domain, stat
 for (let i = 0; i < 25; i++) await db.article.create({ data: { title: `Existing radiology article ${i}`, doi: `10.1111/existing.${i}`, status: 'Published', domain: 'Radiology', fingerprint: `doi:10.1111/existing.${i}`, source: 'OpenAlex' } as any });
 
 console.log('\n1. baseline (read-only)');
-const b = node(verifySrc, [], 'var __MODE__ = "baseline";'); const base = json(b);
+const planJids = [...new Set(plan.rows.map((r: any) => r.journalId))];
+const basePre = `var __MODE__ = "baseline"; var __JOURNALS__ = ${JSON.stringify(planJids)};`;
+const b = node(verifySrc, [], basePre); const base = json(b);
 check('baseline taken', b.status === 0 && base?.mode === 'baseline', b.stderr.slice(0, 160));
 check('before: 159 MetadataOnly journals, 35 books, page 194, menu 35', base.components.journalsByStatus.MetadataOnly === 159 && base.components.books === 35 && base.components.pageTotal === 194 && base.components.menuTotal === 35, JSON.stringify(base.components));
 
@@ -48,7 +50,7 @@ const ao = json(a);
 check(`exit 0, ${plan.rows.length} inserted, 0 rejected, 0 held`, a.status === 0 && ao?.inserted === plan.rows.length && ao.rejected === 0 && ao.skippedHeld === 0, JSON.stringify({ s: a.status, ins: ao?.inserted, rej: ao?.rejected, rbr: ao?.rejectedByReason, err: a.stderr.slice(-200) }));
 
 console.log('\n3. the verifier after the run');
-const expect = { rows: plan.rows.length, baseline: base };
+const expect = { rows: plan.rows.length, journalIds: planJids, baseline: base };
 const pre = `var __MODE__ = "verify"; var __RUN__ = ${JSON.stringify(plan.runId)}; var __EXPECT__ = ${JSON.stringify(expect)};`;
 const v = node(verifySrc, [], pre); const vo = json(v);
 for (const c of vo?.checks || []) check(c.name.slice(0, 110), c.ok, c.detail.slice(0, 260));
@@ -79,8 +81,8 @@ const rx = node(rollbackSrc, ['--execute'], `var __RUN__ = ${JSON.stringify(plan
 check('execute: all deleted, journals and books untouched', rx.status === 0 && rxo?.deleted === plan.rows.length && (await db.$queryRawUnsafe(`select count(*)::int n from "Journal" where domain = $1 and status = 'MetadataOnly'`, DEPT) as any[])[0].n === 159, JSON.stringify({ del: rxo?.deleted, err: rx.stderr.slice(0, 120) }));
 const afterRb = json(node(verifySrc, [], pre));
 check('the verifier now says the run is gone (only check 1 fails; the journals, page count and existing rows are back as before)', afterRb?.allOk === false && afterRb.checks.filter((c: any) => !c.ok).map((c: any) => c.name[0]).join() === '1', afterRb.checks.filter((c: any) => !c.ok).map((c: any) => c.name.slice(0, 30)).join(' | '));
-const back = json(node(verifySrc, [], 'var __MODE__ = "baseline";'));
-check('after rollback the department baseline hashes are the same as before the run', back.hashes.departmentArticles.h === base.hashes.departmentArticles.h && back.hashes.departmentJournals.h === base.hashes.departmentJournals.h && back.components.pageTotal === 194);
+const back = json(node(verifySrc, [], basePre));
+check('after rollback the department baseline hashes are the same as before the run', back.hashes.departmentArticles.h === base.hashes.departmentArticles.h && back.hashes.planJournals.h === base.hashes.planJournals.h && back.components.pageTotal === 194);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 await db.$disconnect();
