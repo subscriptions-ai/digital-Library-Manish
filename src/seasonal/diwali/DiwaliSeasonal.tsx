@@ -1,6 +1,6 @@
 import { useLayoutEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { diwaliLevel, isQuietPath } from './isDiwaliActive';
+import { diwaliLevel, isLiteDevice, isQuietPath } from './isDiwaliActive';
 import { DiwaliAnnouncementBand } from './AnnouncementBand';
 import './diwali.css';
 
@@ -19,6 +19,13 @@ import './diwali.css';
  * unmounts and whenever the route is one a reader is reading, so a record page,
  * the viewer and the sign-in forms are never dressed, and no signed-in screen
  * can inherit it — this only ever mounts inside the public layout.
+ *
+ * Two more attributes ride along. data-seasonal-lite marks a device that is
+ * spared the decoration that is only movement (see isLiteDevice).
+ * data-seasonal-hidden is on while the tab is in the background, and the
+ * stylesheet pauses every seasonal animation under it: a festival nobody is
+ * looking at should not be drawing frames, and the lights pick up where they
+ * left off when the reader comes back rather than jumping.
  */
 export function DiwaliSeasonal() {
   const { pathname } = useLocation();
@@ -26,9 +33,13 @@ export function DiwaliSeasonal() {
 
   useLayoutEffect(() => {
     const root = document.documentElement;
+    const syncHidden = () => root.toggleAttribute('data-seasonal-hidden', document.hidden);
     const clear = () => {
+      document.removeEventListener('visibilitychange', syncHidden);
       root.removeAttribute('data-seasonal');
       root.removeAttribute('data-seasonal-level');
+      root.removeAttribute('data-seasonal-lite');
+      root.removeAttribute('data-seasonal-hidden');
     };
     if (!level) {
       clear();
@@ -36,6 +47,9 @@ export function DiwaliSeasonal() {
     }
     root.setAttribute('data-seasonal', 'diwali');
     root.setAttribute('data-seasonal-level', level);
+    root.toggleAttribute('data-seasonal-lite', isLiteDevice());
+    syncHidden();
+    document.addEventListener('visibilitychange', syncHidden);
     return clear;
   }, [level]);
 

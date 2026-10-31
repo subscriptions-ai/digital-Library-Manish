@@ -14,9 +14,19 @@
  * below 640px, leaving thirteen correctly spaced. That is one rule in CSS
  * rather than a resize listener, a media query in JavaScript and a second
  * render — and it cannot disagree with itself halfway through a rotation.
+ *
+ * The lights chase: every bulb runs the same two-second cycle, each a little
+ * later than the one to its left, so a wave of brightness travels left to right
+ * and starts again. Two seconds is the period of every single bulb — each one
+ * brightens once in it, a long way under the three flashes a second that
+ * photosensitivity guidance draws the line at — and a bulb only dims to about
+ * half, never off. The delays are positive, so on load the bulbs sit dim and
+ * the first wave is what lights them.
  */
 
 const BULBS = 26;
+/** Seconds for the wave to cross the wire; also each bulb's period. */
+const CHASE = 2;
 
 /** Three colours, repeating: amber, the deeper saffron, and a warm white. */
 const TONE = ['a', 'b', 'c'] as const;
@@ -35,10 +45,7 @@ export function Torana({ className = '' }: { className?: string }) {
             style={{
               left: `${t * 100}%`,
               top: `${(1 + 36 * t * (1 - t)) * 5}%`,
-              // Neighbours never blink together, and the pattern does not
-              // repeat often enough to read as a pattern.
-              animationDelay: `${((i * 7) % 11) * 0.21}s`,
-              animationDuration: `${2.2 + ((i * 5) % 7) * 0.24}s`,
+              animationDelay: `${((i / BULBS) * CHASE).toFixed(3)}s`,
             }} />
         );
       })}

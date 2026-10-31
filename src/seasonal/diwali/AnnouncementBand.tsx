@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { DiyaMark } from './art';
+import { usePauseOffscreen } from './pauseOffscreen';
 
 /**
  * The festival greeting, once, above the header.
@@ -26,6 +27,9 @@ function alreadyDismissed(): boolean {
 
 export function DiwaliAnnouncementBand() {
   const [dismissed, setDismissed] = useState(alreadyDismissed);
+  const band = useRef<HTMLDivElement>(null);
+  // Its gold sweep holds still once the band has scrolled away.
+  usePauseOffscreen(band, dismissed);
   if (dismissed) return null;
 
   const dismiss = () => {
@@ -34,7 +38,7 @@ export function DiwaliAnnouncementBand() {
   };
 
   return (
-    <div className="dw-band px-3 sm:px-4" role="region" aria-label="Festival greeting">
+    <div ref={band} className="dw-band px-3 sm:px-4" role="region" aria-label="Festival greeting">
       <DiyaMark className="dw-band-mark" />
       <p className="dw-band-text m-0">
         <span className="dw-band-lead">Light of Knowledge · </span>
