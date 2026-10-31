@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # scripts/prod-run.sh - the one gate for production department writes.
 #
-#   scripts/prod-run.sh scripts/dept-<x>-apply.cjs      <plan.json> --max=N [--batch=N] [--execute]
+#   scripts/prod-run.sh scripts/dept-<x>-apply.cjs      <plan.json> --max=N [--batch=N] [--expect-db=NAME] [--execute]
 #   scripts/prod-run.sh scripts/dept-<x>-articles-<y>.cjs <plan.json> --max=N [--batch=N] [--execute]
 #   scripts/prod-run.sh scripts/dept-<x>-rollback.cjs   <run-id> [--plan=<frozen plan.json>] [--dept=paramedical|radiology|mlt|optometry] [--expect-db=NAME] [--execute]
 #
@@ -80,7 +80,7 @@ for a in "$@"; do
                case "$v" in paramedical) DEPT="Paramedical Sciences" ;; radiology) DEPT="Radiology" ;;
                  mlt) DEPT="Medical Laboratory Technology" ;; optometry) DEPT="Optometry & Ophthalmology" ;;
                  *) die "--dept must be paramedical|radiology|mlt|optometry" ;; esac ;;
-    --expect-db=*) [[ $KIND == rollback && $v =~ ^[A-Za-z0-9_]{1,63}$ ]] || die "--expect-db is rollback only, [A-Za-z0-9_]"; EXPECT_DB=$v ;;
+    --expect-db=*) [[ $v =~ ^[A-Za-z0-9_]{1,63}$ ]] || die "--expect-db is [A-Za-z0-9_]"; EXPECT_DB=$v ;;
     *) die "unknown or not allowed for $KIND: $a" ;;
   esac
 done
@@ -218,6 +218,7 @@ fi
 
 if [[ $KIND == apply ]]; then
   if (( EXECUTE )); then ARGS="--batch=$BATCH --max=$MAX"; else ARGS="--dry --batch=$BATCH --max=$MAX"; fi
+  ARGS="$ARGS${EXPECT_DB:+ --expect-db=$EXPECT_DB}"      # a writer that insists on knowing the database it writes to (the books publisher) gets it from here
 else
   ARGS=; (( EXECUTE )) && ARGS="--execute${EXPECT_DB:+ --expect-db=$EXPECT_DB}"
 fi

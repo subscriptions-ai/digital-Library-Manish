@@ -126,6 +126,8 @@ def main():
     ap.add_argument("--canary", type=int, default=200)
     ap.add_argument("--epmc-only", type=int, default=30)
     ap.add_argument("--seed", type=int, default=20261031)
+    ap.add_argument("--exclude-plan", action="append", default=[], help="a frozen plan whose DOIs are already written (the canary); they are left out")
+    ap.add_argument("--name", default="plan-canary", help="file name prefix of the plan")
     a = ap.parse_args()
     ev = a.evidence
     os.makedirs(a.out, exist_ok=True)
@@ -152,6 +154,8 @@ def main():
     for r in load_ndjson(f"{ev}/raw/enum-europepmc.ndjson"):
         if r.get("tag") == "cc_commercial_ok" and r.get("doi") and r.get("journal") in jid and r["doi"] not in cr_cc:
             ep_cc[r["doi"]] = r["journal"]
+    for ex in a.exclude_plan:
+        prod_dois |= {r["doi"] for r in json.load(open(ex))["rows"]}
     cr_cc = {d: j for d, j in cr_cc.items() if d not in prod_dois}
     ep_cc = {d: j for d, j in ep_cc.items() if d not in prod_dois}
 
@@ -175,7 +179,7 @@ def main():
     n_ep = min(a.epmc_only, a.canary)
     # ask for more than needed: some will fail the fresh check. Europe PMC rows are optional (they need a Crossref URL); Crossref rows fill the canary to its size.
     want_cr = spread(cr_cc, int(a.canary * 1.4) + 10)
-    want_ep = spread(ep_cc, max(60, n_ep * 4))
+    want_ep = spread(ep_cc, max(60, n_ep * 4)) if n_ep else []
     wave2 = []
 
     dropped = {}
@@ -257,10 +261,10 @@ def main():
     plan = {"runId": run_id, "department": DEPARTMENT, "source": "Crossref+EuropePMC", "builtAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "window": {"fromYear": YEAR_FLOOR},
             "rule": "commercial-OK Creative Commons only (CC BY, BY-SA, BY-ND, CC0, public domain), as the source record states it, from a licence entry in force (no embargo, started, version of record or unspecified) with its URL; no abstract; LinkOnly",
             "journals": [{k: j[k] for k in ("journalId", "issn", "eissn", "status")} for j in journals], "rows": rows}
-    path = f"{a.out}/plan-canary-{len(rows)}.json"
+    path = f"{a.out}/{a.name}-{len(rows)}.json"
     json.dump(plan, open(path, "w"), ensure_ascii=False, separators=(",", ":"))
     sha = hashlib.sha256(open(path, "rb").read()).hexdigest()
-    open(f"{a.out}/plan-canary-{len(rows)}.sha256", "w").write(f"{sha}  plan-canary-{len(rows)}.json\n")
+    open(f"{a.out}/{a.name}-{len(rows)}.sha256", "w").write(f"{sha}  {a.name}-{len(rows)}.json\n")
     json.dump(wave2, open(f"{a.out}/wave2-hold.json", "w"), ensure_ascii=False, indent=1)
     rep = {"runId": run_id, "rows": len(rows), "wave2Held": len(wave2), "wave2HeldReasons": {k: sum(1 for w in wave2 if w["heldBecause"].split(":")[0] == k) for k in {w["heldBecause"].split(":")[0] for w in wave2}}, "crossref": sum(1 for r in rows if r["source"] == "Crossref"), "europepmc": sum(1 for r in rows if r["source"] == "EuropePMC"),
            "journals": len({r["journalId"] for r in rows}), "droppedOnFreshCheck": dropped, "candidatesFetchedCrossref": len(want_cr), "candidatesFetchedEuropePMC": len(want_ep),
